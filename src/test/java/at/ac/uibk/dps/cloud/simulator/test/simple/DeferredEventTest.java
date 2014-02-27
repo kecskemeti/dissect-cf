@@ -1,0 +1,104 @@
+/*
+ *  ========================================================================
+ *  DIScrete event baSed Energy Consumption simulaTor 
+ *    					             for Clouds and Federations (DISSECT-CF)
+ *  ========================================================================
+ *  
+ *  This file is part of DISSECT-CF.
+ *  
+ *  DISSECT-CF is free software: you can redistribute it and/or modify it
+ *  under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
+ *  
+ *  DISSECT-CF is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ *  General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
+ *   									  kecskemeti.gabor@sztaki.mta.hu)
+ */
+
+package at.ac.uibk.dps.cloud.simulator.test.simple;
+
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+
+public class DeferredEventTest extends TestFoundation {
+
+	static class DeferredTester extends DeferredEvent {
+		boolean eventFired;
+
+		public DeferredTester(int delay) {
+			super(delay);
+		}
+
+		@Override
+		protected void eventAction() {
+			eventFired = true;
+		}
+	}
+
+	@BeforeClass
+	public static void resetSimulation() {
+		new DeferredTester(0);
+	}
+
+	@Test(timeout = 100)
+	public void eventFireTest() {
+		DeferredTester dt = new DeferredTester(10);
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Deferred event was not received", dt.eventFired);
+		Assert.assertFalse("Deferred event was cancelled unexpectedly",
+				dt.isCancelled());
+		dt.cancel();
+		Assert.assertFalse("Deferred event was cancelled unexpectedly",
+				dt.isCancelled());
+	}
+
+	@Test(timeout = 100)
+	public void eventCancelTest() {
+		DeferredTester dt = new DeferredTester(10);
+		dt.cancel();
+		Assert.assertTrue("Deferred event was not cancelled", dt.isCancelled());
+		long beforeTime = Timed.getFireCount();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Deferred event cancellation have not succeeded",
+				beforeTime, Timed.getFireCount());
+		Assert.assertFalse("Deferred event was received unexpectedly",
+				dt.eventFired);
+	}
+
+	@Test(timeout = 100)
+	public void immediateFireTest() {
+		Assert.assertTrue("Deferred event was not received",
+				new DeferredTester(0).eventFired);
+	}
+
+	@Test(timeout = 200)
+	public void performanceTest() {
+		final int limit = 10000;
+		DeferredTester[] performer = new DeferredTester[limit];
+		for (int i = 0; i < limit; i++) {
+			performer[i] = new DeferredTester(
+					SeedSyncer.centralRnd.nextInt(limit) + 10);
+		}
+		Timed.simulateUntilLastEvent();
+		boolean fired = true;
+		for (int i = 0; i < limit; i++) {
+			fired &= performer[i].eventFired;
+		}
+		Assert.assertTrue("Not all events arrived", fired);
+	}
+}
