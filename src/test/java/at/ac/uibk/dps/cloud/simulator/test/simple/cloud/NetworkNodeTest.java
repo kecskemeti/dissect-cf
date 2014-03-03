@@ -1,0 +1,239 @@
+/*
+ *  ========================================================================
+ *  DIScrete event baSed Energy Consumption simulaTor 
+ *    					             for Clouds and Federations (DISSECT-CF)
+ *  ========================================================================
+ *  
+ *  This file is part of DISSECT-CF.
+ *  
+ *  DISSECT-CF is free software: you can redistribute it and/or modify it
+ *  under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
+ *  
+ *  DISSECT-CF is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ *  General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
+ *   									  kecskemeti.gabor@sztaki.mta.hu)
+ */
+
+package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
+
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+
+import java.util.HashMap;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
+
+public class NetworkNodeTest extends ConsumptionEventFoundation {
+	public final static String completeMessage = "Complete";
+	public final static long inBW = 100000000;
+	public final static long outBW = 100000000;
+	public final static long diskBW = 50000000;
+	public final static int targetlat = 3;
+	public final static int sourcelat = 2;
+	public final static String sourceName = "Source";
+	public final static String targetName = "Target";
+	public final static String thirdName = "Unconnected";
+	NetworkNode source, target, third;
+
+	public static HashMap<String, Integer> setupALatencyMap() {
+		HashMap<String, Integer> lm = new HashMap<String, Integer>();
+		lm.put(sourceName, sourcelat);
+		lm.put(targetName, targetlat);
+		return lm;
+	}
+
+	@Before
+	public void nodeSetup() {
+		HashMap<String, Integer> lm = setupALatencyMap();
+		source = new NetworkNode(sourceName, inBW, outBW, diskBW, lm);
+		target = new NetworkNode(targetName, inBW, outBW, diskBW, lm);
+		third = new NetworkNode(thirdName, inBW, outBW, diskBW, lm);
+	}
+
+	@Test(timeout = 100)
+	public void checkConstruction() {
+		Assert.assertTrue("Node toString does not contain node name:", source
+				.toString().contains(sourceName));
+		Assert.assertEquals("Unexpected incoming bandwidth", inBW,
+				source.getInputbw());
+		Assert.assertEquals("Unexpected outgoing bandwidth", outBW,
+				source.getOutputbw());
+		Assert.assertEquals("Unexpected disk bandwidth", diskBW,
+				source.getDiskbw());
+		Assert.assertEquals("Unexpected name", sourceName, source.getName());
+		Assert.assertEquals(
+				"Already used some bandwidth without requesting transfers",
+				0,
+				source.inbws.getTotalProcessed()
+						+ source.outbws.getTotalProcessed(), 0);
+	}
+
+	@Test(timeout = 100)
+	public void checkConnectivity() {
+		try {
+			Assert.assertEquals(
+					"Internal connectivity for node source is not without latency",
+					0, NetworkNode.checkConnectivity(source, source));
+		} catch (NetworkException ex) {
+			Assert.fail("Internal connectivity of node source should always work");
+		}
+		try {
+			Assert.assertEquals(
+					"External connectivity between node spurce and target is with an unexpected latency",
+					targetlat, NetworkNode.checkConnectivity(source, target));
+		} catch (NetworkException ex) {
+			Assert.fail("There should be no connectivity issues between node source and target");
+		}
+		try {
+			NetworkNode.checkConnectivity(source, third);
+			Assert.fail("Node 1 should not be able to connect to node third");
+		} catch (NetworkException ex) {
+		}
+
+		try {
+			Assert.assertEquals(
+					"External connectivity between node target and source is with an unexpected latency",
+					sourcelat, NetworkNode.checkConnectivity(target, source));
+		} catch (NetworkException ex) {
+			Assert.fail("There should be no connectivity issues between node target and source");
+		}
+		try {
+			Assert.assertEquals(
+					"Internal connectivity for node target is not without latency",
+					0, NetworkNode.checkConnectivity(target, target));
+		} catch (NetworkException ex) {
+			Assert.fail("Internal connectivity of node target should always work");
+		}
+		try {
+			NetworkNode.checkConnectivity(target, third);
+			Assert.fail("Node target should not be able to connect to node third");
+		} catch (NetworkException ex) {
+		}
+
+		try {
+			Assert.assertEquals(
+					"External connectivity between node third and source is with an unexpected latency",
+					sourcelat, NetworkNode.checkConnectivity(third, source));
+		} catch (NetworkException ex) {
+			Assert.fail("There should be no connectivity issues between node third and source");
+		}
+		try {
+			Assert.assertEquals(
+					"External connectivity between node third and target is with an unexpected latency",
+					targetlat, NetworkNode.checkConnectivity(third, target));
+		} catch (NetworkException ex) {
+			Assert.fail("There should be no connectivity issues between node third and target");
+		}
+		try {
+			Assert.assertEquals(
+					"Internal connectivity for node third is not without latency",
+					0, NetworkNode.checkConnectivity(third, third));
+		} catch (NetworkException ex) {
+			Assert.fail("Internal connectivity of node third should always work");
+		}
+	}
+
+	private void setupTransfer(final long len, final NetworkNode source,
+			final NetworkNode target, final long expectedDelay)
+			throws NetworkException {
+		NetworkNode.initTransfer(len, ResourceConsumption.unlimitedProcessing,
+				source, target, new ConsumptionEventAssert(Timed.getFireCount()
+						+ expectedDelay, true));
+	}
+
+	private void simulateThenExpectEventNum(int eventNum) {
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Not enough consumption events received", eventNum,
+				ConsumptionEventAssert.hits.size());
+	}
+
+	@Test(timeout = 100)
+	public void interNodeTransferTest() throws NetworkException {
+		setupTransfer(inBW, source, target, 1000 + targetlat);
+		simulateThenExpectEventNum(1);
+		Assert.assertEquals(
+				"It is not expected to have incoming transfers in source", 0,
+				source.inbws.getTotalProcessed(), 0);
+		Assert.assertEquals(
+				"It is not expected to have outgoing transfers in target", 0,
+				target.outbws.getTotalProcessed(), 0);
+		Assert.assertEquals("Outgoing transfers on source are reported badly",
+				inBW, source.outbws.getTotalProcessed(), 0);
+		Assert.assertEquals("Incoming transfers on target are reported badly",
+				inBW, target.inbws.getTotalProcessed(), 0);
+	}
+
+	@Test(timeout = 100)
+	public void intraNodeTransferTest() throws NetworkException {
+		setupTransfer(diskBW / 2, source, source, 1000);
+		simulateThenExpectEventNum(1);
+		Assert.assertEquals(
+				"It is not expected to have network transfers within the node",
+				0, source.inbws.getTotalProcessed(), 0);
+		Assert.assertEquals(
+				"It is not expected to have network transfers within the node",
+				0, source.outbws.getTotalProcessed(), 0);
+	}
+
+	@Test(timeout = 100)
+	public void noInterferenceTest() throws NetworkException {
+		setupTransfer(inBW, source, target, 1000 + targetlat);
+		setupTransfer(inBW, target, source, 1000 + sourcelat);
+		setupTransfer(diskBW / 2, source, source, 1000);
+		simulateThenExpectEventNum(3);
+		Assert.assertEquals("Incoming transfers on source are reported badly",
+				inBW, source.inbws.getTotalProcessed(), 0);
+		Assert.assertEquals("Outgoing transfers on source are reported badly",
+				inBW, source.outbws.getTotalProcessed(), 0);
+		Assert.assertEquals("Incoming transfers on target are reported badly",
+				inBW, target.inbws.getTotalProcessed(), 0);
+		Assert.assertEquals("Outgoing transfers on target are reported badly",
+				inBW, target.outbws.getTotalProcessed(), 0);
+	}
+
+	@Test(timeout = 100)
+	public void interferenceTest() throws NetworkException {
+		setupTransfer(inBW, source, target, 1700 + targetlat);
+		Timed.simulateUntil(Timed.getFireCount() + 300);
+		setupTransfer(inBW, source, target, 1700 + targetlat);
+		simulateThenExpectEventNum(2);
+		Assert.assertEquals("Outgoing transfers on source are reported badly",
+				2 * inBW, source.outbws.getTotalProcessed(), 0);
+	}
+
+	@Test(timeout = 100)
+	public void midSimulationRxTest() throws NetworkException {
+		setupTransfer(inBW, source, target, 1000 + targetlat);
+		Timed.simulateUntil(Timed.getFireCount() + targetlat);
+		double startingPoint = source.outbws.getTotalProcessed();
+		do {
+			Timed.fire();
+			final double current = source.outbws.getTotalProcessed();
+			if (startingPoint == current
+					&& ConsumptionEventAssert.hits.isEmpty()) {
+				Assert.fail("Output sent bytes should always increase after a timing event "
+						+ Timed.getFireCount());
+			}
+			startingPoint = current;
+		} while (ConsumptionEventAssert.hits.isEmpty());
+		Assert.assertEquals(
+				"The final outgoing transfer amount is reported incorrectly",
+				inBW, source.outbws.getTotalProcessed(), 0);
+	}
+}
