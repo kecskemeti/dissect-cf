@@ -122,7 +122,6 @@ public class ResourceConsumption {
 	public void cancel() {
 		suspend();
 		resumable = false;
-		ev.conCancelled(this);
 	}
 
 	public void suspend() {
@@ -247,6 +246,10 @@ public class ResourceConsumption {
 
 	public boolean isRegistered() {
 		return registered;
+	}
+	
+	public boolean isResumable() {
+		return resumable;
 	}
 
 	public double getHardLimit() {

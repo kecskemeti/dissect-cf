@@ -176,8 +176,12 @@ public abstract class ResourceSpreader {
 									rs.toProcess, con)) {
 								rsuLen--;
 							}
-							if (isConsumer && con.getUnProcessed() == 0) {
-								con.ev.conComplete();
+							if (isConsumer) {
+								if(con.getUnProcessed() == 0) {
+									con.ev.conComplete();
+								} else if(!con.isResumable()) {
+									con.ev.conCancelled(con);
+								}
 							}
 						}
 						rs.underProcessingLen = rsuLen;
