@@ -1,0 +1,235 @@
+/*
+ *  ========================================================================
+ *  DIScrete event baSed Energy Consumption simulaTor 
+ *    					             for Clouds and Federations (DISSECT-CF)
+ *  ========================================================================
+ *  
+ *  This file is part of DISSECT-CF.
+ *  
+ *  DISSECT-CF is free software: you can redistribute it and/or modify it
+ *  under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
+ *  
+ *  DISSECT-CF is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ *  General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
+ *   									  kecskemeti.gabor@sztaki.mta.hu)
+ */
+
+package at.ac.uibk.dps.cloud.simulator.test.complex;
+
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChangeException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+
+import java.util.HashMap;
+import java.util.Vector;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
+
+public class ParallelUsageTest extends ConsumptionEventFoundation {
+	public final static int taskLen = 1000;
+
+	@Before
+	public void resetSeed() {
+		SeedSyncer.resetCentral();
+	}
+
+	private ResourceConsumption addCons(VirtualMachine vm, long tL,
+			boolean assertonFail) throws StateChangeException, NetworkException {
+		tL += taskLen / 2 - SeedSyncer.centralRnd.nextInt(taskLen);
+		return vm.newComputeTask(tL, ResourceConsumption.unlimitedProcessing,
+				new ConsumptionEventAssert(assertonFail));
+	}
+
+	private IaaSService createMiniCloud(String cloudName,
+			VirtualAppliance initialVA, long repoNBW, long repoDBW, int lat,
+			double cores, long diskNBW, long diskDBW) throws Exception {
+		IaaSService iaas = new IaaSService(FirstFitScheduler.class,
+				SchedulingDependentMachines.class);
+		HashMap<String, Integer> lmap = new HashMap<String, Integer>();
+		String repoID = cloudName + "-Repo", machineID = cloudName + "-Machine";
+		lmap.put(repoID, lat);
+		lmap.put(machineID, lat);
+		Repository repo = new Repository(6000000000000L, repoID, repoNBW,
+				repoNBW, repoDBW, lmap);
+		Repository disk = new Repository(6000000000000L, machineID, diskNBW,
+				diskNBW, repoDBW, lmap);
+		repo.registerObject(initialVA);
+		iaas.registerRepository(repo);
+		PhysicalMachine pm = new PhysicalMachine(cores, 1.0, 128000000000L,
+				disk, 89000, 29000);
+		iaas.registerHost(pm);
+		return iaas;
+	}
+
+	@Test(timeout = 100)
+	public void taskParallelismTest() throws Exception {
+		int mxvms = 3;
+		VirtualAppliance va = new VirtualAppliance("a", 1000, 0);
+		IaaSService iaas = createMiniCloud("TestCloud", va, 250000000L,
+				100000000L, 11, 48.0, 125000000L, 50000000L);
+		Repository repo = iaas.repositories.get(0);
+		final Vector<ResourceConsumption> cons = new Vector<ResourceConsumption>();
+		final long offset = Timed.getFireCount();
+		final VirtualMachine[] vms = iaas.requestVM(va,
+				new ResourceConstraints(1, 1, 512000000), repo, mxvms);
+		final long[] expectedRunningTimes = { 444062, 444062, 444062 };
+		for (int i = 0; i < vms.length; i++) {
+			final int ireplica = i;
+			vms[i].subscribeStateChange(new VirtualMachine.StateChange() {
+				@Override
+				public void stateChanged(VirtualMachine.State oldState,
+						VirtualMachine.State newState) {
+					if (newState.equals(VirtualMachine.State.RUNNING)) {
+						Assert.assertEquals("VM started at the wrong time",
+								expectedRunningTimes[ireplica] + offset,
+								Timed.getFireCount());
+						try {
+							if (ireplica == 0) {
+								cons.add(addCons(vms[ireplica], taskLen, true));
+							}
+						} catch (Exception e) {
+							throw new IllegalStateException(e);
+						}
+					}
+				}
+			});
+		}
+
+		while (cons.isEmpty()) {
+			Timed.jumpTime(Long.MAX_VALUE);
+			Timed.fire();
+		}
+
+		ResourceConsumption toCancel = null;
+		for (int i = 0; i < 8; i++) {
+			long relativejump = 81;
+			while (relativejump > 0) {
+				relativejump = Timed.jumpTime(relativejump - 1);
+				Timed.fire();
+			}
+			// Make sure the last one should assert on failure!
+			cons.add(toCancel = addCons(
+					vms[SeedSyncer.centralRnd.nextInt(mxvms)], taskLen, i < 7));
+
+		}
+
+		while (ConsumptionEventAssert.hits.isEmpty()) {
+			Timed.jumpTime(Long.MAX_VALUE);
+			Timed.fire();
+		}
+		toCancel.cancel();
+		Timed.simulateUntilLastEvent();
+		long[] result = new long[ConsumptionEventAssert.hits.size()];
+		int index = 0;
+		for (Long r : ConsumptionEventAssert.hits) {
+			result[index++] = r - offset;
+		}
+		Assert.assertArrayEquals("Incorrect computing task completion times",
+				new long[] { 3054090, 3055041, 3625610, 3933408, 4598522,
+						4667320, 4937077, 5054226 }, result);
+	}
+
+	@Test(timeout = 100)
+	public void cloudParallelismTest() throws Exception {
+		final VirtualAppliance[] vas = new VirtualAppliance[2];
+		vas[0] = new VirtualAppliance("testVA1", 3000, 0, false, 100000000);
+		vas[1] = new VirtualAppliance("testVA2", 3000, 0, false, 100000000);
+		final IaaSService[] iaass = new IaaSService[2];
+		iaass[0] = createMiniCloud("TestCloud1", vas[0], 250000000L,
+				100000000L, 11, 48.0, 125000000L, 50000000L);
+		iaass[1] = createMiniCloud("TestCloud2", vas[1], 1250000000L,
+				250000000L, 5, 64.0, 250000000L, 50000000L);
+		ResourceConstraints rc = new ResourceConstraints(1, 1, 1000000000);
+		final long offset = Timed.getFireCount();
+		final long[] itr = { 89000, 89000 };
+		final long[] str = { 89811, 89405 };
+		final long[] run = { 92811, 92405 };
+		final long[] shd = { 392811, 392405 };
+		final long[] dst = { 392811, 392405 };
+		for (int i = 0; i < 2; i++) {
+			final int isaved = i;
+			Repository repoToUse = iaass[i].repositories.get(0);
+			final VirtualMachine vm = iaass[i].requestVM(vas[i], rc, repoToUse,
+					1)[0];
+			vm.subscribeStateChange(new VirtualMachine.StateChange() {
+				@Override
+				public void stateChanged(State oldState, State newState) {
+					switch (newState) {
+					case INITIAL_TR:
+						Assert.assertEquals("INITIAL_TR not on time",
+								itr[isaved] + offset, Timed.getFireCount());
+						break;
+					case STARTUP:
+						Assert.assertEquals("STARTUP not on time", str[isaved]
+								+ offset, Timed.getFireCount());
+						break;
+					case RUNNING:
+						Assert.assertEquals("RUNNING not on time", run[isaved]
+								+ offset, Timed.getFireCount());
+						break;
+					case SHUTDOWN:
+						Assert.assertEquals("SHUTDOWN not on time", shd[isaved]
+								+ offset, Timed.getFireCount());
+						break;
+					case DESTROYED:
+						Assert.assertEquals("DESTROYED not on time",
+								dst[isaved] + offset, Timed.getFireCount());
+						break;
+					default:
+						Assert.fail("Unexpected VM state");
+					}
+					if (newState.equals(VirtualMachine.State.RUNNING)) {
+						try {
+							vm.newComputeTask(300,
+									ResourceConsumption.unlimitedProcessing,
+									new ResourceConsumption.ConsumptionEvent() {
+										@Override
+										public void conComplete() {
+											try {
+												vm.destroy(false);
+											} catch (VMManagementException e) {
+												e.printStackTrace();
+											}
+										}
+
+										@Override
+										public void conCancelled(
+												ResourceConsumption problematic) {
+										}
+									});
+						} catch (Exception e) {
+							throw new IllegalStateException(e);
+						}
+					}
+				}
+			});
+		}
+		Timed.simulateUntilLastEvent();
+	}
+}
