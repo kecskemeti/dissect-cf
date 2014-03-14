@@ -1,4 +1,4 @@
 dissect-cf
 ==========
 
-The source code of the DISSECT-CF simulator is going to be hosted here soon.
+The source of the DISSECT-CF simulator is now available, documentation is on its way.
