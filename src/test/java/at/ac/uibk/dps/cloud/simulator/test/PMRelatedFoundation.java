@@ -29,6 +29,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 
 import org.junit.After;
@@ -47,8 +49,21 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 	@Before
 	public void introduceRedirections() {
 		try {
-			System.setOut(new PrintStream(new File("/dev/null")));
-			System.setErr(new PrintStream(new File("/dev/null")));
+			System.setOut(new PrintStream(new OutputStream() {
+
+				@Override
+				public void write(int arg0) throws IOException {
+
+				}
+			}));
+			System.setErr(new PrintStream(new OutputStream() {
+
+				@Override
+				public void write(int arg0) throws IOException {
+
+				}
+			}));
+
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
