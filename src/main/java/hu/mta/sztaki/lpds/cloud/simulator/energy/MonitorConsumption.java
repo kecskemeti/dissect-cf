@@ -75,9 +75,12 @@ public class MonitorConsumption extends Timed {
 		subSecondProcessing = current.totalProcessed - totalProcessed;
 		totalProcessed = current.totalProcessed;
 		subHourRecords.add(current);
-		while (subHourRecords.peek().timestamp + 3600000 < fires) {
+		long fires2 = fires-3600000;
+		long fires3 = fires-86400000;
+		
+		while (subHourRecords.peek().timestamp < fires2) {
 			subDayRecords.add(subHourRecords.poll());
-			while (subDayRecords.peek().timestamp + 86400000 < fires) {
+			while (subDayRecords.peek().timestamp < fires3) {
 				subDayRecords.poll();
 			}
 		}
