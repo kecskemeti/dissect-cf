@@ -164,7 +164,7 @@ public abstract class ResourceSpreader {
 				didExtension = false;
 				for (int rsi = 0; rsi < depgrouplen; rsi++) {
 					final ResourceSpreader rs = myDepGroup[rsi];
-					if (rs.underRemoval.size() != 0) {
+					if (!rs.underRemoval.isEmpty()) {
 						didRemovals = true;
 						int rsuLen = rs.toProcess.size();
 						int urLen = rs.underRemoval.size();
@@ -187,7 +187,7 @@ public abstract class ResourceSpreader {
 						rs.underProcessingLen = rsuLen;
 						rs.underRemoval.clear();
 					}
-					if (rs.underAddition.size() != 0) {
+					if (!rs.underAddition.isEmpty()) {
 						if (rs.underProcessingLen == 0) {
 							rs.lastNotifTime = fires;
 						}
@@ -342,7 +342,7 @@ public abstract class ResourceSpreader {
 		final ResourceSpreader consumer = con.getConsumer();
 		if (con.isRegistered()
 				|| !(provider.isAcceptableConsumption(con) && consumer
-						.isAcceptableConsumption(con))) {
+				.isAcceptableConsumption(con))) {
 			return false;
 		}
 		ArrayHandler.removeAndReplaceWithLast(provider.underRemoval, con);

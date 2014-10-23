@@ -102,13 +102,13 @@ public class VirtualMachine extends MaxMinConsumer {
 	public final static EnumSet<State> preStartupStates = EnumSet.of(
 			State.DESTROYED, State.SHUTDOWN);
 
-	private CopyOnWriteArrayList<StateChange> subscribers = new CopyOnWriteArrayList<StateChange>();
+	private final CopyOnWriteArrayList<StateChange> subscribers = new CopyOnWriteArrayList<StateChange>();
 
 	private State currState = State.DESTROYED;
 
 	public static final float loadwhilenotrunning = 0.2f;
 
-	private ArrayList<ResourceConsumption> suspendedTasks = new ArrayList<ResourceConsumption>();
+	private final ArrayList<ResourceConsumption> suspendedTasks = new ArrayList<ResourceConsumption>();
 
 	public VirtualMachine(final VirtualAppliance va) {
 		super(0);

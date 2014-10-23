@@ -40,8 +40,8 @@ public class PowerState {
 
 	private double minConsumption;
 	public final double consumptionRange;
-	private ConsumptionModel model;
-	private ArrayList<PowerCharacteristicsChange> listeners = new ArrayList<PowerState.PowerCharacteristicsChange>();
+	private final ConsumptionModel model;
+	private final ArrayList<PowerCharacteristicsChange> listeners = new ArrayList<PowerState.PowerCharacteristicsChange>();
 
 	public PowerState(final double minConsumption,
 			final double consumptionRange,

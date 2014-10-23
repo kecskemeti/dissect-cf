@@ -69,7 +69,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		public final PhysicalMachine host;
 		public final ResourceConstraints allocated;
 		private VirtualMachine user = null;
-		private int myPromisedIndex;
+		private final int myPromisedIndex;
 
 		private ResourceAllocation(final PhysicalMachine offerer,
 				final ResourceConstraints alloc, final int until) {
@@ -336,16 +336,14 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 		double reqCPU = requested.requiredCPUs;
 		long reqMem = requested.requiredMemory;
-		if (0 <= reallyFreeCapacities.requiredCPUs - requested.requiredCPUs) {
-			if (0 <= reallyFreeCapacities.requiredMemory
-					- requested.requiredMemory) {
+		if (reallyFreeCapacities.requiredCPUs >= requested.requiredCPUs) {
+			if (reallyFreeCapacities.requiredMemory >= requested.requiredMemory) {
 				return new ResourceAllocation(this, requested,
 						allocationValidityLength);
 			} else {
 				reqMem = reallyFreeCapacities.requiredMemory;
 			}
-		} else if (0 <= reallyFreeCapacities.requiredMemory
-				- requested.requiredMemory) {
+		} else if (reallyFreeCapacities.requiredMemory >= requested.requiredMemory) {
 			reqCPU = reallyFreeCapacities.requiredCPUs;
 		} else {
 			reqCPU = reallyFreeCapacities.requiredCPUs;
