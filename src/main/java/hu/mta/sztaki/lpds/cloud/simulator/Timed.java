@@ -166,14 +166,14 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public static final void simulateUntilLastEvent() {
-		while (getNextFire() >= 0) {
+		while (timedlist.peek() != null) {
 			jumpTime(Long.MAX_VALUE);
 			fire();
 		}
 	}
 
 	public static final void simulateUntil(final long time) {
-		while (getNextFire() >= 0 && fireCounter < time) {
+		while (timedlist.peek() != null && fireCounter < time) {
 			jumpTime(time - fireCounter);
 			if (getNextFire() == fireCounter) {
 				fire();
@@ -189,7 +189,8 @@ public abstract class Timed implements Comparable<Timed> {
 	
 	@Override
 	public String toString() {
-		return "Timed(Freq: "+frequency+" NE:"+nextEvent+")";
+		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")").toString();
+		//return "Timed(Freq: "+frequency+" NE:"+nextEvent+")";
 	}
 
 	public abstract void tick(long fires);

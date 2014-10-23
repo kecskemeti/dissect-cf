@@ -70,17 +70,17 @@ public class IaaSService implements VMManager<IaaSService> {
 		@Override
 		public void stateChanged(State oldState, State newState) {
 			switch (newState) {
-			case RUNNING:
-				internalRunningMachines.add(pm);
-				runningCapacity = ResourceConstraints.add(runningCapacity,
-						pm.getCapacities());
-				return;
-			default:
-				if (oldState.equals(PhysicalMachine.State.RUNNING)) {
-					internalRunningMachines.remove(pm);
-					runningCapacity = ResourceConstraints.subtract(
-							runningCapacity, pm.getCapacities());
-				}
+				case RUNNING:
+					internalRunningMachines.add(pm);
+					runningCapacity = ResourceConstraints.add(runningCapacity,
+							pm.getCapacities());
+					return;
+				default:
+					if (oldState.equals(PhysicalMachine.State.RUNNING)) {
+						internalRunningMachines.remove(pm);
+						runningCapacity = ResourceConstraints.subtract(
+								runningCapacity, pm.getCapacities());
+					}
 			}
 		}
 	}
