@@ -44,9 +44,7 @@ public abstract class DeferredEvent extends Timed {
 	}
 
 	public void cancel() {
-		if (isSubscribed()) {
-			cancelled = true;
-		}
+		cancelled = isSubscribed() ? true : cancelled;
 		unsubscribe();
 	}
 
