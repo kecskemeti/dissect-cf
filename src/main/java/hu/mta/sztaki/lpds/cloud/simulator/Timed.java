@@ -134,15 +134,13 @@ public abstract class Timed implements Comparable<Timed> {
 	public static final long jumpTime(long desiredJump) {
 		final long targettime = calcTimeJump(desiredJump);
 		final long nextFire = getNextFire();
-		final long remainingJump;
 		if (targettime <= nextFire) {
 			fireCounter = targettime;
-			remainingJump = 0;
+			return 0;
 		} else {
 			fireCounter = nextFire < 0 ? targettime : nextFire;
-			remainingJump = targettime - fireCounter;
+			return targettime - fireCounter;
 		}
-		return remainingJump;
 	}
 
 	public static final void skipEventsTill(final long desiredTime) {
