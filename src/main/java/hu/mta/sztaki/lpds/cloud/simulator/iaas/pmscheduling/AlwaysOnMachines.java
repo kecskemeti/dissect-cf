@@ -41,9 +41,10 @@ public class AlwaysOnMachines extends PhysicalMachineController {
 		return new VMManager.CapacityChangeEvent() {
 			@Override
 			public void capacityChanged(ResourceConstraints newCapacity) {
-				for (PhysicalMachine pm : parent.machines) {
-					if (PhysicalMachine.ToOfforOff.contains(pm.getState())) {
-						pm.turnon();
+				int size = parent.machines.size();
+				for (int i = 0; i < size; i++) {
+					if (PhysicalMachine.ToOfforOff.contains(parent.machines.get(i).getState())) {
+						parent.machines.get(i).turnon();
 					}
 				}
 			}

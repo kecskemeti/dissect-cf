@@ -294,8 +294,9 @@ public class IaaSService implements VMManager<IaaSService> {
 	}
 
 	private void notifyCapacityListeners() {
-		for (CapacityChangeEvent ev : capacityListeners) {
-			ev.capacityChanged(totalCapacity);
+		int size = capacityListeners.size();
+		for (int i = 0; i < size; i++) {
+			capacityListeners.get(i).capacityChanged(totalCapacity);
 		}
 	}
 

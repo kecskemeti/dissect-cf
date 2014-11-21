@@ -241,17 +241,17 @@ public class PhysicalMachine extends MaxMinProvider implements
 					default:
 					}
 					if (counter == vmarr.length) {
-						for (VirtualMachine vm : vmarr) {
-							vm.unsubscribeStateChange(this);
+						for (int i = 0; i < vmarr.length;i++) {
+							vmarr[i].unsubscribeStateChange(this);
 						}
 						actualSwitchOff();
 					}
 				}
 			}
 			MultiMigrate mm = new MultiMigrate();
-			for (VirtualMachine vm : vmarr) {
-				vm.subscribeStateChange(mm);
-				migrateVM(vm, migrateHere);
+			for (int i = 0; i < vmarr.length;i++) {
+				vmarr[i].subscribeStateChange(mm);
+				migrateVM(vmarr[i], migrateHere);
 			}
 		} else {
 			if (vms.size() + promisedAllocationsCount > 0) {

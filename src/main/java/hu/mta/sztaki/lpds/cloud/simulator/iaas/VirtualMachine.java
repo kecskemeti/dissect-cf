@@ -382,10 +382,11 @@ public class VirtualMachine extends MaxMinConsumer {
 		@SuppressWarnings("unchecked")
 		List<ResourceConsumption>[] completeConlist = new List[] {
 				underProcessing, new ArrayList<ResourceConsumption>(toBeAdded) };
-		for (List<ResourceConsumption> currentList : completeConlist) {
-			final int currlistsize = currentList.size();
+		
+		for (int i = 0; i < completeConlist.length; i++) {
+			final int currlistsize = completeConlist[i].size();
 			for (int idx = 0; idx < currlistsize; idx++) {
-				final ResourceConsumption con = currentList.get(idx);
+				final ResourceConsumption con = completeConlist[i].get(idx);
 				con.suspend();
 				suspendedTasks.add(con);
 			}
@@ -434,8 +435,10 @@ public class VirtualMachine extends MaxMinConsumer {
 				pmdisk.deregisterObject(savedmemory);
 				savedmemory = null;
 				setState(State.RUNNING);
-				for (ResourceConsumption con : suspendedTasks) {
-					con.registerConsumption();
+				
+				int size = suspendedTasks.size();
+				for (int i = 0; i < size; i++) {
+					suspendedTasks.get(i).registerConsumption();
 				}
 				suspendedTasks.clear();
 			}
