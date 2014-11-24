@@ -55,6 +55,8 @@ public class PowerMeter extends Timed {
 		lastMetered = Timed.getFireCount();
 		if (dropPriorReading) {
 			totalConsumption = 0;
+		}
+		if (totalConsumption == 0) {
 			meteringStarted = lastMetered;
 		} else {
 			meteringStarted += lastMetered - meteringStopped;
