@@ -33,12 +33,11 @@ public class ArrayHandler {
 		final int size = toRemoveFrom.size();
 		final int sizeMinus = size - 1;
 		for (int j = 0; j < size; j++) {
-			if (toRemoveFrom.get(j) == toRemoveWhat) {
-				if (j == sizeMinus) {
-					toRemoveFrom.remove(j);
-				} else {
-					toRemoveFrom.set(j, toRemoveFrom.remove(sizeMinus));
+			if (toRemoveFrom.get(j).equals(toRemoveWhat)) {
+				if (j != sizeMinus) {
+					toRemoveFrom.set(j, toRemoveFrom.get(sizeMinus));
 				}
+				toRemoveFrom.remove(sizeMinus);
 				return true;
 			}
 		}
