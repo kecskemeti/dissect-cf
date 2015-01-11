@@ -34,6 +34,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,7 +73,7 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(ResourceConstraints newCapacity) {
 			scheduleQueued();
-			if (queue.size() != 0
+			if (!queue.isEmpty()
 					&& queue.peek().cumulativeRC.compareTo(parent
 							.getRunningCapacities()) > 0) {
 				notifyListeners();
@@ -133,7 +134,7 @@ public abstract class Scheduler {
 			totalQueued = ResourceConstraints.add(totalQueued, qd.cumulativeRC);
 			if (wasEmpty) {
 				scheduleQueued();
-				if (queue.size() == 0) {
+				if (queue.isEmpty()) {
 					return;
 				}
 				notifyListeners();
@@ -174,13 +175,13 @@ public abstract class Scheduler {
 
 	public final void subscribeQueueingEvents(QueueingEvent e) {
 		queueListeners.add(e);
-		if (queue.size() != 0) {
+		if (!queue.isEmpty()) {
 			e.queueingStarted();
 		}
 	}
 
 	public final void unsubscribeQueueingEvents(QueueingEvent e) {
-		queueListeners.remove(e);
+		ArrayHandler.removeAndReplaceWithLast(queueListeners, e);
 	}
 
 	private void notifyListeners() {

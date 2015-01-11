@@ -38,7 +38,7 @@ public class NonQueueingScheduler extends FirstFitScheduler {
 	protected void scheduleQueued() {
 		while (true) {
 			super.scheduleQueued();
-			if (queue.size() != 0) {
+			if (!queue.isEmpty()) {
 				if (parent.runningMachines.size() == parent.machines.size()) {
 					QueueingData request;
 					if ((request = manageQueueRemoval()) != null) {

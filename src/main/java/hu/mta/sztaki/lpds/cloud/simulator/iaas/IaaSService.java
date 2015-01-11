@@ -77,7 +77,8 @@ public class IaaSService implements VMManager<IaaSService> {
 					return;
 				default:
 					if (oldState.equals(PhysicalMachine.State.RUNNING)) {
-						internalRunningMachines.remove(pm);
+						ArrayHandler.removeAndReplaceWithLast(internalRunningMachines, pm);
+						//internalRunningMachines.remove(pm);
 						runningCapacity = ResourceConstraints.subtract(
 								runningCapacity, pm.getCapacities());
 					}
