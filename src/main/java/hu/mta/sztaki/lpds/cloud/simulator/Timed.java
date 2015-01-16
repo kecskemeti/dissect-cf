@@ -53,10 +53,10 @@ public abstract class Timed implements Comparable<Timed> {
 		updateEvent(freq);
 		if (this == underProcessing) {
 			return true;
-		} else {
-			timedlist.offer(this);
-			return true;
 		}
+		timedlist.offer(this);
+		return true;
+		
 	}
 
 	protected final boolean unsubscribe() {
@@ -89,10 +89,9 @@ public abstract class Timed implements Comparable<Timed> {
 		if (freq < 0) {
 			throw new IllegalStateException(
 					"ERROR: Negative event frequency cannot simulate further!");
-		} else {
-			frequency = freq;
-			nextEvent = calcTimeJump(freq);
 		}
+		frequency = freq;
+		nextEvent = calcTimeJump(freq);
 	}
 
 	public long getNextEvent() {
@@ -104,19 +103,28 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public long nextEventDistance() {
-		return activeSubscription ? nextEvent - fireCounter : Long.MAX_VALUE;
+		if (this.activeSubscription) {
+			return this.nextEvent - fireCounter;
+		}
+		return Long.MAX_VALUE;
 	}
 
 	@Override
 	public int compareTo(final Timed o) {
-		return nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
+		if (this.nextEvent < o.nextEvent) {
+			return -1;
+		}
+		if (this.nextEvent == o.nextEvent) {
+			return 0;
+		}
+		return 1;
 	}
 
 	public static final void fire() {
 		while (!timedlist.isEmpty()
 				&& timedlist.peek().nextEvent == fireCounter) {
-			final Timed t = underProcessing = timedlist.poll();
-			t.tick(fireCounter);
+			final Timed t;
+			(t = underProcessing = timedlist.poll()).tick(fireCounter);
 			if (t.activeSubscription) {
 				t.updateEvent(t.frequency);
 				timedlist.offer(t);
@@ -127,8 +135,11 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	private static long calcTimeJump(long jump) {
-		final long targettime = fireCounter + jump;
-		return targettime < 0 ? Long.MAX_VALUE : targettime;
+		final long targettime;
+		if ((targettime = fireCounter + jump) < 0) {
+			return Long.MAX_VALUE;
+		}
+		return targettime;
 	}
 
 	public static final long jumpTime(long desiredJump) {
@@ -146,8 +157,8 @@ public abstract class Timed implements Comparable<Timed> {
 	public static final void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
 		while (timedlist.peek().nextEvent < desiredTime) {
-			final Timed t = timedlist.poll();
-			final long oldfreq = t.frequency;
+			final Timed t;
+			final long oldfreq = (t = timedlist.poll()).frequency;
 			t.updateFrequency(distance + (oldfreq - distance % oldfreq));
 			t.frequency = oldfreq;
 		}
@@ -159,8 +170,11 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public static final long getNextFire() {
-		final Timed head = timedlist.peek();
-		return head == null ? -1 : head.nextEvent;
+		final Timed head;
+		if((head = timedlist.peek()) == null) {
+			return -1;
+		}
+		return head.nextEvent;
 	}
 
 	public static final void simulateUntilLastEvent() {

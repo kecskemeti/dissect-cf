@@ -77,7 +77,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			host = offerer;
 			allocated = alloc;
 			int prLen = host.promisedResources.size();
-			int i = 0;
+			int i;
 			for (i = 0; i < prLen && host.promisedResources.get(i) != null; i++)
 				;
 			if (i == prLen) {
@@ -200,14 +200,14 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public final int onDelay;
 	public final int offDelay;
 	private State currentState = State.OFF;
-	private CopyOnWriteArrayList<StateChangeListener> listeners = new CopyOnWriteArrayList<StateChangeListener>();
+	private final CopyOnWriteArrayList<StateChangeListener> listeners = new CopyOnWriteArrayList<StateChangeListener>();
 
 	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>();
 	public final Set<VirtualMachine> publicVms = Collections
 			.unmodifiableSet(vms);
 	private long completedVMs = 0;
 	private DeferredEvent onOffEvent = null;
-	private CopyOnWriteArrayList<CapacityChangeEvent> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent>();
+	private final CopyOnWriteArrayList<CapacityChangeEvent> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent>();
 
 	public PhysicalMachine(double cores, double perCorePocessing, long memory,
 			Repository disk, int onD, int offD) {
@@ -233,12 +233,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 				@Override
 				public void stateChanged(VirtualMachine.State oldState,
 						VirtualMachine.State newState) {
-					switch (newState) {
-					case RUNNING:
+					if(newState == VirtualMachine.State.RUNNING) {
 						counter++;
-						break;
-					case SUSPENDED_MIG:
-					default:
 					}
 					if (counter == vmarr.length) {
 						for (int i = 0; i < vmarr.length;i++) {
@@ -249,7 +245,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 				}
 			}
 			MultiMigrate mm = new MultiMigrate();
-			for (int i = 0; i < vmarr.length;i++) {
+			int i;
+			for (i = 0; i < vmarr.length;i++) {
 				vmarr[i].subscribeStateChange(mm);
 				migrateVM(vmarr[i], migrateHere);
 			}
@@ -271,7 +268,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		case RUNNING:
 			onOffEvent = new PowerStateDelayer(extratime + offDelay, State.OFF);
 			setState(State.SWITCHINGOFF);
-			break;
+			return;
 		case OFF:
 		case SWITCHINGOFF:
 			System.err
@@ -297,7 +294,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			onOffEvent = new PowerStateDelayer(extratime + onDelay,
 					State.RUNNING);
 			setState(State.SWITCHINGON);
-			break;
+			return;
 		case RUNNING:
 		case SWITCHINGON:
 			System.err
@@ -349,10 +346,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 			reqCPU = reallyFreeCapacities.requiredCPUs;
 			reqMem = reallyFreeCapacities.requiredMemory;
 		}
-		return strict ? null : new ResourceAllocation(this,
-				new ResourceConstraints(reqCPU,
-						requested.requiredProcessingPower, reqMem),
-				allocationValidityLength);
+		
+		if(strict) {
+			return null;
+		}
+		
+		return  new ResourceAllocation(this, new ResourceConstraints(reqCPU,
+				requested.requiredProcessingPower, reqMem),	allocationValidityLength);
 	}
 
 	private boolean checkAllocationsPresence(final ResourceAllocation allocation) {
@@ -446,8 +446,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 
 	@Override
 	protected boolean isAcceptableConsumption(ResourceConsumption con) {
-		return vms.contains((VirtualMachine) con.getConsumer()) ? super
-				.isAcceptableConsumption(con) : false;
+		if(vms.contains((VirtualMachine) con.getConsumer())) {
+			return super.isAcceptableConsumption(con);
+		}
+		return false;
 	}
 
 	public boolean isHostingVMs() {
@@ -509,6 +511,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 	}
 
+	@Override
 	public ResourceConstraints getCapacities() {
 		return totalCapacities;
 	}

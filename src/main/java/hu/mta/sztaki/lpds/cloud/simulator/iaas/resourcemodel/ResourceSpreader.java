@@ -81,37 +81,16 @@ public abstract class ResourceSpreader {
 				myDepGroup[depgrouplen] = rs;
 				depgrouplen++;
 			} catch (ArrayIndexOutOfBoundsException e) {
-				ResourceSpreader[] newdg = new ResourceSpreader[myDepGroup.length * 7];
+				ResourceSpreader[] newdg = new ResourceSpreader[myDepGroup.length << 3];
 				System.arraycopy(myDepGroup, 0, newdg, 0, depgrouplen);
 				myDepGroup = newdg;
 				addSingleToDG(rs);
 			}
 		}
 
-		private void addToGroup() {
-			int size = depGroupExtension.size();
-			for (int i = 0; i < size; i++) {
-				final ResourceSpreader rs = depGroupExtension.get(i);
-				if (isInDepGroup(rs))
-					continue;
-				if (rs.isConsumer()) {
-					addSingleToDG(rs);
-				} else {
-					if (firstConsumerId >= depgrouplen) {
-						addSingleToDG(rs);
-					} else {
-						addSingleToDG(myDepGroup[firstConsumerId]);
-						myDepGroup[firstConsumerId] = rs;
-					}
-					firstConsumerId++;
-				}
-				rs.mySyncer = this;
-			}
-		}
-
 		private boolean isInDepGroup(final ResourceSpreader lookfor) {
-			final int start = lookfor.isConsumer() ? firstConsumerId : 0;
-			final int stop = start == 0 ? firstConsumerId : depgrouplen;
+			final int start;
+			final int stop = (start = lookfor.isConsumer() ? firstConsumerId : 0) == 0 ? firstConsumerId : depgrouplen;
 			int i = start;
 			for (; i < stop && myDepGroup[i] != lookfor; i++)
 				;
@@ -157,14 +136,17 @@ public abstract class ResourceSpreader {
 		public void tick(final long fires) {
 			boolean didRemovals = false;
 			boolean didExtension;
+			
+			ResourceSpreader rs;
+			int uaLen;
+			
 			do {
 				outOfOrderProcessing(fires);
 				depGroupExtension.clear();
 				nudged = false;
 				didExtension = false;
 				for (int rsi = 0; rsi < depgrouplen; rsi++) {
-					final ResourceSpreader rs = myDepGroup[rsi];
-					if (!rs.underRemoval.isEmpty()) {
+					if (!(rs = myDepGroup[rsi]).underRemoval.isEmpty()) {
 						didRemovals = true;
 						int rsuLen = rs.toProcess.size();
 						int urLen = rs.underRemoval.size();
@@ -191,7 +173,7 @@ public abstract class ResourceSpreader {
 						if (rs.underProcessingLen == 0) {
 							rs.lastNotifTime = fires;
 						}
-						final int uaLen = rs.underAddition.size();
+						uaLen = rs.underAddition.size();
 						for (int i = 0; i < uaLen; i++) {
 							final ResourceConsumption con = rs.underAddition
 									.get(i);
@@ -222,7 +204,24 @@ public abstract class ResourceSpreader {
 					}
 				}
 				if (didExtension) {
-					addToGroup();
+					int size = depGroupExtension.size();
+					for (int i = 0; i < size; i++) {
+						rs = depGroupExtension.get(i);
+						if (isInDepGroup(rs))
+							continue;
+						if (rs.isConsumer()) {
+							addSingleToDG(rs);
+						} else {
+							if (firstConsumerId >= depgrouplen) {
+								addSingleToDG(rs);
+							} else {
+								addSingleToDG(myDepGroup[firstConsumerId]);
+								myDepGroup[firstConsumerId] = rs;
+							}
+							firstConsumerId++;
+						}
+						rs.mySyncer = this;
+					}
 				}
 			} while (didExtension || nudged);
 
@@ -236,7 +235,7 @@ public abstract class ResourceSpreader {
 				do {
 					int classifiableindex = 0;
 					for (; classifiableindex < notClassifiedLen; classifiableindex++) {
-						final ResourceSpreader rs = notClassified[classifiableindex];
+						rs = notClassified[classifiableindex];
 						buildDepGroup(rs);
 						if (rs.stillInDepGroup) {
 							break;
@@ -252,8 +251,7 @@ public abstract class ResourceSpreader {
 						int newpc = 0;
 						int newlen = 0;
 						for (int i = 0; i < notClassifiedLen; i++) {
-							final ResourceSpreader rs = notClassified[i];
-							if (!rs.stillInDepGroup) {
+							if (!(rs = notClassified[i]).stillInDepGroup) {
 								notClassifiedLen--;
 								if (stillNotClassified == null) {
 									stillNotClassified = new ResourceSpreader[notClassifiedLen];
@@ -297,9 +295,10 @@ public abstract class ResourceSpreader {
 				if (notClassified == myDepGroup && depgrouplen == 0) {
 					unsubscribe();
 				}
-			} else {
-				updateFrequency(myDepGroup[0].singleGroupwiseFreqUpdater());
+				return;
 			}
+			updateFrequency(myDepGroup[0].singleGroupwiseFreqUpdater());
+			
 		}
 
 		private void buildDepGroup(final ResourceSpreader startingItem) {
@@ -391,9 +390,8 @@ public abstract class ResourceSpreader {
 		final double secondsPassed = (currentFireCount - lastNotifTime) / 1000d;
 		for (int i = 0; i < underProcessingLen; i++) {
 			final ResourceConsumption con = underProcessing.get(i);
-			final double processed = processSingleConsumption(con,
-					secondsPassed);
-			if (processed < 0) {
+			final double processed;
+			if ((processed = processSingleConsumption(con, secondsPassed)) < 0) {
 				totalProcessed -= processed;
 				if (firsthit) {
 					toRemove = new ResourceConsumption[underProcessingLen - i];
@@ -451,11 +449,7 @@ public abstract class ResourceSpreader {
 	}
 
 	static int hashCounter = 0;
-	private int myHashCode = getHashandIncCounter();
-
-	static int getHashandIncCounter() {
-		return hashCounter++;
-	}
+	private int myHashCode = hashCounter++;
 
 	@Override
 	public final int hashCode() {

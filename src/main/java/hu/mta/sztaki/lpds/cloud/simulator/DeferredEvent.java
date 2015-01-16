@@ -32,9 +32,9 @@ public abstract class DeferredEvent extends Timed {
 	public DeferredEvent(int delay) {
 		if (delay > 0) {
 			subscribe(delay);
-		} else {
-			eventAction();
+			return;
 		}
+		eventAction();
 	}
 
 	@Override
