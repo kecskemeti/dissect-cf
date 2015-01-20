@@ -3,4 +3,5 @@
 </p>
 
 
-The source of the DISSECT-CF simulator is now available, documentation is on its way.
+Initial documentation for the DISSECT-CF simulator can be found here:
+http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF/javadoc/0.9.5/
