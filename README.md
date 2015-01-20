@@ -19,3 +19,5 @@ https://github.com/kecskemeti/dissect-cf
 
 Licensing:
 GNU Lesser General Public License 3 and later
+
+##### Warning: the master branch of the simulator is intended as a development branch, and might not contain a functional version!
