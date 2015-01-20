@@ -30,6 +30,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 
 import java.util.PriorityQueue;
 
+/**
+ * This class is an initial framework to collect periodical reports on
+ * consumptions. In its current state it is too rigid and needs more
+ * customization.
+ * 
+ * However, if extended further it would allow a single consumption monitor to
+ * be added to a particular resourcespreader, eliminating the need for multiple
+ * queries on the getTotalProcessed function.
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * 
+ */
 public class MonitorConsumption extends Timed {
 	private class SpreadingRecord implements Comparable<SpreadingRecord> {
 		public long timestamp;
@@ -76,8 +89,11 @@ public class MonitorConsumption extends Timed {
 		totalProcessed = current.totalProcessed;
 		subHourRecords.add(current);
 		while (subHourRecords.peek().timestamp + 3600000 < fires) {
+			// 60*60*1000
+			// Over the past hour
 			subDayRecords.add(subHourRecords.poll());
 			while (subDayRecords.peek().timestamp + 86400000 < fires) {
+				// Over the past day
 				subDayRecords.poll();
 			}
 		}
@@ -87,6 +103,7 @@ public class MonitorConsumption extends Timed {
 			subDayProcessing = totalProcessed
 					- subDayRecords.peek().totalProcessed;
 		} catch (NullPointerException ne) {
+			// No records over an hour
 			subDayProcessing = subHourProcessing;
 		}
 	}

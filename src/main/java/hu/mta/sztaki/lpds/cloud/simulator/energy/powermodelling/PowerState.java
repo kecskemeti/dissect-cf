@@ -24,6 +24,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 
@@ -39,7 +41,8 @@ public class PowerState {
 	}
 
 	private double minConsumption;
-	public final double consumptionRange;
+	private double consumptionRange;
+	private long pastNotification = -1;
 	private final ConsumptionModel model;
 	private final ArrayList<PowerCharacteristicsChange> listeners = new ArrayList<PowerState.PowerCharacteristicsChange>();
 
@@ -58,9 +61,9 @@ public class PowerState {
 	}
 
 	public double getCurrentPower(final double load) {
-		if (load > 1 || load < 0) {
+		if (load > 1.01 || load < -0.01) {
 			throw new IllegalStateException(
-					"Received a negative load evaluation request");
+					"Received an out of range load evaluation request:" + load);
 		}
 		return model.evaluateConsumption(load);
 	}
@@ -69,11 +72,28 @@ public class PowerState {
 		return minConsumption;
 	}
 
-	public void setMinConsumption(double minConsumption) {
-		for (PowerCharacteristicsChange l : listeners) {
-			l.prePowerChangeEvent(this);
+	public double getConsumptionRange() {
+		return consumptionRange;
+	}
+
+	private void notifyCharacteristisListeners() {
+		final long currentTime = Timed.getFireCount();
+		if (currentTime != pastNotification) {
+			for (PowerCharacteristicsChange l : listeners) {
+				l.prePowerChangeEvent(this);
+			}
+			pastNotification = currentTime;
 		}
+	}
+
+	public void setMinConsumption(final double minConsumption) {
+		notifyCharacteristisListeners();
 		this.minConsumption = minConsumption;
+	}
+
+	public void setConsumptionRange(final double cr) {
+		notifyCharacteristisListeners();
+		this.consumptionRange = cr;
 	}
 
 	public void subscribePowerCharacteristicsChanges(
@@ -84,5 +104,11 @@ public class PowerState {
 	public void unsubscribePowerCharacteristicsChanges(
 			PowerCharacteristicsChange listener) {
 		listeners.remove(listener);
+	}
+
+	@Override
+	public String toString() {
+		return "PowSt(I: " + minConsumption + " C: " + consumptionRange + " "
+				+ model.getClass().getName() + ")";
 	}
 }

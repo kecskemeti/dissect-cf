@@ -98,6 +98,8 @@ public class TimedTest extends TestFoundation {
 	@Test(timeout = 100)
 	public void singleEventFire() {
 		SingleFire fire = new SingleFire();
+		Assert.assertTrue("ToString does not detail next event ", fire
+				.toString().contains("" + fire.expectedFire));
 		Assert.assertEquals("Event distance is not correct", setFrequency,
 				fire.nextEventDistance());
 		Assert.assertTrue("Should be subscribed", fire.isSubscribed());
@@ -110,7 +112,7 @@ public class TimedTest extends TestFoundation {
 		Assert.assertTrue("Should not be subscribed", !fire.isSubscribed());
 	}
 
-	@Test (timeout = 100)
+	@Test(timeout = 100)
 	public void repeatedEventFire() {
 		RepeatedFire fire = new RepeatedFire();
 		Timed.simulateUntilLastEvent();
@@ -283,12 +285,43 @@ public class TimedTest extends TestFoundation {
 		Timed.simulateUntilLastEvent();
 		Assert.fail("We should never reach the end of this test!");
 	}
-	
-	@Test(timeout = 100) 
+
+	@Test(timeout = 100)
 	public void zeroFreqTester() {
 		SingleFire f = new SingleFire();
 		f.changeFreq(0);
 		Timed.fire();
-		Assert.assertEquals("Even a zero length event should arrive",1, f.myfires);
+		Assert.assertEquals("Even a zero length event should arrive", 1,
+				f.myfires);
+	}
+
+	@Test(timeout = 100)
+	public void updateFreqWhileUnsubscribed() {
+		SingleFire f = new SingleFire();
+		f.cancel();
+		Assert.assertFalse(f.isSubscribed());
+		f.changeFreq(setFrequency);
+		Assert.assertTrue(
+				"Should be subscribed just as if we did not cancel the fire",
+				f.isSubscribed());
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"Should receive the event even after cancel if an update is done afterwards",
+				1, f.myfires);
+	}
+
+	@Test(timeout = 100)
+	public void emptyTimedlistTests() {
+		Assert.assertEquals(Timed.getNextFire(),-1);
+		Timed.fire();
+		Assert.assertEquals(1, Timed.getFireCount());
+		Timed.jumpTime(50);
+		Assert.assertEquals(51, Timed.getFireCount());
+		Timed.skipEventsTill(500);
+		Assert.assertEquals(500, Timed.getFireCount());
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(500, Timed.getFireCount());
+		Timed.simulateUntil(1000);
+		Assert.assertEquals(500, Timed.getFireCount());
 	}
 }

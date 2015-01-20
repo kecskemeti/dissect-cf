@@ -44,12 +44,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class IaaSService implements VMManager<IaaSService> {
+/**
+ * This class represents a single IaaS service. It's tasks are the maintenance
+ * and management of the physical machines and the scheduling of the VM requests
+ * among the PMs.
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * 
+ */
+public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 
+	/**
+	 * This class represents a generic error that occurred during the operation
+	 * of the IaaS service.
+	 * 
+	 * @author 
+	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * 
+	 */
 	public static class IaaSHandlingException extends Exception {
 
 		private static final long serialVersionUID = 2580735547805541590L;
 
+		/**
+		 * Only a generic constructor is defined so a textual message can be
+		 * propagated around the system
+		 * 
+		 * @param s
+		 *            the reason this exception was raised
+		 */
 		public IaaSHandlingException(final String s) {
 			super(s);
 		}
@@ -70,21 +94,24 @@ public class IaaSService implements VMManager<IaaSService> {
 		@Override
 		public void stateChanged(State oldState, State newState) {
 			switch (newState) {
-				case RUNNING:
-					internalRunningMachines.add(pm);
-					runningCapacity = ResourceConstraints.add(runningCapacity,
-							pm.getCapacities());
-					return;
-				default:
-					if (oldState.equals(PhysicalMachine.State.RUNNING)) {
-						internalRunningMachines.remove(pm);
-						runningCapacity = ResourceConstraints.subtract(
-								runningCapacity, pm.getCapacities());
-					}
+			case RUNNING:
+				internalRunningMachines.add(pm);
+				runningCapacity = ResourceConstraints.add(runningCapacity,
+						pm.getCapacities());
+				return;
+			default:
+				if (oldState.equals(PhysicalMachine.State.RUNNING)) {
+					internalRunningMachines.remove(pm);
+					runningCapacity = ResourceConstraints.subtract(
+							runningCapacity, pm.getCapacities());
+				}
 			}
 		}
 	}
 
+	/**
+	 * The order of internal machines is not guaranteed
+	 */
 	private ArrayList<PhysicalMachine> internalMachines = new ArrayList<PhysicalMachine>();
 	private ArrayList<PhysicalMachine> internalRunningMachines = new ArrayList<PhysicalMachine>();
 
@@ -99,8 +126,11 @@ public class IaaSService implements VMManager<IaaSService> {
 	private ResourceConstraints runningCapacity = new ResourceConstraints(0, 0,
 			0);
 
-	private CopyOnWriteArrayList<CapacityChangeEvent> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent>();
+	private CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>>();
 
+	/**
+	 * The order of internal repositories is not guaranteed
+	 */
 	private ArrayList<Repository> internalRepositories = new ArrayList<Repository>();
 	public List<Repository> repositories = Collections
 			.unmodifiableList(internalRepositories);
@@ -172,6 +202,7 @@ public class IaaSService implements VMManager<IaaSService> {
 
 	@Override
 	public Collection<VirtualMachine> listVMs() {
+		// FIXME: might need to report also those VMS that are queueing
 		final ArrayList<VirtualMachine> completeList = new ArrayList<VirtualMachine>();
 		int imLen = internalMachines.size();
 		for (int i = 0; i < imLen; i++) {
@@ -180,12 +211,26 @@ public class IaaSService implements VMManager<IaaSService> {
 		return completeList;
 	}
 
+	/**
+	 * This function allows the IaaS to grow in size
+	 * 
+	 * @param pm
+	 *            the new physical machine to be utilized within the system
+	 */
 	public void registerHost(final PhysicalMachine pm) {
-		internalMachines.add(pm);
-		listeners.add(new MachineListener(pm));
-		totalCapacity = ResourceConstraints.add(totalCapacity,
-				pm.getCapacities());
-		notifyCapacityListeners();
+		bulkHostRegistration(Collections.singletonList(pm));
+	}
+
+	public void bulkHostRegistration(final List<PhysicalMachine> newPMs) {
+		internalMachines.addAll(newPMs);
+		final int size = newPMs.size();
+		for (int i = 0; i < size; i++) {
+			PhysicalMachine pm = newPMs.get(i);
+			listeners.add(new MachineListener(pm));
+			totalCapacity = ResourceConstraints.add(totalCapacity,
+					pm.getCapacities());
+		}
+		notifyCapacityListeners(newPMs);
 	}
 
 	private void realDeregistration(PhysicalMachine pm) {
@@ -197,9 +242,22 @@ public class IaaSService implements VMManager<IaaSService> {
 		}
 		totalCapacity = ResourceConstraints.subtract(totalCapacity,
 				pm.getCapacities());
-		notifyCapacityListeners();
+		notifyCapacityListeners(Collections.singletonList(pm));
 	}
 
+	/**
+	 * This function allows the IaaS to reduce in size. <br/>
+	 * This function might migrate VMs from the deregistered host to ones
+	 * remaining in the system. If the deregistered host contains VMs that
+	 * cannot be migrated, or there is nowhere to migrate the VMs then the
+	 * function throws an exception.
+	 * 
+	 * Currently there is no migration implemented!
+	 * 
+	 * @param pm
+	 *            the physical machine to be dropped from the control of the
+	 *            system
+	 */
 	public void deregisterHost(final PhysicalMachine pm)
 			throws IaaSHandlingException {
 		if (ArrayHandler.removeAndReplaceWithLast(internalMachines, pm)) {
@@ -266,10 +324,30 @@ public class IaaSService implements VMManager<IaaSService> {
 		}
 	}
 
+	/**
+	 * This function allows the IaaS to grow its storage capacities
+	 * 
+	 * @param r
+	 *            the new repository to be utilized within the system
+	 */
 	public void registerRepository(final Repository r) {
 		internalRepositories.add(r);
 	}
 
+	/**
+	 * This function allows the IaaS to reduce its storage capacities.
+	 * 
+	 * This function might transfer contents from the deregistered repository to
+	 * ones remaining in the system. If the deregistered repository contains
+	 * storage objects that cannot be transferred, or there is nowhere to
+	 * transfer a few storage objects then the function throws an exception.
+	 * 
+	 * Currently there is no transfer implemented!
+	 * 
+	 * @param pm
+	 *            the physical machine to be dropped from the control of the
+	 *            system
+	 */
 	public void deregisterRepository(final Repository r)
 			throws IaaSHandlingException {
 		ArrayHandler.removeAndReplaceWithLast(internalRepositories, r);
@@ -284,20 +362,26 @@ public class IaaSService implements VMManager<IaaSService> {
 	}
 
 	@Override
-	public void subscribeToCapacityChanges(final CapacityChangeEvent e) {
+	public void subscribeToCapacityChanges(
+			final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListeners.add(e);
 	}
 
 	@Override
-	public void unsubscribeFromCapacityChanges(final CapacityChangeEvent e) {
+	public void unsubscribeFromCapacityChanges(
+			final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListeners.remove(e);
 	}
 
-	private void notifyCapacityListeners() {
+	private void notifyCapacityListeners(final List<PhysicalMachine> changes) {
 		int size = capacityListeners.size();
 		for (int i = 0; i < size; i++) {
-			capacityListeners.get(i).capacityChanged(totalCapacity);
+			capacityListeners.get(i).capacityChanged(totalCapacity, changes);
 		}
+	}
+
+	public boolean isRegisteredHost(PhysicalMachine pm) {
+		return internalMachines.contains(pm);
 	}
 
 	@Override

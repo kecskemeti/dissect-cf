@@ -39,7 +39,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,6 +59,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void repoRegistrationTest() throws IaaSHandlingException {
 		for (IaaSService iaas : services) {
+			// Repository management
 			Assert.assertTrue(
 					"Should not have any repositories before registering one",
 					iaas.repositories.isEmpty());
@@ -108,12 +109,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	abstract class Capchanger implements IaaSService.CapacityChangeEvent {
+	abstract class Capchanger implements IaaSService.CapacityChangeEvent<PhysicalMachine> {
 		public int fired = 0;
 		public PhysicalMachine pm = dummyPMcreator();
 
 		@Override
-		public void capacityChanged(ResourceConstraints newCapacity) {
+		public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> alteredPMs) {
 			doAssertion(newCapacity);
 			fired++;
 			Assert.assertTrue(
@@ -138,7 +139,9 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 
 		int i = 0;
+		// Addition test
 		for (IaaSService iaas : services) {
+			// Proper PM registration
 			Capchanger cs = ccs.get(i++);
 			iaas.subscribeToCapacityChanges(cs);
 			iaas.registerHost(cs.pm);
@@ -168,7 +171,9 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 
 		int i = 0;
+		// removal test
 		for (IaaSService iaas : services) {
+			// Proper PM registration
 			Capchanger cs = ccs.get(i++);
 			iaas.registerHost(cs.pm);
 			iaas.subscribeToCapacityChanges(cs);
@@ -314,27 +319,28 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void beforeRegistrationVMCreationTest() throws NetworkException {
-		ArrayList<Exception> exs = new ArrayList<Exception>();
-		for (IaaSService iaas : services) {
+		final int slen = services.size();
+		final ResourceConstraints pmcap = dummyPMcreator().getCapacities();
+		final Repository repo = dummyRepoCreator(true);
+		final VirtualAppliance va = new VirtualAppliance("VERYFAULTY", 1, 0);
+		int excounter = 0;
+		for (int i = 0; i < slen; i++) {
 			try {
-				iaas.requestVM(new VirtualAppliance("VERYFAULTY", 1, 0),
-						dummyPMcreator().getCapacities(),
-						dummyRepoCreator(true), 1);
+				services.get(i).requestVM(va, pmcap, repo, 1);
 			} catch (VMManagementException e) {
-				exs.add(e);
+				excounter++;
 			}
 		}
-		Assert.assertEquals(
-				"Not all IaaSs rejected the VM termination request",
-				services.size(), exs.size());
+		Assert.assertEquals("Not all IaaSs rejected the VM creation request",
+				slen, excounter);
 	}
 
 	@Test(timeout = 100)
 	public void vmListingTest() throws VMManagementException, NetworkException {
 		constructMinimalIaaS();
-		HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>(requestVMs());
+		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
-		HashSet<VirtualMachine> reportedvms = new HashSet<VirtualMachine>();
+		ArrayList<VirtualMachine> reportedvms = new ArrayList<VirtualMachine>();
 		for (IaaSService iaas : services) {
 			reportedvms.addAll(iaas.listVMs());
 		}
@@ -374,4 +380,33 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				services.size() * 2, markers.size());
 	}
 
+	@Test(timeout = 100)
+	public void multiVMRequest() throws VMManagementException, NetworkException {
+		constructMinimalIaaS();
+		final int maxVMs = 16;
+		final int servNum = services.size();
+		final Repository[] repos = new Repository[servNum];
+		final ResourceConstraints[] caps = new ResourceConstraints[servNum];
+		final VirtualAppliance[] vas = new VirtualAppliance[servNum];
+		for (int i = 0; i < servNum; i++) {
+			final IaaSService iaas = services.get(i);
+			repos[i] = iaas.repositories.get(0);
+			caps[i] = iaas.machines.get(0).getCapacities();
+			vas[i] = (VirtualAppliance) repos[i].contents().iterator().next();
+		}
+
+		final VirtualMachine[] vms = new VirtualMachine[maxVMs * servNum];
+		for (int vmnum = 2; vmnum <= maxVMs; vmnum *= 2) {
+			for (int i = 0; i < servNum; i++) {
+				VirtualMachine[] lvms = services.get(i).requestVM(vas[i],
+						caps[i].multiply(1f / vmnum / 2), repos[i], vmnum);
+				System.arraycopy(lvms, 0, vms, i * vmnum, vmnum);
+			}
+			Timed.simulateUntilLastEvent();
+			for (int i = 0; i < vmnum * servNum; i++) {
+				vms[i].destroy(false);
+			}
+			Timed.simulateUntilLastEvent();
+		}
+	}
 }

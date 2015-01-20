@@ -31,9 +31,31 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 
-public interface VMManager<E> {
+/**
+ * This interface intends to provide a generic overview of the VM management
+ * functionalities in a system.
+ * 
+ * @author Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013
+ * 
+ * @param <E>
+ *            The type of the system that will manage the VMs.
+ *            
+ * @param <F>
+ * 			  The kind of the managed capacities behind the VMManager.
+ */
+public interface VMManager<E,F> {
 
+	/**
+	 * This is a generic class to represent all kinds of problems that could
+	 * occur while managing VMs on the system.
+	 * 
+	 * @author Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013
+	 * 
+	 */
 	class VMManagementException extends Exception {
 
 		private static final long serialVersionUID = 4420666848803005233L;
@@ -47,6 +69,14 @@ public interface VMManager<E> {
 		}
 	}
 
+	/**
+	 * Receiving this kind of exception shows that the system does not recognize
+	 * the VM it should operate on.
+	 * 
+	 * @author Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013
+	 * 
+	 */
 	class NoSuchVMException extends VMManagementException {
 		private static final long serialVersionUID = 777996106319988828L;
 
@@ -59,29 +89,90 @@ public interface VMManager<E> {
 		}
 	}
 
-	interface CapacityChangeEvent {
-		void capacityChanged(ResourceConstraints newCapacity);
+	interface CapacityChangeEvent<F> {
+		void capacityChanged(ResourceConstraints newCapacity, List<F> affectedCapacity);
 	}
 
+	/**
+	 * Creates a new VM in the system and immediately returns with a new VM
+	 * object. The user have to check if the VM is actually running through the
+	 * VM object.
+	 * 
+	 * Implementors should ensure that the particular VA is accessible for the
+	 * system before the VM gets started.
+	 * 
+	 * @param va
+	 *            the kind of VM to be created
+	 * @return the new VM
+	 * @throws VMManagementException
+	 *             if the request cannot be fulfilled for some reason
+	 */
 	VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc,
 			Repository vaSource, int count,
 			HashMap<String, Object> schedulingConstraints)
 			throws VMManagementException, NetworkNode.NetworkException;
 
+	/**
+	 * Terminates a VM in the system. Ensures that it is not running after the
+	 * request completes anymore.
+	 * 
+	 * @param vm
+	 *            the VM to be terminated
+	 * @throws NoSuchVMException
+	 *             if the request was issued for a VM unknown in the system
+	 * @throws VMManagementException
+	 *             if the request cannot be fulfilled for some reason
+	 */
 	void terminateVM(VirtualMachine vm, boolean killTasks)
 			throws NoSuchVMException, VMManagementException;
 
+	/**
+	 * Migrates a VM from the current system to another. The VM is not going to
+	 * be running during this period. It will not consume resources on the
+	 * current system anymore
+	 * 
+	 * @param vm
+	 *            the VM to be relocated
+	 * @param target
+	 *            the target system that should host the VM in the future
+	 * @throws NoSuchVMException
+	 *             if the request was issued for a VM unknown in the system
+	 * @throws VMManagementException
+	 *             if the request cannot be fulfilled for some reason
+	 */
 	void migrateVM(VirtualMachine vm, E target) throws NoSuchVMException,
 			VMManagementException, NetworkNode.NetworkException;
 
+	/**
+	 * Allows fine-grained resource utilization setup of the particular VM after
+	 * it was allocated on the system. Even during its runtime. Don't forget
+	 * that in real VMs resource availability changes might cause troubles.
+	 * Apply it rarely if you are not sure it will also work in the real world!
+	 * 
+	 * @param vm
+	 *            The VM to be adjusted
+	 * @param newresources
+	 *            The new amount of resources needed (this could not only raise
+	 *            the available resources of the VM but also decrease them
+	 * @throws NoSuchVMException
+	 *             if the request was issued for a VM unknown in the system
+	 * @throws VMManagementException
+	 *             if the request cannot be fulfilled for some reason
+	 */
 	void reallocateResources(VirtualMachine vm, ResourceConstraints newresources)
 			throws NoSuchVMException, VMManagementException;
 
+	/**
+	 * Provides an overview on the VMs currently in the system
+	 * 
+	 * @return the VMs currently registered with the system (they are either
+	 *         alredy running or will run in the foreseeable future
+	 */
 	Collection<VirtualMachine> listVMs();
 
 	ResourceConstraints getCapacities();
 
-	void subscribeToCapacityChanges(CapacityChangeEvent e);
+	void subscribeToCapacityChanges(CapacityChangeEvent<F> e);
 
-	void unsubscribeFromCapacityChanges(CapacityChangeEvent e);
+	void unsubscribeFromCapacityChanges(CapacityChangeEvent<F> e);
 }

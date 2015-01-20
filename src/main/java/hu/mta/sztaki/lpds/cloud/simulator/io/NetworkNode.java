@@ -32,6 +32,18 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption
 
 import java.util.HashMap;
 
+/**
+ * This class represents a networked element in the system. The class also
+ * contains the definitions for the helper classes in the network simulation
+ * that together are responsible to introduce and simulate network delays in the
+ * system. The instances of this class are always present and represent the
+ * general network capabilities in the hosts.
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * 
+ */
 public class NetworkNode {
 
 	public static class NetworkException extends Exception {
@@ -42,8 +54,36 @@ public class NetworkNode {
 		}
 	}
 
+	/**
+	 * The instances of this class represent an individual data transfer in the
+	 * system. The visibility of the class and its members are defined so the
+	 * compiler does not need to generate access methods for the members thus
+	 * allowing fast and prompt changes in its contents.
+	 * 
+	 * To create a new instance of this class, one must use the initTransfer
+	 * method of the NetworkNode.
+	 * 
+	 * WARNING this is an internal representation of the transfer. This class is
+	 * not supposed to be used outside of the context of the NetworkNode.
+	 * 
+	 * @author 
+	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * 
+	 */
 	static class SingleTransfer extends ResourceConsumption {
 
+		/**
+		 * This constructor describes the basic properties of an individual
+		 * transfer.
+		 * 
+		 * @param tottr
+		 *            The amount of data to be transferred during the lifetime
+		 *            of the just created object
+		 * @param e
+		 *            Specify here the event to be fired when the just created
+		 *            object completes its transfers. With this event it is
+		 *            possible to notify the entity who initiated the transfer.
+		 */
 		private SingleTransfer(final int latency, final long tottr,
 				final double limit, final MaxMinConsumer in,
 				final MaxMinProvider out,
@@ -62,6 +102,8 @@ public class NetworkNode {
 		}
 	}
 
+	// BW spreaders among pipes:
+
 	public final MaxMinConsumer inbws;
 	public final MaxMinProvider outbws;
 	public final MaxMinConsumer diskinbws;
@@ -70,6 +112,17 @@ public class NetworkNode {
 	private final String name;
 	private final HashMap<String, Integer> latencies;
 
+	/**
+	 * This function initializes the bandwidth spreaders for the node to ensure
+	 * equal network share for each transfer occurring on the node.
+	 * 
+	 * @param maxInBW
+	 *            the input bw of the node
+	 * @param maxOutBW
+	 *            the output bw of the node
+	 * @param diskBW
+	 *            the disk bw of the node
+	 */
 	public NetworkNode(final String id, final long maxInBW,
 			final long maxOutBW, final long diskBW,
 			final HashMap<String, Integer> latencymap) {
@@ -81,18 +134,50 @@ public class NetworkNode {
 		latencies = latencymap;
 	}
 
+	/**
+	 * Determines the total output bandwidth available for the node
+	 * 
+	 * @return the maximum bandwidth with this network node can send data to the
+	 *         outside world
+	 */
 	public long getOutputbw() {
-		return (long) outbws.getPerSecondProcessingPower();
+		return (long) outbws.getPerTickProcessingPower();
 	}
 
+	/**
+	 * Determines the total input bandwidth available for the node
+	 * 
+	 * @return the maximum bandwidth with this network node can receive data
+	 *         from the outside world
+	 */
 	public long getInputbw() {
-		return (long) inbws.getPerSecondProcessingPower();
+		return (long) inbws.getPerTickProcessingPower();
 	}
 
+	/**
+	 * The bandwidth available when duplicating local disk contents.
+	 * 
+	 * @return the maximal bandwidth usable by the network node while copying a
+	 *         file or raw disk blocks on its storage subsystem
+	 */
 	public long getDiskbw() {
-		return (long) diskinbws.getPerSecondProcessingPower() * 2;
+		return (long) diskinbws.getPerTickProcessingPower() * 2;
 	}
 
+	/**
+	 * This function ensures the proper initialization of an individual
+	 * transfer.
+	 * 
+	 * @param size
+	 *            defines the size of the transfer to be simulated
+	 * @param from
+	 *            defines the source of the transfer
+	 * @param to
+	 *            defines the destination of the transfer
+	 * @param e
+	 *            defines the way the initiator will be notified upon the
+	 *            completion of the transfer
+	 */
 	public static ResourceConsumption initTransfer(final long size,
 			final double limit, final NetworkNode from, final NetworkNode to,
 			final ResourceConsumption.ConsumptionEvent e)

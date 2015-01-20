@@ -29,7 +29,7 @@ public abstract class DeferredEvent extends Timed {
 
 	private boolean cancelled = false;
 
-	public DeferredEvent(int delay) {
+	public DeferredEvent(long delay) {
 		if (delay > 0) {
 			subscribe(delay);
 		} else {

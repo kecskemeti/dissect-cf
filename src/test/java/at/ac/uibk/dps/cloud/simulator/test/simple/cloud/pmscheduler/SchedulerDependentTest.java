@@ -23,11 +23,15 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
+package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
+
+import java.util.HashSet;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
@@ -48,12 +52,8 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 
 	@Before
 	public void resetSim() throws Exception {
-		basic = new IaaSService(FirstFitScheduler.class,
-				SchedulingDependentMachines.class);
-		basic.registerHost(dummyPMcreator());
-		basic.registerHost(dummyPMcreator());
-		repo = dummyRepoCreator(true);
-		basic.registerRepository(repo);
+		basic = setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 2);
+		repo = basic.repositories.get(0);
 	}
 
 	@Test(timeout = 100)
@@ -67,12 +67,23 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 				basic.runningMachines.size());
 	}
 
-	@Test(timeout = 100)
+	@Test//(timeout = 100)
 	public void simpleLoadTest() throws VMManagementException, NetworkException {
+		final HashSet<PhysicalMachine> affectedpms = new HashSet<PhysicalMachine>();
+		for (final PhysicalMachine pm : basic.machines) {
+			pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+				@Override
+				public void stateChanged(State oldState, State newState) {
+					affectedpms.add(pm);
+				}
+			});
+		}
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) repo.contents()
 				.iterator().next(), basic.machines.get(0).getCapacities(),
 				repo, 1)[0];
 		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should only affect a single PM", 1,
+				affectedpms.size());
 		Assert.assertEquals("Should only switch on a single PM", 1,
 				basic.runningMachines.size());
 		Assert.assertEquals("VM should be able to switch on",

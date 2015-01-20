@@ -45,7 +45,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 			con.limithelper = 0;
 			con.unassigned = true;
 		}
-		currentUnProcessed = perSecondProcessingPower;
+		currentUnProcessed = perTickProcessingPower;
 		return true;
 	}
 
@@ -73,6 +73,9 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 						if (limit < maxShare) {
 							currentProcessable -= limit;
 							updateConsumptionLimit(con, limit);
+							// we move an unprocessed item from the back here
+							// then allow reevaluation
+							// and also make sure the currlen is reduced
 							con.inassginmentprocess = false;
 							currlen--;
 						} else {
@@ -92,6 +95,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 
 	@Override
 	protected long singleGroupwiseFreqUpdater() {
+		// Phase 1: preparation
 		final ResourceSpreader.FreqSyncer syncer = getSyncer();
 		final ResourceSpreader[] depgroup = syncer.getDepGroup();
 		final int dglen = syncer.getDGLen();
@@ -100,10 +104,14 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 			((MaxMinFairSpreader) depgroup[i]).initializeFreqUpdate();
 		}
 		boolean someConsumptionIsStillUnderUtilized;
+		// Phase 2: Progressive filling iteration
 		do {
+			// Phase 2a: determining maximum possible processing
+			// Determining wishes for providers and consumers
 			for (int i = 0; i < dglen; i++) {
 				((MaxMinFairSpreader) depgroup[i]).assignProcessingPower();
 			}
+			// Phase 2b: Finding minimum between providers and consumers
 			double minProcessing = Double.MAX_VALUE;
 			for (int i = 0; i < providerCount; i++) {
 				final int upLen = depgroup[i].underProcessing.size();
@@ -119,6 +127,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 				}
 			}
 
+			// Phase 2c: single filling
 			someConsumptionIsStillUnderUtilized = false;
 			for (int i = 0; i < providerCount; i++) {
 				MaxMinFairSpreader mmfs = (MaxMinFairSpreader) depgroup[i];
@@ -140,6 +149,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 				someConsumptionIsStillUnderUtilized |= mmfs.unassignedNum > 0;
 			}
 		} while (someConsumptionIsStillUnderUtilized);
+		// Phase 3: Determining the earliest completion time
 		long minCompletionDistance = Long.MAX_VALUE;
 		for (int i = 0; i < providerCount; i++) {
 			final int upLen = depgroup[i].underProcessing.size();

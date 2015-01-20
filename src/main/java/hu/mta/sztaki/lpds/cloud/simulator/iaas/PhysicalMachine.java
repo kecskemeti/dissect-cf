@@ -26,6 +26,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
@@ -37,22 +38,54 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ */
 public class PhysicalMachine extends MaxMinProvider implements
-		VMManager<PhysicalMachine> {
+		VMManager<PhysicalMachine, ResourceConstraints> {
 
 	public static final int defaultAllocLen = 1000;
 	public static final int migrationAllocLen = 1000000;
 
+	/**
+	 * Represents the possible states of the physical machines modeled in the
+	 * system
+	 * 
+	 * @author 
+	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * 
+	 */
 	public static enum State {
+		/**
+		 * The machine is completely switched off, minimal consumption is
+		 * recorded.
+		 */
 		OFF,
+		/**
+		 * The machine is under preparation to serve VMs. Some consumption is
+		 * recorded already.
+		 */
 		SWITCHINGON,
+		/**
+		 * The machine is currently serving VMs. The machine and its VMs are
+		 * consuming energy.
+		 */
 		RUNNING,
+		/**
+		 * The machine is about to be switched off. It no longer accepts VM
+		 * requests but it still consumes energy.
+		 */
 		SWITCHINGOFF
 	};
 
@@ -60,6 +93,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 			State.SWITCHINGON, State.RUNNING);
 	public static final EnumSet<State> ToOfforOff = EnumSet.of(
 			State.SWITCHINGOFF, State.OFF);
+	public static final EnumSet<State> StatesOfHighEnergyConsumption = EnumSet
+			.of(State.SWITCHINGON, State.RUNNING, State.SWITCHINGOFF);
 
 	public interface StateChangeListener {
 		void stateChanged(State oldState, State newState);
@@ -68,14 +103,17 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public static class ResourceAllocation extends DeferredEvent {
 		public final PhysicalMachine host;
 		public final ResourceConstraints allocated;
+		private final ResourceConstraints realAllocated;
 		private VirtualMachine user = null;
 		private final int myPromisedIndex;
 
 		private ResourceAllocation(final PhysicalMachine offerer,
+				final ResourceConstraints realAlloc,
 				final ResourceConstraints alloc, final int until) {
 			super(until);
 			host = offerer;
 			allocated = alloc;
+			realAllocated = realAlloc;
 			int prLen = host.promisedResources.size();
 			int i = 0;
 			for (i = 0; i < prLen && host.promisedResources.get(i) != null; i++)
@@ -88,13 +126,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 				myPromisedIndex = i;
 			}
 			if (host.promisedAllocationsCount == 0) {
-				host.promisedCapacities = allocated;
+				host.promisedCapacities = realAllocated;
 			} else {
 				host.promisedCapacities = ResourceConstraints.add(
-						host.promisedCapacities, allocated);
+						host.promisedCapacities, realAllocated);
 			}
 			host.reallyFreeCapacities = ResourceConstraints.subtract(
-					host.reallyFreeCapacities, allocated);
+					host.reallyFreeCapacities, realAllocated);
 			host.promisedAllocationsCount++;
 		}
 
@@ -109,11 +147,11 @@ public class PhysicalMachine extends MaxMinProvider implements
 				host.promisedCapacities = ResourceConstraints.noResources;
 			} else {
 				host.promisedCapacities = ResourceConstraints.subtract(
-						host.promisedCapacities, allocated);
+						host.promisedCapacities, realAllocated);
 			}
 			if (isUnUsed()) {
 				host.reallyFreeCapacities = ResourceConstraints.add(
-						host.reallyFreeCapacities, allocated);
+						host.reallyFreeCapacities, realAllocated);
 			}
 		}
 
@@ -131,7 +169,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			if (user == null) {
 				user = vm;
 				host.availableCapacities = ResourceConstraints.subtract(
-						host.availableCapacities, allocated);
+						host.availableCapacities, realAllocated);
 				host.vms.add(vm);
 				vm.subscribeStateChange(new VirtualMachine.StateChange() {
 					@Override
@@ -153,10 +191,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 			host.vms.remove(user);
 			host.completedVMs++;
 			host.availableCapacities = ResourceConstraints.add(
-					host.availableCapacities, allocated);
+					host.availableCapacities, realAllocated);
 			host.reallyFreeCapacities = ResourceConstraints.add(
-					host.reallyFreeCapacities, allocated);
-			host.notifyFreedUpCapacityListeners();
+					host.reallyFreeCapacities, realAllocated);
+			host.notifyFreedUpCapacityListeners(realAllocated);
 			user = null;
 		}
 
@@ -190,6 +228,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 	}
 
 	private final ResourceConstraints totalCapacities;
+	// Available physical resources:
 	private ResourceConstraints availableCapacities;
 	private ResourceConstraints promisedCapacities;
 	private ResourceConstraints reallyFreeCapacities;
@@ -197,31 +236,97 @@ public class PhysicalMachine extends MaxMinProvider implements
 	final ArrayList<ResourceAllocation> promisedResources = new ArrayList<ResourceAllocation>();
 	private int promisedAllocationsCount = 0;
 
+	// Internal state management
 	public final int onDelay;
 	public final int offDelay;
-	private State currentState = State.OFF;
+	private State currentState = null;
+
+	public static enum PowerStateKind {
+		host, storage, network
+	};
+
+	private final EnumMap<State, PowerState> hostPowerBehavior;
+	private final EnumMap<State, PowerState> storagePowerBehavior;
+	private final EnumMap<State, PowerState> networkPowerBehavior;
 	private CopyOnWriteArrayList<StateChangeListener> listeners = new CopyOnWriteArrayList<StateChangeListener>();
 
-	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>();
+	// Managed VMs
+	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>(); // current
 	public final Set<VirtualMachine> publicVms = Collections
 			.unmodifiableSet(vms);
-	private long completedVMs = 0;
+	private long completedVMs = 0; // Past
 	private DeferredEvent onOffEvent = null;
-	private CopyOnWriteArrayList<CapacityChangeEvent> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent>();
+	private CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>>();
 
+	/**
+	 * Defines a new physical machine, ensures that there are no VMs running so
+	 * far
+	 * 
+	 * @param cores
+	 *            defines the number of CPU cores this machine has under control
+	 * @param perCorePocessing
+	 *            defines the processing capabilities of a single CPU core in
+	 *            this machine (in instructions/tick)
+	 * @param memory
+	 *            defines the total physical memory this machine has under
+	 *            control (in bytes)
+	 * @param disk
+	 *            defines the local physical disk & networking this machine has
+	 *            under control
+	 * @param onD
+	 *            defines the time delay between the machine's switch on and the
+	 *            first time it can serve VM requests
+	 * @param offD
+	 *            defines the time delay the machine needs to shut down all of
+	 *            its operations while it does not serve any more VMs
+	 * @param powerTransitions
+	 *            determines the applied power state transitions while the
+	 *            physical machine state changes. This is the principal way to
+	 *            alter a PM's energy consumption behavior.
+	 */
 	public PhysicalMachine(double cores, double perCorePocessing, long memory,
-			Repository disk, int onD, int offD) {
+			Repository disk, int onD, int offD,
+			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
 		super(cores * perCorePocessing);
+		// Init resources:
 		totalCapacities = new ResourceConstraints(cores, perCorePocessing,
 				memory);
 		availableCapacities = totalCapacities;
 		reallyFreeCapacities = totalCapacities;
 		localDisk = disk;
 
+		// Init delays
 		onDelay = onD;
 		offDelay = offD;
+
+		hostPowerBehavior = powerTransitions.get(PowerStateKind.host);
+		storagePowerBehavior = powerTransitions.get(PowerStateKind.storage);
+		networkPowerBehavior = powerTransitions.get(PowerStateKind.network);
+
+		if (hostPowerBehavior == null || storagePowerBehavior == null
+				|| networkPowerBehavior == null) {
+			throw new IllegalStateException(
+					"Cannot initialize physical machine without a complete power behavior set");
+		}
+
+		setState(State.OFF);
 	}
 
+	/**
+	 * Starts the turn off procedure for the physical machine so it no longer
+	 * accepts VM requests but it does not consume anymore
+	 * 
+	 * @param migrateHere
+	 *            the physical machine where the currently hosted VMs of this VM
+	 *            should go before the actual switch off operation will happen
+	 * @return <ul>
+	 *         <li>true if the switch off procedure has started
+	 *         <li>false if there are still VMs running and migration target was
+	 *         not specified thus the switch off is not possible
+	 *         </ul>
+	 * @throws NetworkException
+	 * @throws VMManager.VMManagementException
+	 */
 	public boolean switchoff(final PhysicalMachine migrateHere)
 			throws VMManagementException, NetworkException {
 		if (migrateHere != null) {
@@ -238,10 +343,12 @@ public class PhysicalMachine extends MaxMinProvider implements
 						counter++;
 						break;
 					case SUSPENDED_MIG:
+						// There is a problem but we cannot do here anything
+						// right now...
 					default:
 					}
 					if (counter == vmarr.length) {
-						for (int i = 0; i < vmarr.length;i++) {
+						for (int i = 0; i < vmarr.length; i++) {
 							vmarr[i].unsubscribeStateChange(this);
 						}
 						actualSwitchOff();
@@ -249,7 +356,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 				}
 			}
 			MultiMigrate mm = new MultiMigrate();
-			for (int i = 0; i < vmarr.length;i++) {
+			for (int i = 0; i < vmarr.length; i++) {
 				vmarr[i].subscribeStateChange(mm);
 				migrateVM(vmarr[i], migrateHere);
 			}
@@ -274,11 +381,20 @@ public class PhysicalMachine extends MaxMinProvider implements
 			break;
 		case OFF:
 		case SWITCHINGOFF:
+			// Nothing to do
 			System.err
 					.println("WARNING: an already off PM was tasked to switch off!");
 		}
 	}
 
+	/**
+	 * Determines if the machine can be used for VM instantiation.
+	 * 
+	 * @return <ul>
+	 *         <li>true if the machine is ready to accept VM requests
+	 *         <li>false otherwise
+	 *         </ul>
+	 */
 	public boolean isRunning() {
 		return currentState.equals(State.RUNNING);
 	}
@@ -287,6 +403,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 		return currentState;
 	}
 
+	/**
+	 * Turns on the physical machine so it allows energy and resource
+	 * consumption and opens the possibility to receive VM requests.
+	 */
 	public void turnon() {
 		int extratime = 0;
 		switch (currentState) {
@@ -300,6 +420,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			break;
 		case RUNNING:
 		case SWITCHINGON:
+			// Nothing to do
 			System.err
 					.println("WARNING: an already running PM was tasked to switch on!");
 		}
@@ -322,6 +443,23 @@ public class PhysicalMachine extends MaxMinProvider implements
 
 	}
 
+	/**
+	 * Ensures the requested amount of resources are going to be available in
+	 * the foreseeable future on this physical machine.
+	 * 
+	 * @param requested
+	 *            The amount of resources needed by the caller
+	 * @return With a time limited offer on the requested resources. If the
+	 *         requested resourceconstraints cannot be met by the function then
+	 *         it returns with the maximum amount of resources it can serve. If
+	 *         there are no available resources it returns with <i>null</i>! If
+	 *         the requested resources are available then the original requested
+	 *         resourceconstraints object is stored in the returned resource
+	 *         allocation. If the resourceconstraints only specified a minimum
+	 *         resource limit, then a new resourceconstraints object is returned
+	 *         with details of the maximum possible resource constraints that
+	 *         can fit into the machine.
+	 */
 	public ResourceAllocation allocateResources(
 			final ResourceConstraints requested, final boolean strict,
 			final int allocationValidityLength) throws VMManagementException {
@@ -329,30 +467,62 @@ public class PhysicalMachine extends MaxMinProvider implements
 			throw new VMManagementException(
 					"The PM is not running and thus cannot offer resources yet");
 		}
+		// Basic tests for resource availability for the host
 		if (reallyFreeCapacities.requiredCPUs == 0
 				|| reallyFreeCapacities.requiredMemory == 0
 				|| requested.requiredProcessingPower > reallyFreeCapacities.requiredProcessingPower) {
 			return null;
 		}
-		double reqCPU = requested.requiredCPUs;
-		long reqMem = requested.requiredMemory;
-		if (reallyFreeCapacities.requiredCPUs >= requested.requiredCPUs) {
-			if (reallyFreeCapacities.requiredMemory >= requested.requiredMemory) {
-				return new ResourceAllocation(this, requested,
+		// Allocation type test (i.e. do we allow underprovisioning?)
+		final int prLen = promisedResources.size();
+		for (int i = 0; i < prLen; i++) {
+			ResourceAllocation olderAllocation = promisedResources.get(i);
+			if (olderAllocation != null) {
+				if (olderAllocation.allocated.requiredProcessingIsMinimum == requested.requiredProcessingIsMinimum) {
+					break;
+				} else {
+					return null;
+				}
+			}
+		}
+		// Promised resources for the virtual machine
+		double vmCPU = requested.requiredCPUs;
+		long vmMem = requested.requiredMemory;
+		final double vmPrPow = requested.requiredProcessingIsMinimum ? totalCapacities.requiredProcessingPower
+				: requested.requiredProcessingPower;
+
+		// Actually allocated resources (memory is equivalent in both cases)
+		final double allocPrPow = totalCapacities.requiredProcessingPower;
+		final double allocCPU = vmCPU * requested.requiredProcessingPower
+				/ allocPrPow;
+		if (0 <= reallyFreeCapacities.requiredCPUs - allocCPU) {
+			if (0 <= reallyFreeCapacities.requiredMemory
+					- requested.requiredMemory) {
+				return new ResourceAllocation(
+						this,
+						new ResourceConstraints(allocCPU, allocPrPow, vmMem),
+						requested.requiredProcessingIsMinimum ? new ResourceConstraints(
+								vmCPU, vmPrPow, true, vmMem) : requested,
 						allocationValidityLength);
 			} else {
-				reqMem = reallyFreeCapacities.requiredMemory;
+				vmMem = reallyFreeCapacities.requiredMemory;
 			}
-		} else if (reallyFreeCapacities.requiredMemory >= requested.requiredMemory) {
-			reqCPU = reallyFreeCapacities.requiredCPUs;
+		} else if (0 <= reallyFreeCapacities.requiredMemory
+				- requested.requiredMemory) {
+			vmCPU = reallyFreeCapacities.requiredCPUs;
 		} else {
-			reqCPU = reallyFreeCapacities.requiredCPUs;
-			reqMem = reallyFreeCapacities.requiredMemory;
+			vmCPU = reallyFreeCapacities.requiredCPUs;
+			vmMem = reallyFreeCapacities.requiredMemory;
 		}
-		return strict ? null : new ResourceAllocation(this,
-				new ResourceConstraints(reqCPU,
-						requested.requiredProcessingPower, reqMem),
-				allocationValidityLength);
+		if (strict) {
+			return null;
+		} else {
+			final ResourceConstraints updatedConstraints = new ResourceConstraints(
+					vmCPU, vmPrPow, requested.requiredProcessingIsMinimum,
+					vmMem);
+			return new ResourceAllocation(this, updatedConstraints,
+					updatedConstraints, allocationValidityLength);
+		}
 	}
 
 	private boolean checkAllocationsPresence(final ResourceAllocation allocation) {
@@ -391,6 +561,27 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 	}
 
+	/**
+	 * Initiates a VM on this physical machine. If the physical machine cannot
+	 * host VMs for some reason an exception is thrown, if the machine cannot
+	 * host this particular VA then a null VM is returned.
+	 * 
+	 * @param va
+	 *            The appliance for the VM to be created.
+	 * @param rc
+	 *            The resource requirements of the VM
+	 * @param vaSource
+	 *            The storage where the VA resides.
+	 * @param count
+	 *            The number of VMs to be created with the above specification
+	 * @return The virtual machine(s) that will be instantiated on the PM. Null
+	 *         if the constraints specify VMs that cannot fit the available
+	 *         resources of the machine.
+	 * 
+	 * @throws VMManagementException
+	 *             If the machine is not accepting requests currently.<br>
+	 *             If the VM startup has failed.
+	 */
 	public VirtualMachine[] requestVM(final VirtualAppliance va,
 			final ResourceConstraints rc, final Repository vaSource,
 			final int count) throws VMManagementException, NetworkException {
@@ -415,12 +606,15 @@ public class PhysicalMachine extends MaxMinProvider implements
 		return vms;
 	}
 
+	/**
+	 * Scheduling constraints are ignored currently! As this is too low level to
+	 * handle them in the current state of the simulator.
+	 */
 	@Override
 	public VirtualMachine[] requestVM(VirtualAppliance va,
 			ResourceConstraints rc, Repository vaSource, int count,
 			HashMap<String, Object> schedulingConstraints)
-			throws hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException,
-			NetworkException {
+			throws VMManagementException, NetworkException {
 		return requestVM(va, rc, vaSource, count);
 	}
 
@@ -507,43 +701,73 @@ public class PhysicalMachine extends MaxMinProvider implements
 		for (int i = 0; i < size; i++) {
 			listeners.get(i).stateChanged(oldstate, newState);
 		}
+
+		// Power state management:
+		setCurrentPowerBehavior(hostPowerBehavior.get(newState));
+		// TODO: if the repository class also implements proper power state
+		// management then this must move there
+		localDisk.diskinbws.setCurrentPowerBehavior(storagePowerBehavior
+				.get(newState));
+		localDisk.diskoutbws.setCurrentPowerBehavior(storagePowerBehavior
+				.get(newState));
+		localDisk.inbws.setCurrentPowerBehavior(networkPowerBehavior
+				.get(newState));
+		localDisk.outbws.setCurrentPowerBehavior(networkPowerBehavior
+				.get(newState));
 	}
 
 	public ResourceConstraints getCapacities() {
 		return totalCapacities;
 	}
 
+	/**
+	 * Those capacities that are not even allocated
+	 * 
+	 * @return
+	 */
 	public ResourceConstraints getFreeCapacities() {
 		return reallyFreeCapacities;
 	}
 
+	/**
+	 * Returns capacities that does not actually have deployed VMs on them
+	 * 
+	 * @return
+	 */
 	public ResourceConstraints getAvailableCapacities() {
 		return availableCapacities;
 	}
 
 	@Override
-	public void subscribeToCapacityChanges(final CapacityChangeEvent e) {
+	public void subscribeToCapacityChanges(
+			final CapacityChangeEvent<ResourceConstraints> e) {
+		// FIXME: not important yet
 	}
 
 	@Override
-	public void unsubscribeFromCapacityChanges(final CapacityChangeEvent e) {
+	public void unsubscribeFromCapacityChanges(
+			final CapacityChangeEvent<ResourceConstraints> e) {
+		// FIXME: not important yet
 	}
 
 	public void subscribeToIncreasingFreeapacityChanges(
-			final CapacityChangeEvent e) {
+			final CapacityChangeEvent<ResourceConstraints> e) {
 		increasingFreeCapacityListeners.add(e);
 	}
 
 	public void unsubscribeFromIncreasingFreeCapacityChanges(
-			final CapacityChangeEvent e) {
+			final CapacityChangeEvent<ResourceConstraints> e) {
 		increasingFreeCapacityListeners.remove(e);
 	}
 
-	private void notifyFreedUpCapacityListeners() {
+	private void notifyFreedUpCapacityListeners(
+			final ResourceConstraints freedUpResources) {
 		final int size = increasingFreeCapacityListeners.size();
+		final List<ResourceConstraints> freed = Collections
+				.singletonList(freedUpResources);
 		for (int i = 0; i < size; i++) {
 			increasingFreeCapacityListeners.get(i).capacityChanged(
-					reallyFreeCapacities);
+					reallyFreeCapacities, freed);
 		}
 	}
 }

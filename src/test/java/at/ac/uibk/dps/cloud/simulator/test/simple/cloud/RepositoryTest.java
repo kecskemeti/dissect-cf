@@ -29,7 +29,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
-import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 import java.util.HashMap;
@@ -85,7 +84,7 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 		Assert.assertEquals("The repository should be empty by now!", 0, source
 				.contents().size());
 	}
-	
+
 	@Test(timeout = 100)
 	public void registrationTest() {
 		registerWithCheck(so);
@@ -97,49 +96,55 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 				"The source repository is not reporting accurate size",
 				source.getMaxStorageCapacity() - so.size,
 				source.getFreeStorageCapacity());
+		// Removal by object
 		source.deregisterObject(so);
 		emptyCheck();
+		// These should not cause null pointers!
 		source.deregisterObject((StorageObject) null);
 		source.deregisterObject((String) null);
 		registerWithCheck(so);
+		// Removal by ID
 		source.deregisterObject(storageObjectID);
 		emptyCheck();
 		Assert.assertFalse("It was possible to remove a non stored object!",
 				source.deregisterObject(so));
 	}
-	
+
 	@Test(timeout = 100)
 	public void simpleTransferTest() throws NetworkException {
 		final String extendedID = storageObjectID + ".ext";
 		registerWithCheck(so);
+		// 1st transfer
 		source.requestContentDelivery(storageObjectID, target,
 				new ConsumptionEventAssert() {
 					@Override
 					public void conComplete() {
 						super.conComplete();
 						Assert.assertTrue(
-								"Transferred stroage object has not got the same name",
+								"Transferred storage object has not got the same name",
 								target.lookup(storageObjectID) != null);
 					}
 
 				});
+		// 2nd transfer
 		source.requestContentDelivery(storageObjectID, extendedID, target,
 				new ConsumptionEventAssert() {
 					@Override
 					public void conComplete() {
 						super.conComplete();
 						Assert.assertTrue(
-								"Transferred stroage object has not got the new name",
+								"Transferred storage object has not got the new name",
 								target.lookup(extendedID) != null);
 					}
 				});
+		// 3rd transfer
 		source.duplicateContent(storageObjectID, extendedID,
 				new ConsumptionEventAssert() {
 					@Override
 					public void conComplete() {
 						super.conComplete();
 						Assert.assertTrue(
-								"Duplicated stroage object has not got the new name",
+								"Duplicated storage object has not got the new name",
 								source.lookup(extendedID) != null);
 					}
 				});
@@ -165,6 +170,7 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 		source.requestContentDelivery(storageObjectID, null, null,
 				new ConsumptionEventAssert());
 		source.requestContentDelivery(storageObjectID, null, target, null);
+		// 4th transfer
 		source.requestContentDelivery(storageObjectID, null, target,
 				new ConsumptionEventAssert());
 		source.requestContentDelivery(storageObjectID, null, source, null);
@@ -174,9 +180,11 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 		source.requestContentDelivery(storageObjectID, extendedID, null,
 				new ConsumptionEventAssert());
 		source.requestContentDelivery(storageObjectID, extendedID, target, null);
+		// 5th transfer
 		source.requestContentDelivery(storageObjectID, extendedID, target,
 				new ConsumptionEventAssert());
 		source.requestContentDelivery(storageObjectID, extendedID, source, null);
+		// 6th transfer
 		source.requestContentDelivery(storageObjectID, extendedID, source,
 				new ConsumptionEventAssert());
 		Timed.simulateUntilLastEvent();
@@ -212,27 +220,27 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 				target.getFreeStorageCapacity());
 	}
 
-	@Test(timeout = 200)
+	/**
+	 * Since this is a performance test one might expect this to easily overcome
+	 * the timeout in case some performance degradations!
+	 */
+	@Test(timeout = 100)
 	public void registrationPerformance() {
-		int vmNum = 10000;
-		final long bandwidth = 111111111;
-		Repository testRepo = new Repository(111111111111111111L, "Repo",
-				bandwidth, bandwidth, bandwidth, new HashMap<String, Integer>());
-		VirtualAppliance testVA = new VirtualAppliance("Test", 111, 0);
-		VirtualAppliance[] vaBase = new VirtualAppliance[vmNum];
+		final int vmNum = 9000;
+		final StorageObject[] vaBase = new StorageObject[vmNum];
 		for (int i = 0; i < vmNum; i++) {
-			vaBase[i] = testVA.newCopy("AutoCreate" + i);
-			testRepo.registerObject(vaBase[i]);
+			vaBase[i] = so.newCopy("AutoCreate" + i);
+			source.registerObject(vaBase[i]);
 		}
 		for (int i = 0; i < vmNum; i++) {
-			testRepo.deregisterObject(vaBase[i]);
+			source.deregisterObject(vaBase[i]);
 		}
 	}
 
 	private void genericCircularTest(int repoCount, long size, int[] fromIndex,
 			int[] toIndex, long[] expectedTimings) throws NetworkException {
 		SeedSyncer.resetCentral();
-		final long bandwidth = 111111111;
+		final long bandwidth = 111111; // bytes/ms
 		HashMap<String, Integer> latencyMap = new HashMap<String, Integer>();
 		for (int i = 0; i < repoCount; i++) {
 			latencyMap.put("Repo" + i, 6);
@@ -255,8 +263,8 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 		Assert.assertEquals("Not enough transfers arrived", fromIndex.length,
 				ConsumptionEventAssert.hits.size());
 	}
-	
-	@Test(timeout=100)
+
+	@Test(timeout = 100)
 	public void circularTransferTest() throws NetworkException {
 		int trNum = 9;
 		int repoCount = 3;
@@ -267,12 +275,12 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 			toindex[i] = (i + 1) % repoCount;
 		}
 		genericCircularTest(repoCount, 1000000L, fromindex, toindex,
-				new long[] { 17, 19, 36, 24, 8, 40, 8, 9, 9 });
+				new long[] { 16, 18, 36, 23, 8, 39, 8, 9, 9 });
 	}
 
-	@Test(timeout=100)
+	@Test(timeout = 100)
 	public void secondCircularTransferTest() throws NetworkException {
 		genericCircularTest(3, 10000000L, new int[] { 0, 1, 2, 2 }, new int[] {
-				1, 0, 1, 0 }, new long[] { 103, 219, 270, 247 });
+				1, 0, 1, 0 }, new long[] { 103, 218, 269, 246 });
 	}
 }

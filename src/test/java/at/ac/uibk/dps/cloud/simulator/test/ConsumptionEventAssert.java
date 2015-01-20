@@ -68,7 +68,7 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 	@Override
 	public void conComplete() {
 		if (expectedTime > 0) {
-			Assert.assertEquals("Network transfer completed at wrong time",
+			Assert.assertEquals("Resource consumption completed at wrong time",
 					expectedTime, Timed.getFireCount());
 		}
 		Assert.assertFalse(

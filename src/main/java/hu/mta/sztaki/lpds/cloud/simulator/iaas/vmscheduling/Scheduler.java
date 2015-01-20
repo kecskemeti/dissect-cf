@@ -22,7 +22,6 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -40,22 +39,36 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
+/**
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012"
+ */
 public abstract class Scheduler {
 
 	public interface QueueingEvent {
+
 		void queueingStarted();
 	}
 
-	public static final long unknownPMStateDelay = 1000;
-
 	protected final IaaSService parent;
 
-	protected LinkedList<QueueingData> queue = new LinkedList<QueueingData>();
+	protected List<QueueingData> queue = new LinkedList<QueueingData>();
 	protected ResourceConstraints totalQueued = ResourceConstraints.noResources;
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
 	private int pmCacheLen;
 	private ArrayList<QueueingEvent> queueListeners = new ArrayList<Scheduler.QueueingEvent>();
+
+	public final static Comparator<PhysicalMachine> pmComparator = new Comparator<PhysicalMachine>() {
+		@Override
+		public int compare(final PhysicalMachine o1, final PhysicalMachine o2) {
+			// Ensures inverse order based on capacities
+			return -o1.getCapacities().compareTo(o2.getCapacities());
+		}
+	};
+
 	protected PhysicalMachine.StateChangeListener pmstateChanged = new PhysicalMachine.StateChangeListener() {
 		@Override
 		public void stateChanged(State oldState, State newState) {
@@ -68,12 +81,13 @@ public abstract class Scheduler {
 		}
 	};
 
-	protected VMManager.CapacityChangeEvent freeCapacity = new VMManager.CapacityChangeEvent() {
+	protected VMManager.CapacityChangeEvent<ResourceConstraints> freeCapacity = new VMManager.CapacityChangeEvent<ResourceConstraints>() {
 		@Override
-		public void capacityChanged(ResourceConstraints newCapacity) {
+		public void capacityChanged(final ResourceConstraints newCapacity,
+				final List<ResourceConstraints> newlyFreeResources) {
 			scheduleQueued();
 			if (queue.size() != 0
-					&& queue.peek().cumulativeRC.compareTo(parent
+					&& queue.get(0).cumulativeRC.compareTo(parent
 							.getRunningCapacities()) > 0) {
 				notifyListeners();
 			}
@@ -82,26 +96,32 @@ public abstract class Scheduler {
 
 	public Scheduler(final IaaSService parent) {
 		this.parent = parent;
-		parent.subscribeToCapacityChanges(new IaaSService.CapacityChangeEvent() {
+		parent.subscribeToCapacityChanges(new VMManager.CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(ResourceConstraints newCapacity) {
-				orderedPMcache = new ArrayList<PhysicalMachine>(parent.machines);
-				pmCacheLen = orderedPMcache.size();
-				Collections.sort(orderedPMcache,
-						new Comparator<PhysicalMachine>() {
-							@Override
-							public int compare(final PhysicalMachine o1,
-									final PhysicalMachine o2) {
-								return -o1.getCapacities().compareTo(
-										o2.getCapacities());
-							}
-						});
-				for (int i = 0; i < pmCacheLen; i++) {
-					PhysicalMachine pm = orderedPMcache.get(i);
-					pm.unsubscribeStateChangeEvents(pmstateChanged);
-					pm.subscribeStateChangeEvents(pmstateChanged);
-					pm.unsubscribeFromIncreasingFreeCapacityChanges(freeCapacity);
-					pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
+			public void capacityChanged(final ResourceConstraints newCapacity,
+					final List<PhysicalMachine> alteredPMs) {
+				final boolean newRegistration = parent
+						.isRegisteredHost(alteredPMs.get(0));
+				final int pmNum = alteredPMs.size();
+				if (newRegistration) {
+					// Increased pm count
+					orderedPMcache.addAll(alteredPMs);
+					Collections.sort(orderedPMcache, pmComparator);
+					pmCacheLen += pmNum;
+					for (int i = 0; i < pmNum; i++) {
+						final PhysicalMachine pm = alteredPMs.get(i);
+						pm.subscribeStateChangeEvents(pmstateChanged);
+						pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
+					}
+				} else {
+					// Decreased pm count
+					for (int i = 0; i < pmNum; i++) {
+						final PhysicalMachine pm = alteredPMs.get(i);
+						orderedPMcache.remove(pm);
+						pm.unsubscribeStateChangeEvents(pmstateChanged);
+						pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
+					}
+					pmCacheLen -= pmNum;
 				}
 			}
 		});
@@ -129,7 +149,7 @@ public abstract class Scheduler {
 		}
 		if (hostable) {
 			boolean wasEmpty = queue.isEmpty();
-			queue.offer(qd);
+			queue.add(qd);
 			totalQueued = ResourceConstraints.add(totalQueued, qd.cumulativeRC);
 			if (wasEmpty) {
 				scheduleQueued();
@@ -153,16 +173,24 @@ public abstract class Scheduler {
 		return queue.size();
 	}
 
+	/**
+	 * Removes an arbitrary item from the queue
+	 * 
+	 * @param qd
+	 */
 	protected void manageQueueRemoval(final QueueingData qd) {
 		queue.remove(qd);
 		updateTotalQueuedAfterRemoval(qd);
 	}
 
+	/**
+	 * Removes the head of the queue
+	 */
 	protected QueueingData manageQueueRemoval() {
 		if (queue.isEmpty()) {
 			return null;
 		}
-		QueueingData removed = queue.remove();
+		QueueingData removed = queue.remove(0);
 		updateTotalQueuedAfterRemoval(removed);
 		return removed;
 	}
@@ -183,7 +211,7 @@ public abstract class Scheduler {
 		queueListeners.remove(e);
 	}
 
-	private void notifyListeners() {
+	protected void notifyListeners() {
 		final int size = queueListeners.size();
 		for (int i = 0; i < size; i++) {
 			queueListeners.get(i).queueingStarted();

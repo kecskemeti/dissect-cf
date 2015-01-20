@@ -25,51 +25,59 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.io;
 
+/**
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * 
+ */
 public class VirtualAppliance extends StorageObject {
 	private long bgNetworkLoad;
-	private long startupdelay;
+	private double startupProcessing;
 
-	private void setDetails(final long delay, final long nl) {
+	private void setDetails(final double startupProcess, final long nl) {
 		setBgNetworkLoad(nl);
-		setStartupdelay(delay);
+		setStartupProcessing(startupProcess);
 	}
 
-	public VirtualAppliance(final String id, final long delay, final long nl) {
+	public VirtualAppliance(final String id, final double startupProcess,
+			final long nl) {
 		super(id);
-		setDetails(delay, nl);
+		setDetails(startupProcess, nl);
 	}
 
-	public VirtualAppliance(final String id, final long delay, final long nl,
-			boolean vary, final long reqDisk) {
+	public VirtualAppliance(final String id, final double startupProcess,
+			final long nl, boolean vary, final long reqDisk) {
 		super(id, reqDisk, vary);
-		setDetails(delay, nl);
+		setDetails(startupProcess, nl);
 	}
 
 	@Override
 	public VirtualAppliance newCopy(final String myid) {
-		return new VirtualAppliance(myid, startupdelay, bgNetworkLoad, false,
-				size);
+		return new VirtualAppliance(myid, startupProcessing, bgNetworkLoad,
+				false, size);
 	}
 
 	public long getBgNetworkLoad() {
 		return bgNetworkLoad;
 	}
 
-	public long getStartupdelay() {
-		return startupdelay;
+	public double getStartupProcessing() {
+		return startupProcessing;
 	}
 
 	public void setBgNetworkLoad(long bgNetworkLoad) {
 		this.bgNetworkLoad = bgNetworkLoad;
 	}
 
-	public void setStartupdelay(long startupdelay) {
-		this.startupdelay = startupdelay;
+	public void setStartupProcessing(double startupProcessing) {
+		this.startupProcessing = startupProcessing;
 	}
 
 	@Override
 	public String toString() {
-		return "VA(" + super.toString() + " sd:" + startupdelay + " bgnl:"
+		return "VA(" + super.toString() + " sp:" + startupProcessing + " bgnl:"
 				+ bgNetworkLoad + ")";
 	}
 }

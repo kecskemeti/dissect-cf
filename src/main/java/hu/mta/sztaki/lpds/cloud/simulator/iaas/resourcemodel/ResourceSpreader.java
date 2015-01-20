@@ -26,17 +26,43 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * This class ensures equal access to resource limited devices (such as network
+ * interfaces, cpus or disks) for all ongoing resource consumptions.
+ * 
+ * Resource processing is actually handled by the processSingleConsumption
+ * function which must be implemented externally for performance. This allows
+ * the resource consumption simulation code to run with less conditional
+ * statements in its core. While it also allows to efficiently add new features
+ * later on.
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * 
+ */
 public abstract class ResourceSpreader {
 
-	protected double perSecondProcessingPower;
+	// These final variables define the base behavior of the class:
+	/**
+	 * Maximum amount of resources to be shared among the consumption objects
+	 * during a single tick.
+	 */
+	protected double perTickProcessingPower;
 	protected double negligableProcessing;
+	/**
+	 * The array of consumption objects that will share the processing power of
+	 * this spreader. The order is not guaranteed!
+	 */
 	private final ArrayList<ResourceConsumption> toProcess = new ArrayList<ResourceConsumption>();
 	public final List<ResourceConsumption> underProcessing = Collections
 			.unmodifiableList(toProcess);
@@ -47,17 +73,29 @@ public abstract class ResourceSpreader {
 	public final List<ResourceConsumption> toBeAdded = Collections
 			.unmodifiableList(underAddition);
 
+	public interface PowerBehaviorChangeListener {
+		void behaviorChanged(ResourceSpreader onSpreader, PowerState newState);
+	}
+
+	private PowerState currentPowerBehavior;
+	private CopyOnWriteArrayList<PowerBehaviorChangeListener> listeners = new CopyOnWriteArrayList<PowerBehaviorChangeListener>();
+
 	protected long lastNotifTime = 0;
 	private double totalProcessed = 0;
 	private boolean stillInDepGroup;
 
 	public static class FreqSyncer extends Timed {
+		/**
+		 * myDepGroup is always kept in order: first all the providers are
+		 * listed, then all the consumers, when dealing with this data member
+		 * please keep in mind this expected behavior.
+		 */
 		private ResourceSpreader[] myDepGroup;
 		private int depgrouplen;
 		private int firstConsumerId;
-		final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<ResourceSpreader>();
-		boolean nudged = false;
-		boolean groupnotchanged = true;
+		private final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<ResourceSpreader>();
+		private boolean nudged = false;
+		private boolean regularFreqMode = true;
 
 		private FreqSyncer(final ResourceSpreader provider,
 				final ResourceSpreader consumer) {
@@ -67,6 +105,7 @@ public abstract class ResourceSpreader {
 			firstConsumerId = 1;
 			depgrouplen = 2;
 			provider.mySyncer = consumer.mySyncer = this;
+			setBackPreference(true);
 		}
 
 		private FreqSyncer(ResourceSpreader[] myDepGroup, final int provcount,
@@ -74,12 +113,22 @@ public abstract class ResourceSpreader {
 			this.myDepGroup = myDepGroup;
 			firstConsumerId = provcount;
 			depgrouplen = dglen;
+			for (int i = 0; i < dglen; i++) {
+				myDepGroup[i].mySyncer = this;
+			}
+			setBackPreference(true);
 		}
 
+		/**
+		 * Should only be used from addToGroup!
+		 * 
+		 * @param rs
+		 */
 		private void addSingleToDG(final ResourceSpreader rs) {
 			try {
 				myDepGroup[depgrouplen] = rs;
 				depgrouplen++;
+				rs.mySyncer = this;
 			} catch (ArrayIndexOutOfBoundsException e) {
 				ResourceSpreader[] newdg = new ResourceSpreader[myDepGroup.length * 7];
 				System.arraycopy(myDepGroup, 0, newdg, 0, depgrouplen);
@@ -112,6 +161,8 @@ public abstract class ResourceSpreader {
 		private boolean isInDepGroup(final ResourceSpreader lookfor) {
 			final int start = lookfor.isConsumer() ? firstConsumerId : 0;
 			final int stop = start == 0 ? firstConsumerId : depgrouplen;
+			// We will just check the part of the depgroup where
+			// consumers or providers are located
 			int i = start;
 			for (; i < stop && myDepGroup[i] != lookfor; i++)
 				;
@@ -125,6 +176,16 @@ public abstract class ResourceSpreader {
 			updateFrequency(0);
 		}
 
+		/**
+		 * Only those should get the depgroup with this function who are not
+		 * planning to change it's contents
+		 * 
+		 * WARNING: If, for some reason, the contents of the returned array are
+		 * changed then the proper operation of FreqSyncer cannot be guaranteed
+		 * anymore.
+		 * 
+		 * @return
+		 */
 		ResourceSpreader[] getDepGroup() {
 			return myDepGroup;
 		}
@@ -133,6 +194,13 @@ public abstract class ResourceSpreader {
 			return depgrouplen;
 		}
 
+		/**
+		 * This will always give a fresh copy of the depgroup which can be
+		 * changed as the user desires. Because of the always copying behavior
+		 * it will reduce the performance a little.
+		 * 
+		 * @return
+		 */
 		public ResourceSpreader[] getClonedDepGroup() {
 			return Arrays.copyOfRange(myDepGroup, 0, depgrouplen);
 		}
@@ -140,7 +208,7 @@ public abstract class ResourceSpreader {
 		@Override
 		public String toString() {
 			return "FreqSyncer(" + super.toString() + " depGroup: "
-					+ myDepGroup + ")";
+					+ Arrays.toString(myDepGroup) + ")";
 		}
 
 		public int getFirstConsumerId() {
@@ -164,6 +232,7 @@ public abstract class ResourceSpreader {
 				didExtension = false;
 				for (int rsi = 0; rsi < depgrouplen; rsi++) {
 					final ResourceSpreader rs = myDepGroup[rsi];
+					// managing removals
 					if (!rs.underRemoval.isEmpty()) {
 						didRemovals = true;
 						int rsuLen = rs.toProcess.size();
@@ -177,9 +246,9 @@ public abstract class ResourceSpreader {
 								rsuLen--;
 							}
 							if (isConsumer) {
-								if(con.getUnProcessed() == 0) {
+								if (con.getUnProcessed() == 0) {
 									con.ev.conComplete();
-								} else if(!con.isResumable()) {
+								} else if (!con.isResumable()) {
 									con.ev.conCancelled(con);
 								}
 							}
@@ -187,6 +256,7 @@ public abstract class ResourceSpreader {
 						rs.underProcessingLen = rsuLen;
 						rs.underRemoval.clear();
 					}
+					// managing additions
 					if (!rs.underAddition.isEmpty()) {
 						if (rs.underProcessingLen == 0) {
 							rs.lastNotifTime = fires;
@@ -197,13 +267,17 @@ public abstract class ResourceSpreader {
 									.get(i);
 							rs.toProcess.add(con);
 							final ResourceSpreader cp = rs.getCounterPart(con);
+							// Check if counterpart is in the dependency group
 							if (!isInDepGroup(cp)) {
+								// No it is not, we need an extension
 								didExtension = true;
 								if (cp.mySyncer == null || cp.mySyncer == this) {
+									// Just this single item is missing
 									if (!depGroupExtension.contains(cp)) {
 										depGroupExtension.add(cp);
 									}
 								} else {
+									// There are further items missing
 									cp.mySyncer.unsubscribe();
 									for (int j = 0; j < cp.mySyncer.depgrouplen; j++) {
 										final ResourceSpreader todepgroupextension = cp.mySyncer.myDepGroup[j];
@@ -213,6 +287,9 @@ public abstract class ResourceSpreader {
 													.add(todepgroupextension);
 										}
 									}
+									// Make sure, that if we encounter this cp
+									// next time we will not try to add all its
+									// dep group
 									cp.mySyncer = null;
 								}
 							}
@@ -227,6 +304,7 @@ public abstract class ResourceSpreader {
 			} while (didExtension || nudged);
 
 			if (didRemovals) {
+				// Marking all current members of the depgroup as non members
 				for (int i = 0; i < depgrouplen; i++) {
 					myDepGroup[i].stillInDepGroup = false;
 				}
@@ -235,6 +313,7 @@ public abstract class ResourceSpreader {
 				int notClassifiedLen = depgrouplen;
 				do {
 					int classifiableindex = 0;
+					// finding the first dependency group
 					for (; classifiableindex < notClassifiedLen; classifiableindex++) {
 						final ResourceSpreader rs = notClassified[classifiableindex];
 						buildDepGroup(rs);
@@ -246,8 +325,10 @@ public abstract class ResourceSpreader {
 					if (classifiableindex < notClassifiedLen) {
 						notClassifiedLen -= classifiableindex;
 						providerCount -= classifiableindex;
+						// Remove the unused front
 						System.arraycopy(notClassified, classifiableindex,
 								notClassified, 0, notClassifiedLen);
+						// Remove the not classified items
 						ResourceSpreader[] stillNotClassified = null;
 						int newpc = 0;
 						int newlen = 0;
@@ -255,10 +336,12 @@ public abstract class ResourceSpreader {
 							final ResourceSpreader rs = notClassified[i];
 							if (!rs.stillInDepGroup) {
 								notClassifiedLen--;
+								// Management of the new group
 								if (stillNotClassified == null) {
 									stillNotClassified = new ResourceSpreader[notClassifiedLen];
 								}
 								stillNotClassified[newlen++] = rs;
+								// Removals from the old group
 								if (rs.isConsumer()) {
 									notClassified[i] = notClassified[notClassifiedLen];
 								} else {
@@ -269,6 +352,8 @@ public abstract class ResourceSpreader {
 								}
 							}
 						}
+						// We now have the new groups so we can start
+						// subscribing
 						FreqSyncer subscribeMe;
 						if (notClassified == myDepGroup) {
 							depgrouplen = notClassifiedLen;
@@ -278,16 +363,20 @@ public abstract class ResourceSpreader {
 							subscribeMe = new FreqSyncer(notClassified,
 									providerCount, notClassifiedLen);
 						}
-						subscribeMe.updateFrequency(subscribeMe.myDepGroup[0]
-								.singleGroupwiseFreqUpdater());
+						// Ensuring freq updates for every newly created group
+						subscribeMe.updateMyFreqNow();
 						if (stillNotClassified == null) {
+							// No further spreaders to process
 							break;
 						} else {
+							// let's work on the new spreaders
 							notClassified = stillNotClassified;
 							providerCount = newpc;
 							notClassifiedLen = newlen;
 						}
 					} else {
+						// nothing left in notclassified that can be use in
+						// dependency groups
 						notClassifiedLen = 0;
 						if (notClassified == myDepGroup) {
 							depgrouplen = 0;
@@ -295,11 +384,22 @@ public abstract class ResourceSpreader {
 					}
 				} while (notClassifiedLen != 0);
 				if (notClassified == myDepGroup && depgrouplen == 0) {
+					// No group was created we have to unsubscribe
 					unsubscribe();
 				}
 			} else {
-				updateFrequency(myDepGroup[0].singleGroupwiseFreqUpdater());
+				updateMyFreqNow();
 			}
+		}
+
+		private void updateMyFreqNow() {
+			final long newFreq = myDepGroup[0].singleGroupwiseFreqUpdater();
+			regularFreqMode = newFreq != 0;
+			updateFrequency(newFreq);
+		}
+
+		public boolean isRegularFreqMode() {
+			return regularFreqMode;
 		}
 
 		private void buildDepGroup(final ResourceSpreader startingItem) {
@@ -316,8 +416,15 @@ public abstract class ResourceSpreader {
 		}
 	}
 
+	/**
+	 * This constructor just saves the processing power that can be spread in
+	 * every tick by the newly instantiated spreader.
+	 * 
+	 * @param initialProcessingPower
+	 *            Maximum usable bandwidth in a during a single timing event
+	 */
 	public ResourceSpreader(final double initialProcessingPower) {
-		setPerSecondProcessingPower(initialProcessingPower);
+		setPerTickProcessingPower(initialProcessingPower);
 	}
 
 	public final FreqSyncer getSyncer() {
@@ -337,14 +444,30 @@ public abstract class ResourceSpreader {
 		}
 	}
 
+	/**
+	 * When a new consumption is initiated it must be registered to the
+	 * corresponding spreader with this function.
+	 * 
+	 * The consumption object is added to the array of current consumptions.
+	 * This function also makes sure that the timing events arrive if this is
+	 * the first object in the array.
+	 * 
+	 * WARNING: This function should not be called by anyone else but the
+	 * registration function of the resource consumption! (Otherwise duplicate
+	 * registrations could happen!)
+	 * 
+	 * @param con
+	 *            The consumption object to be registered
+	 */
 	static boolean registerConsumption(final ResourceConsumption con) {
 		final ResourceSpreader provider = con.getProvider();
 		final ResourceSpreader consumer = con.getConsumer();
 		if (con.isRegistered()
 				|| !(provider.isAcceptableConsumption(con) && consumer
-				.isAcceptableConsumption(con))) {
+						.isAcceptableConsumption(con))) {
 			return false;
 		}
+		// ResourceConsumption synchronization
 		ArrayHandler.removeAndReplaceWithLast(provider.underRemoval, con);
 		ArrayHandler.removeAndReplaceWithLast(consumer.underRemoval, con);
 
@@ -369,7 +492,7 @@ public abstract class ResourceSpreader {
 	}
 
 	protected boolean isAcceptableConsumption(final ResourceConsumption con) {
-		return getSamePart(con).equals(this) && perSecondProcessingPower > 0
+		return getSamePart(con).equals(this) && perTickProcessingPower > 0
 				&& con.getHardLimit() > 0;
 	}
 
@@ -382,17 +505,16 @@ public abstract class ResourceSpreader {
 	}
 
 	private void doProcessing(final long currentFireCount) {
-		if (currentFireCount == lastNotifTime) {
+		if (currentFireCount == lastNotifTime && mySyncer.isRegularFreqMode()) {
 			return;
 		}
 		ResourceConsumption[] toRemove = null;
 		boolean firsthit = true;
 		int remIdx = 0;
-		final double secondsPassed = (currentFireCount - lastNotifTime) / 1000d;
+		final long ticksPassed = currentFireCount - lastNotifTime;
 		for (int i = 0; i < underProcessingLen; i++) {
 			final ResourceConsumption con = underProcessing.get(i);
-			final double processed = processSingleConsumption(con,
-					secondsPassed);
+			final double processed = processSingleConsumption(con, ticksPassed);
 			if (processed < 0) {
 				totalProcessed -= processed;
 				if (firsthit) {
@@ -411,7 +533,7 @@ public abstract class ResourceSpreader {
 	}
 
 	protected abstract double processSingleConsumption(
-			final ResourceConsumption con, final double secondsPassed);
+			final ResourceConsumption con, final long ticksPassed);
 
 	protected abstract ResourceSpreader getCounterPart(
 			final ResourceConsumption con);
@@ -425,6 +547,8 @@ public abstract class ResourceSpreader {
 		if (mySyncer != null) {
 			final long currTime = Timed.getFireCount();
 			if (isConsumer()) {
+				// We first have to make sure the providers provide the
+				// stuff that this consumer might need
 				final int len = mySyncer.getFirstConsumerId();
 				final ResourceSpreader[] dg = mySyncer.myDepGroup;
 				for (int i = 0; i < len; i++) {
@@ -436,24 +560,64 @@ public abstract class ResourceSpreader {
 		return totalProcessed;
 	}
 
-	public double getPerSecondProcessingPower() {
-		return perSecondProcessingPower;
+	public double getPerTickProcessingPower() {
+		return perTickProcessingPower;
 	}
 
-	protected void setPerSecondProcessingPower(double perSecondProcessingPower) {
-		this.perSecondProcessingPower = perSecondProcessingPower;
-		this.negligableProcessing = this.perSecondProcessingPower / 1000000000;
+	protected void setPerTickProcessingPower(double perTickProcessingPower) {
+		// if (isSubscribed()) {
+		// // TODO: this case might be interesting to support.
+		// throw new IllegalStateException(
+		// "It is not possible to change the processing power of a spreader while it is subscribed!");
+		// }
+		this.perTickProcessingPower = perTickProcessingPower;
+		this.negligableProcessing = this.perTickProcessingPower / 1000000000;
+	}
+
+	public PowerState getCurrentPowerBehavior() {
+		return currentPowerBehavior;
+	}
+
+	// FIXME: this might be protected later on.
+	public void setCurrentPowerBehavior(final PowerState newPowerBehavior) {
+		if (newPowerBehavior == null) {
+			throw new IllegalStateException(
+					"Trying to set an unknown power behavior");
+		}
+		if (currentPowerBehavior != newPowerBehavior) {
+			currentPowerBehavior = newPowerBehavior;
+			final int size = listeners.size();
+			for (int i = 0; i < size; i++) {
+				listeners.get(i).behaviorChanged(this, newPowerBehavior);
+			}
+		}
+	}
+
+	public void subscribePowerBehaviorChangeEvents(
+			final PowerBehaviorChangeListener pbcl) {
+		listeners.add(pbcl);
+	}
+
+	public void unsubscribePowerBehaviorChangeEvents(
+			final PowerBehaviorChangeListener pbcl) {
+		listeners.remove(pbcl);
 	}
 
 	@Override
 	public String toString() {
-		return "RS(processing: " + toProcess.toString() + ")";
+		return "RS(processing: "
+				+ toProcess.toString()
+				+ "in power state: "
+				+ (currentPowerBehavior == null ? "-" : currentPowerBehavior
+						.toString()) + ")";
 	}
 
 	static int hashCounter = 0;
 	private int myHashCode = getHashandIncCounter();
 
 	static int getHashandIncCounter() {
+		// FIXME
+		// WARNING: some possible hash collisions!
 		return hashCounter++;
 	}
 

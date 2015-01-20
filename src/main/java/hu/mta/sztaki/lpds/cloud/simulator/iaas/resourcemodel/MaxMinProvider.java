@@ -39,8 +39,8 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 
 	@Override
 	protected double processSingleConsumption(final ResourceConsumption con,
-			final double secondsPassed) {
-		return con.doProviderProcessing(secondsPassed);
+			final long ticksPassed) {
+		return con.doProviderProcessing(ticksPassed);
 	}
 
 	@Override

@@ -99,6 +99,7 @@ public class VMTest extends IaaSRelatedFoundation {
 			centralVM.migrate(ra);
 			Assert.fail("It should not be possible to do migration if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		ra.cancel();
 		try {
@@ -107,26 +108,31 @@ public class VMTest extends IaaSRelatedFoundation {
 					2, 2, new HashMap<String, Integer>()));
 			Assert.fail("It should not be possible to do preparation if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		try {
 			centralVM.resume();
 			Assert.fail("It should not be possible to do resume if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		try {
 			centralVM.suspend();
 			Assert.fail("It should not be possible to do suspend if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		try {
 			centralVM.switchoff(false);
 			Assert.fail("It should not be possible to do switchoff if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		try {
 			switchOnVMwithMaxCapacity(centralVM, true);
 			Assert.fail("It should not be possible to do switchon if the VM is non servable");
 		} catch (StateChangeException ex) {
+			// Correct behavior
 		}
 		try {
 			centralVM.destroy(false);
@@ -240,7 +246,7 @@ public class VMTest extends IaaSRelatedFoundation {
 			NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		ResourceConsumption con = centralVM.newComputeTask(1,
+		ResourceConsumption con = centralVM.newComputeTask(2,
 				ResourceConsumption.unlimitedProcessing, cae);
 		Timed.fire();
 		centralVM.switchoff(true);
@@ -265,6 +271,7 @@ public class VMTest extends IaaSRelatedFoundation {
 			centralVM.switchoff(false);
 			Assert.fail("On a VM with compute tasks, switchoff should not succeed if it was not asked to kill the compute tasks");
 		} catch (VMManagementException ex) {
+			// Expected
 		}
 		Assert.assertFalse(
 				"The compute task should not be cancelled after faulty switchoff",
@@ -378,6 +385,7 @@ public class VMTest extends IaaSRelatedFoundation {
 			vmToUse.destroy(false);
 			Assert.fail("A VM in transferring phase should not be destroyable!");
 		} catch (VMManagementException ex) {
+			// expected operation
 		}
 		Assert.assertEquals("Not in expected state",
 				VirtualMachine.State.SUSPEND_TR, vmToUse.getState());
@@ -418,9 +426,11 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = VMManagementException.class, timeout = 100)
 	public void futureNotFaultySuspendTest() throws VMManagementException,
 			NetworkException {
+		// FIXME: this should pass later
 		switchOnVMwithMaxCapacity(centralVM, true);
 		long memless = pm.localDisk.getFreeStorageCapacity();
 		long memsize = centralVM.getResourceAllocation().allocated.requiredMemory;
+		// Ideally this should be enough but not right now!
 		pm.localDisk.registerObject(new StorageObject("SpaceFiller", memless
 				- memsize, false));
 		centralVM.suspend();
@@ -438,6 +448,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = VMManagementException.class, timeout = 100)
 	public void futureNotFauaultyResumeTest() throws VMManagementException,
 			NetworkException {
+		// FIXME: this should pass later
 		switchOnVMwithMaxCapacity(centralVM, true);
 		centralVM.suspend();
 		Timed.simulateUntilLastEvent();
@@ -475,9 +486,9 @@ public class VMTest extends IaaSRelatedFoundation {
 		switchOnVMwithMaxCapacity(toUse, true);
 		final double beforePmCon = pm.getTotalProcessed();
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		final double ctLen = 100;
+		final double ctLen = 100 * aSecond;
 		toUse.newComputeTask(ctLen, 1, cae);
-		Timed.simulateUntil(Timed.getFireCount() + 1000);
+		Timed.simulateUntil(Timed.getFireCount() + aSecond);
 		doMigration(pm, pmtarget, toUse, true);
 		Assert.assertTrue("VM is not on its new host",
 				pmtarget.publicVms.contains(toUse));
@@ -487,10 +498,10 @@ public class VMTest extends IaaSRelatedFoundation {
 				VirtualMachine.State.RUNNING, toUse.getState());
 		Assert.assertEquals(
 				"Source VM should have minority of the consumption",
-				beforePmCon + 1, pm.getTotalProcessed(), 0.0001);
+				beforePmCon + aSecond, pm.getTotalProcessed(), 0.0001);
 		Assert.assertEquals(
-				"Target VM should have the majority of the consumption",
-				ctLen - 1, pmtarget.getTotalProcessed(), 0.0001);
+				"Target VM should have the majority of the consumption", ctLen
+						- aSecond, pmtarget.getTotalProcessed(), 0.0001);
 		return pmtarget;
 	}
 
@@ -528,9 +539,9 @@ public class VMTest extends IaaSRelatedFoundation {
 		final PhysicalMachine pmtarget = createAndExecutePM();
 		final double beforePmCon = pm.getTotalProcessed();
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		final double ctLen = 100;
+		final double ctLen = 100 * aSecond;
 		centralVM.newComputeTask(ctLen, 1, cae);
-		Timed.simulateUntil(Timed.getFireCount() + 1000);
+		Timed.simulateUntil(Timed.getFireCount() + aSecond);
 		doMigration(pm, pmtarget, centralVM, false);
 		final boolean[] haveNotBeenThere = new boolean[1];
 		haveNotBeenThere[0] = true;
@@ -540,7 +551,7 @@ public class VMTest extends IaaSRelatedFoundation {
 				if (newState.equals(VirtualMachine.State.RUNNING)
 						&& haveNotBeenThere[0]) {
 					haveNotBeenThere[0] = false;
-					new DeferredEvent(1000) {
+					new DeferredEvent(aSecond) {
 						@Override
 						protected void eventAction() {
 							try {
@@ -563,10 +574,10 @@ public class VMTest extends IaaSRelatedFoundation {
 				VirtualMachine.State.RUNNING, centralVM.getState());
 		Assert.assertEquals(
 				"Source VM should have the majority of the consumption",
-				beforePmCon + ctLen - 1, pm.getTotalProcessed(), 0.0001);
+				beforePmCon + ctLen - aSecond, pm.getTotalProcessed(), 0.0001);
 		Assert.assertEquals(
-				"Target VM should have the minority of the consumption", 1,
-				pmtarget.getTotalProcessed(), 0.0001);
+				"Target VM should have the minority of the consumption",
+				aSecond, pmtarget.getTotalProcessed(), 0.0001);
 
 	}
 
@@ -613,18 +624,22 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void failMigrationProcedureAfterSuspendPhaseNoAvalableStorage()
 			throws VMManagementException, NetworkException {
+		// Does not allow the copying of the disk and memory to the target
+		// machine
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size - 1);
 	}
 
 	@Test(timeout = 100)
 	public void failMigrationProcedureAfterSuspendPhaseLittleAvalableStorage()
 			throws VMManagementException, NetworkException {
+		// Does not allow the copying of the memory to the target machine
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size);
 	}
 
 	@Test(timeout = 100)
 	public void failMigrationProcedureBeforeResumePhase()
 			throws VMManagementException, NetworkException {
+		// Does not allow the copying of the memory to the VM's state
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
 	}
 
@@ -680,8 +695,10 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void consumptionBlocking() throws VMManagementException, NetworkException {
-		final VirtualMachine vm = pm.requestVM(va, pm.getAvailableCapacities(), pm.localDisk, 1)[0];
+	public void consumptionBlocking() throws VMManagementException,
+			NetworkException {
+		final VirtualMachine vm = pm.requestVM(va, pm.getAvailableCapacities(),
+				pm.localDisk, 1)[0];
 		ResourceConsumption conVM = new ResourceConsumption(100000,
 				ResourceConsumption.unlimitedProcessing, vm, pm,
 				new ConsumptionEventAssert());
@@ -691,5 +708,61 @@ public class VMTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
+	}
+
+	private boolean vmDestroyerinState(VirtualMachine.State st,
+			VirtualMachine vm) throws VMManagementException {
+		if (vm.getState().equals(st)) {
+			vm.destroy(true);
+			return true;
+		}
+		return false;
+	}
+
+	@Test(timeout = 100)
+	public void ensuringReleasewithDestroy() throws VMManagementException,
+			NetworkException {
+		for (final VirtualMachine.State st : VirtualMachine.State.values()) {
+			if (vmDestroyerinState(st, centralVM))
+				continue;
+			final boolean[] marker = new boolean[1];
+			marker[0] = false;
+			switchOnVMwithMaxCapacity(centralVM, false);
+			try {
+				if (!vmDestroyerinState(st, centralVM)) {
+					centralVM
+							.subscribeStateChange(new VirtualMachine.StateChange() {
+								@Override
+								public void stateChanged(State oldState,
+										State newState) {
+									try {
+										vmDestroyerinState(st, centralVM);
+									} catch (VMManagementException ex) {
+										marker[0] = true;
+									}
+								}
+							});
+				}
+			} catch (VMManagementException e) {
+				marker[0] = true;
+			}
+			Timed.simulateUntilLastEvent();
+			if (marker[0]) {
+				Assert.assertEquals("Should be running from state " + st,
+						VirtualMachine.State.RUNNING, centralVM.getState());
+				centralVM.destroy(true);
+			} else {
+				Assert.assertEquals("Should be destroyed from state " + st,
+						VirtualMachine.State.DESTROYED, centralVM.getState());
+			}
+			Timed.simulateUntilLastEvent();
+			Assert.assertEquals(
+					"After the second destroy it should be destroyed from state "
+							+ st, VirtualMachine.State.DESTROYED,
+					centralVM.getState());
+			Assert.assertNull(
+					"Should not have any resource allocations starting from state "
+							+ st, centralVM.getResourceAllocation());
+		}
 	}
 }

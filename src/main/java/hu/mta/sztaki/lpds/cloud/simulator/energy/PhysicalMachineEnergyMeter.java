@@ -23,49 +23,49 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
+package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEvent;
 
+import java.util.Arrays;
 import java.util.List;
 
-public class AlwaysOnMachines extends PhysicalMachineController {
-	public AlwaysOnMachines(final IaaSService parent) {
-		super(parent);
+public class PhysicalMachineEnergyMeter extends AggregatedEnergyMeter implements
+		VMManager.CapacityChangeEvent<ResourceConstraints> {
+
+	private final PhysicalMachine observed;
+
+	public PhysicalMachineEnergyMeter(final PhysicalMachine pm) {
+		super(Arrays.asList(new EnergyMeter[] { new DirectEnergyMeter(pm),
+				new DirectEnergyMeter(pm.localDisk.diskinbws),
+				new DirectEnergyMeter(pm.localDisk.diskoutbws),
+				new DirectEnergyMeter(pm.localDisk.inbws),
+				new DirectEnergyMeter(pm.localDisk.outbws) }));
+		observed = pm;
 	}
 
 	@Override
-	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
-		return new VMManager.CapacityChangeEvent<PhysicalMachine>() {
-			@Override
-			public void capacityChanged(ResourceConstraints newCapacity,
-					List<PhysicalMachine> alteredPMs) {
-				final boolean newRegistration = parent
-						.isRegisteredHost(alteredPMs.get(0));
-				if (newRegistration) {
-					final int size = alteredPMs.size();
-					for (int i = 0; i < size; i++) {
-						PhysicalMachine pm = alteredPMs.get(i);
-						if (PhysicalMachine.ToOfforOff.contains(pm.getState())) {
-							pm.turnon();
-						}
-					}
-				}
-			}
-		};
+	public boolean startMeter(long interval, boolean dropPriorReading) {
+		boolean returner = super.startMeter(interval, dropPriorReading);
+		observed.subscribeToCapacityChanges(this);
+		return returner;
 	}
 
 	@Override
-	protected QueueingEvent getQueueingEvent() {
-		return new QueueingEvent() {
-			@Override
-			public void queueingStarted() {
-				// do nothing, we already have all the machines running
-			}
-		};
+	public void stopMeter() {
+		super.stopMeter();
+		observed.unsubscribeFromCapacityChanges(this);
+	}
+
+	@Override
+	public void capacityChanged(ResourceConstraints newCapacity,
+			List<ResourceConstraints> affectedCapacity) {
+		readjustMeter();
+	}
+
+	public PhysicalMachine getObserved() {
+		return observed;
 	}
 }

@@ -22,9 +22,9 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
@@ -35,123 +35,139 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.List;
 
 public class SchedulingDependentMachines extends PhysicalMachineController {
-	private class CapacityChangeManager implements
-			VMManager.CapacityChangeEvent, PhysicalMachine.StateChangeListener {
-		final PhysicalMachine observed;
-		boolean turningOn = false;
 
-		public CapacityChangeManager(final PhysicalMachine pm) {
-			observed = pm;
-			observed.subscribeToIncreasingFreeapacityChanges(this);
-			observed.subscribeStateChangeEvents(this);
-		}
+    private class CapacityChangeManager implements
+            VMManager.CapacityChangeEvent<ResourceConstraints>,
+            PhysicalMachine.StateChangeListener {
 
-		private void switchoffmachine() {
-			try {
-				observed.switchoff(null);
-			} catch (VMManagementException e) {
-			} catch (NetworkException e) {
-			}
-		}
+        final PhysicalMachine observed;
 
-		@Override
-		public void capacityChanged(final ResourceConstraints newCapacity) {
-			if (observed.getCapacities().compareTo(newCapacity) <= 0
-					&& parent.sched.getTotalQueued().requiredCPUs == 0) {
-				switchoffmachine();
-			}
-		}
+        public CapacityChangeManager(final PhysicalMachine pm) {
+            observed = pm;
+            observed.subscribeToIncreasingFreeapacityChanges(this);
+            observed.subscribeStateChangeEvents(this);
+        }
 
-		@Override
-		public void stateChanged(State oldState, State newState) {
-			switch (newState) {
-			case SWITCHINGON:
-				turningOn = true;
-				noMachineTurningOn = false;
-				break;
-			case RUNNING:
-				turningOn = false;
-				noMachineTurningOn = true;
-				int cmSize = capacityManagers.size();
-				for (int i = 0; i < cmSize && noMachineTurningOn; i++) {
-					noMachineTurningOn &= !capacityManagers.get(i).turningOn;
-				}
-				if (parent.sched.getQueueLength() == 0) {
-					if (!observed.isHostingVMs()) {
-						switchoffmachine();
-					}
-				} else if (noMachineTurningOn
-						&& parent.getRunningCapacities().compareTo(
-								parent.sched.getTotalQueued()) > 0) {
-					turnOnAMachine();
-				}
-			default:
-				break;
-			}
-		}
-	}
+        private void switchoffmachine() {
+            try {
+                observed.switchoff(null);
+				// These exceptions below are only relevant if migration
+                // is requested now they will never come.
+            } catch (VMManagementException e) {
+            } catch (NetworkException e) {
+            }
+        }
 
-	private ArrayList<CapacityChangeManager> capacityManagers = new ArrayList<CapacityChangeManager>();
-	private boolean noMachineTurningOn = true;
+        @Override
+        public void capacityChanged(final ResourceConstraints newCapacity,
+                final List<ResourceConstraints> newlyFreeCapacities) {
+            if (observed.getCapacities().compareTo(newCapacity) <= 0
+                    && parent.sched.getTotalQueued().requiredCPUs == 0) {
+                // Totally free machine and nothing queued
+                switchoffmachine();
+            }
+        }
 
-	public SchedulingDependentMachines(final IaaSService parent) {
-		super(parent);
-	}
+        @Override
+        public void stateChanged(State oldState, State newState) {
+            if (PhysicalMachine.State.RUNNING.equals(newState)) {
+                currentlyStartingPM = null;
+                if (parent.sched.getQueueLength() == 0) {
+                    new DeferredEvent(
+                            (observed.onDelay + observed.offDelay) / 2) {
+				// Keeps the just started PM on for a short while to
+                                // allow some new VMs to arrive, otherwise it seems like
+                                // we just started the PM for no reason
+                                @Override
+                                protected void eventAction() {
+                                    if (!observed.isHostingVMs() && observed.isRunning()) {
+                                        switchoffmachine();
+                                    }
+                                }
+                            };
+                } else {
+                    ResourceConstraints runningCapacities = parent
+                            .getRunningCapacities();
+                    if (!parent.runningMachines.contains(observed)) {
+                        // parent have not recognize this PM's startup yet
+                        runningCapacities = ResourceConstraints.add(
+                                runningCapacities, observed.getCapacities());
+                    }
+                    if (runningCapacities.compareTo(parent.sched
+                            .getTotalQueued()) < 0) {
+						// no capacities to handle the currently queued jobs, so
+                        // we need to start up further machines
+                        turnOnAMachine();
+                    }
+                }
+            }
+        }
+    }
 
-	@Override
-	protected VMManager.CapacityChangeEvent getHostRegEvent() {
-		return new CapacityChangeEvent() {
-			@Override
-			public void capacityChanged(final ResourceConstraints newCapacity) {
-				int cmSize = capacityManagers.size();
-				machineloop: for (final PhysicalMachine pm : parent.machines) {
-					for (int j = 0; j < cmSize; j++) {
-						if (capacityManagers.get(j).observed == pm)
-							continue machineloop;
-					}
-					capacityManagers.add(new CapacityChangeManager(pm));
-					cmSize++;
-				}
-				final Iterator<CapacityChangeManager> it = capacityManagers
-						.iterator();
-				while (it.hasNext()) {
-					final CapacityChangeManager c = it.next();
-					if (!parent.machines.contains(c.observed)) {
-						c.observed
-								.unsubscribeFromIncreasingFreeCapacityChanges(c);
-						it.remove();
-					}
-				}
-			}
-		};
-	}
+    private HashMap<PhysicalMachine, CapacityChangeManager> capacityManagers = new HashMap<PhysicalMachine, CapacityChangeManager>();
+    private PhysicalMachine currentlyStartingPM = null;
 
-	@Override
-	protected Scheduler.QueueingEvent getQueueingEvent() {
-		return new Scheduler.QueueingEvent() {
-			@Override
-			public void queueingStarted() {
-				if (noMachineTurningOn) {
-					turnOnAMachine();
-				}
-			}
-		};
-	}
+    public SchedulingDependentMachines(final IaaSService parent) {
+        super(parent);
+    }
 
-	protected void turnOnAMachine() {
-		final int pmsize = parent.machines.size();
-		if (parent.runningMachines.size() != pmsize) {
-			for (int i = 0; i < pmsize; i++) {
-				final PhysicalMachine n = parent.machines.get(i);
-				if (PhysicalMachine.ToOfforOff.contains(n.getState())) {
-					n.turnon();
-					break;
-				}
-			}
-		}
-	}
+    @Override
+    protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
+        return new CapacityChangeEvent<PhysicalMachine>() {
+            @Override
+            public void capacityChanged(final ResourceConstraints newCapacity,
+                    final List<PhysicalMachine> alteredPMs) {
+                final boolean newRegistration = parent
+                        .isRegisteredHost(alteredPMs.get(0));
+                final int pmNum = alteredPMs.size();
+                if (newRegistration) {
+                    // Management of capacity increase
+                    for (int i = pmNum - 1; i >= 0; i--) {
+                        final PhysicalMachine pm = alteredPMs.get(i);
+                        capacityManagers.put(pm, new CapacityChangeManager(pm));
+                    }
+                } else {
+                    // Management of capacity decrease
+                    for (int i = pmNum - 1; i >= 0; i--) {
+                        capacityManagers.remove(alteredPMs.get(i));
+                    }
+                }
+            }
+        };
+    }
+
+    @Override
+    protected Scheduler.QueueingEvent getQueueingEvent() {
+        return new Scheduler.QueueingEvent() {
+            @Override
+            public void queueingStarted() {
+                if (currentlyStartingPM == null
+                        || PhysicalMachine.State.RUNNING
+                        .equals(currentlyStartingPM.getState())) {
+					// If there are no machines under their startup procedure,
+                    // or the currently started up machine is already running
+                    // and we still receive the queueingstarted event
+                    turnOnAMachine();
+                }
+            }
+        };
+    }
+
+    protected void turnOnAMachine() {
+        final int pmsize = parent.machines.size();
+        if (parent.runningMachines.size() != pmsize) {
+            for (int i = 0; i < pmsize; i++) {
+                final PhysicalMachine n = parent.machines.get(i);
+                if (PhysicalMachine.ToOfforOff.contains(n.getState())) {
+                    currentlyStartingPM = n;
+                    n.turnon();
+                    break;
+                }
+            }
+        }
+    }
 }

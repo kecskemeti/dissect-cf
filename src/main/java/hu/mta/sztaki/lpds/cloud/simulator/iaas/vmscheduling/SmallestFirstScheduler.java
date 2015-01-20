@@ -27,26 +27,89 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
-import java.util.Collections;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.PriorityQueue;
 
 public class SmallestFirstScheduler extends FirstFitScheduler {
 	public static final Comparator<QueueingData> vmQueueSmallestFirstComparator = new Comparator<QueueingData>() {
 		@Override
-		public int compare(QueueingData o1, QueueingData o2) {
+		public int compare(final QueueingData o1, final QueueingData o2) {
 			final int compRC = o1.cumulativeRC.compareTo(o2.cumulativeRC);
 			return compRC == 0 ? Long.signum(o1.receivedTime - o2.receivedTime)
 					: compRC;
 		}
 	};
 
-	public SmallestFirstScheduler(final IaaSService parent) {
-		super(parent);
+	public static class SFQueue extends PriorityQueue<QueueingData> implements
+			List<QueueingData> {
+		private static String UFCmessage="Unexpected function call";
+		private static final long serialVersionUID = 2693241597335321816L;
+
+		public SFQueue() {
+			super(5, vmQueueSmallestFirstComparator);
+		}
+
+		@Override
+		public boolean addAll(int index, Collection<? extends QueueingData> c) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public QueueingData get(int index) {
+			if (index == 0)
+				return peek();
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public QueueingData set(int index, QueueingData element) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public void add(int index, QueueingData element) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public QueueingData remove(int index) {
+			if (index == 0)
+				return poll();
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public int indexOf(Object o) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public int lastIndexOf(Object o) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public ListIterator<QueueingData> listIterator() {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public ListIterator<QueueingData> listIterator(int index) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
+		@Override
+		public List<QueueingData> subList(int fromIndex, int toIndex) {
+			throw new IllegalStateException(UFCmessage);
+		}
+
 	}
 
-	@Override
-	protected void scheduleQueued() {
-		Collections.sort(queue, vmQueueSmallestFirstComparator);
-		super.scheduleQueued();
+	public SmallestFirstScheduler(final IaaSService parent) {
+		super(parent);
+		queue = new SFQueue();
 	}
 }

@@ -27,6 +27,23 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import java.util.Comparator;
 
+/**
+ * The instances of this class represent an individual resource consumption in
+ * the system. The visibility of the class and its members are defined so the
+ * compiler does not need to generate access methods for the members thus
+ * allowing fast and prompt changes in its contents.
+ * 
+ * Upon setting up the consumption, every instance is registered at the provider
+ * and the consumer resource spreaders. Once the consumption is completed these
+ * registrations should be dropped.
+ * 
+ * WARNING this is an internal representation of the consumption. This class is
+ * not supposed to be used outside of the context of the ResourceModel.
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * 
+ */
 public class ResourceConsumption {
 
 	public static final Comparator<ResourceConsumption> limitComparator = new Comparator<ResourceConsumption>() {
@@ -41,20 +58,44 @@ public class ResourceConsumption {
 
 	public static final double unlimitedProcessing = Double.MAX_VALUE;
 
+	/**
+	 * This interface allows its implementors to get notified when a consumption
+	 * completes.
+	 * 
+	 * @author 
+	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * 
+	 */
 	public interface ConsumptionEvent {
+		/**
+		 * This function is called when the resource consumption represented by
+		 * the ResourceConsumption object is fulfilled
+		 */
 		void conComplete();
+
+		/**
+		 * This function is called when the resource consumption cannot be
+		 * handled properly
+		 */
+
 		void conCancelled(ResourceConsumption problematic);
 	}
 
+	/**
+	 * The currently processing entities (e.g., a network buffer)
+	 */
 	private double underProcessing;
+	/**
+	 * The remaining unprocessed entities (e.g., remaining bytes of a transfer)
+	 */
 	private double toBeProcessed;
 
 	private double processingLimit;
 	private double requestedLimit;
 	private double hardLimit;
-	private final double negligableProcessing;
 
 	private double realLimit;
+	private double halfRealLimit;
 	private long completionDistance;
 	double providerLimit;
 	double consumerLimit;
@@ -62,6 +103,10 @@ public class ResourceConsumption {
 	boolean unassigned;
 	boolean inassginmentprocess;
 
+	/**
+	 * The event to be fired when there is nothing left to process in this
+	 * consumption. If this variable is null then the event was already fired.
+	 */
 	final ConsumptionEvent ev;
 
 	private ResourceSpreader consumer;
@@ -70,12 +115,23 @@ public class ResourceConsumption {
 	private boolean resumable = true;
 	private boolean registered = false;
 
+	/**
+	 * This constructor describes the basic properties of an individual
+	 * resource consumption.
+	 * 
+	 * @param total
+	 *            The amount of processing to be done during the lifetime of
+	 *            the just created object
+	 * @param e
+	 *            Specify here the event to be fired when the just created
+	 *            object completes its transfers. With this event it is possible
+	 *            to notify the entity who initiated the transfer.
+	 */
 	public ResourceConsumption(final double total, final double limit,
 			final ResourceSpreader consumer, final ResourceSpreader provider,
 			final ConsumptionEvent e) {
 		underProcessing = 0;
 		toBeProcessed = total;
-		this.negligableProcessing = total / 1000000000;
 		this.consumer = consumer;
 		this.provider = provider;
 		if (e == null) {
@@ -88,15 +144,15 @@ public class ResourceConsumption {
 
 	private void updateHardLimit() {
 		final double provLimit = provider == null ? unlimitedProcessing
-				: provider.perSecondProcessingPower;
+				: provider.perTickProcessingPower;
 		final double conLimit = consumer == null ? unlimitedProcessing
-				: consumer.perSecondProcessingPower;
+				: consumer.perTickProcessingPower;
 		hardLimit = requestedLimit < provLimit ? requestedLimit : provLimit;
 		if (hardLimit > conLimit) {
 			hardLimit = conLimit;
 		}
 		setProcessingLimit(requestedLimit);
-		realLimit = hardLimit;
+		setRealLimit(hardLimit);
 	}
 
 	public boolean registerConsumption() {
@@ -154,21 +210,21 @@ public class ResourceConsumption {
 	}
 
 	private void calcCompletionDistance() {
-		final double freqFl = getUnProcessed() * 1000 / realLimit;
-		final long freqFix = (long) freqFl;
-		completionDistance = freqFl == freqFix ? freqFix : freqFix + 1;
+		completionDistance = Math.round(getUnProcessed() / realLimit);
 	}
 
-	double doProviderProcessing(final double secondsPassed) {
+	double doProviderProcessing(final long ticksPassed) {
 		double processed = 0;
 		if (toBeProcessed > 0) {
-			final double possiblePush = secondsPassed * realLimit;
+			final double possiblePush = ticksPassed * realLimit;
 			processed = possiblePush < toBeProcessed ? possiblePush
 					: toBeProcessed;
 			toBeProcessed -= processed;
 			underProcessing += processed;
-			if (toBeProcessed <= negligableProcessing) {
+			if (toBeProcessed < halfRealLimit) {
+				// ensure that tobeprocessed is 0!
 				processed += toBeProcessed;
+				underProcessing += toBeProcessed;
 				toBeProcessed = 0;
 				return -processed;
 			}
@@ -176,15 +232,16 @@ public class ResourceConsumption {
 		return processed;
 	}
 
-	double doConsumerProcessing(final double secondsPassed) {
+	double doConsumerProcessing(final long ticksPassed) {
 		double processed = 0;
 		if (underProcessing > 0) {
-			final double possibleProcessing = secondsPassed * realLimit;
+			final double possibleProcessing = ticksPassed * realLimit;
 			processed = possibleProcessing < underProcessing ? possibleProcessing
 					: underProcessing;
 			underProcessing -= processed;
 			calcCompletionDistance();
-			if (getUnProcessed() <= negligableProcessing) {
+			if (completionDistance == 0) {
+				// ensure that tobeprocessed is 0!
 				processed += underProcessing;
 				underProcessing = 0;
 				return -processed;
@@ -226,14 +283,20 @@ public class ResourceConsumption {
 		return provider;
 	}
 
+	private void setRealLimit(final double rL) {
+		realLimit = rL;
+		halfRealLimit = rL / 2;
+	}
+
 	double updateRealLimit() {
-		realLimit = providerLimit < consumerLimit ? providerLimit
+		final double rlTrial = providerLimit < consumerLimit ? providerLimit
 				: consumerLimit;
-		if (realLimit == 0) {
+		if (rlTrial == 0) {
 			throw new IllegalStateException(
 					"Cannot calculate the completion distance for a consumption without a real limit! "
 							+ this);
 		}
+		setRealLimit(rlTrial);
 		calcCompletionDistance();
 		return realLimit;
 	}
@@ -247,7 +310,7 @@ public class ResourceConsumption {
 	public boolean isRegistered() {
 		return registered;
 	}
-	
+
 	public boolean isResumable() {
 		return resumable;
 	}

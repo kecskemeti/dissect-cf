@@ -30,9 +30,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAda
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
@@ -40,17 +42,22 @@ import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
 
 public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 	public static final double processingTasklen = 1;
+	public static final double permsProcessing = processingTasklen / aSecond;
 	MaxMinProvider offer;
 	MaxMinConsumer utilize;
 	ResourceConsumption con;
 
+	public ResourceConsumption createAUnitConsumption(final ConsumptionEvent ce) {
+		return new ResourceConsumption(processingTasklen,
+				ResourceConsumption.unlimitedProcessing, utilize, offer,
+				ce == null ? new ConsumptionEventAssert() : ce);
+	}
+
 	@Before
 	public void setupConsumption() {
-		offer = new MaxMinProvider(processingTasklen);
-		utilize = new MaxMinConsumer(processingTasklen);
-		con = new ResourceConsumption(processingTasklen,
-				ResourceConsumption.unlimitedProcessing, utilize, offer,
-				new ConsumptionEventAssert());
+		offer = new MaxMinProvider(permsProcessing);
+		utilize = new MaxMinConsumer(permsProcessing);
+		con = createAUnitConsumption(null);
 	}
 
 	@Test(timeout = 100)
@@ -69,11 +76,13 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 			con.setConsumer(utilize);
 			Assert.fail("Consumer change is not allowed after registration");
 		} catch (IllegalStateException ex) {
+			// Expected after registration
 		}
 		try {
 			con.setProvider(offer);
 			Assert.fail("Provider change is not allowed after registration");
 		} catch (IllegalStateException ex) {
+			// Expected after registration
 		}
 		Assert.assertFalse("Second registration should not succeed",
 				con.registerConsumption());
@@ -101,6 +110,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 
 	@Test(expected = IllegalStateException.class, timeout = 100)
 	public void testNullEvent() {
+		// Below we should not receive a null pointer
 		con = new ResourceConsumption(processingTasklen,
 				ResourceConsumption.unlimitedProcessing, utilize, offer, null);
 		Assert.fail("Should not reach tis point because we asked for a consumption with a null event");
@@ -158,8 +168,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 	@Test(timeout = 100)
 	public void cancelConsumption() {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		con = new ResourceConsumption(processingTasklen,
-				ResourceConsumption.unlimitedProcessing, utilize, offer, cae);
+		con = createAUnitConsumption(cae);
 		double before = preSuspendPhase();
 		con.cancel();
 		Timed.fire();
@@ -175,37 +184,62 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				cae.getArrivedAt() + 1 >= Timed.getFireCount());
 	}
 
+	@Ignore
+	@Test(timeout = 100)
+	public void cancellationJustBeforeCompletion() {
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		long before = Timed.getFireCount();
+		con = createAUnitConsumption(cae);
+		con.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		long len = cae.getArrivedAt() - before;
+		con = createAUnitConsumption(null);
+		con.registerConsumption();
+		ConsumptionEventAssert.hits.clear();
+		Timed.simulateUntil(Timed.getFireCount() + len - 1);
+		Assert.assertTrue("It should not yet arrive",
+				ConsumptionEventAssert.hits.isEmpty());
+		Timed.fire();
+		con.cancel();
+		Timed.fire();
+		// Ambiguous behavior! This needs to be thinked through
+		Assert.assertFalse("It should arrive by now",
+				ConsumptionEventAssert.hits.isEmpty());
+	}
+
 	@Test(timeout = 100)
 	public void failedRegistrationTest() {
-		Assert.assertFalse(
-				"Provider should not accept this consumption",
+		Assert.assertFalse("Provider should not accept this consumption",
 				new ResourceConsumption(100000,
-						ResourceConsumption.unlimitedProcessing, new MaxMinProvider(1) {
-							protected boolean isAcceptableConsumption(ResourceConsumption con) {
+						ResourceConsumption.unlimitedProcessing,
+						new MaxMinProvider(1) {
+							protected boolean isAcceptableConsumption(
+									ResourceConsumption con) {
 								return false;
 							};
-						}, utilize,
-						new ConsumptionEventAssert()).registerConsumption());
-		Assert.assertFalse(
-				"Consumer should not accept this consumption",
+						}, utilize, new ConsumptionEventAssert())
+						.registerConsumption());
+		Assert.assertFalse("Consumer should not accept this consumption",
 				new ResourceConsumption(100000,
-						ResourceConsumption.unlimitedProcessing, new MaxMinConsumer(1) {
+						ResourceConsumption.unlimitedProcessing,
+						new MaxMinConsumer(1) {
 							@Override
-							protected boolean isAcceptableConsumption(ResourceConsumption con) {
+							protected boolean isAcceptableConsumption(
+									ResourceConsumption con) {
 								return false;
 							}
-						}, utilize,
-						new ConsumptionEventAssert()).registerConsumption());
+						}, utilize, new ConsumptionEventAssert())
+						.registerConsumption());
 	}
 
 	@Test(timeout = 100)
 	public void testLessPerformantProvider() {
-		offer = new MaxMinProvider(processingTasklen / 2);
+		offer = new MaxMinProvider(permsProcessing / 2);
 		con = new ResourceConsumption(processingTasklen,
 				ResourceConsumption.unlimitedProcessing, utilize, offer,
 				new ConsumptionEventAssert(Timed.getFireCount()
-						+ (long) (1000 * processingTasklen / offer
-								.getPerSecondProcessingPower())));
+						+ (long) (processingTasklen / offer
+								.getPerTickProcessingPower())));
 		con.registerConsumption();
 		Timed.simulateUntilLastEvent();
 	}

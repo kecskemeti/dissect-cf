@@ -26,9 +26,16 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 
+/**
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * 
+ */
 public abstract class PhysicalMachineController {
 	protected final IaaSService parent;
 	protected final Scheduler.QueueingEvent queueingEvent;
@@ -40,7 +47,7 @@ public abstract class PhysicalMachineController {
 		parent.sched.subscribeQueueingEvents(queueingEvent);
 	}
 
-	protected abstract VMManager.CapacityChangeEvent getHostRegEvent();
+	protected abstract VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent();
 
 	protected abstract Scheduler.QueueingEvent getQueueingEvent();
 

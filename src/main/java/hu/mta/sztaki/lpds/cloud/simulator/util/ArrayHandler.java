@@ -28,19 +28,27 @@ package hu.mta.sztaki.lpds.cloud.simulator.util;
 import java.util.ArrayList;
 
 public class ArrayHandler {
+	/**
+	 * An item removal function that brings the last element from the array to
+	 * the place of the to be removed item. It ruins the order of the array, but
+	 * it is faster than the stock remove operation.
+	 * 
+	 * @param toRemoveFrom
+	 *            The arraylist which is supposedly containing the element
+	 * @param toRemoveWhat
+	 *            The element to be removed
+	 * @return true if the element was successfully removed, false otherwise.
+	 */
 	public static <T> boolean removeAndReplaceWithLast(
 			final ArrayList<T> toRemoveFrom, final T toRemoveWhat) {
-		final int size = toRemoveFrom.size();
-		final int sizeMinus = size - 1;
-		for (int j = 0; j < size; j++) {
-			if (toRemoveFrom.get(j) == toRemoveWhat) {
-				if (j == sizeMinus) {
-					toRemoveFrom.remove(j);
-				} else {
-					toRemoveFrom.set(j, toRemoveFrom.remove(sizeMinus));
-				}
-				return true;
+		final int loc = toRemoveFrom.indexOf(toRemoveWhat);
+		if (loc >= 0) {
+			final int sizeMinus = toRemoveFrom.size() - 1;
+			final T lastItem = toRemoveFrom.remove(sizeMinus);
+			if (loc != sizeMinus) {
+				toRemoveFrom.set(loc, lastItem);
 			}
+			return true;
 		}
 		return false;
 	}

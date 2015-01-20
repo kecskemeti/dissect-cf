@@ -31,10 +31,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocatio
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
-public class FirstFitScheduler extends Scheduler {
+public class RoundRobinScheduler extends Scheduler {
 	ResourceAllocation[] ras = new ResourceAllocation[5];
+	PhysicalMachine nextMachine = null;
 
-	public FirstFitScheduler(IaaSService parent) {
+	public RoundRobinScheduler(IaaSService parent) {
 		super(parent);
 	}
 
@@ -42,6 +43,10 @@ public class FirstFitScheduler extends Scheduler {
 	protected void scheduleQueued() {
 		final int totalMachineNum = parent.runningMachines.size();
 		if (totalMachineNum != 0) {
+			int startindex = parent.runningMachines.indexOf(nextMachine);
+			if (nextMachine == null || startindex < 0) {
+				startindex = 0;
+			}
 			QueueingData request;
 			ResourceAllocation allocation;
 			boolean processableRequest = true;
@@ -52,9 +57,10 @@ public class FirstFitScheduler extends Scheduler {
 				int vmNum = 0;
 				do {
 					processableRequest = false;
-					for (int i = 0; i < totalMachineNum; i++) {
-						final PhysicalMachine pm = parent.runningMachines
-								.get(i);
+					final int stopIndex = totalMachineNum + startindex;
+					for (int i = startindex; i < stopIndex; i++) {
+						final PhysicalMachine pm = parent.runningMachines.get(i
+								% totalMachineNum);
 						if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum]
 								.getVa().size) {
 							try {
@@ -62,25 +68,16 @@ public class FirstFitScheduler extends Scheduler {
 										request.queuedRC, true,
 										PhysicalMachine.defaultAllocLen);
 								if (allocation != null) {
-									if (allocation.allocated == request.queuedRC) {
-										ras[rasize++] = allocation;
-										if (rasize == ras.length) {
-											ResourceAllocation[] rasnew = new ResourceAllocation[rasize * 2];
-											System.arraycopy(ras, 0, rasnew, 0,
-													rasize);
-											ras = rasnew;
-										}
-										processableRequest = true;
-										break;
-									} else {
-										// This should not happen, as we
-										// asked
-										// for strict allocation
-										allocation.cancel();
-										System.err
-												.println("WARNING: an allocation has had to be cancelled with strict allocation mode.");
-
+									ras[rasize++] = allocation;
+									if (rasize == ras.length) {
+										ResourceAllocation[] rasnew = new ResourceAllocation[rasize * 2];
+										System.arraycopy(ras, 0, rasnew, 0,
+												rasize);
+										ras = rasnew;
 									}
+									processableRequest = true;
+									startindex = (i + 1) % totalMachineNum;
+									break;
 								}
 							} catch (VMManagementException e) {
 							}
@@ -108,6 +105,7 @@ public class FirstFitScheduler extends Scheduler {
 					}
 				}
 			}
+			nextMachine = parent.runningMachines.get(startindex);
 			for (int i = 0; i < rasize; i++) {
 				ras[i].cancel();
 			}

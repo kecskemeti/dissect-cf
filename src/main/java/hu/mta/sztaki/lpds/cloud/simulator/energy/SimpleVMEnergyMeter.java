@@ -23,45 +23,34 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
+package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
-public class MaxMinConsumer extends MaxMinFairSpreader {
-
-	public MaxMinConsumer(final double initialProcessing) {
-		super(initialProcessing);
+/**
+ * Derives VM consumption from its hosting PM.
+ * 
+ * Does not support migrations, and provides only a rough estimate on the energy
+ * cost of actions taken by the particular VM.
+ * 
+ * @author gaborkecskemeti
+ * 
+ */
+public class SimpleVMEnergyMeter extends PhysicalMachineEnergyMeter {
+	/**
+	 * Cannot be created for unallocated VMs!
+	 * 
+	 * @param vm
+	 */
+	public SimpleVMEnergyMeter(final VirtualMachine vm) {
+		super(vm.getResourceAllocation().host);
 	}
 
+	/**
+	 * cons(PM)/NumVMs(PM)
+	 */
 	@Override
-	protected void updateConsumptionLimit(final ResourceConsumption con,
-			final double limit) {
-		con.consumerLimit = limit;
-	}
-
-	@Override
-	protected ResourceSpreader getCounterPart(final ResourceConsumption con) {
-		return con.getProvider();
-	}
-
-	@Override
-	protected ResourceSpreader getSamePart(final ResourceConsumption con) {
-		return con.getConsumer();
-	}
-
-	@Override
-	protected double processSingleConsumption(final ResourceConsumption con,
-			final long ticksPassed) {
-		return con.doConsumerProcessing(ticksPassed);
-	}
-
-	@Override
-	protected boolean isConsumer() {
-		return true;
-	}
-
-	@Override
-	public String toString() {
-		return "MaxMinConsumer(Hash-" + hashCode() + " " + super.toString()
-				+ ")";
+	public double getTotalConsumption() {
+		return super.getTotalConsumption() / getObserved().numofCurrentVMs();
 	}
 }

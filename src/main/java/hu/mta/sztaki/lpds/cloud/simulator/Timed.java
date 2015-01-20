@@ -27,6 +27,15 @@ package hu.mta.sztaki.lpds.cloud.simulator;
 
 import java.util.PriorityQueue;
 
+/**
+ * This is the base class for the simulation, every class that should receive
+ * timing events should extend this and implement the function named "tick".
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * 
+ */
 public abstract class Timed implements Comparable<Timed> {
 
 	private static final PriorityQueue<Timed> timedlist = new PriorityQueue<Timed>();
@@ -35,7 +44,9 @@ public abstract class Timed implements Comparable<Timed> {
 
 	private boolean activeSubscription = false;
 	private long nextEvent = 0;
-	private long frequency = 0;
+	// -1 => unitialized
+	private long frequency = -1;
+	private boolean backPreference = false;
 
 	public final boolean isSubscribed() {
 		return activeSubscription;
@@ -45,24 +56,22 @@ public abstract class Timed implements Comparable<Timed> {
 		if (activeSubscription) {
 			return false;
 		}
-		return realSubscribe(freq);
+		realSubscribe(freq);
+		return true;
 	}
-		
-	private boolean realSubscribe(final long freq) {
+
+	private void realSubscribe(final long freq) {
 		activeSubscription = true;
 		updateEvent(freq);
-		if (this == underProcessing) {
-			return true;
-		} else {
-			timedlist.offer(this);
-			return true;
-		}
+		timedlist.offer(this);
 	}
 
 	protected final boolean unsubscribe() {
 		if (activeSubscription) {
 			activeSubscription = false;
 			if (this == underProcessing) {
+				// because of the poll during the fire function there is nothing
+				// to remove from the list
 				return true;
 			}
 			timedlist.remove(this);
@@ -92,6 +101,9 @@ public abstract class Timed implements Comparable<Timed> {
 		} else {
 			frequency = freq;
 			nextEvent = calcTimeJump(freq);
+			if (nextEvent == Long.MAX_VALUE) {
+				throw new IllegalStateException("Event to never occur!");
+			}
 		}
 	}
 
@@ -109,7 +121,14 @@ public abstract class Timed implements Comparable<Timed> {
 
 	@Override
 	public int compareTo(final Timed o) {
-		return nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
+		final int unalteredResult = nextEvent < o.nextEvent ? -1
+				: nextEvent == o.nextEvent ? 0 : 1;
+		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0
+				: -1) : (backPreference ? 1 : 0)) : unalteredResult;
+	}
+
+	protected void setBackPreference(final boolean backPreference) {
+		this.backPreference = backPreference;
 	}
 
 	public static final void fire() {
@@ -145,11 +164,13 @@ public abstract class Timed implements Comparable<Timed> {
 
 	public static final void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
-		while (timedlist.peek().nextEvent < desiredTime) {
-			final Timed t = timedlist.poll();
-			final long oldfreq = t.frequency;
-			t.updateFrequency(distance + (oldfreq - distance % oldfreq));
-			t.frequency = oldfreq;
+		if (timedlist.peek() != null) {
+			while (timedlist.peek().nextEvent < desiredTime) {
+				final Timed t = timedlist.poll();
+				final long oldfreq = t.frequency;
+				t.updateFrequency(distance + (oldfreq - distance % oldfreq));
+				t.frequency = oldfreq;
+			}
 		}
 		fireCounter = desiredTime;
 	}
@@ -164,9 +185,12 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public static final void simulateUntilLastEvent() {
-		while (getNextFire() >= 0) {
+		long pnf = -1;
+		long cnf = 0;
+		while ((cnf = getNextFire()) >= 0 && (cnf > pnf)) {
 			jumpTime(Long.MAX_VALUE);
 			fire();
+			pnf = cnf;
 		}
 	}
 
@@ -184,7 +208,7 @@ public abstract class Timed implements Comparable<Timed> {
 		underProcessing = null;
 		fireCounter = 0;
 	}
-	
+
 	@Override
 	public String toString() {
 		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")").toString();

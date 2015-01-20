@@ -31,15 +31,17 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.RoundRobinScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
-
-import java.util.ArrayList;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,79 +50,84 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class IaaSPerformanceTest extends IaaSRelatedFoundation {
-	IaaSService basic;
-	Repository repo;
-	VirtualAppliance va;
-	ResourceConstraints baseRC;
+	public IaaSService basic;
+	public Repository repo;
+	public VirtualAppliance va;
+	public ResourceConstraints baseRC;
 	final int hostCount = 40;
 	final int vmCount = 2000;
 	final int maxTaskCount = 5;
 	final double maxTaskLen = 50;
-	int runningCounter = 0;
-	int destroyCounter = 0;
-
+	public int runningCounter = 0;
+	public int destroyCounter = 0;
 
 	@Before
 	public void resetSim() throws Exception {
 		SeedSyncer.resetCentral();
-		basic = new IaaSService(FirstFitScheduler.class,
-				SchedulingDependentMachines.class);
-		for (int i = 0; i < hostCount; i++) {
-			final PhysicalMachine pm = dummyPMcreator();
-			basic.registerHost(pm);
-		}
-		baseRC = basic.machines.get(0).getCapacities();
-		repo = dummyRepoCreator(true);
-		va = (VirtualAppliance) repo.contents().iterator().next();
-		basic.registerRepository(repo);
 	}
 
-	@Test(timeout = 2500)
-	public void performanceTest() throws Exception {
-		for (int i = 0; i < vmCount; i++) {
-			final VirtualMachine vm = basic.requestVM(va,
+	public class VMHandler implements VirtualMachine.StateChange,
+			ConsumptionEvent {
+		private final VirtualMachine vm;
+		private int myTaskCount;
+
+		public VMHandler() throws Exception {
+			vm = basic.requestVM(va,
 					baseRC.multiply(SeedSyncer.centralRnd.nextDouble()), repo,
 					1)[0];
-			vm.subscribeStateChange(new VirtualMachine.StateChange() {
-				@Override
-				public void stateChanged(State oldState, State newState) {
-					if (newState.equals(VirtualMachine.State.RUNNING)) {
-						runningCounter++;
-						final int myTaskCount = 1 + SeedSyncer.centralRnd
-								.nextInt(maxTaskCount - 1);
-						final ArrayList<String> eventCount = new ArrayList<String>();
-						ConsumptionEventAdapter cae = new ConsumptionEventAdapter() {
-							@Override
-							public void conComplete() {
-								eventCount.add("");
-								if (eventCount.size() == myTaskCount) {
-									try {
-										vm.destroy(true);
-									} catch (Exception e) {
-										throw new RuntimeException(e);
-									}
-								}
-							};
-						};
-						try {
-							for (int j = 0; j < myTaskCount; j++) {
-								vm.newComputeTask(
-										SeedSyncer.centralRnd.nextDouble()
-												* maxTaskLen,
-										ResourceConsumption.unlimitedProcessing,
-										cae);
-							}
-						} catch (Exception e) {
-							throw new RuntimeException(e);
-						}
-					}
-					if (newState.equals(VirtualMachine.State.DESTROYED)) {
-						destroyCounter++;
-					}
-				}
-			});
+			vm.subscribeStateChange(this);
 			Timed.simulateUntil(Timed.getFireCount()
 					+ SeedSyncer.centralRnd.nextInt((int) maxTaskLen));
+		}
+
+		@Override
+		public void stateChanged(final State oldState, final State newState) {
+			switch (newState) {
+			case RUNNING:
+				runningCounter++;
+				myTaskCount = 1 + SeedSyncer.centralRnd
+						.nextInt(maxTaskCount - 1);
+				try {
+					for (int j = 0; j < myTaskCount; j++) {
+						vm.newComputeTask(SeedSyncer.centralRnd.nextDouble()
+								* maxTaskLen,
+								ResourceConsumption.unlimitedProcessing, this);
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				break;
+			case DESTROYED:
+				destroyCounter++;
+			default:
+			}
+		}
+
+		@Override
+		public void conComplete() {
+			if (--myTaskCount == 0) {
+				try {
+					vm.destroy(false);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}
+
+		@Override
+		public void conCancelled(final ResourceConsumption problematic) {
+			throw new RuntimeException("No cancellations should happen");
+		}
+	}
+
+	private void genericPerformanceCheck(Class<? extends Scheduler> vmsch,
+			Class<? extends PhysicalMachineController> pmsch) throws Exception {
+		basic = setupIaaS(vmsch, pmsch, hostCount);
+		baseRC = basic.machines.get(0).getCapacities();
+		repo = basic.repositories.get(0);
+		va = (VirtualAppliance) repo.contents().iterator().next();
+		for (int i = 0; i < vmCount; i++) {
+			new VMHandler();
 		}
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Not all VMs ran", vmCount, runningCounter);
@@ -129,7 +136,26 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 			Assert.assertFalse("Should not have any running VMs registered",
 					pm.isHostingVMs());
 		}
+	}
+
+	@Test(timeout = 1000)
+	public void performanceTest() throws Exception {
+		genericPerformanceCheck(FirstFitScheduler.class,
+				SchedulingDependentMachines.class);
 		Assert.assertEquals("Should not have any running PMs", 0,
 				basic.runningMachines.size());
 	}
+
+	@Test(timeout = 1000)
+	public void roundRobinPerformance() throws Exception {
+		genericPerformanceCheck(RoundRobinScheduler.class,
+				AlwaysOnMachines.class);
+	}
+	
+	//FIXME: this should be below 100ms!
+	@Test(timeout = 800)
+	public void pmRegistrationPerformance() throws Exception {
+		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,10000);
+	}
+
 }

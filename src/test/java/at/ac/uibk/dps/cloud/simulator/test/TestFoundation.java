@@ -30,6 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import org.junit.Before;
 
 public class TestFoundation {
+	public static final long aSecond = 1000; // in ms
 	@Before
 	public void resetSimulator() {
 		Timed.resetTimed();

@@ -23,7 +23,7 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
+package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;

@@ -36,6 +36,9 @@ public class QueueingData {
 	public final ResourceConstraints queuedRC;
 	public final ResourceConstraints cumulativeRC;
 	public final Repository queuedRepo;
+	/**
+	 * Data for custom schedulers, if null then there is no data.
+	 */
 	public final HashMap<String, Object> schedulingConstraints;
 	public final long receivedTime;
 

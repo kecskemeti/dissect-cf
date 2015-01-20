@@ -40,6 +40,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,7 +51,7 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class PMTest extends IaaSRelatedFoundation {
 	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
-			reqond = 2000, reqoffd = 1000;
+			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
 	final static ResourceConstraints smallConstraints = new ResourceConstraints(
 			reqcores / 2, reqProcessing, reqmem / 2);
 	final static ResourceConstraints overCPUConstraints = new ResourceConstraints(
@@ -69,10 +70,11 @@ public class PMTest extends IaaSRelatedFoundation {
 		latmap.put(pmid, 1);
 		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem,
 				new Repository(123, pmid, 456, 789, 12,
-						new HashMap<String, Integer>()), reqond, reqoffd);
+						new HashMap<String, Integer>()), reqond, reqoffd,
+				defaultTransitions);
 	}
 
-	@Test(timeout = 100)
+	@Test//(timeout = 100)
 	public void constructionTest() {
 		Assert.assertEquals("Cores mismatch", reqcores,
 				(int) pm.getCapacities().requiredCPUs);
@@ -81,7 +83,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Per core processing power mismatch",
 				reqProcessing, (int) pm.getCapacities().requiredProcessingPower);
 		Assert.assertEquals("Total processing power mismatch", reqcores
-				* reqProcessing, (int) pm.getPerSecondProcessingPower());
+				* reqProcessing, (int) pm.getPerTickProcessingPower());
 		Assert.assertEquals("On delay mismatch", reqond, pm.onDelay);
 		Assert.assertEquals("Off delay mismatch", reqoffd, pm.offDelay);
 		Assert.assertTrue("Free capacity mismatch", pm.getFreeCapacities()
@@ -145,21 +147,21 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void irregularSwithchOnOffTest() throws VMManagementException,
 			NetworkException {
 		long before = Timed.getFireCount();
-		pm.turnon();
+		pm.turnon(); // Turnon request that will be interrupted
 		Timed.simulateUntil(Timed.getFireCount() + pm.getCurrentOnOffDelay()
 				- 5);
 		Assert.assertFalse("The PM should not be running now", pm.isRunning());
-		Assert.assertTrue(pm.switchoff(null)); 
+		Assert.assertTrue(pm.switchoff(null)); // while turning on
 		Timed.simulateUntil(Timed.getFireCount() + pm.getCurrentOnOffDelay()
 				- 5);
-		pm.turnon();
+		pm.turnon(); // Turnon request that will succeed
 		Assert.assertFalse("The PM should not be running now", pm.isRunning());
 		Timed.simulateUntil(Timed.getFireCount() + pm.getCurrentOnOffDelay()
 				- 5);
 		Assert.assertFalse("The PM should not be running now", pm.isRunning());
 		PhysicalMachine.StateChangeListener sl = getFailingListener("We should not receive any state change events because of a repeated turnon!");
 		pm.subscribeStateChangeEvents(sl);
-		pm.turnon();
+		pm.turnon(); // While turning on
 		pm.unsubscribeStateChangeEvents(sl);
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue("The PM should be running now", pm.isRunning());
@@ -168,19 +170,22 @@ public class PMTest extends IaaSRelatedFoundation {
 				"Off and on delays are not executed to their full extent", 2
 						* pm.onDelay + pm.offDelay, after - before - 1);
 		pm.subscribeStateChangeEvents(sl);
-		pm.turnon();
+		pm.turnon(); // After already running
 		pm.unsubscribeStateChangeEvents(sl);
-		Assert.assertTrue(pm.switchoff(null));
+		Assert.assertTrue(pm.switchoff(null)); // Swithcoff request that will
+												// succeed
 		Timed.simulateUntil(Timed.getFireCount() + pm.getCurrentOnOffDelay()
 				- 5);
 		sl = getFailingListener("We should not receive any state change events because of a repeated switchoff!");
-		Assert.assertTrue(pm.switchoff(null)); 
+		Assert.assertTrue(pm.switchoff(null)); // Switchoff request while
+												// swithcing off
 		pm.unsubscribeStateChangeEvents(sl);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Machine could not swithced off properly",
 				PhysicalMachine.State.OFF, pm.getState());
 		pm.subscribeStateChangeEvents(sl);
-		Assert.assertTrue(pm.switchoff(null));
+		Assert.assertTrue(pm.switchoff(null)); // Switchoff request to an
+												// already switched off machine
 		pm.unsubscribeStateChangeEvents(sl);
 	}
 
@@ -348,9 +353,10 @@ public class PMTest extends IaaSRelatedFoundation {
 				"Unallocated resource capacity should not change after request",
 				afterRequest.compareTo(afterCreation) == 0);
 		final ArrayList<ResourceConstraints> eventReceived = new ArrayList<ResourceConstraints>();
-		PhysicalMachine.CapacityChangeEvent ev = new PhysicalMachine.CapacityChangeEvent() {
+		PhysicalMachine.CapacityChangeEvent<ResourceConstraints> ev = new PhysicalMachine.CapacityChangeEvent<ResourceConstraints>() {
 			@Override
-			public void capacityChanged(ResourceConstraints newCapacity) {
+			public void capacityChanged(ResourceConstraints newCapacity,
+					List<ResourceConstraints> newlyFreeCapacity) {
 				eventReceived.add(newCapacity);
 			}
 		};
@@ -423,9 +429,14 @@ public class PMTest extends IaaSRelatedFoundation {
 				fraudentCon.registerConsumption());
 		VirtualMachine proper = pm.requestVM(va, smallConstraints,
 				pm.localDisk, 1)[0];
+		Assert.assertEquals(
+				"Registration should not succeed since VM is not yet started up",
+				null, proper.newComputeTask(1,
+						ResourceConsumption.unlimitedProcessing,
+						new ConsumptionEventAssert()));
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue(
-				"Registration should not succeed since VM is not yet started up",
+				"Registration should succeed since VM is now running",
 				proper.newComputeTask(1,
 						ResourceConsumption.unlimitedProcessing,
 						new ConsumptionEventAssert()).isRegistered());
@@ -648,7 +659,8 @@ public class PMTest extends IaaSRelatedFoundation {
 				new Repository(RepositoryTest.storageCapacity,
 						NetworkNodeTest.sourceName, NetworkNodeTest.inBW,
 						NetworkNodeTest.outBW, NetworkNodeTest.diskBW,
-						new HashMap<String, Integer>()), 10, 20);
+						new HashMap<String, Integer>()), 10, 20,
+				defaultTransitions);
 		VirtualAppliance va = new VirtualAppliance("Test", 1, 0);
 		pm.localDisk.registerObject(va);
 		VirtualMachine vm = new VirtualMachine(va);
@@ -659,5 +671,5 @@ public class PMTest extends IaaSRelatedFoundation {
 				"A physical machine should not allow registering consumption from a nonhosted VM",
 				conVM.registerConsumption());
 	}
-	
+
 }

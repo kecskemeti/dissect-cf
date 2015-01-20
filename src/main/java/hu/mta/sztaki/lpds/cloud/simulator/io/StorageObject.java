@@ -27,7 +27,15 @@ package hu.mta.sztaki.lpds.cloud.simulator.io;
 
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
+/**
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ */
 public class StorageObject {
+	// think about if it would make things easier if we would refer here
+	// the repository where this storage object is stored.
 	public final String id;
 	public final long size;
 
