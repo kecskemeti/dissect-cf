@@ -66,7 +66,6 @@ public class NetworkNode {
 	public final MaxMinProvider outbws;
 	public final MaxMinConsumer diskinbws;
 	public final MaxMinProvider diskoutbws;
-	private final long diskBW;
 
 	private final String name;
 	private final HashMap<String, Integer> latencies;
@@ -77,10 +76,8 @@ public class NetworkNode {
 		name = id;
 		outbws = new MaxMinProvider(maxOutBW);
 		inbws = new MaxMinConsumer(maxInBW);
-		double diskBWhalf = diskBW / 2f;
-		this.diskBW = diskBW;
-		diskinbws = new MaxMinConsumer(diskBWhalf);
-		diskoutbws = new MaxMinProvider(diskBWhalf);
+		diskinbws = new MaxMinConsumer(diskBW / 2f);
+		diskoutbws = new MaxMinProvider(diskBW / 2f);
 		latencies = latencymap;
 	}
 
@@ -93,7 +90,7 @@ public class NetworkNode {
 	}
 
 	public long getDiskbw() {
-		return this.diskBW;
+		return (long) diskinbws.getPerSecondProcessingPower() * 2;
 	}
 
 	public static ResourceConsumption initTransfer(final long size,

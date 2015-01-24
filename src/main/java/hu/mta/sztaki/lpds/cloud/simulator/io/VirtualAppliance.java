@@ -29,17 +29,20 @@ public class VirtualAppliance extends StorageObject {
 	private long bgNetworkLoad;
 	private long startupdelay;
 
-	public VirtualAppliance(final String id, final long delay, final long nl) {
-		super(id);
+	private void setDetails(final long delay, final long nl) {
 		this.bgNetworkLoad = nl;
 		this.startupdelay = delay;
+	}
+
+	public VirtualAppliance(final String id, final long delay, final long nl) {
+		super(id);
+		setDetails(delay, nl);
 	}
 
 	public VirtualAppliance(final String id, final long delay, final long nl,
 			boolean vary, final long reqDisk) {
 		super(id, reqDisk, vary);
-		this.bgNetworkLoad = nl;
-		this.startupdelay = delay;
+		setDetails(delay, nl);
 	}
 
 	@Override
@@ -54,5 +57,11 @@ public class VirtualAppliance extends StorageObject {
 
 	public long getStartupdelay() {
 		return startupdelay;
+	}
+
+	@Override
+	public String toString() {
+		return "VA(" + super.toString() + " sd:" + startupdelay + " bgnl:"
+				+ bgNetworkLoad + ")";
 	}
 }

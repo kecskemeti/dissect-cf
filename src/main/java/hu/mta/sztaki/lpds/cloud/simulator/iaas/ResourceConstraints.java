@@ -48,11 +48,10 @@ public class ResourceConstraints implements Comparable<ResourceConstraints> {
 	}
 
 	public ResourceConstraints multiply(final double times) {
-		if(times == 1) {
-			return this;
-		}
-		return new ResourceConstraints(	requiredCPUs * times, requiredProcessingPower,
+		return times == 1 ? this : new ResourceConstraints(
+				requiredCPUs * times, requiredProcessingPower,
 				(long) (requiredMemory * times));
+
 	}
 
 	public static ResourceConstraints add(final ResourceConstraints... toAdd) {
@@ -83,12 +82,12 @@ public class ResourceConstraints implements Comparable<ResourceConstraints> {
 
 	@Override
 	public int compareTo(ResourceConstraints o) {
-		if ((this.requiredCPUs == o.requiredCPUs) && (this.requiredMemory == o.requiredMemory) && (this.requiredProcessingPower == o.requiredProcessingPower)) {
-			return 0;
-		}
-		if ((this.requiredCPUs <= o.requiredCPUs) && (this.requiredMemory <= o.requiredMemory) && (this.requiredProcessingPower <= o.requiredProcessingPower)) {
-			return -1;
-		}
-		return 1;
+		return requiredCPUs == o.requiredCPUs
+				&& requiredMemory == o.requiredMemory
+				&& requiredProcessingPower == o.requiredProcessingPower ? 0
+				: (requiredCPUs <= o.requiredCPUs
+						&& requiredMemory <= o.requiredMemory
+						&& requiredProcessingPower <= o.requiredProcessingPower ? -1
+						: 1);
 	}
 }

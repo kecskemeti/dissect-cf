@@ -73,7 +73,7 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(ResourceConstraints newCapacity) {
 			scheduleQueued();
-			if (!queue.isEmpty()
+			if (queue.size() != 0
 					&& queue.peek().cumulativeRC.compareTo(parent
 							.getRunningCapacities()) > 0) {
 				notifyListeners();
@@ -134,7 +134,7 @@ public abstract class Scheduler {
 			totalQueued = ResourceConstraints.add(totalQueued, qd.cumulativeRC);
 			if (wasEmpty) {
 				scheduleQueued();
-				if (queue.isEmpty()) {
+				if (queue.size() == 0) {
 					return;
 				}
 				notifyListeners();
@@ -175,7 +175,7 @@ public abstract class Scheduler {
 
 	public final void subscribeQueueingEvents(QueueingEvent e) {
 		queueListeners.add(e);
-		if (!queue.isEmpty()) {
+		if (queue.size() != 0) {
 			e.queueingStarted();
 		}
 	}

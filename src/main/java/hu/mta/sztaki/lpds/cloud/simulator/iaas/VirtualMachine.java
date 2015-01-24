@@ -179,16 +179,17 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (bgnwload > 0) {
 			noerror = vasource.duplicateContent(va.id, diskid,
 					new InitialTransferEvent(vasource, es, diskid));
-		} else if (vasource == null) {
-			noerror = vatarget == null ? false : vatarget.duplicateContent(
-					va.id, diskid, new InitialTransferEvent(vatarget, es,
-					diskid));
 		} else {
-			noerror = vasource.requestContentDelivery(va.id, diskid,
-					vatarget,
-					new InitialTransferEvent(vatarget, es, diskid));
+			if (vasource == null) {
+				noerror = vatarget == null ? false : vatarget.duplicateContent(
+						va.id, diskid, new InitialTransferEvent(vatarget, es,
+								diskid));
+			} else {
+				noerror = vasource.requestContentDelivery(va.id, diskid,
+						vatarget,
+						new InitialTransferEvent(vatarget, es, diskid));
+			}
 		}
-		
 		if (!noerror) {
 			setState(oldState);
 			throw new VMManagementException("Initial transfer failed");
@@ -226,7 +227,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		case DESTROYED:
 			setResourceAllocation(allocation);
 			initialTransfer(vasource, allocation.host.localDisk, switchonEvent);
-			return;
+			break;
 		case SHUTDOWN:
 			if (allocation.host.localDisk != vatarget) {
 				throw new VMManagementException(
@@ -234,10 +235,11 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 			setResourceAllocation(allocation);
 			switchonEvent.changeEvents();
-			return;
+			break;
+		default:
+			throw new StateChangeException(
+					"The VM is not shut down or destroyed");
 		}
-		throw new StateChangeException("The VM is not shut down or destroyed");
-		
 	}
 
 	private void resumeAfterMigration(
@@ -486,8 +488,9 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (ra == null) {
 			return null;
 		}
-		ResourceConsumption cons;
-		if ((cons = new ResourceConsumption(total, limit, this, ra.host, e)).registerConsumption()) {
+		ResourceConsumption cons = new ResourceConsumption(total, limit, this,
+				ra.host, e);
+		if (cons.registerConsumption()) {
 			final long bgnwload = va.getBgNetworkLoad();
 			if (bgnwload > 0) {
 				final long minBW = Math.min(
@@ -516,9 +519,9 @@ public class VirtualMachine extends MaxMinConsumer {
 			setPerSecondProcessingPower(ra.allocated.totalProcessingPower);
 			break;
 		default:
-		throw new StateChangeException(
-				"The VM is already bound to a host please first resolve the VM-Host association!");
-	}
+			throw new StateChangeException(
+					"The VM is already bound to a host please first resolve the VM-Host association!");
+		}
 	}
 
 	public PhysicalMachine.ResourceAllocation getResourceAllocation() {

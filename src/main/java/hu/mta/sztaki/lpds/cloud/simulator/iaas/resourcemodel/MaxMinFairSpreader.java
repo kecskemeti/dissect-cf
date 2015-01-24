@@ -92,8 +92,8 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 
 	@Override
 	protected long singleGroupwiseFreqUpdater() {
-		final ResourceSpreader.FreqSyncer syncer;
-		final ResourceSpreader[] depgroup = (syncer = getSyncer()).getDepGroup();
+		final ResourceSpreader.FreqSyncer syncer = getSyncer();
+		final ResourceSpreader[] depgroup = syncer.getDepGroup();
 		final int dglen = syncer.getDGLen();
 		final int providerCount = syncer.getFirstConsumerId();
 		for (int i = 0; i < dglen; i++) {
@@ -121,10 +121,10 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 
 			someConsumptionIsStillUnderUtilized = false;
 			for (int i = 0; i < providerCount; i++) {
-				MaxMinFairSpreader mmfs;
-				for (int j = 0; j < (mmfs = (MaxMinFairSpreader) depgroup[i]).upLen; j++) {
-					final ResourceConsumption con;
-					if ((con = mmfs.underProcessing.get(j)).unassigned) {
+				MaxMinFairSpreader mmfs = (MaxMinFairSpreader) depgroup[i];
+				for (int j = 0; j < mmfs.upLen; j++) {
+					final ResourceConsumption con = mmfs.underProcessing.get(j);
+					if (con.unassigned) {
 						con.limithelper += minProcessing;
 						final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs
 								.getCounterPart(con);
@@ -149,9 +149,8 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 				con.consumerLimit = con.providerLimit = con.limithelper;
 				con.updateRealLimit();
 				final long conDistance = con.getCompletionDistance();
-				if(conDistance < minCompletionDistance) {
-					minCompletionDistance = conDistance;
-				}
+				minCompletionDistance = conDistance < minCompletionDistance ? conDistance
+						: minCompletionDistance;
 			}
 		}
 		return minCompletionDistance;

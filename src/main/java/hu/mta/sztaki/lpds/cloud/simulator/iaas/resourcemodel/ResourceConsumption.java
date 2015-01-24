@@ -136,10 +136,10 @@ public class ResourceConsumption {
 			this.provider = provider;
 			updateHardLimit();
 			return;
+		} else {
+			throw new IllegalStateException(
+					"Attempted consumer change with a registered consumption");
 		}
-		throw new IllegalStateException(
-				"Attempted consumer change with a registered consumption");
-		
 	}
 
 	public void setConsumer(final ResourceSpreader consumer) {
@@ -147,10 +147,10 @@ public class ResourceConsumption {
 			this.consumer = consumer;
 			updateHardLimit();
 			return;
+		} else {
+			throw new IllegalStateException(
+					"Attempted consumer change with a registered consumption");
 		}
-		throw new IllegalStateException(
-				"Attempted consumer change with a registered consumption");
-		
 	}
 
 	private void calcCompletionDistance() {
@@ -205,7 +205,7 @@ public class ResourceConsumption {
 		if(pl < hardLimit) {
 			processingLimit = pl;
 			return 0;
-		}
+	}
 		processingLimit = hardLimit;
 		return pl - hardLimit;
 	}

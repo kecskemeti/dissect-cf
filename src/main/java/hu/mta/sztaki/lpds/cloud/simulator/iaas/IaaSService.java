@@ -78,7 +78,6 @@ public class IaaSService implements VMManager<IaaSService> {
 				default:
 					if (oldState.equals(PhysicalMachine.State.RUNNING)) {
 						ArrayHandler.removeAndReplaceWithLast(internalRunningMachines, pm);
-						//internalRunningMachines.remove(pm);
 						runningCapacity = ResourceConstraints.subtract(
 								runningCapacity, pm.getCapacities());
 					}
@@ -124,9 +123,9 @@ public class IaaSService implements VMManager<IaaSService> {
 
 	private PhysicalMachine checkVMHost(final VirtualMachine vm)
 			throws NoSuchVMException {
-		ResourceAllocation ra;
+		ResourceAllocation ra = vm.getResourceAllocation();
 		PhysicalMachine host;
-		if (!((ra = vm.getResourceAllocation()) != null && runningMachines.contains(host = ra.host))) {
+		if (!(ra != null && runningMachines.contains(host = ra.host))) {
 			throw new NoSuchVMException(
 					"This VM is not run by any of the managed PMs in this IaaS service");
 		}
