@@ -2,6 +2,7 @@
 <img src="http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF/logo.jpg"/>
 </p>
 
+## Overview
 
 This package represents the DIScrete event baSed Energy Consumption simulaTor
 for Clouds and Federations (DISSECT-CF).
@@ -19,5 +20,51 @@ https://github.com/kecskemeti/dissect-cf
 
 Licensing:
 GNU Lesser General Public License 3 and later
+
+## Compilation & Installation
+
+Prerequisites: [Apache Maven 3.](http://maven.apache.org/), Java 1.6
+
+After cloning, run the following in the main dir of the checkout:
+
+`mvn clean install javadoc:javadoc`
+
+This command will download all other prerequisites for compilation and testing. Then it will compile the complete sources of DISSECT-CF as well as its test classes. If the compilation is successful, then the tests are executed. In case no test fails, maven proceeds with the packaging and istallation.
+
+The installed simulator will be located in the default maven repository's (e.g., `~/.m2/repository`) following directory: 
+
+`at/ac/uibk/dps/cloud/simulator/dissect-cf/[VERSION]/dissect-cf-[VERSION].jar`
+
+Where `[VERSION]` stands for the currently installed version of the simulator.
+
+The documentation for the simulator's java API will be generated in the following subfolder of the main dir of the checkout:
+
+`target/site/apidocs`
+
+## Getting started
+
+The test cases of the simulator contain many useful examples so one can start working right away with the simulator. In the following list one can find the most essential bits to get to know the internals and the behavior of the simulator:
+* Basic time and event management:
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.TimedTest.singleEventFire`
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.TimedTest.repeatedEventFire`
+* Basic use of one time events:
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.DeferredEventTest`
+* Simple physical machine management and use:
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.PMTest.constructionTest`
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.PMTest.simpleTwoPhasedSmallVMRequest`
+* Simple IaaS construction and use:
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.IaaSServiceTest.repoRegistrationTest` - to add storage
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.IaaSServiceTest.capacityMaintenanceTest` - pm addition and overall capacity monitoring
+  * `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.IaaSServiceTest.vmRequestTest` - scheduled vm creation
+* Starter kit for VM operations:
+  *  `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.VMTest.subscriptionTest` - VM state monitoring
+  *  `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.VMTest.taskKillingSwitchOff` - New compute task creation
+* General use of the resource sharing foundation:
+  *  `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.ResourceConsumptionTest.testConsumption`
+* Networking basics:
+  *  `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.NetworkNodeTest.intraNodeTransferTest`
+ 
+
+## Remarks
 
 ##### Warning: the master branch of the simulator is intended as a development branch, and might not contain a functional version!
