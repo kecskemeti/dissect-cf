@@ -236,8 +236,8 @@ public abstract class ResourceSpreader {
 					if (!rs.underRemoval.isEmpty()) {
 						didRemovals = true;
 						int rsuLen = rs.toProcess.size();
-						int urLen = rs.underRemoval.size();
-						boolean isConsumer = rs.isConsumer();
+						final int urLen = rs.underRemoval.size();
+						final boolean isConsumer = rs.isConsumer();
 						for (int urIndex = 0; urIndex < urLen; urIndex++) {
 							final ResourceConsumption con = rs.underRemoval
 									.get(urIndex);
@@ -350,6 +350,7 @@ public abstract class ResourceSpreader {
 									notClassified[providerCount] = notClassified[notClassifiedLen];
 									newpc++;
 								}
+								i--;
 							}
 						}
 						// We now have the new groups so we can start

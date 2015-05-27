@@ -85,12 +85,14 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
-			scheduleQueued();
-			if (queue.size() != 0
-					&& queue.get(0).cumulativeRC.compareTo(parent
-							.getRunningCapacities()) > 0) {
-				notifyListeners();
-			}
+			if (totalQueued.requiredCPUs != 0) {
+					scheduleQueued();
+					if (totalQueued.requiredCPUs != 0
+							&& queue.get(0).cumulativeRC.compareTo(parent
+									.getRunningCapacities()) > 0) {
+						notifyListeners();
+					}
+				}
 		}
 	};
 

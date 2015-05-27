@@ -76,7 +76,7 @@ public class ResourceConstraints implements Comparable<ResourceConstraints> {
 		long tm = 0;
 		for (int i = 0; i < toAdd.length; i++) {
 			tcpu += toAdd[i].requiredCPUs;
-			tpp = Math.max(toAdd[i].requiredProcessingPower, tpp);
+			tpp = toAdd[i].requiredProcessingPower<tpp?tpp:toAdd[i].requiredProcessingPower;
 			tm += toAdd[i].requiredMemory;
 		}
 		tpp = tcpu == 0 ? 0 : tpp;

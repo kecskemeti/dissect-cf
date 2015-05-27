@@ -38,6 +38,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -86,7 +87,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	protected class MachineListener implements StateChangeListener {
 		public final PhysicalMachine pm;
 
-		public MachineListener(PhysicalMachine pm) {
+		public MachineListener(final PhysicalMachine pm) {
 			this.pm = pm;
 			pm.subscribeStateChangeEvents(this);
 		}
@@ -112,27 +113,27 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	/**
 	 * The order of internal machines is not guaranteed
 	 */
-	private ArrayList<PhysicalMachine> internalMachines = new ArrayList<PhysicalMachine>();
-	private ArrayList<PhysicalMachine> internalRunningMachines = new ArrayList<PhysicalMachine>();
+	private final ArrayList<PhysicalMachine> internalMachines = new ArrayList<PhysicalMachine>();
+	private final ArrayList<PhysicalMachine> internalRunningMachines = new ArrayList<PhysicalMachine>();
 
-	private CopyOnWriteArrayList<MachineListener> listeners = new CopyOnWriteArrayList<MachineListener>();
+	private final CopyOnWriteArrayList<MachineListener> listeners = new CopyOnWriteArrayList<MachineListener>();
 
-	public List<PhysicalMachine> machines = Collections
+	public final List<PhysicalMachine> machines = Collections
 			.unmodifiableList(internalMachines);
-	public List<PhysicalMachine> runningMachines = Collections
+	public final List<PhysicalMachine> runningMachines = Collections
 			.unmodifiableList(internalRunningMachines);
 
 	private ResourceConstraints totalCapacity = new ResourceConstraints(0, 0, 0);
 	private ResourceConstraints runningCapacity = new ResourceConstraints(0, 0,
 			0);
 
-	private CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>>();
+	private final CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>>();
 
 	/**
 	 * The order of internal repositories is not guaranteed
 	 */
-	private ArrayList<Repository> internalRepositories = new ArrayList<Repository>();
-	public List<Repository> repositories = Collections
+	private final ArrayList<Repository> internalRepositories = new ArrayList<Repository>();
+	public final List<Repository> repositories = Collections
 			.unmodifiableList(internalRepositories);
 
 	public final Scheduler sched;
@@ -224,12 +225,15 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	public void bulkHostRegistration(final List<PhysicalMachine> newPMs) {
 		internalMachines.addAll(newPMs);
 		final int size = newPMs.size();
+		final MachineListener[] newlisteners = new MachineListener[size];
+		final ResourceConstraints[] caps = new ResourceConstraints[size + 1];
 		for (int i = 0; i < size; i++) {
-			PhysicalMachine pm = newPMs.get(i);
-			listeners.add(new MachineListener(pm));
-			totalCapacity = ResourceConstraints.add(totalCapacity,
-					pm.getCapacities());
+			newlisteners[i] = new MachineListener(newPMs.get(i));
+			caps[i] = newlisteners[i].pm.getCapacities();
 		}
+		caps[size] = totalCapacity;
+		totalCapacity = ResourceConstraints.add(caps);
+		listeners.addAll(Arrays.asList(newlisteners));
 		notifyCapacityListeners(newPMs);
 	}
 

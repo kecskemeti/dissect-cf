@@ -122,7 +122,7 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 
 	private void genericPerformanceCheck(Class<? extends Scheduler> vmsch,
 			Class<? extends PhysicalMachineController> pmsch) throws Exception {
-		basic = setupIaaS(vmsch, pmsch, hostCount);
+		basic = setupIaaS(vmsch, pmsch, hostCount, 1);
 		baseRC = basic.machines.get(0).getCapacities();
 		repo = basic.repositories.get(0);
 		va = (VirtualAppliance) repo.contents().iterator().next();
@@ -153,9 +153,10 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 	}
 	
 	//FIXME: this should be below 100ms!
-	@Test(timeout = 800)
+	@Test(timeout = 550)
 	public void pmRegistrationPerformance() throws Exception {
-		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,10000);
+		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,
+				10000, 1);
 	}
 
 }

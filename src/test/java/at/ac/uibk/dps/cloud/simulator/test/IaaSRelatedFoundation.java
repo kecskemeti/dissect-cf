@@ -45,6 +45,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import org.junit.Assert;
@@ -54,7 +55,8 @@ import org.junit.BeforeClass;
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	public final static int dummyPMCoreCount = 1;
 	public final static int vaSize = 100;
-	public static HashMap<String, Integer> globalLatencyMap = new HashMap<String, Integer>();
+	public static HashMap<String, Integer> globalLatencyMap = new HashMap<String, Integer>(
+			10000);
 
 	@BeforeClass
 	public static void preloadIaaS() throws Exception {
@@ -66,16 +68,39 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		globalLatencyMap.clear();
 	}
 
-	public static String generateName(String prefix, int latency) {
-		String name = prefix + SeedSyncer.centralRnd.nextInt();
-		globalLatencyMap.put(name, latency);
-		return name;
+	public static String generateName(final String prefix, final int latency) {
+		return generateNames(1, prefix, latency)[0];
+	}
+
+	public static String[] generateNames(final int count, final String prefix,
+			final int latency) {
+		final byte[] seed = new byte[4 * count];
+		SeedSyncer.centralRnd.nextBytes(seed);
+		final String[] names = new String[count];
+		for (int i = 0; i < count; i++) {
+			final int mult = i * 4;
+			names[i] = prefix + seed[mult] + seed[mult + 1] + seed[mult + 2]
+					+ seed[mult + 3];
+			globalLatencyMap.put(names[i], latency);
+		}
+		return names;
 	}
 
 	public static PhysicalMachine dummyPMcreator(final int corecount) {
-		return new PhysicalMachine(corecount, 1, vaSize * 40, new Repository(
-				vaSize * 200, generateName("M", 1), 1, 1, 1, globalLatencyMap),
-				1, 1, defaultTransitions);
+		return dummyPMsCreator(1, corecount)[0];
+	}
+
+	public static PhysicalMachine[] dummyPMsCreator(final int machineCount,
+			final int corecount) {
+		final PhysicalMachine[] pms = new PhysicalMachine[machineCount];
+		final String[] names = generateNames(machineCount, "M", 1);
+		for (int i = 0; i < machineCount; i++) {
+			pms[i] = new PhysicalMachine(corecount, 1, vaSize * 40,
+					new Repository(vaSize * 200, names[i], 1, 1, 1,
+							globalLatencyMap), 1, 1, defaultTransitions);
+		}
+		return pms;
+
 	}
 
 	public static PhysicalMachine dummyPMcreator() {
@@ -83,11 +108,11 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	}
 
 	public static Repository dummyRepoCreator(boolean withVA) {
-		Repository repo = new Repository(vaSize * 400, generateName("R", 3), 1,
-				1, 1, globalLatencyMap);
+		final Repository repo = new Repository(vaSize * 400, generateName("R",
+				3), 1, 1, 1, globalLatencyMap);
 		if (withVA) {
-			VirtualAppliance va = new VirtualAppliance("VA", 2000, 0, false,
-					vaSize / 5);
+			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0,
+					false, vaSize / 5);
 			Assert.assertTrue("Registration should succeed",
 					repo.registerObject(va));
 		}
@@ -95,17 +120,13 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	}
 
 	public static IaaSService setupIaaS(Class<? extends Scheduler> vmsch,
-			Class<? extends PhysicalMachineController> pmsch, int hostCount)
-			throws IllegalArgumentException, SecurityException,
-			InstantiationException, IllegalAccessException,
+			Class<? extends PhysicalMachineController> pmsch,
+			final int hostCount, final int coreCount) throws IllegalArgumentException,
+			SecurityException, InstantiationException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException {
-		IaaSService basic = new IaaSService(vmsch, pmsch);
-		ArrayList<PhysicalMachine> pmList = new ArrayList<PhysicalMachine>(
-				hostCount);
-		for (int i = 0; i < hostCount; i++) {
-			pmList.add(dummyPMcreator());
-		}
-		basic.bulkHostRegistration(pmList);
+		final IaaSService basic = new IaaSService(vmsch, pmsch);
+		basic.bulkHostRegistration(Arrays.asList(dummyPMsCreator(hostCount,
+				coreCount)));
 		basic.registerRepository(dummyRepoCreator(true));
 		return basic;
 	}

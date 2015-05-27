@@ -19,27 +19,39 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
- *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
- *   									  kecskemeti.gabor@sztaki.mta.hu)
+ *  (C) Copyright 2015, Gabor Kecskemeti (kecskemeti.gabor@sztaki.mta.hu)
  */
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators;
 
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import java.util.List;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RoundRobinIterator;
+public class RoundRobinIterator extends PMIterator {
 
-public class RoundRobinScheduler extends FirstFitScheduler {
-        private final RoundRobinIterator rit;
-        
-	public RoundRobinScheduler(IaaSService parent) {
-		super(parent);
-                rit=new RoundRobinIterator(parent.runningMachines);
+	int stopIndex = -1;
+
+	public RoundRobinIterator(List<PhysicalMachine> pmList) {
+		super(pmList);
 	}
-        
-        @Override
-        protected PMIterator getPMIterator() {
-        	rit.reset();
-            return rit;
-        }
+
+	@Override
+	public void restart(boolean fromMarked) {
+		stopIndex = index + maxIndex;
+	};
+
+	@Override
+	public void reset() {
+		index = maxIndex == 0 ? maxIndex : index % maxIndex;
+		super.reset();
+	}
+
+	@Override
+	public boolean hasNext() {
+		return index < stopIndex;
+	}
+
+	@Override
+	public PhysicalMachine next() {
+		return pmList.get(index++ % maxIndex);
+	}
 }

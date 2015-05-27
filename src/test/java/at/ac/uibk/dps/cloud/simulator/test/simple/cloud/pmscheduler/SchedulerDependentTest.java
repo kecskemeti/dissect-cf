@@ -52,7 +52,8 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 
 	@Before
 	public void resetSim() throws Exception {
-		basic = setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 2);
+		basic = setupIaaS(FirstFitScheduler.class,
+				SchedulingDependentMachines.class, 2, 1);
 		repo = basic.repositories.get(0);
 	}
 
@@ -67,7 +68,8 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 				basic.runningMachines.size());
 	}
 
-	@Test//(timeout = 100)
+	@Test
+	// (timeout = 100)
 	public void simpleLoadTest() throws VMManagementException, NetworkException {
 		final HashSet<PhysicalMachine> affectedpms = new HashSet<PhysicalMachine>();
 		for (final PhysicalMachine pm : basic.machines) {

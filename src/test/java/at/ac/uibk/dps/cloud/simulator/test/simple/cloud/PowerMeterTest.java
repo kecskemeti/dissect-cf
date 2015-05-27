@@ -179,7 +179,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void checkforPMSchedulerConflict() throws Exception {
 		final IaaSService iaas = setupIaaS(FirstFitScheduler.class,
-				SchedulingDependentMachines.class, 2);
+				SchedulingDependentMachines.class, 2, 1);
 		final int vmNum = 3;
 		final int parallelThreads = 2;
 		final long startAt = 100;
@@ -196,7 +196,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 150)
+	@Test(timeout = 180)
 	public void prolongedMeterTestThroughIaaS() throws Exception {
 		final long[] fireAt = { 1135130133000l, 1135130401000l, 1135130415000l,
 				1135130438000l, 1135130471000l, 1135130835000l, 1138120593000l,

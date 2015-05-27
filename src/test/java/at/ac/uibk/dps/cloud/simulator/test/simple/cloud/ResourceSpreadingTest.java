@@ -46,10 +46,8 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 
 	@Before
 	public void setup() {
-		offer = new MaxMinProvider(
-				ResourceConsumptionTest.permsProcessing);
-		utilize = new MaxMinConsumer(
-				ResourceConsumptionTest.permsProcessing);
+		offer = new MaxMinProvider(ResourceConsumptionTest.permsProcessing);
+		utilize = new MaxMinConsumer(ResourceConsumptionTest.permsProcessing);
 	}
 
 	@Test(timeout = 100)
@@ -172,8 +170,7 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		con.registerConsumption();
 		long before = Timed.getFireCount();
 		Timed.simulateUntil(before + 2000);
-		Assert.assertEquals(
-				"Processing should take twice as long as usually",
+		Assert.assertEquals("Processing should take twice as long as usually",
 				(long) (ResourceConsumptionTest.processingTasklen / utilize
 						.getPerTickProcessingPower()), Timed.getFireCount()
 						- before - 1);
@@ -185,8 +182,7 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		ConsumptionEventAssert c2Ev = new ConsumptionEventAssert();
 		ConsumptionEventAssert c3Ev = new ConsumptionEventAssert();
 		ConsumptionEventAssert c4Ev = new ConsumptionEventAssert();
-		offer = new MaxMinProvider(
-				ResourceConsumptionTest.permsProcessing * 2);
+		offer = new MaxMinProvider(ResourceConsumptionTest.permsProcessing * 2);
 		MaxMinProvider of2 = new MaxMinProvider(
 				ResourceConsumptionTest.permsProcessing / 2);
 		MaxMinConsumer ut2 = new MaxMinConsumer(
@@ -246,8 +242,7 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		long before = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
 		long after = Timed.getFireCount();
-		Assert.assertEquals(
-				"Resource consumption should be limited",
+		Assert.assertEquals("Resource consumption should be limited",
 				(long) (ResourceConsumptionTest.processingTasklen / (offer
 						.getPerTickProcessingPower() / 2)), after - before - 1);
 	}
@@ -335,5 +330,23 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 				"Immediate consumption followup not arriving with the right timing",
 				afterSingleCons - afterImmediate, afterImmediate
 						- beforeImmediate);
+	}
+
+	@Test(timeout = 100)
+	public void groupManagement() {
+		MaxMinProvider prov1 = new MaxMinProvider(1);
+		MaxMinProvider prov2 = new MaxMinProvider(1);
+		MaxMinConsumer cons2 = new MaxMinConsumer(1);
+
+		new ResourceConsumption(1000, 1, new MaxMinConsumer(1), prov1,
+				new ConsumptionEventAssert()).registerConsumption();
+		new ResourceConsumption(500, 1, cons2, prov1,
+				new ConsumptionEventAssert()).registerConsumption();
+		new ResourceConsumption(1000, 1, cons2, prov2,
+				new ConsumptionEventAssert()).registerConsumption();
+		new ResourceConsumption(1000, 1, new MaxMinConsumer(1), prov2,
+				new ConsumptionEventAssert()).registerConsumption();
+		Timed.simulateUntilLastEvent();
+
 	}
 }

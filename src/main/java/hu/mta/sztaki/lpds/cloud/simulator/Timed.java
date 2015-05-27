@@ -102,7 +102,7 @@ public abstract class Timed implements Comparable<Timed> {
 			frequency = freq;
 			nextEvent = calcTimeJump(freq);
 			if (nextEvent == Long.MAX_VALUE) {
-				throw new IllegalStateException("Event to never occur!");
+				throw new IllegalStateException("Event to never occur: " + freq);
 			}
 		}
 	}

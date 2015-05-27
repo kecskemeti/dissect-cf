@@ -22,9 +22,9 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
@@ -32,85 +32,85 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 public class FirstFitScheduler extends Scheduler {
-	ResourceAllocation[] ras = new ResourceAllocation[5];
 
-	public FirstFitScheduler(IaaSService parent) {
-		super(parent);
-	}
+    ResourceAllocation[] ras = new ResourceAllocation[5];
+    private final PMIterator it;
+    
+    public FirstFitScheduler(IaaSService parent) {
+        super(parent);
+        it=new PMIterator(parent.runningMachines);
+    }
+    
+    protected PMIterator getPMIterator() {
+        it.reset();
+        return it;
+    }
 
-	@Override
-	protected void scheduleQueued() {
-		final int totalMachineNum = parent.runningMachines.size();
-		if (totalMachineNum != 0) {
-			QueueingData request;
-			ResourceAllocation allocation;
-			boolean processableRequest = true;
-			int rasize = 0;
-			while (queue.size() > 0 && processableRequest) {
-				request = queue.get(0);
-				rasize = 0;
-				int vmNum = 0;
-				do {
-					processableRequest = false;
-					for (int i = 0; i < totalMachineNum; i++) {
-						final PhysicalMachine pm = parent.runningMachines
-								.get(i);
-						if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum]
-								.getVa().size) {
-							try {
-								allocation = pm.allocateResources(
-										request.queuedRC, true,
-										PhysicalMachine.defaultAllocLen);
-								if (allocation != null) {
-									if (allocation.allocated == request.queuedRC) {
-										ras[rasize++] = allocation;
-										if (rasize == ras.length) {
-											ResourceAllocation[] rasnew = new ResourceAllocation[rasize * 2];
-											System.arraycopy(ras, 0, rasnew, 0,
-													rasize);
-											ras = rasnew;
-										}
-										processableRequest = true;
-										break;
-									} else {
-										// This should not happen, as we
-										// asked
-										// for strict allocation
-										allocation.cancel();
-										System.err
-												.println("WARNING: an allocation has had to be cancelled with strict allocation mode.");
-
-									}
-								}
-							} catch (VMManagementException e) {
-							}
-						}
-					}
-				} while (++vmNum < request.queuedVMs.length
-						&& processableRequest);
-				if (processableRequest) {
-					try {
-						for (int i = request.queuedVMs.length - 1; i >= 0; i--) {
-							rasize--;
-							allocation = ras[i];
-							allocation.host.deployVM(request.queuedVMs[i],
-									allocation, request.queuedRepo);
-						}
-						manageQueueRemoval(request);
-					} catch (VMManagementException e) {
-						processableRequest = false;
-					} catch (NetworkException e) {
-						// Connectivity issues! Should not happen!
-						System.err
-								.println("WARNING: there are connectivity issues in the system."
-										+ e.getMessage());
-						processableRequest = false;
-					}
-				}
-			}
-			for (int i = 0; i < rasize; i++) {
-				ras[i].cancel();
-			}
-		}
-	}
+    @Override
+    protected void scheduleQueued() {
+        final PMIterator currIterator=getPMIterator();
+        if (currIterator.hasNext()) {
+            QueueingData request;
+            ResourceAllocation allocation;
+            boolean processableRequest = true;
+            int vmNum=0;
+            while (queue.size() > 0 && processableRequest) {
+                request = queue.get(0);
+                vmNum = 0;
+                do {
+                    processableRequest = false;
+                    do {
+                        final PhysicalMachine pm = currIterator.next();
+                        if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum]
+                                .getVa().size) {
+                            try {
+                                allocation = pm.allocateResources(
+                                        request.queuedRC, true,
+                                        PhysicalMachine.defaultAllocLen);
+                                if (allocation != null) {
+                                	currIterator.markLastCollected();
+                                        if (vmNum == ras.length) {
+                                            ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
+                                            System.arraycopy(ras, 0, rasnew, 0,
+                                                    vmNum);
+                                            ras = rasnew;
+                                        }
+                                        ras[vmNum] = allocation;
+                                        processableRequest = true;
+                                        break;
+ 
+                                }
+                            } catch (VMManagementException e) {
+                            }
+                        }
+                    } while(currIterator.hasNext());
+                    currIterator.restart(true);
+                } while (++vmNum < request.queuedVMs.length
+                        && processableRequest);
+                if (processableRequest) {
+                    try {
+                        for (int i = request.queuedVMs.length - 1; i >= 0; i--) {
+                            vmNum--;
+                            allocation = ras[i];
+                            allocation.host.deployVM(request.queuedVMs[i],
+                                    allocation, request.queuedRepo);
+                        }
+                        manageQueueRemoval(request);
+                    } catch (VMManagementException e) {
+                        processableRequest = false;
+                    } catch (NetworkException e) {
+                        // Connectivity issues! Should not happen!
+                        System.err
+                                .println("WARNING: there are connectivity issues in the system."
+                                        + e.getMessage());
+                        processableRequest = false;
+                    }
+                } 
+            }
+            vmNum--;
+            for (int i = 0; i < vmNum; i++) {
+                ras[i].cancel();
+            }
+        }
+    }
 }
