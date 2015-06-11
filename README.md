@@ -64,6 +64,8 @@ The test cases of the simulator contain many useful examples so one can start wo
 * Networking basics:
   *  `at.ac.uibk.dps.cloud.simulator.test.simple.cloud.NetworkNodeTest.intraNodeTransferTest`
  
+More elaborate examples can be found in the dissect-cf-examples project:
+https://github.com/kecskemeti/dissect-cf-examples
 
 ## Remarks
 
