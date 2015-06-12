@@ -71,6 +71,8 @@ More elaborate examples can be found in the [dissect-cf-examples project](https:
 
 Also, the [wiki](https://github.com/kecskemeti/dissect-cf/wiki) provides further insights to advanced topics (like creating custom schedulers). Apart from contributing with code, feel free to contribute there with documentaiton as well.
 
+Do you still have some questions? If so, then please share them with the simulator's user and developer community at our [Q&A forum](https://groups.google.com/forum/#!forum/dissect-cf-discuss) - a registration is needed to send your questions in.
+
 ## Remarks
 
 ##### Warning: the master branch of the simulator is intended as a development branch, and might not contain a functional version!
