@@ -39,6 +39,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Assert;
@@ -348,6 +349,42 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 		Assert.assertTrue("All running VMs should be reported by IaaSs",
 				vms.containsAll(reportedvms) && reportedvms.containsAll(vms));
+	}
+
+	@Test(timeout = 100)
+	public void vmQueuedListingTest() throws VMManagementException,
+			NetworkException {
+		constructMinimalIaaS();
+		ArrayList<VirtualMachine> vms = requestVMs();
+		vms.addAll(requestVMs()); // second unfulfillable vm set
+		Timed.simulateUntilLastEvent();
+		ArrayList<VirtualMachine> reportedvms = new ArrayList<VirtualMachine>(
+				vms.size());
+		for (IaaSService iaas : services) {
+			reportedvms.addAll(iaas.listVMs());
+		}
+		Iterator<VirtualMachine> vmit = vms.iterator();
+		int queuedCounter = 0;
+		int runningCounter = 0;
+		while (vmit.hasNext()) {
+			switch (vmit.next().getState()) {
+			case NONSERVABLE:
+				// Nonservable VMs will not have a chance to be queued
+				vmit.remove();
+				break;
+			case DESTROYED:
+				queuedCounter++;
+				break;
+			case RUNNING:
+				runningCounter++;
+			default:
+			}
+		}
+		Assert.assertTrue("Even queued VMs should be reported by IaaSs",
+				vms.containsAll(reportedvms) && reportedvms.containsAll(vms));
+		Assert.assertEquals(
+				"The count of queued and running VMs should match the num of VMs under or over scheduling",
+				vms.size() - runningCounter, queuedCounter);
 	}
 
 	@Ignore

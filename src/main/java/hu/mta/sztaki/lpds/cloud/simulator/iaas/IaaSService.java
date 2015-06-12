@@ -216,12 +216,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 
 	@Override
 	public Collection<VirtualMachine> listVMs() {
-		// FIXME: might need to report also those VMS that are queueing
 		final ArrayList<VirtualMachine> completeList = new ArrayList<VirtualMachine>();
 		int imLen = internalMachines.size();
 		for (int i = 0; i < imLen; i++) {
 			completeList.addAll(internalMachines.get(i).listVMs());
 		}
+		completeList.addAll(sched.getQueuedVMs());
 		return completeList;
 	}
 

@@ -294,6 +294,12 @@ public class TimedTest extends TestFoundation {
 		Assert.assertEquals("Even a zero length event should arrive", 1,
 				f.myfires);
 	}
+	
+	@Test(expected = IllegalStateException.class, timeout = 100)
+	public void hugeFreqTester() {
+		SingleFire f = new SingleFire();
+		f.changeFreq(Long.MAX_VALUE);
+	}
 
 	@Test(timeout = 100)
 	public void updateFreqWhileUnsubscribed() {

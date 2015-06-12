@@ -35,6 +35,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -238,6 +239,15 @@ public abstract class Scheduler {
 		for (int i = 0; i < size; i++) {
 			queueListeners.get(i).queueingStarted();
 		}
+	}
+
+	public List<VirtualMachine> getQueuedVMs() {
+		ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(
+				queue.size());
+		for (QueueingData qd : queue) {
+			vms.addAll(Arrays.asList(qd.queuedVMs));
+		}
+		return vms;
 	}
 
 	protected abstract void scheduleQueued();
