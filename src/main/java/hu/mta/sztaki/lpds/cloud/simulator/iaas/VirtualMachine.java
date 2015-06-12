@@ -227,7 +227,8 @@ public class VirtualMachine extends MaxMinConsumer {
 		DESTROYED,
 		/**
 		 * The VM is destroyed, and it is not possible to instantiate it in the
-		 * current cloud infrastructure.
+		 * current cloud infrastructure (or the VM was terminated on user
+		 * request before it was possible to instantiate it in the cloud)
 		 */
 		NONSERVABLE
 	};
@@ -241,6 +242,8 @@ public class VirtualMachine extends MaxMinConsumer {
 			State.SUSPENDED, State.SUSPENDED_MIG);
 	public final static EnumSet<State> preStartupStates = EnumSet.of(
 			State.DESTROYED, State.SHUTDOWN);
+	public final static EnumSet<State> preScheduleState = EnumSet.of(
+			State.DESTROYED, State.NONSERVABLE);
 
 	private final CopyOnWriteArrayList<StateChange> subscribers = new CopyOnWriteArrayList<StateChange>();
 

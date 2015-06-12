@@ -109,12 +109,14 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	abstract class Capchanger implements IaaSService.CapacityChangeEvent<PhysicalMachine> {
+	abstract class Capchanger implements
+			IaaSService.CapacityChangeEvent<PhysicalMachine> {
 		public int fired = 0;
 		public PhysicalMachine pm = dummyPMcreator();
 
 		@Override
-		public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> alteredPMs) {
+		public void capacityChanged(ResourceConstraints newCapacity,
+				List<PhysicalMachine> alteredPMs) {
 			doAssertion(newCapacity);
 			fired++;
 			Assert.assertTrue(
@@ -407,6 +409,51 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				vms[i].destroy(false);
 			}
 			Timed.simulateUntilLastEvent();
+		}
+	}
+
+	@Test(timeout = 100)
+	public void deQueueTest() throws VMManagementException, NetworkException {
+		constructMinimalIaaS();
+		for (IaaSService s : services) {
+			Repository r = s.repositories.get(0);
+			VirtualMachine vm = s.requestVM((VirtualAppliance) r.contents()
+					.iterator().next(), s.getCapacities(), r, 1)[0];
+			Timed.simulateUntilLastEvent();
+			Assert.assertEquals("The first VM should be running",
+					VirtualMachine.State.RUNNING, vm.getState());
+			VirtualMachine[] vmsToQueue = s.requestVM((VirtualAppliance) r
+					.contents().iterator().next(),
+					s.getCapacities().multiply(0.4), r, 2);
+			VirtualMachine.State[] states = new VirtualMachine.State[] {
+					vmsToQueue[0].getState(), vmsToQueue[1].getState() };
+			for (VirtualMachine.State st : states) {
+				Assert.assertTrue(
+						"The VMs should be queueing or nonservable (in case of non queueing schedulers)",
+						VirtualMachine.preScheduleState.contains(st));
+			}
+			if (states[0].equals(VirtualMachine.State.DESTROYED)) {
+				// A queueing scheduler is used
+				s.terminateVM(vmsToQueue[1], false);
+				states = new VirtualMachine.State[] { vmsToQueue[0].getState(),
+						vmsToQueue[1].getState() };
+			}
+			for (VirtualMachine.State st : states) {
+				Assert.assertEquals(
+						"The VMs should be marked as nonservable by all schedulers this time",
+						VirtualMachine.State.NONSERVABLE, st);
+			}
+			s.terminateVM(vm, true);
+			Timed.simulateUntilLastEvent();
+			vm.destroy(false);
+			Timed.simulateUntilLastEvent();
+			states = new VirtualMachine.State[] { vm.getState(),
+					vmsToQueue[0].getState(), vmsToQueue[1].getState() };
+			for (VirtualMachine.State st : states) {
+				Assert.assertTrue(
+						"None of the VMs should be running by this time",
+						VirtualMachine.preScheduleState.contains(st));
+			}
 		}
 	}
 }

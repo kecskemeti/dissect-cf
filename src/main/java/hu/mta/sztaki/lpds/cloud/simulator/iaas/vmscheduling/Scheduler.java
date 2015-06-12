@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -86,13 +87,13 @@ public abstract class Scheduler {
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
 			if (totalQueued.requiredCPUs != 0) {
-					scheduleQueued();
-					if (totalQueued.requiredCPUs != 0
-							&& queue.get(0).cumulativeRC.compareTo(parent
-									.getRunningCapacities()) > 0) {
-						notifyListeners();
-					}
+				scheduleQueued();
+				if (totalQueued.requiredCPUs != 0
+						&& queue.get(0).cumulativeRC.compareTo(parent
+								.getRunningCapacities()) > 0) {
+					notifyListeners();
 				}
+			}
 		}
 	};
 
@@ -165,6 +166,25 @@ public abstract class Scheduler {
 					"No physical machine is capable to serve this request: "
 							+ qd);
 		}
+	}
+
+	public final boolean dropVMrequest(final VirtualMachine vm) {
+		final Iterator<QueueingData> it = queue.iterator();
+		while (it.hasNext()) {
+			final QueueingData qd = it.next();
+			for (int i = 0; i < qd.queuedVMs.length; i++) {
+				if (qd.queuedVMs[i] == vm) {
+					it.remove();
+					for (i = 0; i < qd.queuedVMs.length; i++) {
+						// Mark all VMs in the request to be nonservable
+						qd.queuedVMs[i].setNonservable();
+					}
+					updateTotalQueuedAfterRemoval(qd);
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public ResourceConstraints getTotalQueued() {

@@ -195,9 +195,22 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 		return vms;
 	}
 
+	/**
+	 * Requesting the destruction of a VM in a DESTROYED state will dequeue the
+	 * VM from the scheduler's request queue. If the VM was not requested from
+	 * this IaaSService then a nosuchvmexception is thrown.
+	 */
 	@Override
 	public void terminateVM(final VirtualMachine vm, final boolean killTasks)
 			throws NoSuchVMException, VMManagementException {
+		if (VirtualMachine.State.DESTROYED.equals(vm.getState())) {
+			// The VM is still under scheduling, the queue needs to be cleared
+			if (!sched.dropVMrequest(vm)) {
+				throw new NoSuchVMException(
+						"This VM is not queued in this IaaS service");
+			}
+			return;
+		}
 		checkVMHost(vm).terminateVM(vm, killTasks);
 	}
 
