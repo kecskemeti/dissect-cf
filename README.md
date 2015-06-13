@@ -76,3 +76,8 @@ Do you still have some questions? If so, then please share them with the simulat
 ## Remarks
 
 ##### Warning: the master branch of the simulator is intended as a development branch, and might not contain a functional version!
+
+<p align="left">
+Build and testing status of the code in the repository:
+<img src="https://travis-ci.org/kecskemeti/dissect-cf.svg?branch=master"/>
+</p>
