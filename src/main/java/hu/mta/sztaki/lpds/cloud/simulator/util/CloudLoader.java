@@ -62,7 +62,7 @@ public class CloudLoader {
     public static IaaSService loadNodes(String fileName) throws IOException,
             SAXException, ParserConfigurationException {
         Calendar c = Calendar.getInstance();
-        System.out.println("Node Loader starts for: " + fileName + " at "
+        System.out.println("Cloud Loader starts for: " + fileName + " at "
                 + c.getTimeInMillis());
         final ArrayList<IaaSService> returner = new ArrayList<IaaSService>();
         SAXParserFactory spf = SAXParserFactory.newInstance();
@@ -188,7 +188,7 @@ public class CloudLoader {
                             }
                         } catch (Exception e) {
                             throw new SAXException(
-                                    "Cannot instantiate PowerStatee because of an consumption model type designation",
+                                    "Cannot instantiate PowerStatee because of a consumption model type designation",
                                     e);
                         }
                     }
@@ -253,7 +253,7 @@ public class CloudLoader {
         xmlReader.parse(new InputSource(br));
         br.close();
         c = Calendar.getInstance();
-        System.out.println("Node Loader stops for: " + fileName + " at "
+        System.out.println("Cloud Loader stops for: " + fileName + " at "
                 + c.getTimeInMillis());
         return returner.get(0);
     }
