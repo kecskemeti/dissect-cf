@@ -68,9 +68,11 @@ public class DirectEnergyMeter extends EnergyMeter implements
 
 	@Override
 	public void stopMeter() {
-		super.stopMeter();
-		usedPowerState.unsubscribePowerCharacteristicsChanges(this);
-		measuredResource.unsubscribePowerBehaviorChangeEvents(this);
+		if (isSubscribed()) {
+			super.stopMeter();
+			usedPowerState.unsubscribePowerCharacteristicsChanges(this);
+			measuredResource.unsubscribePowerBehaviorChangeEvents(this);
+		}
 	}
 
 	@Override

@@ -42,6 +42,8 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	 */
 	@Override
 	public boolean startMeter(long interval, boolean dropPriorReading) {
+		// Make sure the meteringstarted field is updated correctly.
+		super.startMeter(interval, dropPriorReading);
 		final int supSize = supervised.size();
 		int i = 0;
 		for (; i < supSize; i++) {
@@ -65,6 +67,8 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	 */
 	@Override
 	public void stopMeter() {
+		// Make sure the meteringstopped field is updated correctly.
+		super.stopMeter();
 		final int supSize = supervised.size();
 		for (int i = 0; i < supSize; i++) {
 			supervised.get(i).stopMeter();

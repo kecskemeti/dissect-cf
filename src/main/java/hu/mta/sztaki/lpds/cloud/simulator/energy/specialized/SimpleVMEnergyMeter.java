@@ -23,7 +23,7 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.energy;
+package hu.mta.sztaki.lpds.cloud.simulator.energy.specialized;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 

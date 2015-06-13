@@ -146,14 +146,14 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 				basic.runningMachines.size());
 	}
 
-	@Test(timeout = 1000)
+	@Test(timeout = 1500)
 	public void roundRobinPerformance() throws Exception {
 		genericPerformanceCheck(RoundRobinScheduler.class,
 				AlwaysOnMachines.class);
 	}
 	
 	//FIXME: this should be below 100ms!
-	@Test(timeout = 550)
+	@Test(timeout = 700)
 	public void pmRegistrationPerformance() throws Exception {
 		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,
 				10000, 1);
