@@ -16,7 +16,7 @@ The development of DISSECT-CF started in MTA SZTAKI in 2012, major contirbutions
 and design elements were incorporated at the University of Innsbruck. 
 
 When using the simulator for scientific research please cite the following paper:
-[Gabor Kecskemeti: DISSECT-CF: A simulator to foster energy-aware scheduling in infrastructure clouds. In Simulation Modelling Practice and Theory. 2015.](http://www.sciencedirect.com/science/article/pii/S1569190X15000842)
+[Gabor Kecskemeti: DISSECT-CF: A simulator to foster energy-aware scheduling in infrastructure clouds. In Simulation Modelling Practice and Theory. 2015.](https://www.researchgate.net/publication/277297657_DISSECT-CF_a_simulator_to_foster_energy-aware_scheduling_in_infrastructure_clouds) DOI: [10.1016/j.simpat.2015.05.009](http://dx.doi.org/10.1016/j.simpat.2015.05.009)
 
 Website:
 https://github.com/kecskemeti/dissect-cf
