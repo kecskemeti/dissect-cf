@@ -69,7 +69,7 @@ The test cases of the simulator contain many useful examples so one can start wo
  
 More elaborate examples can be found in the [dissect-cf-examples project](https://github.com/kecskemeti/dissect-cf-examples).
 
-Also, the [wiki](https://github.com/kecskemeti/dissect-cf/wiki) provides further insights to advanced topics (like creating custom schedulers). Apart from contributing with code, feel free to contribute there with documentaiton as well.
+Also, the [wiki](https://github.com/kecskemeti/dissect-cf/wiki) provides further insights to advanced topics (like creating custom schedulers) and offers a [FAQ](https://github.com/kecskemeti/dissect-cf/wiki/Frequently-Asked-Questions). Apart from contributing with code, feel free to contribute there with documentation as well.
 
 Do you still have some questions? If so, then please share them with the simulator's user and developer community at our [Q&A forum](https://groups.google.com/forum/#!forum/dissect-cf-discuss) - a registration is needed to send your questions in.
 
