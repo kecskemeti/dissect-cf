@@ -24,6 +24,9 @@ https://github.com/kecskemeti/dissect-cf
 Documentation website:
 https://kecskemeti.github.io/dissect-cf
 
+Archive for past (even pre-github) releases:
+http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF
+
 Licensing:
 GNU Lesser General Public License 3 and later
 
