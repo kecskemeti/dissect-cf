@@ -21,6 +21,9 @@ When using the simulator for scientific research please cite the following paper
 Website:
 https://github.com/kecskemeti/dissect-cf
 
+Documentation website:
+https://kecskemeti.github.io/dissect-cf
+
 Licensing:
 GNU Lesser General Public License 3 and later
 
