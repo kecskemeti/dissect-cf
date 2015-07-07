@@ -6,6 +6,7 @@
 	<version>0.9.5</version>
 	<name>DISSECT-CF</name>
 	<description>DIScrete event baSed Energy Consumption simulaTor for Clouds and Federations</description>
+	<url>https://github.com/kecskemeti/dissect-cf</url>
 	<dependencies>
 		<dependency>
 			<groupId>junit</groupId>
@@ -18,6 +19,19 @@
 	<organization>
 		<name>University of Innsbruck &amp; MTA SZTAKI</name>
 	</organization>
+	<developers>
+		<developer>
+			<name>Gabor Kecskemeti</name>
+			<email>kecskemeti.gabor@sztaki.mta.hu</email>
+			<organization>MTA SZTAKI, LPDS</organization>
+			<organizationUrl>http://www.lpds.sztaki.hu</organizationUrl>
+		</developer>
+	</developers>
+	<scm>
+		<connection>scm:git:git@github.com:kecskemeti/dissect-cf.git</connection>
+		<developerConnection>scm:git:git@github.com:kecskemeti/dissect-cf.git</developerConnection>
+		<url>git@github.com:kecskemeti/dissect-cf.git</url>
+	</scm>
 	<licenses>
 		<license>
 			<name>GNU Lesser General Public License (LGPL) version 3.0</name>
@@ -35,28 +49,61 @@
 					<target>1.6</target>
 				</configuration>
 			</plugin>
-                        <plugin>
-                                <groupId>org.apache.maven.plugins</groupId>
-                                <artifactId>maven-javadoc-plugin</artifactId>
-                                <version>2.10.1</version>
-                                <configuration>
-                                        <show>private</show>
-                                </configuration>
-                        </plugin>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>2.2.1</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<version>1.6.3</version>
+				<extensions>true</extensions>
+				<configuration>
+					<serverId>ossrh</serverId>
+					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+					<autoReleaseAfterClose>true</autoReleaseAfterClose>
+				</configuration>
 			</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>install</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.10.1</version>
+						<configuration>
+							<show>private</show>
+						</configuration>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>2.2.1</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
 		</plugins>
 		<resources>
 			<resource>
@@ -70,4 +117,17 @@
 			</resource>
 		</resources>
 	</build>
+
+	<distributionManagement>
+		<repository>
+			<id>ossrh</id>
+			<name>Releases</name>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+		</repository>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<name>Snapshots</name>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 </project>
