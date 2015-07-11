@@ -608,7 +608,7 @@ public abstract class ResourceSpreader {
 	public String toString() {
 		return "RS(processing: "
 				+ toProcess.toString()
-				+ "in power state: "
+				+ " in power state: "
 				+ (currentPowerBehavior == null ? "-" : currentPowerBehavior
 						.toString()) + ")";
 	}

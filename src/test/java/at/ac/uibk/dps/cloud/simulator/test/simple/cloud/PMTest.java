@@ -33,6 +33,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -62,19 +63,20 @@ public class PMTest extends IaaSRelatedFoundation {
 			reqcores, reqProcessing * 2, reqmem);
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
+	Repository reqDisk;
 	HashMap<String, Integer> latmap = new HashMap<String, Integer>();
 
 	@Before
 	public void initializeTests() throws Exception {
 		ConsumptionEventAssert.hits.clear();
 		latmap.put(pmid, 1);
-		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem,
-				new Repository(123, pmid, 456, 789, 12,
-						new HashMap<String, Integer>()), reqond, reqoffd,
-				defaultTransitions);
+		reqDisk = new Repository(123, pmid, 456, 789, 12,
+				new HashMap<String, Integer>());
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				reqond, reqoffd, defaultTransitions);
 	}
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void constructionTest() {
 		Assert.assertEquals("Cores mismatch", reqcores,
 				(int) pm.getCapacities().requiredCPUs);
@@ -84,8 +86,8 @@ public class PMTest extends IaaSRelatedFoundation {
 				reqProcessing, (int) pm.getCapacities().requiredProcessingPower);
 		Assert.assertEquals("Total processing power mismatch", reqcores
 				* reqProcessing, (int) pm.getPerTickProcessingPower());
-		Assert.assertEquals("On delay mismatch", reqond, pm.onDelay);
-		Assert.assertEquals("Off delay mismatch", reqoffd, pm.offDelay);
+		Assert.assertEquals("On delay mismatch", reqond,
+				pm.getCurrentOnOffDelay());
 		Assert.assertTrue("Free capacity mismatch", pm.getFreeCapacities()
 				.compareTo(pm.getCapacities()) == 0);
 		Assert.assertTrue("Machine's id is not in the machine's toString", pm
@@ -168,7 +170,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		long after = Timed.getFireCount();
 		Assert.assertEquals(
 				"Off and on delays are not executed to their full extent", 2
-						* pm.onDelay + pm.offDelay, after - before - 1);
+						* reqond + reqoffd, after - before - 1);
 		pm.subscribeStateChangeEvents(sl);
 		pm.turnon(); // After already running
 		pm.unsubscribeStateChangeEvents(sl);
@@ -407,12 +409,14 @@ public class PMTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("On delay misreported after on-off cycle", reqond,
 				pm.getCurrentOnOffDelay());
+		long switchOnRequestTime = Timed.getFireCount();
 		pm.turnon();
-		Timed.simulateUntil(Timed.getFireCount() + timeDiff);
+		Timed.simulateUntil(switchOnRequestTime + timeDiff);
 		pm.switchoff(null);
-		Assert.assertEquals("Delays should add up together", reqoffd + reqond
-				- timeDiff, pm.getCurrentOnOffDelay());
 		Timed.simulateUntilLastEvent();
+		long completeSwithcOffTime = Timed.getFireCount();
+		Assert.assertEquals("Delays should add up together", reqoffd + reqond,
+				completeSwithcOffTime - switchOnRequestTime - 1);
 	}
 
 	@Test(timeout = 100)
@@ -672,4 +676,139 @@ public class PMTest extends IaaSRelatedFoundation {
 				conVM.registerConsumption());
 	}
 
+	@Test(timeout = 100)
+	public void parallelVMMuse() throws VMManagementException, NetworkException {
+		preparePM();
+		VirtualAppliance va = (VirtualAppliance) pm.localDisk.contents()
+				.iterator().next();
+		final VirtualMachine vm = pm.requestVM(va, pm.getCapacities(),
+				pm.localDisk, 1)[0];
+		Timed.simulateUntilLastEvent();
+		long startTime = Timed.getFireCount();
+		vm.newComputeTask(aSecond, ResourceConsumption.unlimitedProcessing,
+				new ConsumptionEventAssert());
+		Timed.simulateUntilLastEvent();
+		vm.newComputeTask(aSecond, ResourceConsumption.unlimitedProcessing,
+				new ConsumptionEventAssert() {
+					@Override
+					public void conComplete() {
+						super.conComplete();
+						try {
+							vm.destroy(false);
+						} catch (VMManagementException e) {
+							throw new IllegalStateException(e);
+						}
+					}
+				});
+		ResourceConsumption consumption = new ResourceConsumption(2 * aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAdapter());
+		consumption.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"The second task execution should take longer due to the VMM activity registered",
+				ConsumptionEventAssert.hits.get(1)
+						- ConsumptionEventAssert.hits.get(0),
+				(ConsumptionEventAssert.hits.get(0) - startTime) * 2);
+	}
+
+	@Test(timeout = 100)
+	public void terminatePMduringVMMActivity() throws VMManagementException,
+			NetworkException {
+		preparePM();
+		long startTime = Timed.getFireCount();
+		final long totalProcessing = 1000 * aSecond;
+		// Check how long the first consumption takes
+		ResourceConsumption consumption = new ResourceConsumption(
+				totalProcessing, ResourceConsumption.unlimitedProcessing,
+				pm.directConsumer, pm, new ConsumptionEventAssert());
+		consumption.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		// Ensure the second consumption takes that much time as well despite
+		// the switchoff
+		consumption = new ResourceConsumption(totalProcessing,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAssert(Timed.getFireCount()
+						+ ConsumptionEventAssert.hits.get(0) - startTime, true));
+		consumption.registerConsumption();
+		Timed.fire();
+		long currentTime = Timed.getFireCount();
+		Timed.simulateUntil(currentTime + (Timed.getNextFire() - currentTime)
+				/ 2);
+		pm.switchoff(null);
+		final ArrayList<Long> lastHit = new ArrayList<Long>();
+		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+			@Override
+			public void stateChanged(State oldState, State newState) {
+				if (newState.equals(PhysicalMachine.State.OFF)) {
+					lastHit.add(Timed.getFireCount());
+				}
+			}
+		});
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue(
+				"The PM should not get switched off before its VMM finishes its activities",
+				lastHit.get(0) > ConsumptionEventAssert.hits.get(1));
+	}
+
+	@Test(timeout = 100)
+	public void registerWhileSwitchedOff() throws VMManagementException,
+			NetworkException {
+		preparePM();
+		ResourceConsumption consumption = new ResourceConsumption(aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAdapter());
+		Assert.assertTrue("Should be able to register to a running PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		pm.switchoff(null);
+		ConsumptionEventAdapter cae = new ConsumptionEventAdapter();
+		consumption = new ResourceConsumption(aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				cae);
+		Assert.assertFalse(
+				"Should not be able to register to a switching off PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertFalse("Should not ever complete if it was not registered",
+				cae.isCompleted());
+		Assert.assertFalse("Should not be able to register to an off PM",
+				consumption.registerConsumption());
+		pm.turnon();
+		Assert.assertFalse("Should not be able to register to turning on PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Should be able to register to a running PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Should be complete by now", cae.isCompleted());
+	}
+
+	@Test(timeout = 100)
+	public void complexBootup() throws VMManagementException, NetworkException {
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				new double[] { 1, 0.1, 2, 0.05, 3, 3 }, new double[] { 3, 0.3,
+						12, ResourceConsumption.unlimitedProcessing },
+				defaultTransitions);
+		final long turnOnTime = 10 + 40 + 1;
+		final long switchOffTime = 10 + 2;
+		long before = Timed.getFireCount();
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Turnon should take this much time: ", turnOnTime,
+				Timed.getFireCount() - before - 1);
+		before = Timed.getFireCount();
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Switchoff should take this much time: ",
+				switchOffTime, Timed.getFireCount() - before - 1);
+		before = Timed.getFireCount();
+		pm.turnon();
+		Timed.simulateUntil(before + turnOnTime / 2);
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"A complete turnon-switchoff cycle should take this much time: ",
+				turnOnTime + switchOffTime, Timed.getFireCount() - before - 1);
+	}
 }

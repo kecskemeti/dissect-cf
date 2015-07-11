@@ -26,9 +26,13 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -57,6 +61,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 
 	public static final int defaultAllocLen = 1000;
 	public static final int migrationAllocLen = 1000000;
+	public static final double smallUtilization = 0.001;
 
 	/**
 	 * Represents the possible states of the physical machines modeled in the
@@ -212,18 +217,68 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 	}
 
-	public class PowerStateDelayer extends DeferredEvent {
-		final State newState;
+	public class PowerStateDelayer extends ConsumptionEventAdapter {
+		private State newState;
+		// The end of the list is the upcoming task
+		final ArrayList<Double> tasksDue;
+		public final long transitionStart;
+		ResourceConsumption currentConsumption = null;
 
-		public PowerStateDelayer(final int delay, final State newPowerState) {
-			super(delay);
+		public PowerStateDelayer(final double[] tasklist,
+				final State newPowerState) {
+			onOffEvent = this;
 			newState = newPowerState;
+			tasksDue = new ArrayList<Double>(tasklist.length);
+			for (int i = tasklist.length - 1; i >= 0; i--) {
+				tasksDue.add(tasklist[i]);
+			}
+			sendTask();
+			transitionStart = Timed.getFireCount();
+		}
+
+		private void sendTask() {
+			// Did we finish all the tasks for the state change?
+			if (tasksDue.size() == 0) {
+				// Mark the completion of the state change
+				onOffEvent = null;
+				setState(newState);
+				return;
+			}
+
+			// No we did not, lets send some more to our direct consumer
+			final double totalConsumption = tasksDue
+					.remove(tasksDue.size() - 1);
+			final double limit = tasksDue.remove(tasksDue.size() - 1);
+			currentConsumption = new ResourceConsumption(totalConsumption,
+					limit, directConsumer, PhysicalMachine.this, this);
+			if (!currentConsumption.registerConsumption()) {
+				throw new IllegalStateException(
+						"PowerStateChange was not successful because resource consumption could not be registered");
+			}
 		}
 
 		@Override
-		protected void eventAction() {
-			onOffEvent = null;
-			setState(newState);
+		public void conComplete() {
+			sendTask();
+		}
+
+		@Override
+		public void conCancelled(ResourceConsumption problematic) {
+			throw new IllegalStateException(
+					"Unexpected termination of one of the state changing tasks");
+		}
+
+		public void addFurtherTasks(final double[] tasklist) {
+			tasksDue.ensureCapacity(tasklist.length + tasksDue.size());
+			for (int i = tasklist.length - 1; i >= 0; i -= 2) {
+				// Maintaining the end to front order of the due list
+				tasksDue.add(0, tasklist[i - 1]);
+				tasksDue.add(0, tasklist[i]);
+			}
+		}
+
+		public void setNewState(State newState) {
+			this.newState = newState;
 		}
 	}
 
@@ -237,9 +292,11 @@ public class PhysicalMachine extends MaxMinProvider implements
 	private int promisedAllocationsCount = 0;
 
 	// Internal state management
-	public final int onDelay;
-	public final int offDelay;
 	private State currentState = null;
+	private final double[] onTransition;
+	private final double[] offTransition;
+	private final long onDelayEstimate;
+	private final long offDelayEstimate;
 
 	public static enum PowerStateKind {
 		host, storage, network
@@ -255,8 +312,14 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public final Set<VirtualMachine> publicVms = Collections
 			.unmodifiableSet(vms);
 	private long completedVMs = 0; // Past
-	private DeferredEvent onOffEvent = null;
+	// The onOffEvent here is managed by the delayer itself.
+	private PowerStateDelayer onOffEvent = null;
 	private CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>>();
+
+	// The "hidden" - non VM - consumer (representing the VMM's actions and the
+	// PM's own operations
+	public final MaxMinConsumer directConsumer;
+	private boolean directConsumerUsageMoratory = true;
 
 	/**
 	 * Defines a new physical machine, ensures that there are no VMs running so
@@ -287,6 +350,35 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public PhysicalMachine(double cores, double perCorePocessing, long memory,
 			Repository disk, int onD, int offD,
 			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
+		this(cores, perCorePocessing, memory, disk, new double[] {
+				onD * perCorePocessing * smallUtilization,
+				perCorePocessing * smallUtilization }, new double[] {
+				offD * perCorePocessing * smallUtilization,
+				perCorePocessing * smallUtilization }, powerTransitions);
+	}
+
+	/**
+	 * 
+	 * @param on
+	 *            which taskset needs to be prepared
+	 * @param array
+	 *            the task array
+	 * @return the estimated runtime of all tasks in the array
+	 */
+	private long prepareTransitionalTasks(boolean on, double[] array) {
+		final double[] writeHere = on ? onTransition : offTransition;
+		System.arraycopy(array, 0, writeHere, 0, array.length);
+		long odSum = 0;
+		for (int i = 0; i < array.length; i += 2) {
+			odSum += (long) (array[i] / array[i + 1]);
+		}
+		return odSum;
+	}
+
+	public PhysicalMachine(double cores, double perCorePocessing, long memory,
+			Repository disk, double[] turnonOperations,
+			double[] switchoffOperations,
+			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
 		super(cores * perCorePocessing);
 		// Init resources:
 		totalCapacities = new ResourceConstraints(cores, perCorePocessing,
@@ -295,13 +387,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 		reallyFreeCapacities = totalCapacities;
 		localDisk = disk;
 
-		// Init delays
-		onDelay = onD;
-		offDelay = offD;
-
 		hostPowerBehavior = powerTransitions.get(PowerStateKind.host);
 		storagePowerBehavior = powerTransitions.get(PowerStateKind.storage);
 		networkPowerBehavior = powerTransitions.get(PowerStateKind.network);
+		onTransition = new double[turnonOperations.length];
+		onDelayEstimate = prepareTransitionalTasks(true, turnonOperations);
+		offTransition = new double[switchoffOperations.length];
+		offDelayEstimate = prepareTransitionalTasks(false, switchoffOperations);
 
 		if (hostPowerBehavior == null || storagePowerBehavior == null
 				|| networkPowerBehavior == null) {
@@ -310,6 +402,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		setState(State.OFF);
+		directConsumer = new MaxMinConsumer(getPerTickProcessingPower());
 	}
 
 	/**
@@ -370,14 +463,29 @@ public class PhysicalMachine extends MaxMinProvider implements
 	}
 
 	private void actualSwitchOff() {
-		int extratime = 0;
 		switch (currentState) {
 		case SWITCHINGON:
-			extratime = (int) onOffEvent.nextEventDistance();
-			onOffEvent.cancel();
-		case RUNNING:
-			onOffEvent = new PowerStateDelayer(extratime + offDelay, State.OFF);
 			setState(State.SWITCHINGOFF);
+			onOffEvent.addFurtherTasks(offTransition);
+			onOffEvent.setNewState(State.OFF);
+			break;
+		case RUNNING:
+			setState(State.SWITCHINGOFF);
+			new Timed() {
+				@Override
+				public void tick(final long fires) {
+					ResourceSpreader.FreqSyncer syncer = getSyncer();
+					// Ensures that the switching off activities are only
+					// started once all runtime activities complete for the
+					// directConsumer
+					if (syncer != null && syncer.isSubscribed()) {
+						updateFrequency(syncer.getNextEvent() + 1);
+					} else {
+						unsubscribe();
+						new PowerStateDelayer(offTransition, State.OFF);
+					}
+				}
+			}.tick(Timed.getFireCount());
 			break;
 		case OFF:
 		case SWITCHINGOFF:
@@ -408,14 +516,16 @@ public class PhysicalMachine extends MaxMinProvider implements
 	 * consumption and opens the possibility to receive VM requests.
 	 */
 	public void turnon() {
-		int extratime = 0;
 		switch (currentState) {
 		case SWITCHINGOFF:
-			extratime = (int) onOffEvent.nextEventDistance();
-			onOffEvent.cancel();
 		case OFF:
-			onOffEvent = new PowerStateDelayer(extratime + onDelay,
-					State.RUNNING);
+			if (onOffEvent == null) {
+				new PowerStateDelayer(onTransition, State.RUNNING);
+			} else {
+				onOffEvent.addFurtherTasks(onTransition);
+				onOffEvent.setNewState(State.RUNNING);
+			}
+
 			setState(State.SWITCHINGON);
 			break;
 		case RUNNING:
@@ -639,8 +749,22 @@ public class PhysicalMachine extends MaxMinProvider implements
 	}
 
 	@Override
-	protected boolean isAcceptableConsumption(ResourceConsumption con) {
-		return vms.contains((VirtualMachine) con.getConsumer()) ? super
+	protected boolean isAcceptableConsumption(final ResourceConsumption con) {
+		final ResourceSpreader consumer = con.getConsumer();
+		final boolean internalConsumer = (consumer == directConsumer)
+				&& (directConsumerUsageMoratory ? (onOffEvent == null ? false
+						: onOffEvent.currentConsumption == con) : true);
+		final boolean runningVirtualMachine;
+		if (internalConsumer) {
+			runningVirtualMachine = false;
+		} else {
+			if (consumer instanceof VirtualMachine) {
+				runningVirtualMachine = vms.contains((VirtualMachine) consumer);
+			} else {
+				runningVirtualMachine = false;
+			}
+		}
+		return internalConsumer || runningVirtualMachine ? super
 				.isAcceptableConsumption(con) : false;
 	}
 
@@ -656,24 +780,28 @@ public class PhysicalMachine extends MaxMinProvider implements
 		if (onOffEvent == null) {
 			switch (currentState) {
 			case OFF:
-				return onDelay;
+				return onDelayEstimate;
 			case RUNNING:
-				return offDelay;
+				return offDelayEstimate;
 			default:
 				throw new IllegalStateException(
 						"The onOffEvent is null while doing switchon/off");
 			}
 		} else {
+			long remainingTime = onOffEvent.transitionStart
+					- Timed.getFireCount();
 			switch (currentState) {
 			case SWITCHINGOFF:
+				remainingTime += offDelayEstimate;
+				break;
 			case SWITCHINGON:
-				if (onOffEvent.isSubscribed()) {
-					return onOffEvent.nextEventDistance();
-				}
+				remainingTime += onDelayEstimate;
+				break;
 			default:
 				throw new IllegalStateException(
 						"The onOffEvent is not null while not in switchon/off mode");
 			}
+			return remainingTime;
 
 		}
 	}
@@ -697,6 +825,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 	private void setState(final State newState) {
 		final State oldstate = currentState;
 		currentState = newState;
+		directConsumerUsageMoratory = newState != State.RUNNING;
 		final int size = listeners.size();
 		for (int i = 0; i < size; i++) {
 			listeners.get(i).stateChanged(oldstate, newState);
@@ -769,5 +898,9 @@ public class PhysicalMachine extends MaxMinProvider implements
 			increasingFreeCapacityListeners.get(i).capacityChanged(
 					reallyFreeCapacities, freed);
 		}
+	}
+
+	public boolean isDirectConsumerUsageMoratory() {
+		return directConsumerUsageMoratory;
 	}
 }
