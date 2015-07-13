@@ -108,6 +108,8 @@ public class NetworkNode {
 	public final MaxMinProvider outbws;
 	public final MaxMinConsumer diskinbws;
 	public final MaxMinProvider diskoutbws;
+	public final MaxMinConsumer meminbws;
+	public final MaxMinProvider memoutbws;
 
 	private final String name;
 	private final HashMap<String, Integer> latencies;
@@ -131,6 +133,11 @@ public class NetworkNode {
 		inbws = new MaxMinConsumer(maxInBW);
 		diskinbws = new MaxMinConsumer(diskBW / 2f);
 		diskoutbws = new MaxMinProvider(diskBW / 2f);
+		// Just making sure we will have enough bandwidht for every operation we
+		// could possibly have
+		final double memBW = (maxOutBW + maxInBW + diskBW);
+		meminbws = new MaxMinConsumer(memBW);
+		memoutbws = new MaxMinProvider(memBW);
 		latencies = latencymap;
 	}
 
@@ -191,6 +198,20 @@ public class NetworkNode {
 		}
 	}
 
+	public ResourceConsumption pushFromMemory(final long size,
+			final double limit, boolean toDisk,
+			final ResourceConsumption.ConsumptionEvent e) {
+		return new SingleTransfer(0, size, limit, toDisk ? diskinbws : inbws,
+				memoutbws, e);
+	}
+
+	public ResourceConsumption readToMemory(final long size,
+			final double limit, boolean fromDisk,
+			final ResourceConsumption.ConsumptionEvent e) {
+		return new SingleTransfer(0, size, limit, meminbws,
+				fromDisk ? diskoutbws : outbws, e);
+	}
+
 	public static int checkConnectivity(final NetworkNode from,
 			final NetworkNode to) throws NetworkException {
 		if (from == to) {
@@ -211,8 +232,8 @@ public class NetworkNode {
 	public String toString() {
 		return "NetworkNode(Id:" + name + " NI:" + getInputbw() + ",NO:"
 				+ getOutputbw() + " -- RX:" + inbws.getTotalProcessed()
-				+ " TX:" + outbws.getTotalProcessed() + " --, D:"
-				+ getDiskbw() + ")";
+				+ " TX:" + outbws.getTotalProcessed() + " --, D:" + getDiskbw()
+				+ ")";
 	}
 
 }

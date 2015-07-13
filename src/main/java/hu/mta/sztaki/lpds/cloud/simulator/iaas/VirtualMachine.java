@@ -711,29 +711,19 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 		}
 		final String memid = "VM-Memory-State-of-" + hashCode();
-		final String tmemid = "Temp-" + memid;
 		final Repository pmdisk = ra.host.localDisk;
-		savedmemory = new StorageObject(tmemid, ra.allocated.requiredMemory,
+		savedmemory = new StorageObject(memid, ra.allocated.requiredMemory,
 				false);
-		if (!pmdisk.registerObject(savedmemory)) {
-			throw new VMManagementException(
-					"Not enough space on localDisk for the suspend operation of "
-							+ savedmemory);
-		}
 		setState(State.SUSPEND_TR);
 		class SuspendComplete extends ConsumptionEventAdapter {
 			@Override
 			public void conComplete() {
-				// Deregister temp content
-				pmdisk.deregisterObject(savedmemory);
-				// Save real content
-				savedmemory = pmdisk.lookup(memid);
 				ra.release();
 				ra = null;
 				ev.changeEvents();
 			}
 		}
-		if (!pmdisk.duplicateContent(tmemid, memid, new SuspendComplete())) {
+		if (!pmdisk.storeInMemoryObject(savedmemory, new SuspendComplete())) {
 			// Set back the status so it is possible to try again
 			setState(State.RUNNING);
 			pmdisk.deregisterObject(savedmemory.id);
@@ -748,13 +738,10 @@ public class VirtualMachine extends MaxMinConsumer {
 			NetworkNode.NetworkException {
 		State priorState = currState;
 		setState(State.RESUME_TR);
-		final String tmemid = "Temp-" + savedmemory.id;
 		final Repository pmdisk = ra.host.localDisk;
 		class ResumeComplete extends ConsumptionEventAdapter {
 			@Override
 			public void conComplete() {
-				// Deregister temp content
-				pmdisk.deregisterObject(tmemid);
 				// Deregister saved memory
 				pmdisk.deregisterObject(savedmemory);
 				savedmemory = null;
@@ -767,13 +754,13 @@ public class VirtualMachine extends MaxMinConsumer {
 				suspendedTasks.clear();
 			}
 		}
-		if (!pmdisk.duplicateContent(savedmemory.id, tmemid,
-				new ResumeComplete())) {
+		if (!pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())) {
 			// Set back the status so it is possible to try again
 			setState(priorState);
-			throw new VMManagementException("Not enough space on "
-					+ pmdisk.getName() + " for the resume operation of "
-					+ hashCode());
+			throw new VMManagementException(
+					"Failed to fetch the stored memory " + savedmemory
+							+ " from PM " + pmdisk.getName()
+							+ " for the resume operation of VM " + hashCode());
 		}
 	}
 

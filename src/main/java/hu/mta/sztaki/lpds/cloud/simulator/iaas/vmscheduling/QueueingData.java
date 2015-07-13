@@ -25,11 +25,11 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import java.util.HashMap;
-
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+
+import java.util.HashMap;
 
 public class QueueingData {
 	public final VirtualMachine[] queuedVMs;

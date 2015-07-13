@@ -233,29 +233,92 @@ public class Repository extends NetworkNode {
 		if (totransfer == null) {
 			return false;
 		}
-		final long increasedpromise = target.promisedStorage + totransfer.size;
-		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
-			underTransfer.add(id);
-			target.promisedStorage = increasedpromise;
-			initTransfer(totransfer.size,
-					ResourceConsumption.unlimitedProcessing, this, target,
-					new ConsumptionEventAdapter() {
-						@Override
-						public void conComplete() {
-							underTransfer.remove(id);
-							final StorageObject toRegister = (target == Repository.this || newId != null) ? totransfer
-									.newCopy(newId) : totransfer;
+		return manageStoragePromise(totransfer.size, id, target,
+				new MainStorageActivity() {
+					@Override
+					public void doStorage() throws NetworkException {
+						underTransfer.add(id);
+						initTransfer(totransfer.size,
+								ResourceConsumption.unlimitedProcessing,
+								Repository.this, target,
+								new ConsumptionEventAdapter() {
+									@Override
+									public void conComplete() {
+										underTransfer.remove(id);
+										final StorageObject toRegister = (target == Repository.this || newId != null) ? totransfer
+												.newCopy(newId) : totransfer;
 
-							target.promisedStorage -= totransfer.size;
-							target.registerObject(toRegister);
-							if (ev != null) {
-								ev.conComplete();
-							}
-						}
-					});
+										target.promisedStorage -= totransfer.size;
+										target.registerObject(toRegister);
+										if (ev != null) {
+											ev.conComplete();
+										}
+									}
+								});
+					}
+				});
+	}
+
+	private static interface MainStorageActivity {
+		void doStorage() throws NetworkException;
+	}
+
+	private static boolean manageStoragePromise(final long size,
+			final String id, final Repository target,
+			final MainStorageActivity mainActivity) throws NetworkException {
+		final long increasedpromise = target.promisedStorage + size;
+		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
+			target.promisedStorage = increasedpromise;
+			mainActivity.doStorage();
 			return true;
 		}
 		return false;
+
+	}
+
+	public boolean storeInMemoryObject(final StorageObject so,
+			final ResourceConsumption.ConsumptionEvent ev)
+			throws NetworkException {
+		if (lookup(so.id) != null) {
+			return false;
+		}
+		return manageStoragePromise(so.size, so.id, this,
+				new MainStorageActivity() {
+					@Override
+					public void doStorage() throws NetworkException {
+						pushFromMemory(so.size,
+								ResourceConsumption.unlimitedProcessing, true,
+								new ConsumptionEventAdapter() {
+									@Override
+									public void conComplete() {
+										promisedStorage -= so.size;
+										registerObject(so);
+										if (ev != null) {
+											ev.conComplete();
+										}
+									}
+								});
+					}
+				});
+	}
+
+	public boolean fetchObjectToMemory(final StorageObject so,
+			final ResourceConsumption.ConsumptionEvent ev) {
+		if (lookup(so.id) == null) {
+			return false;
+		}
+		underTransfer.add(so.id);
+		readToMemory(so.size, ResourceConsumption.unlimitedProcessing, true,
+				new ConsumptionEventAdapter() {
+					@Override
+					public void conComplete() {
+						underTransfer.remove(so.id);
+						if (ev != null) {
+							ev.conComplete();
+						}
+					}
+				});
+		return true;
 	}
 
 	/**

@@ -25,8 +25,6 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
 
-import java.util.HashSet;
-
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
@@ -39,6 +37,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+
+import java.util.HashSet;
 
 import org.junit.Assert;
 import org.junit.Before;
