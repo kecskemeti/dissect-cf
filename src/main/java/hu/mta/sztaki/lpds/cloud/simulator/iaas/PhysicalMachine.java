@@ -478,8 +478,11 @@ public class PhysicalMachine extends MaxMinProvider implements
 					// Ensures that the switching off activities are only
 					// started once all runtime activities complete for the
 					// directConsumer
-					if (syncer != null && syncer.isSubscribed()) {
-						updateFrequency(syncer.getNextEvent() + 1);
+					if (syncer != null
+							&& syncer.isSubscribed()
+							&& (underProcessing.size() + toBeAdded.size()
+									- toBeRemoved.size() > 0)) {
+						updateFrequency(syncer.getNextEvent() - fires + 1);
 					} else {
 						unsubscribe();
 						new PowerStateDelayer(offTransition, State.OFF);
