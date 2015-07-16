@@ -26,6 +26,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.complex;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
@@ -72,9 +73,10 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 		private int myTaskCount;
 
 		public VMHandler() throws Exception {
-			vm = basic.requestVM(va,
-					baseRC.multiply(SeedSyncer.centralRnd.nextDouble()), repo,
-					1)[0];
+			AlterableResourceConstraints mRC = new AlterableResourceConstraints(
+					baseRC);
+			mRC.multiply(SeedSyncer.centralRnd.nextDouble());
+			vm = basic.requestVM(va, mRC, repo, 1)[0];
 			vm.subscribeStateChange(this);
 			Timed.simulateUntil(Timed.getFireCount()
 					+ SeedSyncer.centralRnd.nextInt((int) maxTaskLen));
@@ -151,8 +153,8 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 		genericPerformanceCheck(RoundRobinScheduler.class,
 				AlwaysOnMachines.class);
 	}
-	
-	//FIXME: this should be below 100ms!
+
+	// FIXME: this should be below 100ms!
 	@Test(timeout = 700)
 	public void pmRegistrationPerformance() throws Exception {
 		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,

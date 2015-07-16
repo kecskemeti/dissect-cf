@@ -44,6 +44,7 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 	IaaSService basic;
+	Repository r;
 
 	@Before
 	public void resetSim() throws Exception {
@@ -53,6 +54,8 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 				AlwaysOnMachines.class);
 		basic.registerHost(dummyPMcreator());
 		basic.registerHost(dummyPMcreator());
+		r = dummyRepoCreator(true);
+		basic.registerRepository(r);
 	}
 
 	@Test(timeout = 100)
@@ -76,8 +79,6 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void vmCreationTest() throws VMManagementException, NetworkException {
-		Repository r = dummyRepoCreator(true);
-		basic.registerRepository(r);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Did not switch on all machines as expected",
 				basic.machines.size(), basic.runningMachines.size());
@@ -99,8 +100,6 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void prematureVMCreationTest() throws VMManagementException,
 			NetworkException {
-		Repository r = dummyRepoCreator(true);
-		basic.registerRepository(r);
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) r.contents()
 				.iterator().next(), basic.machines.get(0)
 				.getCapacities(), r, 1)[0];

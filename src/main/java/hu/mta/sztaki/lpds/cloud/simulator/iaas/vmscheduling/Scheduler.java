@@ -25,8 +25,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
@@ -58,7 +60,10 @@ public abstract class Scheduler {
 	protected final IaaSService parent;
 
 	protected List<QueueingData> queue = new LinkedList<QueueingData>();
-	protected ResourceConstraints totalQueued = ResourceConstraints.noResources;
+	protected AlterableResourceConstraints totalQueued = AlterableResourceConstraints
+			.getNoResources();
+	protected UnalterableConstraints publicTQ = new UnalterableConstraints(
+			totalQueued);
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
 	private int pmCacheLen;
 	private ArrayList<QueueingEvent> queueListeners = new ArrayList<Scheduler.QueueingEvent>();
@@ -77,7 +82,7 @@ public abstract class Scheduler {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
 				scheduleQueued();
 			}
-			if (totalQueued.requiredCPUs != 0) {
+			if (totalQueued.getRequiredCPUs() != 0) {
 				notifyListeners();
 			}
 		}
@@ -87,9 +92,9 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
-			if (totalQueued.requiredCPUs != 0) {
+			if (totalQueued.getRequiredCPUs() != 0) {
 				scheduleQueued();
-				if (totalQueued.requiredCPUs != 0
+				if (totalQueued.getRequiredCPUs() != 0
 						&& queue.get(0).cumulativeRC.compareTo(parent
 								.getRunningCapacities()) > 0) {
 					notifyListeners();
@@ -143,9 +148,14 @@ public abstract class Scheduler {
 		boolean hostable = false;
 		for (int pmid = 0; pmid < pmCacheLen; pmid++) {
 			PhysicalMachine machine = orderedPMcache.get(pmid);
-			for (int i = 1; i <= vms.length
-					&& machine.isHostableRequest(rc.multiply(i)); i++, hostableVMs++)
-				;
+			AlterableResourceConstraints biggestHostable = new AlterableResourceConstraints(
+					rc);
+			for (int i = 1; i <= vms.length; i++, hostableVMs++) {
+				if (!machine.isHostableRequest(biggestHostable)) {
+					break;
+				}
+				biggestHostable.add(rc);
+			}
 			if (hostableVMs >= vms.length) {
 				hostable = true;
 				break;
@@ -154,7 +164,7 @@ public abstract class Scheduler {
 		if (hostable) {
 			boolean wasEmpty = queue.isEmpty();
 			queue.add(qd);
-			totalQueued = ResourceConstraints.add(totalQueued, qd.cumulativeRC);
+			totalQueued.add(qd.cumulativeRC);
 			if (wasEmpty) {
 				scheduleQueued();
 				if (queue.size() == 0) {
@@ -189,7 +199,7 @@ public abstract class Scheduler {
 	}
 
 	public ResourceConstraints getTotalQueued() {
-		return totalQueued;
+		return publicTQ;
 	}
 
 	public int getQueueLength() {
@@ -219,8 +229,12 @@ public abstract class Scheduler {
 	}
 
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
-		totalQueued = queue.isEmpty() ? ResourceConstraints.noResources
-				: ResourceConstraints.subtract(totalQueued, qd.cumulativeRC);
+		if (queue.isEmpty()) {
+			totalQueued = AlterableResourceConstraints.getNoResources();
+			publicTQ = new UnalterableConstraints(totalQueued);
+		} else {
+			totalQueued.subtract(qd.cumulativeRC);
+		}
 	}
 
 	public final void subscribeQueueingEvents(QueueingEvent e) {

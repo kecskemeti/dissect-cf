@@ -29,7 +29,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
@@ -53,14 +55,14 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 public class PMTest extends IaaSRelatedFoundation {
 	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
-	final static ResourceConstraints smallConstraints = new ResourceConstraints(
-			reqcores / 2, reqProcessing, reqmem / 2);
-	final static ResourceConstraints overCPUConstraints = new ResourceConstraints(
-			reqcores * 2, reqProcessing, reqmem);
-	final static ResourceConstraints overMemoryConstraints = new ResourceConstraints(
-			reqcores, reqProcessing, reqmem * 2);
-	final static ResourceConstraints overProcessingConstraints = new ResourceConstraints(
-			reqcores, reqProcessing * 2, reqmem);
+	final static ResourceConstraints smallConstraints = UnalterableConstraints
+			.directUnalterableCreator(reqcores / 2, reqProcessing, reqmem / 2);
+	final static ResourceConstraints overCPUConstraints = UnalterableConstraints
+			.directUnalterableCreator(reqcores * 2, reqProcessing, reqmem);
+	final static ResourceConstraints overMemoryConstraints = UnalterableConstraints
+			.directUnalterableCreator(reqcores, reqProcessing, reqmem * 2);
+	final static ResourceConstraints overProcessingConstraints = UnalterableConstraints
+			.directUnalterableCreator(reqcores, reqProcessing * 2, reqmem);
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
 	Repository reqDisk;
@@ -78,17 +80,18 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void constructionTest() {
-		Assert.assertEquals("Cores mismatch", reqcores,
-				(int) pm.getCapacities().requiredCPUs);
-		Assert.assertEquals("Memory mismatch", reqmem,
-				(int) pm.getCapacities().requiredMemory);
+		Assert.assertEquals("Cores mismatch", reqcores, (int) pm
+				.getCapacities().getRequiredCPUs());
+		Assert.assertEquals("Memory mismatch", reqmem, (int) pm.getCapacities()
+				.getRequiredMemory());
 		Assert.assertEquals("Per core processing power mismatch",
-				reqProcessing, (int) pm.getCapacities().requiredProcessingPower);
+				reqProcessing, (int) pm.getCapacities()
+						.getRequiredProcessingPower());
 		Assert.assertEquals("Total processing power mismatch", reqcores
 				* reqProcessing, (int) pm.getPerTickProcessingPower());
 		Assert.assertEquals("On delay mismatch", reqond,
 				pm.getCurrentOnOffDelay());
-		Assert.assertTrue("Free capacity mismatch", pm.getFreeCapacities()
+		Assert.assertTrue("Free capacity mismatch", pm.freeCapacities
 				.compareTo(pm.getCapacities()) == 0);
 		Assert.assertTrue("Machine's id is not in the machine's toString", pm
 				.toString().contains(pmid));
@@ -252,7 +255,10 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void failingDirectVMRequest() throws VMManagementException,
 			NetworkException {
 		preparePM();
-		VirtualMachine[] vms = requestVMs(smallConstraints.multiply(2), null, 2);
+		AlterableResourceConstraints arc = new AlterableResourceConstraints(
+				smallConstraints);
+		arc.multiply(2);
+		VirtualMachine[] vms = requestVMs(arc, null, 2);
 		Assert.assertArrayEquals(
 				"If the PM cannot fulfill all VM requests then it should not accept a single one",
 				new VirtualMachine[] { null, null }, vms);
@@ -262,8 +268,10 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void swithchoffWhileRunningVMs() throws VMManagementException,
 			NetworkException {
 		preparePM();
-		VirtualMachine[] vms = requestVMs(smallConstraints.multiply(0.5), null,
-				4);
+		AlterableResourceConstraints arc = new AlterableResourceConstraints(
+				smallConstraints);
+		arc.multiply(0.5);
+		VirtualMachine[] vms = requestVMs(arc, null, 4);
 		Timed.simulateUntilLastEvent();
 		Assert.assertFalse(
 				"Should not be able to terminate a PM while VMs are running on it",
@@ -342,18 +350,19 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void checkIncreasingFreeCapacityNotifications()
 			throws VMManagementException, NetworkException {
 		preparePM();
-		ResourceConstraints beforeCreation = pm.getFreeCapacities();
+		ResourceConstraints beforeCreation = new AlterableResourceConstraints(
+				pm.freeCapacities);
 		VirtualMachine[] vm = requestVMs(smallConstraints, null, 2);
-		ResourceConstraints afterRequest = pm.getFreeCapacities();
+		ResourceConstraints afterRequest = new AlterableResourceConstraints(
+				pm.freeCapacities);
 		Assert.assertTrue("Unallocated resouce capacity maintanance failure",
-				afterRequest.requiredCPUs == 0);
+				afterRequest.getRequiredCPUs() == 0);
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue("PM should report that it hosts VMs",
 				pm.isHostingVMs());
-		ResourceConstraints afterCreation = pm.getFreeCapacities();
 		Assert.assertTrue(
 				"Unallocated resource capacity should not change after request",
-				afterRequest.compareTo(afterCreation) == 0);
+				afterRequest.compareTo(pm.freeCapacities) == 0);
 		final ArrayList<ResourceConstraints> eventReceived = new ArrayList<ResourceConstraints>();
 		PhysicalMachine.CapacityChangeEvent<ResourceConstraints> ev = new PhysicalMachine.CapacityChangeEvent<ResourceConstraints>() {
 			@Override
@@ -370,9 +379,12 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(
 				"Mismach in the expected number of free capacity increase events",
 				1, eventReceived.size());
+		AlterableResourceConstraints upd = new AlterableResourceConstraints(
+				eventReceived.get(0));
+		upd.multiply(2);
 		Assert.assertTrue(
 				"Mismach in the expected free capacity between the event and query",
-				beforeCreation.compareTo(eventReceived.get(0).multiply(2)) == 0);
+				beforeCreation.compareTo(upd) == 0);
 		pm.unsubscribeFromIncreasingFreeCapacityChanges(ev);
 		vm[1].destroy(false);
 		Timed.simulateUntilLastEvent();
@@ -509,7 +521,9 @@ public class PMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void obeseConsumptionRequestTest() throws VMManagementException {
 		preparePM();
-		ResourceConstraints obese = smallConstraints.multiply(3);
+		ResourceConstraints obese = new AlterableResourceConstraints(
+				smallConstraints);
+		obese.multiply(3);
 		Assert.assertFalse(
 				"The PM should not allow such big requests as hostable",
 				pm.isHostableRequest(obese));
@@ -589,8 +603,10 @@ public class PMTest extends IaaSRelatedFoundation {
 		VirtualAppliance va = new VirtualAppliance("MyVA", 3000, 0, false,
 				first.localDisk.getFreeStorageCapacity() / 10);
 		first.localDisk.registerObject(va);
-		VirtualMachine[] vms = first.requestVM(va, first.getCapacities()
-				.multiply(0.5), first.localDisk, 2);
+		AlterableResourceConstraints rc = new AlterableResourceConstraints(
+				first.getCapacities());
+		rc.multiply(0.5);
+		VirtualMachine[] vms = first.requestVM(va, rc, first.localDisk, 2);
 		Timed.simulateUntilLastEvent();
 		vms[0].newComputeTask(1, 1, new ConsumptionEventAssert());
 		vms[1].newComputeTask(1, 1, new ConsumptionEventAssert());

@@ -26,6 +26,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -126,9 +127,11 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void smallVMLoadTest() throws VMManagementException,
 			NetworkException {
+		AlterableResourceConstraints rc = new AlterableResourceConstraints(
+				basic.machines.get(0).getCapacities());
+		rc.multiply(0.5);
 		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo
-				.contents().iterator().next(), basic.machines.get(0)
-				.getCapacities().multiply(0.5), repo, 2);
+				.contents().iterator().next(), rc, repo, 2);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Should only switch on a single PM", 1,
 				basic.runningMachines.size());

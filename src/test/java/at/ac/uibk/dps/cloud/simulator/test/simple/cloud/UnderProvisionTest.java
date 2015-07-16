@@ -28,6 +28,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 
 import org.junit.Assert;
@@ -49,16 +50,18 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
 		ResourceConstraints total = pm.getCapacities();
-		small = new ResourceConstraints(total.requiredCPUs / smallDivider,
-				total.requiredProcessingPower, total.requiredMemory
-						/ smallDivider);
-		bigger = new ResourceConstraints(total.requiredCPUs / bigDivider,
-				total.requiredProcessingPower / smallestDivider, true,
-				(long) (total.requiredMemory / smallestDivider));
-		biggerFittingCPU = new ResourceConstraints(total.requiredCPUs
-				/ smallestDivider, total.requiredProcessingPower
-				/ smallestDivider, true,
-				(long) (total.requiredMemory / smallestDivider));
+		small = UnalterableConstraints.directUnalterableCreator(
+				total.getRequiredCPUs() / smallDivider,
+				total.getRequiredProcessingPower(),
+				(long) (total.getRequiredMemory() / smallDivider));
+		bigger = UnalterableConstraints.directUnalterableCreator(
+				total.getRequiredCPUs() / bigDivider,
+				total.getRequiredProcessingPower() / smallestDivider, true,
+				(long) (total.getRequiredMemory() / smallestDivider));
+		biggerFittingCPU = UnalterableConstraints.directUnalterableCreator(
+				total.getRequiredCPUs() / smallestDivider,
+				total.getRequiredProcessingPower() / smallestDivider, true,
+				(long) (total.getRequiredMemory() / smallestDivider));
 	}
 
 	@Test(timeout = 100)
@@ -118,15 +121,22 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void perfectFitAllocation() throws VMManagementException {
 		ResourceConstraints pmc = pm.getCapacities();
-		ResourceConstraints smaller = new ResourceConstraints(pmc.requiredCPUs,
-				pmc.requiredProcessingPower * 0.33, pmc.requiredMemory / 2);
-		ResourceConstraints bigger = new ResourceConstraints(pmc.requiredCPUs,
-				pmc.requiredProcessingPower - smaller.requiredProcessingPower,
-				pmc.requiredMemory / 2);
-		ResourceAllocation sa=pm.allocateResources(smaller, true, PhysicalMachine.defaultAllocLen);
-		ResourceAllocation ba=pm.allocateResources(bigger, true, PhysicalMachine.defaultAllocLen);
-		Assert.assertNotNull("Should be both allocable",sa);
-		Assert.assertNotNull("Should be both allocable",ba);
+		ResourceConstraints smaller = UnalterableConstraints
+				.directUnalterableCreator(pmc.getRequiredCPUs(),
+						pmc.getRequiredProcessingPower() * 0.33,
+						pmc.getRequiredMemory() / 2);
+		ResourceConstraints bigger = UnalterableConstraints
+				.directUnalterableCreator(
+						pmc.getRequiredCPUs(),
+						pmc.getRequiredProcessingPower()
+								- smaller.getRequiredProcessingPower(),
+						pmc.getRequiredMemory() / 2);
+		ResourceAllocation sa = pm.allocateResources(smaller, true,
+				PhysicalMachine.defaultAllocLen);
+		ResourceAllocation ba = pm.allocateResources(bigger, true,
+				PhysicalMachine.defaultAllocLen);
+		Assert.assertNotNull("Should be both allocable", sa);
+		Assert.assertNotNull("Should be both allocable", ba);
 		Timed.simulateUntilLastEvent();
 	}
 }

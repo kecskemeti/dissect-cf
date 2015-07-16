@@ -34,76 +34,41 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
  *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  */
-public class ResourceConstraints implements Comparable<ResourceConstraints> {
-	public final double requiredCPUs;
-	public final double requiredProcessingPower;
-	public final boolean requiredProcessingIsMinimum;
-	public final long requiredMemory;
-	public final double totalProcessingPower;
-	public static final ResourceConstraints noResources = new ResourceConstraints(
-			0, 0, 0);
-
-	public ResourceConstraints(final double cpu, final double processing,
-			final long memory) {
-		this(cpu, processing, false, memory);
-	}
-
-	public ResourceConstraints(final double cpu, final double processing,
-			boolean isMinimum, final long memory) {
-		requiredCPUs = cpu;
-		requiredMemory = memory;
-		requiredProcessingPower = processing;
-		totalProcessingPower = cpu * processing;
-		requiredProcessingIsMinimum = isMinimum;
-	}
+public abstract class ResourceConstraints implements
+		Comparable<ResourceConstraints> {
 
 	@Override
 	public String toString() {
-		return "ResourceConstraints(C:" + requiredCPUs + " P:"
-				+ requiredProcessingPower + " M:" + requiredMemory + ")";
-	}
-
-	public ResourceConstraints multiply(final double times) {
-		return times == 1 ? this : new ResourceConstraints(
-				requiredCPUs * times, requiredProcessingPower,
-				(long) (requiredMemory * times));
-
-	}
-
-	public static ResourceConstraints add(final ResourceConstraints... toAdd) {
-		double tcpu = 0;
-		double tpp = 0;
-		long tm = 0;
-		for (int i = 0; i < toAdd.length; i++) {
-			tcpu += toAdd[i].requiredCPUs;
-			tpp = toAdd[i].requiredProcessingPower<tpp?tpp:toAdd[i].requiredProcessingPower;
-			tm += toAdd[i].requiredMemory;
-		}
-		tpp = tcpu == 0 ? 0 : tpp;
-		return new ResourceConstraints(tcpu, tpp, tm);
-	}
-
-	public static ResourceConstraints subtract(final ResourceConstraints from,
-			final ResourceConstraints what) {
-		final double tcpu = from.requiredCPUs - what.requiredCPUs;
-		return new ResourceConstraints(tcpu, tcpu == 0 ? 0 : Math.min(
-				from.requiredProcessingPower, what.requiredProcessingPower),
-				from.requiredMemory - what.requiredMemory);
-	}
-
-	public static ResourceConstraints negative(final ResourceConstraints rc) {
-		return new ResourceConstraints(-rc.requiredCPUs,
-				-rc.requiredProcessingPower, -rc.requiredMemory);
+		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:"
+				+ getRequiredProcessingPower() + " M:" + getRequiredMemory()
+				+ ")";
 	}
 
 	@Override
 	public int compareTo(ResourceConstraints o) {
-		return requiredCPUs == o.requiredCPUs
-				&& requiredMemory == o.requiredMemory
-				&& requiredProcessingPower == o.requiredProcessingPower ? 0
-				: (requiredCPUs <= o.requiredCPUs
-						&& requiredMemory <= o.requiredMemory
-						&& requiredProcessingPower <= o.requiredProcessingPower ? -1
-						: 1);
+		return getRequiredCPUs() == o.getRequiredCPUs()
+				&& getRequiredMemory() == o.getRequiredMemory()
+				&& getRequiredProcessingPower() == o
+						.getRequiredProcessingPower() ? 0
+				: (getRequiredCPUs() <= o.getRequiredCPUs()
+						&& getRequiredMemory() <= o.getRequiredMemory()
+						&& getRequiredProcessingPower() <= o
+								.getRequiredProcessingPower() ? -1 : 1);
 	}
+
+	public abstract double getRequiredCPUs();
+
+	public abstract double getRequiredProcessingPower();
+
+	public abstract boolean isRequiredProcessingIsMinimum();
+
+	public abstract long getRequiredMemory();
+
+	public abstract double getTotalProcessingPower();
+
+	public abstract void multiply(final double times);
+
+	public abstract void add(final ResourceConstraints... toAdd);
+
+	public abstract void subtract(final ResourceConstraints what);
 }

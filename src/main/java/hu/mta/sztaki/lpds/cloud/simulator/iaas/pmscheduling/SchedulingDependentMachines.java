@@ -25,6 +25,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
@@ -66,7 +67,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeCapacities) {
 			if (observed.getCapacities().compareTo(newCapacity) <= 0
-					&& parent.sched.getTotalQueued().requiredCPUs == 0) {
+					&& parent.sched.getTotalQueued().getRequiredCPUs() == 0) {
 				// Totally free machine and nothing queued
 				switchoffmachine();
 			}
@@ -94,8 +95,9 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 							.getRunningCapacities();
 					if (!parent.runningMachines.contains(observed)) {
 						// parent have not recognize this PM's startup yet
-						runningCapacities = ResourceConstraints.add(
-								runningCapacities, observed.getCapacities());
+						runningCapacities = new AlterableResourceConstraints(
+								runningCapacities);
+						runningCapacities.add(observed.getCapacities());
 					}
 					if (runningCapacities.compareTo(parent.sched
 							.getTotalQueued()) < 0) {

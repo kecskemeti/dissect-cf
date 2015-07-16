@@ -131,13 +131,12 @@ public class PhysicalMachine extends MaxMinProvider implements
 				myPromisedIndex = i;
 			}
 			if (host.promisedAllocationsCount == 0) {
-				host.promisedCapacities = realAllocated;
+				host.promisedCapacities = new AlterableResourceConstraints(
+						realAllocated);
 			} else {
-				host.promisedCapacities = ResourceConstraints.add(
-						host.promisedCapacities, realAllocated);
+				host.promisedCapacities.add(realAllocated);
 			}
-			host.reallyFreeCapacities = ResourceConstraints.subtract(
-					host.reallyFreeCapacities, realAllocated);
+			host.internalReallyFreeCaps.subtract(realAllocated);
 			host.promisedAllocationsCount++;
 		}
 
@@ -149,14 +148,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 			host.promisedAllocationsCount--;
 			if (host.promisedAllocationsCount == 0) {
 				host.promisedResources.clear();
-				host.promisedCapacities = ResourceConstraints.noResources;
+				host.promisedCapacities = AlterableResourceConstraints
+						.getNoResources();
 			} else {
-				host.promisedCapacities = ResourceConstraints.subtract(
-						host.promisedCapacities, realAllocated);
+				host.promisedCapacities.subtract(realAllocated);
 			}
 			if (isUnUsed()) {
-				host.reallyFreeCapacities = ResourceConstraints.add(
-						host.reallyFreeCapacities, realAllocated);
+				host.internalReallyFreeCaps.add(realAllocated);
 			}
 		}
 
@@ -173,8 +171,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			}
 			if (user == null) {
 				user = vm;
-				host.availableCapacities = ResourceConstraints.subtract(
-						host.availableCapacities, realAllocated);
+				host.internalAvailableCaps.subtract(realAllocated);
 				host.vms.add(vm);
 				vm.subscribeStateChange(new VirtualMachine.StateChange() {
 					@Override
@@ -195,10 +192,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 		void release() {
 			host.vms.remove(user);
 			host.completedVMs++;
-			host.availableCapacities = ResourceConstraints.add(
-					host.availableCapacities, realAllocated);
-			host.reallyFreeCapacities = ResourceConstraints.add(
-					host.reallyFreeCapacities, realAllocated);
+			host.internalAvailableCaps.add(realAllocated);
+			host.internalReallyFreeCaps.add(realAllocated);
 			host.notifyFreedUpCapacityListeners(realAllocated);
 			user = null;
 		}
@@ -282,11 +277,21 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 	}
 
-	private final ResourceConstraints totalCapacities;
+	private final UnalterableConstraints totalCapacities;
 	// Available physical resources:
-	private ResourceConstraints availableCapacities;
-	private ResourceConstraints promisedCapacities;
-	private ResourceConstraints reallyFreeCapacities;
+	private final AlterableResourceConstraints internalAvailableCaps;
+	/**
+	 * This field can automatically update between two checks! If you need
+	 * unaltered data please make a copy.
+	 */
+	public final UnalterableConstraints availableCapacities;
+	private AlterableResourceConstraints promisedCapacities;
+	private final AlterableResourceConstraints internalReallyFreeCaps;
+	/**
+	 * This field can automatically update between two checks! If you need
+	 * unaltered data please make a copy.
+	 */
+	public final UnalterableConstraints freeCapacities;
 	public final Repository localDisk;
 	final ArrayList<ResourceAllocation> promisedResources = new ArrayList<ResourceAllocation>();
 	private int promisedAllocationsCount = 0;
@@ -381,10 +386,14 @@ public class PhysicalMachine extends MaxMinProvider implements
 			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
 		super(cores * perCorePocessing);
 		// Init resources:
-		totalCapacities = new ResourceConstraints(cores, perCorePocessing,
-				memory);
-		availableCapacities = totalCapacities;
-		reallyFreeCapacities = totalCapacities;
+		totalCapacities = UnalterableConstraints.directUnalterableCreator(
+				cores, perCorePocessing, memory);
+		internalAvailableCaps = new AlterableResourceConstraints(
+				totalCapacities);
+		availableCapacities = new UnalterableConstraints(internalAvailableCaps);
+		internalReallyFreeCaps = new AlterableResourceConstraints(
+				totalCapacities);
+		freeCapacities = new UnalterableConstraints(internalReallyFreeCaps);
 		localDisk = disk;
 
 		hostPowerBehavior = powerTransitions.get(PowerStateKind.host);
@@ -581,9 +590,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 					"The PM is not running and thus cannot offer resources yet");
 		}
 		// Basic tests for resource availability for the host
-		if (reallyFreeCapacities.requiredCPUs == 0
-				|| reallyFreeCapacities.requiredMemory == 0
-				|| requested.requiredProcessingPower > reallyFreeCapacities.requiredProcessingPower) {
+		if (internalReallyFreeCaps.getRequiredCPUs() == 0
+				|| internalReallyFreeCaps.getRequiredMemory() == 0
+				|| requested.getRequiredProcessingPower() > internalReallyFreeCaps
+						.getRequiredProcessingPower()) {
 			return null;
 		}
 		// Allocation type test (i.e. do we allow underprovisioning?)
@@ -591,7 +601,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 		for (int i = 0; i < prLen; i++) {
 			ResourceAllocation olderAllocation = promisedResources.get(i);
 			if (olderAllocation != null) {
-				if (olderAllocation.allocated.requiredProcessingIsMinimum == requested.requiredProcessingIsMinimum) {
+				if (olderAllocation.allocated.isRequiredProcessingIsMinimum() == requested
+						.isRequiredProcessingIsMinimum()) {
 					break;
 				} else {
 					return null;
@@ -599,40 +610,43 @@ public class PhysicalMachine extends MaxMinProvider implements
 			}
 		}
 		// Promised resources for the virtual machine
-		double vmCPU = requested.requiredCPUs;
-		long vmMem = requested.requiredMemory;
-		final double vmPrPow = requested.requiredProcessingIsMinimum ? totalCapacities.requiredProcessingPower
-				: requested.requiredProcessingPower;
+		double vmCPU = requested.getRequiredCPUs();
+		long vmMem = requested.getRequiredMemory();
+		final double vmPrPow = requested.isRequiredProcessingIsMinimum() ? totalCapacities
+				.getRequiredProcessingPower() : requested
+				.getRequiredProcessingPower();
 
 		// Actually allocated resources (memory is equivalent in both cases)
-		final double allocPrPow = totalCapacities.requiredProcessingPower;
-		final double allocCPU = vmCPU * requested.requiredProcessingPower
+		final double allocPrPow = totalCapacities.getRequiredProcessingPower();
+		final double allocCPU = vmCPU * requested.getRequiredProcessingPower()
 				/ allocPrPow;
-		if (0 <= reallyFreeCapacities.requiredCPUs - allocCPU) {
-			if (0 <= reallyFreeCapacities.requiredMemory
-					- requested.requiredMemory) {
+		if (0 <= internalReallyFreeCaps.getRequiredCPUs() - allocCPU) {
+			if (0 <= internalReallyFreeCaps.getRequiredMemory()
+					- requested.getRequiredMemory()) {
 				return new ResourceAllocation(
 						this,
-						new ResourceConstraints(allocCPU, allocPrPow, vmMem),
-						requested.requiredProcessingIsMinimum ? new ResourceConstraints(
-								vmCPU, vmPrPow, true, vmMem) : requested,
+						UnalterableConstraints.directUnalterableCreator(
+								allocCPU, allocPrPow, vmMem),
+						requested.isRequiredProcessingIsMinimum() ? UnalterableConstraints
+								.directUnalterableCreator(vmCPU, vmPrPow, true,
+										vmMem) : requested,
 						allocationValidityLength);
 			} else {
-				vmMem = reallyFreeCapacities.requiredMemory;
+				vmMem = internalReallyFreeCaps.getRequiredMemory();
 			}
-		} else if (0 <= reallyFreeCapacities.requiredMemory
-				- requested.requiredMemory) {
-			vmCPU = reallyFreeCapacities.requiredCPUs;
+		} else if (0 <= internalReallyFreeCaps.getRequiredMemory()
+				- requested.getRequiredMemory()) {
+			vmCPU = internalReallyFreeCaps.getRequiredCPUs();
 		} else {
-			vmCPU = reallyFreeCapacities.requiredCPUs;
-			vmMem = reallyFreeCapacities.requiredMemory;
+			vmCPU = internalReallyFreeCaps.getRequiredCPUs();
+			vmMem = internalReallyFreeCaps.getRequiredMemory();
 		}
 		if (strict) {
 			return null;
 		} else {
-			final ResourceConstraints updatedConstraints = new ResourceConstraints(
-					vmCPU, vmPrPow, requested.requiredProcessingIsMinimum,
-					vmMem);
+			final ResourceConstraints updatedConstraints = UnalterableConstraints
+					.directUnalterableCreator(vmCPU, vmPrPow,
+							requested.isRequiredProcessingIsMinimum(), vmMem);
 			return new ResourceAllocation(this, updatedConstraints,
 					updatedConstraints, allocationValidityLength);
 		}
@@ -812,8 +826,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 	@Override
 	public String toString() {
 		return "Machine(S:" + currentState + " C:"
-				+ reallyFreeCapacities.requiredCPUs + " M:"
-				+ reallyFreeCapacities.requiredMemory + " "
+				+ internalReallyFreeCaps.getRequiredCPUs() + " M:"
+				+ internalReallyFreeCaps.getRequiredMemory() + " "
 				+ localDisk.toString() + " " + super.toString() + ")";
 	}
 
@@ -852,24 +866,6 @@ public class PhysicalMachine extends MaxMinProvider implements
 		return totalCapacities;
 	}
 
-	/**
-	 * Those capacities that are not even allocated
-	 * 
-	 * @return
-	 */
-	public ResourceConstraints getFreeCapacities() {
-		return reallyFreeCapacities;
-	}
-
-	/**
-	 * Returns capacities that does not actually have deployed VMs on them
-	 * 
-	 * @return
-	 */
-	public ResourceConstraints getAvailableCapacities() {
-		return availableCapacities;
-	}
-
 	@Override
 	public void subscribeToCapacityChanges(
 			final CapacityChangeEvent<ResourceConstraints> e) {
@@ -899,7 +895,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 				.singletonList(freedUpResources);
 		for (int i = 0; i < size; i++) {
 			increasingFreeCapacityListeners.get(i).capacityChanged(
-					reallyFreeCapacities, freed);
+					freeCapacities, freed);
 		}
 	}
 

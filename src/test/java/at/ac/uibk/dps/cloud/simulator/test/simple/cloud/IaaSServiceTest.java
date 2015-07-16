@@ -26,7 +26,9 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
@@ -94,13 +96,15 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	public void capacityMaintenanceTest() throws IaaSHandlingException {
 		for (IaaSService iaas : services) {
 			final PhysicalMachine pm = dummyPMcreator();
-			ResourceConstraints beforeCapacities = iaas.getCapacities();
+			ResourceConstraints beforeCapacities = new AlterableResourceConstraints(
+					iaas.getCapacities());
+			beforeCapacities.add(pm.getCapacities());
 			iaas.registerHost(pm);
 			ResourceConstraints midCapacities = iaas.getCapacities();
 			Assert.assertTrue(
 					"After registration the iaas should have more capacities",
-					midCapacities.compareTo(ResourceConstraints.add(
-							beforeCapacities, pm.getCapacities())) == 0);
+					midCapacities.compareTo(beforeCapacities) == 0);
+			beforeCapacities.subtract(pm.getCapacities());
 			iaas.deregisterHost(pm);
 			ResourceConstraints afterCapacities = iaas.getCapacities();
 			Assert.assertTrue(
@@ -168,7 +172,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				protected void doAssertion(ResourceConstraints newCapacity) {
 					Assert.assertTrue(
 							"Should receive capacity update with no further capacities remaining",
-							newCapacity.requiredCPUs == 0);
+							newCapacity.getRequiredCPUs() == 0);
 				}
 			});
 		}
@@ -198,7 +202,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			iaas.registerHost(dummyPMcreator());
 			Assert.assertTrue(
 					"A newly created IaaS should not have any running capacities",
-					iaas.getRunningCapacities().requiredCPUs == 0);
+					iaas.getRunningCapacities().getRequiredCPUs() == 0);
 		}
 		Timed.simulateUntilLastEvent();
 		int runningPMCount = 0;
@@ -209,12 +213,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				alwaysRunningSchCount++;
 				Assert.assertEquals(
 						"This iaas should have running PMs already as it switches them on immediately after registration and keeps them running",
-						dummyPMCoreCount,
-						(long) iaas.getRunningCapacities().requiredCPUs);
+						dummyPMCoreCount, (long) iaas.getRunningCapacities()
+								.getRequiredCPUs());
 			} else {
 				Assert.assertEquals(
 						"This iaas should not have running PMs yet as it did not receive VMs so far",
-						0, (long) iaas.getRunningCapacities().requiredCPUs);
+						0, (long) iaas.getRunningCapacities().getRequiredCPUs());
 			}
 		}
 		Assert.assertEquals(
@@ -437,8 +441,11 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		final VirtualMachine[] vms = new VirtualMachine[maxVMs * servNum];
 		for (int vmnum = 2; vmnum <= maxVMs; vmnum *= 2) {
 			for (int i = 0; i < servNum; i++) {
-				VirtualMachine[] lvms = services.get(i).requestVM(vas[i],
-						caps[i].multiply(1f / vmnum / 2), repos[i], vmnum);
+				AlterableResourceConstraints cap = new AlterableResourceConstraints(
+						caps[i]);
+				cap.multiply(1f / vmnum / 2);
+				VirtualMachine[] lvms = services.get(i).requestVM(vas[i], cap,
+						repos[i], vmnum);
 				System.arraycopy(lvms, 0, vms, i * vmnum, vmnum);
 			}
 			Timed.simulateUntilLastEvent();
@@ -459,9 +466,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 			Assert.assertEquals("The first VM should be running",
 					VirtualMachine.State.RUNNING, vm.getState());
+			AlterableResourceConstraints caps = new AlterableResourceConstraints(
+					s.getCapacities());
+			caps.multiply(0.4);
 			VirtualMachine[] vmsToQueue = s.requestVM((VirtualAppliance) r
-					.contents().iterator().next(),
-					s.getCapacities().multiply(0.4), r, 2);
+					.contents().iterator().next(), new UnalterableConstraints(
+					caps), r, 2);
 			VirtualMachine.State[] states = new VirtualMachine.State[] {
 					vmsToQueue[0].getState(), vmsToQueue[1].getState() };
 			for (VirtualMachine.State st : states) {

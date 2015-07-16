@@ -99,8 +99,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		ResourceConstraints rc = vm.getResourceAllocation().allocated;
 		final long taskleninms = 10 * aSecond;
 		Assert.assertEquals(0, ConsumptionEventAssert.hits.size());
-		vm.newComputeTask(rc.requiredCPUs * rc.requiredProcessingPower
-				* taskleninms, ResourceConsumption.unlimitedProcessing,
+		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms,
+				ResourceConsumption.unlimitedProcessing,
 				new ConsumptionEventAssert(Timed.getFireCount() + taskleninms,
 						true) {
 					@Override
@@ -116,8 +116,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 				taskleninms * (maxpower - idlepower + totalIdle),
 				meter.getTotalConsumption(), 0.1);
 		meter.startMeter(aSecond / 10, true);
-		vm.newComputeTask(rc.requiredCPUs * rc.requiredProcessingPower
-				* taskleninms, rc.requiredProcessingPower * 0.5,
+		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms,
+				rc.getRequiredProcessingPower() * 0.5,
 				new ConsumptionEventAssert());
 		Timed.simulateUntil(Timed.getFireCount() + taskleninms);
 		Assert.assertEquals(
@@ -233,7 +233,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test (timeout = 100)
+	@Test(timeout = 100)
 	public void aggregatedIaaStest() throws Exception {
 		final int machineCount = 2;
 		final int coreCount = 16;

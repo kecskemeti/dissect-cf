@@ -27,6 +27,7 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -351,7 +352,9 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = StateChangeException.class, timeout = 100)
 	public void errenousAllocationRequest() throws VMManagementException,
 			NetworkException {
-		ResourceConstraints constraints = pm.getCapacities().multiply(0.1);
+		ResourceConstraints constraints = new AlterableResourceConstraints(
+				pm.getCapacities());
+		constraints.multiply(0.1);
 		centralVM.switchOn(pm.allocateResources(constraints, true,
 				PhysicalMachine.defaultAllocLen), pm.localDisk);
 		centralVM.setResourceAllocation(pm.allocateResources(constraints, true,
@@ -379,7 +382,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		PhysicalMachine.ResourceAllocation ra = vmToUse.getResourceAllocation();
 		vmToUse.newComputeTask(1, 1, cea);
 		long memless = pm.localDisk.getFreeStorageCapacity();
-		long memsize = ra.allocated.requiredMemory;
+		long memsize = ra.allocated.getRequiredMemory();
 		vmToUse.suspend();
 		try {
 			vmToUse.destroy(false);
@@ -428,15 +431,16 @@ public class VMTest extends IaaSRelatedFoundation {
 			NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		long memless = pm.localDisk.getFreeStorageCapacity();
-		long memsize = centralVM.getResourceAllocation().allocated.requiredMemory;
+		long memsize = centralVM.getResourceAllocation().allocated
+				.getRequiredMemory();
 		pm.localDisk.registerObject(new StorageObject("SpaceFiller", memless
 				- memsize, false));
 		centralVM.suspend();
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void ensureSuspendFailsIfNotEnoughDiskSpace() throws VMManagementException,
-			NetworkException {
+	public void ensureSuspendFailsIfNotEnoughDiskSpace()
+			throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		pm.localDisk.registerObject(new StorageObject("SpaceFiller",
 				pm.localDisk.getFreeStorageCapacity(), false));
@@ -669,8 +673,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		long memless = pm.localDisk.getFreeStorageCapacity();
 		centralVM.suspend();
 		Timed.simulateUntilLastEvent();
-		VirtualMachine otherVM = pm.requestVM(va, pm.getFreeCapacities(), repo,
-				1)[0];
+		VirtualMachine otherVM = pm.requestVM(va,
+				new AlterableResourceConstraints(pm.freeCapacities), repo, 1)[0];
 		Timed.simulateUntilLastEvent();
 		otherVM.newComputeTask(1, 1, second);
 		Timed.simulateUntilLastEvent();
@@ -694,7 +698,8 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void consumptionBlocking() throws VMManagementException,
 			NetworkException {
-		final VirtualMachine vm = pm.requestVM(va, pm.getAvailableCapacities(),
+		final VirtualMachine vm = pm.requestVM(va,
+				new AlterableResourceConstraints(pm.availableCapacities),
 				pm.localDisk, 1)[0];
 		ResourceConsumption conVM = new ResourceConsumption(100000,
 				ResourceConsumption.unlimitedProcessing, vm, pm,

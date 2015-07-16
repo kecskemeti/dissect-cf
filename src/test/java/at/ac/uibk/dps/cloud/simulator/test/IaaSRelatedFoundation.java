@@ -26,9 +26,11 @@
 package at.ac.uibk.dps.cloud.simulator.test;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
@@ -121,8 +123,9 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 
 	public static IaaSService setupIaaS(Class<? extends Scheduler> vmsch,
 			Class<? extends PhysicalMachineController> pmsch,
-			final int hostCount, final int coreCount) throws IllegalArgumentException,
-			SecurityException, InstantiationException, IllegalAccessException,
+			final int hostCount, final int coreCount)
+			throws IllegalArgumentException, SecurityException,
+			InstantiationException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException {
 		final IaaSService basic = new IaaSService(vmsch, pmsch);
 		basic.bulkHostRegistration(Arrays.asList(dummyPMsCreator(hostCount,
@@ -138,13 +141,14 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 			protected void eventAction() {
 				final ResourceConstraints pmsize = iaas.machines.get(0)
 						.getCapacities();
-				int instancecount = pmsize.requiredCPUs >= corecount ? 1
-						: (corecount / ((int) pmsize.requiredCPUs))
-								+ ((corecount % (int) pmsize.requiredCPUs) == 0 ? 0
+				int instancecount = pmsize.getRequiredCPUs() >= corecount ? 1
+						: (corecount / ((int) pmsize.getRequiredCPUs()))
+								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0
 										: 1);
 				double requestedprocs = corecount / instancecount;
-				final ResourceConstraints vmsize = new ResourceConstraints(
-						requestedprocs, pmsize.requiredProcessingPower, 512);
+				final ResourceConstraints vmsize = new UnalterableConstraints(
+						new AlterableResourceConstraints(requestedprocs,
+								pmsize.getRequiredProcessingPower(), 512));
 				final Repository repo = iaas.repositories.get(0);
 
 				try {
@@ -164,7 +168,8 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 									try {
 										vm.newComputeTask(
 												processing
-														* vm.getResourceAllocation().allocated.totalProcessingPower,
+														* vm.getResourceAllocation().allocated
+																.getTotalProcessingPower(),
 												ResourceConsumption.unlimitedProcessing,
 												new ConsumptionEventAssert() {
 													@Override

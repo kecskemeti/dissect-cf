@@ -97,14 +97,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 			switch (newState) {
 			case RUNNING:
 				internalRunningMachines.add(pm);
-				runningCapacity = ResourceConstraints.add(runningCapacity,
-						pm.getCapacities());
+				runningCapacity.add(pm.getCapacities());
 				return;
 			default:
 				if (oldState.equals(PhysicalMachine.State.RUNNING)) {
 					internalRunningMachines.remove(pm);
-					runningCapacity = ResourceConstraints.subtract(
-							runningCapacity, pm.getCapacities());
+					runningCapacity.subtract(pm.getCapacities());
 				}
 			}
 		}
@@ -123,9 +121,14 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	public final List<PhysicalMachine> runningMachines = Collections
 			.unmodifiableList(internalRunningMachines);
 
-	private ResourceConstraints totalCapacity = new ResourceConstraints(0, 0, 0);
-	private ResourceConstraints runningCapacity = new ResourceConstraints(0, 0,
-			0);
+	private ResourceConstraints totalCapacity = AlterableResourceConstraints
+			.getNoResources();
+	private ResourceConstraints publicTCap = new UnalterableConstraints(
+			totalCapacity);
+	private ResourceConstraints runningCapacity = AlterableResourceConstraints
+			.getNoResources();
+	private ResourceConstraints publicRCap = new UnalterableConstraints(
+			runningCapacity);
 
 	private final CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>>();
 
@@ -239,13 +242,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 		internalMachines.addAll(newPMs);
 		final int size = newPMs.size();
 		final MachineListener[] newlisteners = new MachineListener[size];
-		final ResourceConstraints[] caps = new ResourceConstraints[size + 1];
+		final ResourceConstraints[] caps = new ResourceConstraints[size];
 		for (int i = 0; i < size; i++) {
 			newlisteners[i] = new MachineListener(newPMs.get(i));
 			caps[i] = newlisteners[i].pm.getCapacities();
 		}
-		caps[size] = totalCapacity;
-		totalCapacity = ResourceConstraints.add(caps);
+		totalCapacity.add(caps);
 		listeners.addAll(Arrays.asList(newlisteners));
 		notifyCapacityListeners(newPMs);
 	}
@@ -257,8 +259,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 				pm.unsubscribeStateChangeEvents(sl);
 			}
 		}
-		totalCapacity = ResourceConstraints.subtract(totalCapacity,
-				pm.getCapacities());
+		totalCapacity.subtract(pm.getCapacities());
 		notifyCapacityListeners(Collections.singletonList(pm));
 	}
 
@@ -279,11 +280,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 			throws IaaSHandlingException {
 		if (ArrayHandler.removeAndReplaceWithLast(internalMachines, pm)) {
 			if (pm.isHostingVMs()) {
-				ResourceConstraints needed = ResourceConstraints.subtract(
-						pm.getCapacities(), pm.getFreeCapacities());
+				ResourceConstraints needed = new AlterableResourceConstraints(
+						pm.getCapacities());
+				needed.subtract(pm.freeCapacities);
 				PhysicalMachine receiver = null;
 				for (PhysicalMachine curr : machines) {
-					if (needed.compareTo(curr.getFreeCapacities()) <= 0) {
+					if (needed.compareTo(curr.freeCapacities) <= 0) {
 						receiver = curr;
 						break;
 					}
@@ -371,11 +373,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	}
 
 	public ResourceConstraints getCapacities() {
-		return totalCapacity;
+		return publicTCap;
 	}
 
 	public ResourceConstraints getRunningCapacities() {
-		return runningCapacity;
+		return publicRCap;
 	}
 
 	@Override
