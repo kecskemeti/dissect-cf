@@ -25,14 +25,14 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
@@ -62,7 +62,7 @@ public abstract class Scheduler {
 	protected List<QueueingData> queue = new LinkedList<QueueingData>();
 	protected AlterableResourceConstraints totalQueued = AlterableResourceConstraints
 			.getNoResources();
-	protected UnalterableConstraints publicTQ = new UnalterableConstraints(
+	protected UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(
 			totalQueued);
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
 	private int pmCacheLen;
@@ -231,7 +231,7 @@ public abstract class Scheduler {
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
 		if (queue.isEmpty()) {
 			totalQueued = AlterableResourceConstraints.getNoResources();
-			publicTQ = new UnalterableConstraints(totalQueued);
+			publicTQ = new UnalterableConstraintsPropagator(totalQueued);
 		} else {
 			totalQueued.subtract(qd.cumulativeRC);
 		}

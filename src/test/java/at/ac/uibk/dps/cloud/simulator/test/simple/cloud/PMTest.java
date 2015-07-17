@@ -29,12 +29,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -55,14 +55,10 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 public class PMTest extends IaaSRelatedFoundation {
 	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
-	final static ResourceConstraints smallConstraints = UnalterableConstraints
-			.directUnalterableCreator(reqcores / 2, reqProcessing, reqmem / 2);
-	final static ResourceConstraints overCPUConstraints = UnalterableConstraints
-			.directUnalterableCreator(reqcores * 2, reqProcessing, reqmem);
-	final static ResourceConstraints overMemoryConstraints = UnalterableConstraints
-			.directUnalterableCreator(reqcores, reqProcessing, reqmem * 2);
-	final static ResourceConstraints overProcessingConstraints = UnalterableConstraints
-			.directUnalterableCreator(reqcores, reqProcessing * 2, reqmem);
+	final static ResourceConstraints smallConstraints = new ConstantConstraints(reqcores / 2, reqProcessing, reqmem / 2);
+	final static ResourceConstraints overCPUConstraints = new ConstantConstraints(reqcores * 2, reqProcessing, reqmem);
+	final static ResourceConstraints overMemoryConstraints = new ConstantConstraints(reqcores, reqProcessing, reqmem * 2);
+	final static ResourceConstraints overProcessingConstraints = new ConstantConstraints(reqcores, reqProcessing * 2, reqmem);
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
 	Repository reqDisk;
@@ -521,7 +517,7 @@ public class PMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void obeseConsumptionRequestTest() throws VMManagementException {
 		preparePM();
-		ResourceConstraints obese = new AlterableResourceConstraints(
+		AlterableResourceConstraints obese = new AlterableResourceConstraints(
 				smallConstraints);
 		obese.multiply(3);
 		Assert.assertFalse(

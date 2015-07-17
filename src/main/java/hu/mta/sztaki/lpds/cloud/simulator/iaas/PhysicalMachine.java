@@ -28,6 +28,10 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
@@ -277,21 +281,21 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 	}
 
-	private final UnalterableConstraints totalCapacities;
+	private final ConstantConstraints totalCapacities;
 	// Available physical resources:
 	private final AlterableResourceConstraints internalAvailableCaps;
 	/**
 	 * This field can automatically update between two checks! If you need
 	 * unaltered data please make a copy.
 	 */
-	public final UnalterableConstraints availableCapacities;
+	public final UnalterableConstraintsPropagator availableCapacities;
 	private AlterableResourceConstraints promisedCapacities;
 	private final AlterableResourceConstraints internalReallyFreeCaps;
 	/**
 	 * This field can automatically update between two checks! If you need
 	 * unaltered data please make a copy.
 	 */
-	public final UnalterableConstraints freeCapacities;
+	public final UnalterableConstraintsPropagator freeCapacities;
 	public final Repository localDisk;
 	final ArrayList<ResourceAllocation> promisedResources = new ArrayList<ResourceAllocation>();
 	private int promisedAllocationsCount = 0;
@@ -386,14 +390,16 @@ public class PhysicalMachine extends MaxMinProvider implements
 			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
 		super(cores * perCorePocessing);
 		// Init resources:
-		totalCapacities = UnalterableConstraints.directUnalterableCreator(
-				cores, perCorePocessing, memory);
+		totalCapacities = new ConstantConstraints(cores, perCorePocessing,
+				memory);
 		internalAvailableCaps = new AlterableResourceConstraints(
 				totalCapacities);
-		availableCapacities = new UnalterableConstraints(internalAvailableCaps);
+		availableCapacities = new UnalterableConstraintsPropagator(
+				internalAvailableCaps);
 		internalReallyFreeCaps = new AlterableResourceConstraints(
 				totalCapacities);
-		freeCapacities = new UnalterableConstraints(internalReallyFreeCaps);
+		freeCapacities = new UnalterableConstraintsPropagator(
+				internalReallyFreeCaps);
 		localDisk = disk;
 
 		hostPowerBehavior = powerTransitions.get(PowerStateKind.host);
@@ -625,11 +631,9 @@ public class PhysicalMachine extends MaxMinProvider implements
 					- requested.getRequiredMemory()) {
 				return new ResourceAllocation(
 						this,
-						UnalterableConstraints.directUnalterableCreator(
-								allocCPU, allocPrPow, vmMem),
-						requested.isRequiredProcessingIsMinimum() ? UnalterableConstraints
-								.directUnalterableCreator(vmCPU, vmPrPow, true,
-										vmMem) : requested,
+						new ConstantConstraints(allocCPU, allocPrPow, vmMem),
+						requested.isRequiredProcessingIsMinimum() ? new ConstantConstraints(
+								vmCPU, vmPrPow, true, vmMem) : requested,
 						allocationValidityLength);
 			} else {
 				vmMem = internalReallyFreeCaps.getRequiredMemory();
@@ -644,8 +648,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		if (strict) {
 			return null;
 		} else {
-			final ResourceConstraints updatedConstraints = UnalterableConstraints
-					.directUnalterableCreator(vmCPU, vmPrPow,
+			final ResourceConstraints updatedConstraints = new ConstantConstraints(vmCPU, vmPrPow,
 							requested.isRequiredProcessingIsMinimum(), vmMem);
 			return new ResourceAllocation(this, updatedConstraints,
 					updatedConstraints, allocationValidityLength);

@@ -28,6 +28,9 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.StateChangeListener;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
@@ -121,13 +124,13 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	public final List<PhysicalMachine> runningMachines = Collections
 			.unmodifiableList(internalRunningMachines);
 
-	private ResourceConstraints totalCapacity = AlterableResourceConstraints
+	private AlterableResourceConstraints totalCapacity = AlterableResourceConstraints
 			.getNoResources();
-	private ResourceConstraints publicTCap = new UnalterableConstraints(
+	private ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(
 			totalCapacity);
-	private ResourceConstraints runningCapacity = AlterableResourceConstraints
+	private AlterableResourceConstraints runningCapacity = AlterableResourceConstraints
 			.getNoResources();
-	private ResourceConstraints publicRCap = new UnalterableConstraints(
+	private ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(
 			runningCapacity);
 
 	private final CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>> capacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<PhysicalMachine>>();
@@ -280,7 +283,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 			throws IaaSHandlingException {
 		if (ArrayHandler.removeAndReplaceWithLast(internalMachines, pm)) {
 			if (pm.isHostingVMs()) {
-				ResourceConstraints needed = new AlterableResourceConstraints(
+				AlterableResourceConstraints needed = new AlterableResourceConstraints(
 						pm.getCapacities());
 				needed.subtract(pm.freeCapacities);
 				PhysicalMachine receiver = null;

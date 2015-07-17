@@ -22,44 +22,13 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-package hu.mta.sztaki.lpds.cloud.simulator.iaas;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
-public class UnalterableConstraints extends ResourceConstraints {
+public class UnalterableConstraintsPropagator extends ResourceConstraints {
 	private final ResourceConstraints whatToPropagate;
 
-	public UnalterableConstraints(final ResourceConstraints toPropagate) {
+	public UnalterableConstraintsPropagator(final ResourceConstraints toPropagate) {
 		whatToPropagate = toPropagate;
-	}
-
-	public static ResourceConstraints directUnalterableCreator(
-			final double cpu, final double processing, boolean isMinimum,
-			final long memory) {
-		return new UnalterableConstraints(new AlterableResourceConstraints(cpu,
-				processing, isMinimum, memory));
-	}
-
-	public static UnalterableConstraints directUnalterableCreator(
-			final double cpu, final double processing, final long memory) {
-		return new UnalterableConstraints(new AlterableResourceConstraints(cpu,
-				processing, memory));
-	}
-
-	@Override
-	public void add(ResourceConstraints... toAdd) {
-		throw new UnsupportedOperationException(
-				"Addition is not allowed on unalterable constraints");
-	}
-
-	@Override
-	public void multiply(double times) {
-		throw new UnsupportedOperationException(
-				"Multiplication is not allowed on unalterable constraints");
-	}
-
-	@Override
-	public void subtract(ResourceConstraints what) {
-		throw new UnsupportedOperationException(
-				"Subtraction is not allowed on unalterable constraints");
 	}
 
 	@Override

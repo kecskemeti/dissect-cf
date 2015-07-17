@@ -25,9 +25,10 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
 import java.util.HashMap;
@@ -49,8 +50,9 @@ public class QueueingData {
 		queuedVMs = vms;
 		queuedRC = rc;
 		queuedRepo = vaSource;
-		cumulativeRC = new AlterableResourceConstraints(rc);
-		cumulativeRC.multiply(queuedVMs.length);
+		AlterableResourceConstraints cRC = new AlterableResourceConstraints(rc);
+		cRC.multiply(queuedVMs.length);
+		cumulativeRC=new UnalterableConstraintsPropagator(cRC);
 		receivedTime = received;
 		this.schedulingConstraints = schedulingConstraints;
 	}

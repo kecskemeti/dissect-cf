@@ -26,15 +26,15 @@
 package at.ac.uibk.dps.cloud.simulator.test.complex;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChangeException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
@@ -100,7 +100,7 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		final Vector<ResourceConsumption> cons = new Vector<ResourceConsumption>();
 		final long offset = Timed.getFireCount();
 		final VirtualMachine[] vms = iaas.requestVM(va,
-				new UnalterableConstraints(new AlterableResourceConstraints(1,
+				new UnalterableConstraintsPropagator(new AlterableResourceConstraints(1,
 						1, 512000000)), repo, mxvms);
 		final long[] expectedRunningTimes = { 444062, 444062, 444062 };
 		for (int i = 0; i < vms.length; i++) {
@@ -169,7 +169,7 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 				48.0, 125000L, 50000L);
 		iaass[1] = createMiniCloud("TestCloud2", vas[1], 1250000L, 250000L, 5,
 				64.0, 250000L, 50000L);
-		ResourceConstraints rc = new UnalterableConstraints(
+		ResourceConstraints rc = new UnalterableConstraintsPropagator(
 				new AlterableResourceConstraints(1, 1, 1000000000));
 		final long offset = Timed.getFireCount();
 		final long[] itr = { 89000, 89000 };

@@ -26,12 +26,12 @@
 package at.ac.uibk.dps.cloud.simulator.test;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
@@ -146,7 +146,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0
 										: 1);
 				double requestedprocs = corecount / instancecount;
-				final ResourceConstraints vmsize = new UnalterableConstraints(
+				final ResourceConstraints vmsize = new UnalterableConstraintsPropagator(
 						new AlterableResourceConstraints(requestedprocs,
 								pmsize.getRequiredProcessingPower(), 512));
 				final Repository repo = iaas.repositories.get(0);

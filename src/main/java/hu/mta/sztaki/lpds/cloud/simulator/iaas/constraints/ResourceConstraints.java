@@ -23,7 +23,7 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.iaas;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 /**
  * This class is intentionally non mutable, allowing those users (e.g. the class
@@ -66,9 +66,4 @@ public abstract class ResourceConstraints implements
 
 	public abstract double getTotalProcessingPower();
 
-	public abstract void multiply(final double times);
-
-	public abstract void add(final ResourceConstraints... toAdd);
-
-	public abstract void subtract(final ResourceConstraints what);
 }

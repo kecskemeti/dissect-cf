@@ -22,7 +22,7 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-package hu.mta.sztaki.lpds.cloud.simulator.iaas;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 public class AlterableResourceConstraints extends ResourceConstraints {
 	private double requiredCPUs;
@@ -88,24 +88,28 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		totalProcessingPower = requiredCPUs * requiredProcessingPower;
 	}
 
+	@Override
 	public double getRequiredCPUs() {
 		return requiredCPUs;
 	}
 
+	@Override
 	public double getRequiredProcessingPower() {
 		return requiredProcessingPower;
 	}
 
+	@Override
 	public boolean isRequiredProcessingIsMinimum() {
 		return requiredProcessingIsMinimum;
 	}
 
+	@Override
 	public long getRequiredMemory() {
 		return requiredMemory;
 	}
 
+	@Override
 	public double getTotalProcessingPower() {
 		return totalProcessingPower;
 	}
-
 }

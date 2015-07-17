@@ -27,13 +27,13 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChangeException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -352,7 +352,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = StateChangeException.class, timeout = 100)
 	public void errenousAllocationRequest() throws VMManagementException,
 			NetworkException {
-		ResourceConstraints constraints = new AlterableResourceConstraints(
+		AlterableResourceConstraints constraints = new AlterableResourceConstraints(
 				pm.getCapacities());
 		constraints.multiply(0.1);
 		centralVM.switchOn(pm.allocateResources(constraints, true,

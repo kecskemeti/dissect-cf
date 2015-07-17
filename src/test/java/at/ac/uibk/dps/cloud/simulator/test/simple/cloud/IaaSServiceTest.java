@@ -26,15 +26,15 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -96,7 +96,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	public void capacityMaintenanceTest() throws IaaSHandlingException {
 		for (IaaSService iaas : services) {
 			final PhysicalMachine pm = dummyPMcreator();
-			ResourceConstraints beforeCapacities = new AlterableResourceConstraints(
+			AlterableResourceConstraints beforeCapacities = new AlterableResourceConstraints(
 					iaas.getCapacities());
 			beforeCapacities.add(pm.getCapacities());
 			iaas.registerHost(pm);
@@ -470,7 +470,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 					s.getCapacities());
 			caps.multiply(0.4);
 			VirtualMachine[] vmsToQueue = s.requestVM((VirtualAppliance) r
-					.contents().iterator().next(), new UnalterableConstraints(
+					.contents().iterator().next(), new UnalterableConstraintsPropagator(
 					caps), r, 2);
 			VirtualMachine.State[] states = new VirtualMachine.State[] {
 					vmsToQueue[0].getState(), vmsToQueue[1].getState() };

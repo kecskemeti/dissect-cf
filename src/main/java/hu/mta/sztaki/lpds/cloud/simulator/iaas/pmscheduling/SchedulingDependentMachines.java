@@ -25,14 +25,14 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.CapacityChangeEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
@@ -97,7 +97,8 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 						// parent have not recognize this PM's startup yet
 						runningCapacities = new AlterableResourceConstraints(
 								runningCapacities);
-						runningCapacities.add(observed.getCapacities());
+						((AlterableResourceConstraints) runningCapacities)
+								.add(observed.getCapacities());
 					}
 					if (runningCapacities.compareTo(parent.sched
 							.getTotalQueued()) < 0) {

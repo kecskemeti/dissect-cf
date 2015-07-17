@@ -29,8 +29,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.energy.AggregatedEnergyMeter;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.DirectEnergyMeter;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.EnergyMeter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 import java.util.Arrays;
 import java.util.List;

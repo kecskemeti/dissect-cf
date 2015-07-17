@@ -27,9 +27,9 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.UnalterableConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,15 +50,15 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
 		ResourceConstraints total = pm.getCapacities();
-		small = UnalterableConstraints.directUnalterableCreator(
+		small = new ConstantConstraints(
 				total.getRequiredCPUs() / smallDivider,
 				total.getRequiredProcessingPower(),
 				(long) (total.getRequiredMemory() / smallDivider));
-		bigger = UnalterableConstraints.directUnalterableCreator(
+		bigger = new ConstantConstraints(
 				total.getRequiredCPUs() / bigDivider,
 				total.getRequiredProcessingPower() / smallestDivider, true,
 				(long) (total.getRequiredMemory() / smallestDivider));
-		biggerFittingCPU = UnalterableConstraints.directUnalterableCreator(
+		biggerFittingCPU = new ConstantConstraints(
 				total.getRequiredCPUs() / smallestDivider,
 				total.getRequiredProcessingPower() / smallestDivider, true,
 				(long) (total.getRequiredMemory() / smallestDivider));
@@ -121,12 +121,10 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void perfectFitAllocation() throws VMManagementException {
 		ResourceConstraints pmc = pm.getCapacities();
-		ResourceConstraints smaller = UnalterableConstraints
-				.directUnalterableCreator(pmc.getRequiredCPUs(),
+		ResourceConstraints smaller = new ConstantConstraints(pmc.getRequiredCPUs(),
 						pmc.getRequiredProcessingPower() * 0.33,
 						pmc.getRequiredMemory() / 2);
-		ResourceConstraints bigger = UnalterableConstraints
-				.directUnalterableCreator(
+		ResourceConstraints bigger = new ConstantConstraints(
 						pmc.getRequiredCPUs(),
 						pmc.getRequiredProcessingPower()
 								- smaller.getRequiredProcessingPower(),
