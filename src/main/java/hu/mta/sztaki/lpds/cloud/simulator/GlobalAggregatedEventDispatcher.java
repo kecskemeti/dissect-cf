@@ -25,12 +25,12 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
+import gnu.trove.map.hash.TLongObjectHashMap;
+
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 
 public class GlobalAggregatedEventDispatcher extends Timed {
-	private static final HashMap<Long, ArrayList<AggregatedEventReceiver>> toSweep = new HashMap<Long, ArrayList<AggregatedEventReceiver>>();
+	private static final TLongObjectHashMap<ArrayList<AggregatedEventReceiver>> toSweep = new TLongObjectHashMap<ArrayList<AggregatedEventReceiver>>();
 	private static GlobalAggregatedEventDispatcher dispatcherInstance = new GlobalAggregatedEventDispatcher();
 
 	public static long registerSweepable(final AggregatedEventReceiver rcver,
@@ -75,8 +75,14 @@ public class GlobalAggregatedEventDispatcher extends Timed {
 	}
 
 	private static void updateDispatcher() {
-		dispatcherInstance.updateFrequency(Collections.min(toSweep.keySet())
-				- getFireCount());
+		final long[] keys = toSweep.keys();
+		long minkey = Long.MAX_VALUE;
+		for (long key : keys) {
+			if (key < minkey) {
+				minkey = key;
+			}
+		}
+		dispatcherInstance.updateFrequency(minkey - getFireCount());
 	}
 
 	@Override

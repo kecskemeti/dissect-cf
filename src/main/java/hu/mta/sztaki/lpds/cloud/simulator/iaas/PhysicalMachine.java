@@ -25,6 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
+import gnu.trove.list.array.TDoubleArrayList;
 import hu.mta.sztaki.lpds.cloud.simulator.AggregatedEventReceiver;
 import hu.mta.sztaki.lpds.cloud.simulator.GlobalAggregatedEventDispatcher;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -54,6 +55,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * 
@@ -221,7 +224,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public class PowerStateDelayer extends ConsumptionEventAdapter {
 		private State newState;
 		// The end of the list is the upcoming task
-		final ArrayList<Double> tasksDue;
+		final TDoubleArrayList tasksDue;
 		public final long transitionStart;
 		ResourceConsumption currentConsumption = null;
 
@@ -229,10 +232,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 				final State newPowerState) {
 			onOffEvent = this;
 			newState = newPowerState;
-			tasksDue = new ArrayList<Double>(tasklist.length);
-			for (int i = tasklist.length - 1; i >= 0; i--) {
-				tasksDue.add(tasklist[i]);
-			}
+			tasksDue = new TDoubleArrayList(tasklist);
+			tasksDue.reverse();
 			sendTask();
 			transitionStart = Timed.getFireCount();
 		}
@@ -248,8 +249,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 
 			// No we did not, lets send some more to our direct consumer
 			final double totalConsumption = tasksDue
-					.remove(tasksDue.size() - 1);
-			final double limit = tasksDue.remove(tasksDue.size() - 1);
+					.removeAt(tasksDue.size() - 1);
+			final double limit = tasksDue.removeAt(tasksDue.size() - 1);
 			currentConsumption = new ResourceConsumption(totalConsumption,
 					limit, directConsumer, PhysicalMachine.this, this);
 			if (!currentConsumption.registerConsumption()) {
@@ -269,13 +270,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 					"Unexpected termination of one of the state changing tasks");
 		}
 
-		public void addFurtherTasks(final double[] tasklist) {
+		public void addFurtherTasks(double[] tasklist) {
+			ArrayUtils.reverse(tasklist);
 			tasksDue.ensureCapacity(tasklist.length + tasksDue.size());
-			for (int i = tasklist.length - 1; i >= 0; i -= 2) {
-				// Maintaining the end to front order of the due list
-				tasksDue.add(0, tasklist[i - 1]);
-				tasksDue.add(0, tasklist[i]);
-			}
+			tasksDue.insert(0, tasklist);
 		}
 
 		public void setNewState(State newState) {
