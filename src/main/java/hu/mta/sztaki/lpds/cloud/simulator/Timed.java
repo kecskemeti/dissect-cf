@@ -145,7 +145,7 @@ public abstract class Timed implements Comparable<Timed> {
 		fireCounter++;
 	}
 
-	private static long calcTimeJump(long jump) {
+	public static long calcTimeJump(long jump) {
 		final long targettime = fireCounter + jump;
 		return targettime < 0 ? Long.MAX_VALUE : targettime;
 	}

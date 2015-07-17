@@ -25,7 +25,8 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
-import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.AggregatedEventReceiver;
+import hu.mta.sztaki.lpds.cloud.simulator.GlobalAggregatedEventDispatcher;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
@@ -109,17 +110,20 @@ public class PhysicalMachine extends MaxMinProvider implements
 		void stateChanged(State oldState, State newState);
 	}
 
-	public static class ResourceAllocation extends DeferredEvent {
+	public static class ResourceAllocation implements AggregatedEventReceiver {
 		public final PhysicalMachine host;
 		public final ResourceConstraints allocated;
 		private final ResourceConstraints realAllocated;
 		private VirtualMachine user = null;
 		private final int myPromisedIndex;
+		private final long dispatcherID;
+		private boolean swept=false;
 
 		private ResourceAllocation(final PhysicalMachine offerer,
 				final ResourceConstraints realAlloc,
 				final ResourceConstraints alloc, final int until) {
-			super(until);
+			dispatcherID = GlobalAggregatedEventDispatcher.registerSweepable(
+					this, until);
 			host = offerer;
 			allocated = alloc;
 			realAllocated = realAlloc;
@@ -134,25 +138,24 @@ public class PhysicalMachine extends MaxMinProvider implements
 				host.promisedResources.set(i, this);
 				myPromisedIndex = i;
 			}
-			if (host.promisedAllocationsCount == 0) {
-				host.promisedCapacities = new AlterableResourceConstraints(
-						realAllocated);
-			} else {
-				host.promisedCapacities.add(realAllocated);
-			}
+			host.promisedCapacities.add(realAllocated);
 			host.internalReallyFreeCaps.subtract(realAllocated);
 			host.promisedAllocationsCount++;
 		}
 
 		@Override
-		protected void eventAction() {
-			if (!isCancelled())
-				System.err.println("Warning! Expiring resource allocation.");
+		public void receiveEvent(long fires) {
+			System.err.println("Warning! Expiring resource allocation.");
+			swept=true;
+			promisedCapacityUpdater();
+		}
+
+		private void promisedCapacityUpdater() {
 			host.promisedResources.set(myPromisedIndex, null);
 			host.promisedAllocationsCount--;
 			if (host.promisedAllocationsCount == 0) {
 				host.promisedResources.clear();
-				host.promisedCapacities = null;
+				host.promisedCapacities.subtract(host.promisedCapacities);
 			} else {
 				host.promisedCapacities.subtract(realAllocated);
 			}
@@ -161,14 +164,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 			}
 		}
 
-		@Override
 		public void cancel() {
-			super.cancel();
-			eventAction();
+			GlobalAggregatedEventDispatcher.removeSweepable(this, dispatcherID);
+			promisedCapacityUpdater();
 		}
 
 		void use(final VirtualMachine vm) throws VMManagementException {
-			if (isCancelled()) {
+			if (swept) {
 				throw new VMManagementException(
 						"Tried to use an already expired allocation");
 			}
@@ -199,6 +201,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			host.internalReallyFreeCaps.add(realAllocated);
 			host.notifyFreedUpCapacityListeners(realAllocated);
 			user = null;
+			swept=true;
 		}
 
 		public boolean isUnUsed() {
@@ -206,12 +209,12 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		public boolean isAvailable() {
-			return isUnUsed() && !isCancelled();
+			return isUnUsed() && !swept;
 		}
 
 		@Override
 		public String toString() {
-			return "RA(Canc:" + isCancelled() + " " + allocated + ")";
+			return "RA(Canc:" + swept + " " + allocated + ")";
 		}
 	}
 
@@ -288,7 +291,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 	 * unaltered data please make a copy.
 	 */
 	public final UnalterableConstraintsPropagator availableCapacities;
-	private AlterableResourceConstraints promisedCapacities;
+	private AlterableResourceConstraints promisedCapacities = AlterableResourceConstraints
+			.getNoResources();
 	private final AlterableResourceConstraints internalReallyFreeCaps;
 	/**
 	 * This field can automatically update between two checks! If you need
@@ -647,8 +651,9 @@ public class PhysicalMachine extends MaxMinProvider implements
 		if (strict) {
 			return null;
 		} else {
-			final ResourceConstraints updatedConstraints = new ConstantConstraints(vmCPU, vmPrPow,
-							requested.isRequiredProcessingIsMinimum(), vmMem);
+			final ResourceConstraints updatedConstraints = new ConstantConstraints(
+					vmCPU, vmPrPow, requested.isRequiredProcessingIsMinimum(),
+					vmMem);
 			return new ResourceAllocation(this, updatedConstraints,
 					updatedConstraints, allocationValidityLength);
 		}
