@@ -92,7 +92,7 @@ public class FirstFitScheduler extends Scheduler {
                         for (int i = request.queuedVMs.length - 1; i >= 0; i--) {
                             vmNum--;
                             allocation = ras[i];
-                            allocation.host.deployVM(request.queuedVMs[i],
+                            allocation.getHost().deployVM(request.queuedVMs[i],
                                     allocation, request.queuedRepo);
                         }
                         manageQueueRemoval(request);

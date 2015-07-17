@@ -440,12 +440,12 @@ public class VirtualMachine extends MaxMinConsumer {
 		switch (currState) {
 		case DESTROYED:
 			setResourceAllocation(allocation);
-			initialTransfer(vasource, allocation.host.localDisk, switchonEvent);
+			initialTransfer(vasource, allocation.getHost().localDisk, switchonEvent);
 			break;
 		case SHUTDOWN:
 			// Shutdown has already done the transfer, we just need to make sure
 			// the VM will get through its boot procedure
-			if (allocation.host.localDisk != vatarget) {
+			if (allocation.getHost().localDisk != vatarget) {
 				// TODO: maybe we can switch back to destroyed
 				throw new VMManagementException(
 						"VM was not prepared for this PM");
@@ -484,7 +484,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			vatarget.deregisterObject(savedmemory);
 			setState(State.SUSPENDED);
 			setResourceAllocation(target);
-			vatarget = target.host.localDisk;
+			vatarget = target.getHost().localDisk;
 			realResume();
 		} catch (StateChangeException e) {
 			// Should not happen!
@@ -512,7 +512,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			throws NetworkNode.NetworkException {
 		final boolean[] cancelMigration = new boolean[1];
 		cancelMigration[0] = false;
-		final Repository to = target.host.localDisk;
+		final Repository to = target.getHost().localDisk;
 		class MigrationEvent extends ConsumptionEventAdapter {
 			int eventcounter = 1;
 
@@ -537,7 +537,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 
 		for (final ResourceConsumption con : suspendedTasks) {
-			con.setProvider(target.host);
+			con.setProvider(target.getHost());
 		}
 
 		final MigrationEvent mp = new MigrationEvent();
@@ -587,8 +587,8 @@ public class VirtualMachine extends MaxMinConsumer {
 			actualMigration(target);
 		} else {
 			if (va.getBgNetworkLoad() <= 0 && ra != null) {
-				NetworkNode.checkConnectivity(ra.host.localDisk,
-						target.host.localDisk);
+				NetworkNode.checkConnectivity(ra.getHost().localDisk,
+						target.getHost().localDisk);
 			}
 			suspend(new EventSetup(State.MIGRATING) {
 				@Override
@@ -711,7 +711,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 		}
 		final String memid = "VM-Memory-State-of-" + hashCode();
-		final Repository pmdisk = ra.host.localDisk;
+		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = new StorageObject(memid,
 				ra.allocated.getRequiredMemory(), false);
 		setState(State.SUSPEND_TR);
@@ -738,7 +738,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			NetworkNode.NetworkException {
 		State priorState = currState;
 		setState(State.RESUME_TR);
-		final Repository pmdisk = ra.host.localDisk;
+		final Repository pmdisk = ra.getHost().localDisk;
 		class ResumeComplete extends ConsumptionEventAdapter {
 			@Override
 			public void conComplete() {
@@ -826,16 +826,16 @@ public class VirtualMachine extends MaxMinConsumer {
 			return null;
 		}
 		ResourceConsumption cons = new ResourceConsumption(total, limit, this,
-				ra.host, e);
+				ra.getHost(), e);
 		if (cons.registerConsumption()) {
 			final long bgnwload = va.getBgNetworkLoad();
 			if (bgnwload > 0) {
 				final long minBW = Math.min(
 						bgnwload,
-						Math.min(ra.host.localDisk.getOutputbw(),
+						Math.min(ra.getHost().localDisk.getOutputbw(),
 								vasource.getInputbw()));
 				NetworkNode.initTransfer(minBW * cons.getCompletionDistance(),
-						minBW, ra.host.localDisk, vasource,
+						minBW, ra.getHost().localDisk, vasource,
 						new ConsumptionEventAdapter());
 			}
 			return cons;

@@ -611,7 +611,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Both tasks should be finished by now", 2,
 				ConsumptionEventAssert.hits.size());
 		Assert.assertEquals("The VM should be on the second machine now",
-				second, vms[0].getResourceAllocation().host);
+				second, vms[0].getResourceAllocation().getHost());
 		Assert.assertEquals("The first PM should be off now",
 				PhysicalMachine.State.OFF, first.getState());
 	}

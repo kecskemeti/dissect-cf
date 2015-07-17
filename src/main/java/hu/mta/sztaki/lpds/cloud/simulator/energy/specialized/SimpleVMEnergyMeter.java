@@ -43,7 +43,7 @@ public class SimpleVMEnergyMeter extends PhysicalMachineEnergyMeter {
 	 * @param vm
 	 */
 	public SimpleVMEnergyMeter(final VirtualMachine vm) {
-		super(vm.getResourceAllocation().host);
+		super(vm.getResourceAllocation().getHost());
 	}
 
 	/**

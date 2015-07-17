@@ -162,7 +162,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 			throws NoSuchVMException {
 		ResourceAllocation ra = vm.getResourceAllocation();
 		PhysicalMachine host;
-		if (!(ra != null && runningMachines.contains(host = ra.host))) {
+		if (!(ra != null && runningMachines.contains(host = ra.getHost()))) {
 			throw new NoSuchVMException(
 					"This VM is not run by any of the managed PMs in this IaaS service");
 		}

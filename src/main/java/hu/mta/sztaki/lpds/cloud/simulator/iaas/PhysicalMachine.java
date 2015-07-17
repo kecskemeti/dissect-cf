@@ -113,8 +113,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		void stateChanged(State oldState, State newState);
 	}
 
-	public static class ResourceAllocation implements AggregatedEventReceiver {
-		public final PhysicalMachine host;
+	public class ResourceAllocation implements AggregatedEventReceiver {
 		public final ResourceConstraints allocated;
 		private final ResourceConstraints realAllocated;
 		private VirtualMachine user = null;
@@ -122,28 +121,27 @@ public class PhysicalMachine extends MaxMinProvider implements
 		private final long dispatcherID;
 		private boolean swept=false;
 
-		private ResourceAllocation(final PhysicalMachine offerer,
+		private ResourceAllocation(
 				final ResourceConstraints realAlloc,
 				final ResourceConstraints alloc, final int until) {
 			dispatcherID = GlobalAggregatedEventDispatcher.registerSweepable(
 					this, until);
-			host = offerer;
 			allocated = alloc;
 			realAllocated = realAlloc;
-			int prLen = host.promisedResources.size();
+			int prLen = promisedResources.size();
 			int i = 0;
-			for (i = 0; i < prLen && host.promisedResources.get(i) != null; i++)
+			for (i = 0; i < prLen && promisedResources.get(i) != null; i++)
 				;
 			if (i == prLen) {
-				host.promisedResources.add(this);
+				promisedResources.add(this);
 				myPromisedIndex = prLen;
 			} else {
-				host.promisedResources.set(i, this);
+				promisedResources.set(i, this);
 				myPromisedIndex = i;
 			}
-			host.promisedCapacities.add(realAllocated);
-			host.internalReallyFreeCaps.subtract(realAllocated);
-			host.promisedAllocationsCount++;
+			promisedCapacities.add(realAllocated);
+			internalReallyFreeCaps.subtract(realAllocated);
+			promisedAllocationsCount++;
 		}
 
 		@Override
@@ -154,16 +152,16 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		private void promisedCapacityUpdater() {
-			host.promisedResources.set(myPromisedIndex, null);
-			host.promisedAllocationsCount--;
-			if (host.promisedAllocationsCount == 0) {
-				host.promisedResources.clear();
-				host.promisedCapacities.subtract(host.promisedCapacities);
+			promisedResources.set(myPromisedIndex, null);
+			promisedAllocationsCount--;
+			if (promisedAllocationsCount == 0) {
+				promisedResources.clear();
+				promisedCapacities.subtract(promisedCapacities);
 			} else {
-				host.promisedCapacities.subtract(realAllocated);
+				promisedCapacities.subtract(realAllocated);
 			}
 			if (isUnUsed()) {
-				host.internalReallyFreeCaps.add(realAllocated);
+				internalReallyFreeCaps.add(realAllocated);
 			}
 		}
 
@@ -179,14 +177,14 @@ public class PhysicalMachine extends MaxMinProvider implements
 			}
 			if (user == null) {
 				user = vm;
-				host.internalAvailableCaps.subtract(realAllocated);
-				host.vms.add(vm);
+				internalAvailableCaps.subtract(realAllocated);
+				vms.add(vm);
 				vm.subscribeStateChange(new VirtualMachine.StateChange() {
 					@Override
 					public void stateChanged(VirtualMachine.State oldState,
 							VirtualMachine.State newState) {
 						if (oldState.equals(VirtualMachine.State.RUNNING)) {
-							host.vms.remove(vm);
+							vms.remove(vm);
 						}
 					}
 				});
@@ -198,11 +196,11 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		void release() {
-			host.vms.remove(user);
-			host.completedVMs++;
-			host.internalAvailableCaps.add(realAllocated);
-			host.internalReallyFreeCaps.add(realAllocated);
-			host.notifyFreedUpCapacityListeners(realAllocated);
+			vms.remove(user);
+			completedVMs++;
+			internalAvailableCaps.add(realAllocated);
+			internalReallyFreeCaps.add(realAllocated);
+			notifyFreedUpCapacityListeners(realAllocated);
 			user = null;
 			swept=true;
 		}
@@ -218,6 +216,10 @@ public class PhysicalMachine extends MaxMinProvider implements
 		@Override
 		public String toString() {
 			return "RA(Canc:" + swept + " " + allocated + ")";
+		}
+		
+		public PhysicalMachine getHost() {
+			return PhysicalMachine.this;
 		}
 	}
 
@@ -631,7 +633,6 @@ public class PhysicalMachine extends MaxMinProvider implements
 			if (0 <= internalReallyFreeCaps.getRequiredMemory()
 					- requested.getRequiredMemory()) {
 				return new ResourceAllocation(
-						this,
 						new ConstantConstraints(allocCPU, allocPrPow, vmMem),
 						requested.isRequiredProcessingIsMinimum() ? new ConstantConstraints(
 								vmCPU, vmPrPow, true, vmMem) : requested,
@@ -652,7 +653,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			final ResourceConstraints updatedConstraints = new ConstantConstraints(
 					vmCPU, vmPrPow, requested.isRequiredProcessingIsMinimum(),
 					vmMem);
-			return new ResourceAllocation(this, updatedConstraints,
+			return new ResourceAllocation(updatedConstraints,
 					updatedConstraints, allocationValidityLength);
 		}
 	}
