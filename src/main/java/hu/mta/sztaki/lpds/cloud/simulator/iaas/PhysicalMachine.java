@@ -25,7 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
-import gnu.trove.list.array.TDoubleArrayList;
+import gnu.trove.list.linked.TDoubleLinkedList;
 import hu.mta.sztaki.lpds.cloud.simulator.AggregatedEventReceiver;
 import hu.mta.sztaki.lpds.cloud.simulator.GlobalAggregatedEventDispatcher;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -55,8 +55,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * 
@@ -119,10 +117,9 @@ public class PhysicalMachine extends MaxMinProvider implements
 		private VirtualMachine user = null;
 		private final int myPromisedIndex;
 		private final long dispatcherID;
-		private boolean swept=false;
+		private boolean swept = false;
 
-		private ResourceAllocation(
-				final ResourceConstraints realAlloc,
+		private ResourceAllocation(final ResourceConstraints realAlloc,
 				final ResourceConstraints alloc, final int until) {
 			dispatcherID = GlobalAggregatedEventDispatcher.registerSweepable(
 					this, until);
@@ -147,7 +144,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		@Override
 		public void receiveEvent(long fires) {
 			System.err.println("Warning! Expiring resource allocation.");
-			swept=true;
+			swept = true;
 			promisedCapacityUpdater();
 		}
 
@@ -202,7 +199,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			internalReallyFreeCaps.add(realAllocated);
 			notifyFreedUpCapacityListeners(realAllocated);
 			user = null;
-			swept=true;
+			swept = true;
 		}
 
 		public boolean isUnUsed() {
@@ -217,7 +214,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		public String toString() {
 			return "RA(Canc:" + swept + " " + allocated + ")";
 		}
-		
+
 		public PhysicalMachine getHost() {
 			return PhysicalMachine.this;
 		}
@@ -226,7 +223,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 	public class PowerStateDelayer extends ConsumptionEventAdapter {
 		private State newState;
 		// The end of the list is the upcoming task
-		final TDoubleArrayList tasksDue;
+		final TDoubleLinkedList tasksDue;
 		public final long transitionStart;
 		ResourceConsumption currentConsumption = null;
 
@@ -234,8 +231,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 				final State newPowerState) {
 			onOffEvent = this;
 			newState = newPowerState;
-			tasksDue = new TDoubleArrayList(tasklist);
-			tasksDue.reverse();
+			tasksDue = new TDoubleLinkedList();
+			tasksDue.add(tasklist);
 			sendTask();
 			transitionStart = Timed.getFireCount();
 		}
@@ -250,9 +247,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 			}
 
 			// No we did not, lets send some more to our direct consumer
-			final double totalConsumption = tasksDue
-					.removeAt(tasksDue.size() - 1);
-			final double limit = tasksDue.removeAt(tasksDue.size() - 1);
+			final double totalConsumption = tasksDue.removeAt(0);
+			final double limit = tasksDue.removeAt(0);
 			currentConsumption = new ResourceConsumption(totalConsumption,
 					limit, directConsumer, PhysicalMachine.this, this);
 			if (!currentConsumption.registerConsumption()) {
@@ -272,10 +268,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 					"Unexpected termination of one of the state changing tasks");
 		}
 
-		public void addFurtherTasks(double[] tasklist) {
-			ArrayUtils.reverse(tasklist);
-			tasksDue.ensureCapacity(tasklist.length + tasksDue.size());
-			tasksDue.insert(0, tasklist);
+		public void addFurtherTasks(final double[] tasklist) {
+			tasksDue.add(tasklist);
 		}
 
 		public void setNewState(State newState) {
