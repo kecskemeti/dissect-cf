@@ -152,8 +152,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			host.promisedAllocationsCount--;
 			if (host.promisedAllocationsCount == 0) {
 				host.promisedResources.clear();
-				host.promisedCapacities = AlterableResourceConstraints
-						.getNoResources();
+				host.promisedCapacities = null;
 			} else {
 				host.promisedCapacities.subtract(realAllocated);
 			}
