@@ -55,10 +55,14 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 public class PMTest extends IaaSRelatedFoundation {
 	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
-	final static ResourceConstraints smallConstraints = new ConstantConstraints(reqcores / 2, reqProcessing, reqmem / 2);
-	final static ResourceConstraints overCPUConstraints = new ConstantConstraints(reqcores * 2, reqProcessing, reqmem);
-	final static ResourceConstraints overMemoryConstraints = new ConstantConstraints(reqcores, reqProcessing, reqmem * 2);
-	final static ResourceConstraints overProcessingConstraints = new ConstantConstraints(reqcores, reqProcessing * 2, reqmem);
+	final static ResourceConstraints smallConstraints = new ConstantConstraints(
+			reqcores / 2, reqProcessing, reqmem / 2);
+	final static ResourceConstraints overCPUConstraints = new ConstantConstraints(
+			reqcores * 2, reqProcessing, reqmem);
+	final static ResourceConstraints overMemoryConstraints = new ConstantConstraints(
+			reqcores, reqProcessing, reqmem * 2);
+	final static ResourceConstraints overProcessingConstraints = new ConstantConstraints(
+			reqcores, reqProcessing * 2, reqmem);
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
 	Repository reqDisk;
@@ -87,8 +91,8 @@ public class PMTest extends IaaSRelatedFoundation {
 				* reqProcessing, (int) pm.getPerTickProcessingPower());
 		Assert.assertEquals("On delay mismatch", reqond,
 				pm.getCurrentOnOffDelay());
-		Assert.assertTrue("Free capacity mismatch", pm.freeCapacities
-				.compareTo(pm.getCapacities()) == 0);
+		Assert.assertTrue("Free capacity mismatch",
+				pm.freeCapacities.compareTo(pm.getCapacities()) == 0);
 		Assert.assertTrue("Machine's id is not in the machine's toString", pm
 				.toString().contains(pmid));
 		Assert.assertEquals("Machine's state is not initial",

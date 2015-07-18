@@ -205,6 +205,7 @@ public abstract class Timed implements Comparable<Timed> {
 
 	public static final void resetTimed() {
 		timedlist.clear();
+		GlobalAggregatedEventDispatcher.reset();
 		underProcessing = null;
 		fireCounter = 0;
 	}

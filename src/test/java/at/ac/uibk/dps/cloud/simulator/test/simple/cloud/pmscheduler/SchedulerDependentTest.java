@@ -69,8 +69,7 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 				basic.runningMachines.size());
 	}
 
-	@Test
-	// (timeout = 100)
+	@Test(timeout = 100)
 	public void simpleLoadTest() throws VMManagementException, NetworkException {
 		final HashSet<PhysicalMachine> affectedpms = new HashSet<PhysicalMachine>();
 		for (final PhysicalMachine pm : basic.machines) {

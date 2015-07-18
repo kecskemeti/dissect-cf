@@ -84,6 +84,10 @@ public class GlobalAggregatedEventDispatcher extends Timed {
 		}
 		dispatcherInstance.updateFrequency(minkey - getFireCount());
 	}
+	
+	static void reset() {
+		toSweep.clear();
+	}
 
 	@Override
 	public void tick(final long fires) {
@@ -99,4 +103,5 @@ public class GlobalAggregatedEventDispatcher extends Timed {
 		}
 		updateDispatcher();
 	}
+
 }
