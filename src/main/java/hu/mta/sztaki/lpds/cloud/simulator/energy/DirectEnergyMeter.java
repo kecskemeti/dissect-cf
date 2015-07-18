@@ -78,10 +78,12 @@ public class DirectEnergyMeter extends EnergyMeter implements
 	@Override
 	public void behaviorChanged(final ResourceSpreader onSpreader,
 			final PowerState newState) {
-		usedPowerState.unsubscribePowerCharacteristicsChanges(this);
-		usedPowerState = newState;
-		usedPowerState.subscribePowerCharacteristicsChanges(this);
-		readjustMeter();
+		if (isSubscribed()) {
+			usedPowerState.unsubscribePowerCharacteristicsChanges(this);
+			usedPowerState = newState;
+			usedPowerState.subscribePowerCharacteristicsChanges(this);
+			readjustMeter();
+		}
 	}
 
 	@Override

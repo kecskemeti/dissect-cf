@@ -39,10 +39,6 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class RoundRobinTest extends IaaSRelatedFoundation {
-	public static int maxPMCount = 10;
-	public static int VMcount = 1000;
-	public static int vmspread = 100;
-	public static double proclen = 5;
 
 	@Test(timeout = 100)
 	public void regularVMSchedule() throws InstantiationException,

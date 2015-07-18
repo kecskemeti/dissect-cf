@@ -39,7 +39,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
@@ -48,8 +47,6 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 
 	@Before
 	public void resetSim() throws Exception {
-		Timed.resetTimed();
-		ConsumptionEventAssert.hits.clear();
 		basic = new IaaSService(NonQueueingScheduler.class,
 				AlwaysOnMachines.class);
 		basic.registerHost(dummyPMcreator());

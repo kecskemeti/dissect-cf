@@ -48,7 +48,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -57,8 +59,10 @@ import org.junit.BeforeClass;
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	public final static int dummyPMCoreCount = 1;
 	public final static int vaSize = 100;
-	public static HashMap<String, Integer> globalLatencyMap = new HashMap<String, Integer>(
+	private final static HashMap<String, Integer> globalLatencyMapInternal = new HashMap<String, Integer>(
 			10000);
+	public final static Map<String, Integer> globalLatencyMap = Collections
+			.unmodifiableMap(globalLatencyMapInternal);
 
 	@BeforeClass
 	public static void preloadIaaS() throws Exception {
@@ -67,7 +71,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 
 	@Before
 	public void resetLatencyMap() {
-		globalLatencyMap.clear();
+		globalLatencyMapInternal.clear();
 	}
 
 	public static String generateName(final String prefix, final int latency) {
@@ -83,7 +87,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 			final int mult = i * 4;
 			names[i] = prefix + seed[mult] + seed[mult + 1] + seed[mult + 2]
 					+ seed[mult + 3];
-			globalLatencyMap.put(names[i], latency);
+			globalLatencyMapInternal.put(names[i], latency);
 		}
 		return names;
 	}
@@ -99,7 +103,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		for (int i = 0; i < machineCount; i++) {
 			pms[i] = new PhysicalMachine(corecount, 1, vaSize * 40,
 					new Repository(vaSize * 200, names[i], 1, 1, 1,
-							globalLatencyMap), 1, 1, defaultTransitions);
+							globalLatencyMapInternal), 1, 1, defaultTransitions);
 		}
 		return pms;
 
@@ -111,7 +115,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 
 	public static Repository dummyRepoCreator(boolean withVA) {
 		final Repository repo = new Repository(vaSize * 400, generateName("R",
-				3), 1, 1, 1, globalLatencyMap);
+				3), 1, 1, 1, globalLatencyMapInternal);
 		if (withVA) {
 			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0,
 					false, vaSize / 5);
@@ -145,7 +149,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 						: (corecount / ((int) pmsize.getRequiredCPUs()))
 								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0
 										: 1);
-				double requestedprocs = corecount / instancecount;
+				double requestedprocs = ((double)corecount) / instancecount;
 				final ResourceConstraints vmsize = new UnalterableConstraintsPropagator(
 						new AlterableResourceConstraints(requestedprocs,
 								pmsize.getRequiredProcessingPower(), 512));

@@ -51,8 +51,8 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 	public final static String targetName = "Target";
 	public final static String thirdName = "Unconnected";
 	NetworkNode source, target, third;
-	final long dataToBeSent = aSecond * inBW;
-	final long dataToBeStored = aSecond * diskBW / 2;
+	static final long dataToBeSent = aSecond * inBW;
+	static final long dataToBeStored = aSecond * diskBW / 2;
 
 	public static HashMap<String, Integer> setupALatencyMap() {
 		HashMap<String, Integer> lm = new HashMap<String, Integer>();

@@ -55,10 +55,10 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 	public Repository repo;
 	public VirtualAppliance va;
 	public ResourceConstraints baseRC;
-	final int hostCount = 40;
-	final int vmCount = 2000;
-	final int maxTaskCount = 5;
-	final double maxTaskLen = 50;
+	static final int hostCount = 40;
+	static final int vmCount = 2000;
+	static final int maxTaskCount = 5;
+	static final double maxTaskLen = 50;
 	public int runningCounter = 0;
 	public int destroyCounter = 0;
 

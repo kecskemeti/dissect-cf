@@ -141,7 +141,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 				psConstant.getCurrentPower(0.5), 0.001);
 	}
 
-	class MeterManager extends Timed {
+	static class MeterManager extends Timed {
 		IaaSService iaas;
 		int expectedVMnum;
 		List<? extends EnergyMeter> managed;

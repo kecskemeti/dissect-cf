@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 /**
  * This class represents the storage entities in the system. Data transfers
@@ -89,7 +90,7 @@ public class Repository extends NetworkNode {
 
 	public Repository(final long capacity, final String id, final long maxInBW,
 			final long maxOutBW, final long diskBW,
-			final HashMap<String, Integer> latencyMap) {
+			final Map<String, Integer> latencyMap) {
 		super(id, maxInBW, maxOutBW, diskBW, latencyMap);
 		maxStorageCapacity = capacity;
 	}

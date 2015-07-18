@@ -301,7 +301,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertArrayEquals("Did not receive the necessary state changes",
 				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN,
 						VirtualMachine.State.DESTROYED },
-				receivedStates.toArray(new VirtualMachine.State[0]));
+				receivedStates.toArray(new VirtualMachine.State[receivedStates.size()]));
 	}
 
 	@Test(timeout = 100)

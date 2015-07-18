@@ -70,7 +70,6 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Before
 	public void initializeTests() throws Exception {
-		ConsumptionEventAssert.hits.clear();
 		latmap.put(pmid, 1);
 		reqDisk = new Repository(123, pmid, 456, 789, 12,
 				new HashMap<String, Integer>());

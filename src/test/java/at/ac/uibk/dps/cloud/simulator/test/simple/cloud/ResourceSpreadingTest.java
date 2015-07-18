@@ -31,7 +31,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -319,10 +321,11 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		first = crCons(null);
 		first.registerConsumption();
 		Timed.simulateUntilLastEvent();
-		Collections.sort(ConsumptionEventAssert.hits);
-		long beforeImmediate = ConsumptionEventAssert.hits.get(0);
-		long afterImmediate = ConsumptionEventAssert.hits.get(1);
-		long afterSingleCons = ConsumptionEventAssert.hits.get(2) - 1;
+		List<Long> l=new ArrayList<Long> (ConsumptionEventAssert.hits);
+		Collections.sort(l);
+		long beforeImmediate = l.get(0);
+		long afterImmediate = l.get(1);
+		long afterSingleCons = l.get(2) - 1;
 		Assert.assertEquals(
 				"Consumption before its immediate followup is not with the right timing",
 				afterSingleCons - afterImmediate, beforeImmediate - startTime);

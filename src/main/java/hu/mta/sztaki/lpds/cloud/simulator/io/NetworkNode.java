@@ -30,7 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
-import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class represents a networked element in the system. The class also
@@ -112,7 +112,7 @@ public class NetworkNode {
 	public final MaxMinProvider memoutbws;
 
 	private final String name;
-	private final HashMap<String, Integer> latencies;
+	private final Map<String, Integer> latencies;
 
 	/**
 	 * This function initializes the bandwidth spreaders for the node to ensure
@@ -127,7 +127,7 @@ public class NetworkNode {
 	 */
 	public NetworkNode(final String id, final long maxInBW,
 			final long maxOutBW, final long diskBW,
-			final HashMap<String, Integer> latencymap) {
+			final Map<String, Integer> latencymap) {
 		name = id;
 		outbws = new MaxMinProvider(maxOutBW);
 		inbws = new MaxMinConsumer(maxInBW);
