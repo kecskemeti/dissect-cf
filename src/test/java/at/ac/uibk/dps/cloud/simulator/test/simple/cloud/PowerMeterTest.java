@@ -255,7 +255,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 			final IaaSEnergyMeter myMeter = new IaaSEnergyMeter(iaas);
 			PhysicalMachine.StateChangeListener myListener = new PhysicalMachine.StateChangeListener() {
 				@Override
-				public void stateChanged(State oldState, State newState) {
+				public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 					if (newState.equals(PhysicalMachine.State.RUNNING)) {
 						counter[0]++;
 						if (counter[0] == machineCount) {

@@ -74,7 +74,8 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 		}
 
 		@Override
-		public void stateChanged(State oldState, State newState) {
+		public void stateChanged(PhysicalMachine pm, State oldState,
+				State newState) {
 			if (PhysicalMachine.State.RUNNING.equals(newState)) {
 				currentlyStartingPM = null;
 				if (parent.sched.getQueueLength() == 0) {

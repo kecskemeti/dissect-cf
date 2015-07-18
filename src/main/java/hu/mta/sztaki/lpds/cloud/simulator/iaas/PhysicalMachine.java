@@ -45,7 +45,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -108,7 +107,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 			.of(State.SWITCHINGON, State.RUNNING, State.SWITCHINGOFF);
 
 	public interface StateChangeListener {
-		void stateChanged(State oldState, State newState);
+		void stateChanged(PhysicalMachine pm, State oldState, State newState);
 	}
 
 	public class ResourceAllocation implements AggregatedEventReceiver {
@@ -846,7 +845,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		directConsumerUsageMoratory = newState != State.RUNNING;
 		final int size = listeners.size();
 		for (int i = 0; i < size; i++) {
-			listeners.get(i).stateChanged(oldstate, newState);
+			listeners.get(i).stateChanged(this, oldstate, newState);
 		}
 
 		// Power state management:

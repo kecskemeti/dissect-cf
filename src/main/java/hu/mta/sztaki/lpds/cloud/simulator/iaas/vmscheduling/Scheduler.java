@@ -82,9 +82,14 @@ public abstract class Scheduler {
 
 	protected PhysicalMachine.StateChangeListener pmstateChanged = new PhysicalMachine.StateChangeListener() {
 		@Override
-		public void stateChanged(State oldState, State newState) {
+		public void stateChanged(PhysicalMachine pm, State oldState,
+				State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
-				invokeRealScheduler();
+				freeResourcesSinceLastSchedule.add(pm.freeCapacities);
+				if (freeResourcesSinceLastSchedule
+						.compareTo(minimumSchedulerRequirement) >= 0) {
+					invokeRealScheduler();
+				}
 			}
 			if (totalQueued.getRequiredCPUs() != 0) {
 				notifyListeners();

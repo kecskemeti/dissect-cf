@@ -27,7 +27,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.StateChangeListener;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
@@ -41,7 +40,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,7 +55,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  * 
  */
-public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
+public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
+		PhysicalMachine.StateChangeListener {
 
 	/**
 	 * This class represents a generic error that occurred during the operation
@@ -87,37 +86,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 		}
 	}
 
-	protected class MachineListener implements StateChangeListener {
-		public final PhysicalMachine pm;
-
-		public MachineListener(final PhysicalMachine pm) {
-			this.pm = pm;
-			pm.subscribeStateChangeEvents(this);
-		}
-
-		@Override
-		public void stateChanged(State oldState, State newState) {
-			switch (newState) {
-			case RUNNING:
-				internalRunningMachines.add(pm);
-				runningCapacity.add(pm.getCapacities());
-				return;
-			default:
-				if (oldState.equals(PhysicalMachine.State.RUNNING)) {
-					internalRunningMachines.remove(pm);
-					runningCapacity.subtract(pm.getCapacities());
-				}
-			}
-		}
-	}
-
 	/**
 	 * The order of internal machines is not guaranteed
 	 */
 	private final ArrayList<PhysicalMachine> internalMachines = new ArrayList<PhysicalMachine>();
 	private final ArrayList<PhysicalMachine> internalRunningMachines = new ArrayList<PhysicalMachine>();
-
-	private final CopyOnWriteArrayList<MachineListener> listeners = new CopyOnWriteArrayList<MachineListener>();
 
 	public final List<PhysicalMachine> machines = Collections
 			.unmodifiableList(internalMachines);
@@ -244,24 +217,18 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	public void bulkHostRegistration(final List<PhysicalMachine> newPMs) {
 		internalMachines.addAll(newPMs);
 		final int size = newPMs.size();
-		final MachineListener[] newlisteners = new MachineListener[size];
 		final ResourceConstraints[] caps = new ResourceConstraints[size];
 		for (int i = 0; i < size; i++) {
-			newlisteners[i] = new MachineListener(newPMs.get(i));
-			caps[i] = newlisteners[i].pm.getCapacities();
+			final PhysicalMachine pm = newPMs.get(i);
+			pm.subscribeStateChangeEvents(this);
+			caps[i] = pm.getCapacities();
 		}
 		totalCapacity.add(caps);
-		listeners.addAll(Arrays.asList(newlisteners));
 		notifyCapacityListeners(newPMs);
 	}
 
 	private void realDeregistration(PhysicalMachine pm) {
-		for (final MachineListener sl : listeners) {
-			if (sl.pm == pm) {
-				listeners.remove(sl);
-				pm.unsubscribeStateChangeEvents(sl);
-			}
-		}
+		pm.unsubscribeStateChangeEvents(this);
 		totalCapacity.subtract(pm.getCapacities());
 		notifyCapacityListeners(Collections.singletonList(pm));
 	}
@@ -300,7 +267,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 				try {
 					pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 						@Override
-						public void stateChanged(State oldState, State newState) {
+						public void stateChanged(PhysicalMachine pm,
+								State oldState, State newState) {
 							if (newState.equals(PhysicalMachine.State.OFF)) {
 								realDeregistration(pm);
 							}
@@ -312,8 +280,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 						final PhysicalMachine rcopy = receiver;
 						receiver.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 							@Override
-							public void stateChanged(State oldState,
-									State newState) {
+							public void stateChanged(PhysicalMachine pm,
+									State oldState, State newState) {
 								try {
 									if (newState
 											.equals(PhysicalMachine.State.RUNNING)) {
@@ -410,5 +378,20 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine> {
 	public String toString() {
 		return "IaaS(Machines(" + machines + "), Repositories(" + repositories
 				+ "))";
+	}
+
+	@Override
+	public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+		switch (newState) {
+		case RUNNING:
+			internalRunningMachines.add(pm);
+			runningCapacity.add(pm.getCapacities());
+			return;
+		default:
+			if (oldState.equals(PhysicalMachine.State.RUNNING)) {
+				internalRunningMachines.remove(pm);
+				runningCapacity.subtract(pm.getCapacities());
+			}
+		}
 	}
 }

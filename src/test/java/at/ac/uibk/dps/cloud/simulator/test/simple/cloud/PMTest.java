@@ -112,7 +112,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<String> list = new ArrayList<String>();
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				list.add(newState.toString());
 			}
 		});
@@ -142,7 +143,8 @@ public class PMTest extends IaaSRelatedFoundation {
 			final String message) {
 		return new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				Assert.fail(message);
 			}
 		};
@@ -626,7 +628,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<PhysicalMachine.State> changehits = new ArrayList<PhysicalMachine.State>();
 		PhysicalMachine.StateChangeListener sl = new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				changehits.add(newState);
 				pm.unsubscribeStateChangeEvents(this);
 			}
@@ -652,7 +655,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<PhysicalMachine.State> statelist = new ArrayList<PhysicalMachine.State>();
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				statelist.add(newState);
 				try {
 					if (newState.equals(PhysicalMachine.State.RUNNING)) {
@@ -755,7 +759,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<Long> lastHit = new ArrayList<Long>();
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				if (newState.equals(PhysicalMachine.State.OFF)) {
 					lastHit.add(Timed.getFireCount());
 				}

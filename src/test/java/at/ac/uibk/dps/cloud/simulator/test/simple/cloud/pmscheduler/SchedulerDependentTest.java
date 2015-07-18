@@ -75,7 +75,8 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 		for (final PhysicalMachine pm : basic.machines) {
 			pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 				@Override
-				public void stateChanged(State oldState, State newState) {
+				public void stateChanged(PhysicalMachine pm, State oldState,
+						State newState) {
 					affectedpms.add(pm);
 				}
 			});
