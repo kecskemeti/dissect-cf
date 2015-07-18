@@ -412,8 +412,6 @@ public class VirtualMachine extends MaxMinConsumer {
 								setState(State.RUNNING);
 							}
 						});
-			} catch (StateChangeException e) {
-				setState(preEventState);
 			} catch (NetworkException e) {
 				setState(preEventState);
 			}
@@ -822,7 +820,7 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	public ResourceConsumption newComputeTask(final double total,
 			final double limit, final ResourceConsumption.ConsumptionEvent e)
-			throws StateChangeException, NetworkException {
+			throws NetworkException {
 		if (ra == null) {
 			return null;
 		}
