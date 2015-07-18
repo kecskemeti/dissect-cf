@@ -31,6 +31,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
@@ -67,6 +68,9 @@ public abstract class Scheduler {
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
 	private int pmCacheLen;
 	private ArrayList<QueueingEvent> queueListeners = new ArrayList<Scheduler.QueueingEvent>();
+	private ConstantConstraints minimumSchedulerRequirement = ConstantConstraints.noResources;
+	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints
+			.getNoResources();
 
 	public final static Comparator<PhysicalMachine> pmComparator = new Comparator<PhysicalMachine>() {
 		@Override
@@ -80,7 +84,7 @@ public abstract class Scheduler {
 		@Override
 		public void stateChanged(State oldState, State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
-				scheduleQueued();
+				invokeRealScheduler();
 			}
 			if (totalQueued.getRequiredCPUs() != 0) {
 				notifyListeners();
@@ -93,7 +97,13 @@ public abstract class Scheduler {
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
 			if (totalQueued.getRequiredCPUs() != 0) {
-				scheduleQueued();
+				freeResourcesSinceLastSchedule.add(newlyFreeResources
+						.toArray(new ResourceConstraints[newlyFreeResources
+								.size()]));
+				if (freeResourcesSinceLastSchedule
+						.compareTo(minimumSchedulerRequirement) >= 0) {
+					invokeRealScheduler();
+				}
 				if (totalQueued.getRequiredCPUs() != 0
 						&& queue.get(0).cumulativeRC.compareTo(parent
 								.getRunningCapacities()) > 0) {
@@ -166,11 +176,13 @@ public abstract class Scheduler {
 			queue.add(qd);
 			totalQueued.add(qd.cumulativeRC);
 			if (wasEmpty) {
-				scheduleQueued();
+				invokeRealScheduler();
 				if (queue.size() == 0) {
 					return;
 				}
 				notifyListeners();
+			} else {
+				minimumSchedulerRequirement = ConstantConstraints.noResources;
 			}
 		} else {
 			throw new VMManagementException(
@@ -230,8 +242,7 @@ public abstract class Scheduler {
 
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
 		if (queue.isEmpty()) {
-			totalQueued = AlterableResourceConstraints.getNoResources();
-			publicTQ = new UnalterableConstraintsPropagator(totalQueued);
+			totalQueued.subtract(totalQueued);
 		} else {
 			totalQueued.subtract(qd.cumulativeRC);
 		}
@@ -264,5 +275,10 @@ public abstract class Scheduler {
 		return vms;
 	}
 
-	protected abstract void scheduleQueued();
+	private void invokeRealScheduler() {
+		minimumSchedulerRequirement = scheduleQueued();
+		freeResourcesSinceLastSchedule.subtract(freeResourcesSinceLastSchedule);
+	}
+
+	protected abstract ConstantConstraints scheduleQueued();
 }

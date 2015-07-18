@@ -50,9 +50,9 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 				toCopy.isRequiredProcessingIsMinimum(), toCopy
 						.getRequiredMemory());
 	}
-	
+
 	public static AlterableResourceConstraints getNoResources() {
-		return new AlterableResourceConstraints(0, 0, 0);
+		return new AlterableResourceConstraints(ConstantConstraints.noResources);
 	}
 
 	public void multiply(final double times) {

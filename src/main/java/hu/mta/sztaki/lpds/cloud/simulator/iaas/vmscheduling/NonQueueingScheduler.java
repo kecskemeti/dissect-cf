@@ -27,6 +27,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 public class NonQueueingScheduler extends FirstFitScheduler {
 
@@ -35,7 +36,7 @@ public class NonQueueingScheduler extends FirstFitScheduler {
 	}
 
 	@Override
-	protected void scheduleQueued() {
+	protected ConstantConstraints scheduleQueued() {
 		while (true) {
 			super.scheduleQueued();
 			if (queue.size() != 0) {
@@ -46,14 +47,15 @@ public class NonQueueingScheduler extends FirstFitScheduler {
 							vm.setNonservable();
 						}
 					} else {
-						return;
+						break;
 					}
 				} else {
-					return;
+					break;
 				}
 			} else {
-				return;
+				break;
 			}
 		}
+		return ConstantConstraints.noResources;
 	}
 }

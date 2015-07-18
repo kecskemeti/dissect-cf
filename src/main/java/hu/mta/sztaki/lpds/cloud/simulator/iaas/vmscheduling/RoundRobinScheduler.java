@@ -30,16 +30,16 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterat
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RoundRobinIterator;
 
 public class RoundRobinScheduler extends FirstFitScheduler {
-        private final RoundRobinIterator rit;
-        
+	private final RoundRobinIterator rit;
+
 	public RoundRobinScheduler(IaaSService parent) {
 		super(parent);
-                rit=new RoundRobinIterator(parent.runningMachines);
+		rit = new RoundRobinIterator(parent.runningMachines);
 	}
-        
-        @Override
-        protected PMIterator getPMIterator() {
-        	rit.reset();
-            return rit;
-        }
+
+	@Override
+	protected PMIterator getPMIterator() {
+		rit.reset();
+		return rit;
+	}
 }

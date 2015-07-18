@@ -25,6 +25,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 public class ConstantConstraints extends ResourceConstraints {
+	public static final ConstantConstraints noResources = new ConstantConstraints(
+			0, 0, 0);
+
 	final private double requiredCPUs;
 	final private double requiredProcessingPower;
 	final private boolean requiredProcessingIsMinimum;
