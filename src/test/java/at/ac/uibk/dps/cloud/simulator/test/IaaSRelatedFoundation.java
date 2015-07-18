@@ -149,7 +149,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 						: (corecount / ((int) pmsize.getRequiredCPUs()))
 								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0
 										: 1);
-				double requestedprocs = ((double)corecount) / instancecount;
+				double requestedprocs = ((double) corecount) / instancecount;
 				final ResourceConstraints vmsize = new UnalterableConstraintsPropagator(
 						new AlterableResourceConstraints(requestedprocs,
 								pmsize.getRequiredProcessingPower(), 512));
@@ -160,11 +160,10 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 							(VirtualAppliance) repo.contents().iterator()
 									.next(), vmsize, repo, instancecount);
 					for (int i = 0; i < vms.length; i++) {
-						final VirtualMachine vm = vms[i];
-						vm.subscribeStateChange(new VirtualMachine.StateChange() {
+						vms[i].subscribeStateChange(new VirtualMachine.StateChange() {
 
 							@Override
-							public void stateChanged(
+							public void stateChanged(final VirtualMachine vm,
 									VirtualMachine.State oldState,
 									VirtualMachine.State newState) {
 								if (VirtualMachine.State.RUNNING

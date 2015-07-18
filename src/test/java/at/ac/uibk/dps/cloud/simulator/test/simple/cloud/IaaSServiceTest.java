@@ -400,17 +400,18 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		for (IaaSService iaas : services) {
 			iaas.registerHost(dummyPMcreator());
 			Repository repo = iaas.repositories.get(0);
-			final VirtualMachine vm = iaas.requestVM((VirtualAppliance) repo
-					.contents().iterator().next(), iaas.machines.get(0)
-					.getCapacities(), repo, 1)[0];
-			vm.subscribeStateChange(new VirtualMachine.StateChange() {
-				@Override
-				public void stateChanged(State oldState, State newState) {
-					if (newState.equals(VirtualMachine.State.RUNNING)) {
-						markers.add(vm.hashCode());
-					}
-				}
-			});
+			iaas.requestVM(
+					(VirtualAppliance) repo.contents().iterator().next(),
+					iaas.machines.get(0).getCapacities(), repo, 1)[0]
+					.subscribeStateChange(new VirtualMachine.StateChange() {
+						@Override
+						public void stateChanged(VirtualMachine vm,
+								State oldState, State newState) {
+							if (newState.equals(VirtualMachine.State.RUNNING)) {
+								markers.add(vm.hashCode());
+							}
+						}
+					});
 		}
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("By now all VMs should have been started",
@@ -470,8 +471,8 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 					s.getCapacities());
 			caps.multiply(0.4);
 			VirtualMachine[] vmsToQueue = s.requestVM((VirtualAppliance) r
-					.contents().iterator().next(), new UnalterableConstraintsPropagator(
-					caps), r, 2);
+					.contents().iterator().next(),
+					new UnalterableConstraintsPropagator(caps), r, 2);
 			VirtualMachine.State[] states = new VirtualMachine.State[] {
 					vmsToQueue[0].getState(), vmsToQueue[1].getState() };
 			for (VirtualMachine.State st : states) {

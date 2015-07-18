@@ -291,7 +291,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		final ArrayList<VirtualMachine.State> receivedStates = new ArrayList<VirtualMachine.State>();
 		VirtualMachine.StateChange sc = new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(VirtualMachine vmInt, State oldState,
+					State newState) {
 				receivedStates.add(newState);
 			}
 		};
@@ -301,7 +302,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertArrayEquals("Did not receive the necessary state changes",
 				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN,
 						VirtualMachine.State.DESTROYED },
-				receivedStates.toArray(new VirtualMachine.State[receivedStates.size()]));
+				receivedStates.toArray(new VirtualMachine.State[receivedStates
+						.size()]));
 	}
 
 	@Test(timeout = 100)
@@ -322,7 +324,8 @@ public class VMTest extends IaaSRelatedFoundation {
 				con.getUnProcessed(), 0);
 		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(VirtualMachine vmInt, State oldState,
+					State newState) {
 				if (VirtualMachine.consumingStates.contains(newState)
 						&& !con.isRegistered()) {
 					Assert.assertTrue(
@@ -548,7 +551,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		haveNotBeenThere[0] = true;
 		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(VirtualMachine vmInt, State oldState,
+					State newState) {
 				if (newState.equals(VirtualMachine.State.RUNNING)
 						&& haveNotBeenThere[0]) {
 					haveNotBeenThere[0] = false;
@@ -735,8 +739,8 @@ public class VMTest extends IaaSRelatedFoundation {
 					centralVM
 							.subscribeStateChange(new VirtualMachine.StateChange() {
 								@Override
-								public void stateChanged(State oldState,
-										State newState) {
+								public void stateChanged(VirtualMachine vmInt,
+										State oldState, State newState) {
 									try {
 										vmDestroyerinState(st, centralVM);
 									} catch (VMManagementException ex) {

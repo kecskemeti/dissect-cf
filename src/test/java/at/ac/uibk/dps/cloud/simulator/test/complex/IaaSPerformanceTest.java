@@ -83,7 +83,7 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 		}
 
 		@Override
-		public void stateChanged(final State oldState, final State newState) {
+		public void stateChanged(VirtualMachine vm, final State oldState, final State newState) {
 			switch (newState) {
 			case RUNNING:
 				runningCounter++;

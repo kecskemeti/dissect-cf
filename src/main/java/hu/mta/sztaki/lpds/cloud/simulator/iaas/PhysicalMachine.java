@@ -110,7 +110,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 		void stateChanged(PhysicalMachine pm, State oldState, State newState);
 	}
 
-	public class ResourceAllocation implements AggregatedEventReceiver {
+	public class ResourceAllocation implements AggregatedEventReceiver,
+			VirtualMachine.StateChange {
 		public final ResourceConstraints allocated;
 		private final ResourceConstraints realAllocated;
 		private VirtualMachine user = null;
@@ -129,13 +130,13 @@ public class PhysicalMachine extends MaxMinProvider implements
 			for (i = 0; i < prLen && promisedResources[i] != null; i++)
 				;
 			if (i == prLen) {
-				ResourceAllocation[] alls=new ResourceAllocation[prLen*2];
+				ResourceAllocation[] alls = new ResourceAllocation[prLen * 2];
 				System.arraycopy(promisedResources, 0, alls, 0, prLen);
-				promisedResources=alls;
-				promisedResources[prLen]=this;
+				promisedResources = alls;
+				promisedResources[prLen] = this;
 				myPromisedIndex = prLen;
 			} else {
-				promisedResources[i]= this;
+				promisedResources[i] = this;
 				myPromisedIndex = i;
 			}
 			promisedCapacities.add(realAllocated);
@@ -151,7 +152,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		private void promisedCapacityUpdater() {
-			promisedResources[myPromisedIndex]= null;
+			promisedResources[myPromisedIndex] = null;
 			promisedAllocationsCount--;
 			if (promisedAllocationsCount == 0) {
 				promisedCapacities.subtract(promisedCapacities);
@@ -177,19 +178,19 @@ public class PhysicalMachine extends MaxMinProvider implements
 				user = vm;
 				internalAvailableCaps.subtract(realAllocated);
 				vms.add(vm);
-				vm.subscribeStateChange(new VirtualMachine.StateChange() {
-					@Override
-					public void stateChanged(VirtualMachine.State oldState,
-							VirtualMachine.State newState) {
-						if (oldState.equals(VirtualMachine.State.RUNNING)) {
-							vms.remove(vm);
-						}
-					}
-				});
+				vm.subscribeStateChange(this);
 				cancel();
 			} else {
 				throw new VMManagementException(
 						"Tried to use a resource allocation more than once!");
+			}
+		}
+
+		@Override
+		public void stateChanged(VirtualMachine vm,
+				VirtualMachine.State oldState, VirtualMachine.State newState) {
+			if (oldState.equals(VirtualMachine.State.RUNNING)) {
+				vms.remove(vm);
 			}
 		}
 
@@ -442,7 +443,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 				private int counter = 0;
 
 				@Override
-				public void stateChanged(VirtualMachine.State oldState,
+				public void stateChanged(VirtualMachine vm,
+						VirtualMachine.State oldState,
 						VirtualMachine.State newState) {
 					switch (newState) {
 					case RUNNING:

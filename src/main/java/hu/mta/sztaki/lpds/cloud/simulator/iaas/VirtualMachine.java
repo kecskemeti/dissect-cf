@@ -127,7 +127,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * @param newState
 		 *            the state after the change took effect
 		 */
-		void stateChanged(State oldState, State newState);
+		void stateChanged(VirtualMachine vm, State oldState, State newState);
 	}
 
 	/**
@@ -279,7 +279,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		final State oldstate = currState;
 		currState = newstate;
 		for (StateChange sc : subscribers) {
-			sc.stateChanged(oldstate, newstate);
+			sc.stateChanged(this, oldstate, newstate);
 		}
 	}
 
@@ -440,7 +440,8 @@ public class VirtualMachine extends MaxMinConsumer {
 		switch (currState) {
 		case DESTROYED:
 			setResourceAllocation(allocation);
-			initialTransfer(vasource, allocation.getHost().localDisk, switchonEvent);
+			initialTransfer(vasource, allocation.getHost().localDisk,
+					switchonEvent);
 			break;
 		case SHUTDOWN:
 			// Shutdown has already done the transfer, we just need to make sure

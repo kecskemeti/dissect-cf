@@ -100,14 +100,16 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		final Vector<ResourceConsumption> cons = new Vector<ResourceConsumption>();
 		final long offset = Timed.getFireCount();
 		final VirtualMachine[] vms = iaas.requestVM(va,
-				new UnalterableConstraintsPropagator(new AlterableResourceConstraints(1,
-						1, 512000000)), repo, mxvms);
+				new UnalterableConstraintsPropagator(
+						new AlterableResourceConstraints(1, 1, 512000000)),
+				repo, mxvms);
 		final long[] expectedRunningTimes = { 444062, 444062, 444062 };
 		for (int i = 0; i < vms.length; i++) {
 			final int ireplica = i;
 			vms[i].subscribeStateChange(new VirtualMachine.StateChange() {
 				@Override
-				public void stateChanged(VirtualMachine.State oldState,
+				public void stateChanged(VirtualMachine vm,
+						VirtualMachine.State oldState,
 						VirtualMachine.State newState) {
 					if (newState.equals(VirtualMachine.State.RUNNING)) {
 						Assert.assertEquals("VM started at the wrong time",
@@ -184,7 +186,8 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 					1)[0];
 			vm.subscribeStateChange(new VirtualMachine.StateChange() {
 				@Override
-				public void stateChanged(State oldState, State newState) {
+				public void stateChanged(VirtualMachine vmInt, State oldState,
+						State newState) {
 					switch (newState) {
 					case INITIAL_TR:
 						Assert.assertEquals("INITIAL_TR not on time",
