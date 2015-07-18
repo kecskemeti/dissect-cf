@@ -52,6 +52,17 @@ The documentation for the simulator's java API will be generated in the followin
 
 ## Getting started
 
+### Minimum runtime dependencies
+DISSECT-CF depends on the following libraries during its runtime: 
+* Java 1.6
+* [GNU trove4j 3.0.3](http://trove.starlight-systems.com)
+* [Apache Commons Lang3 3.4](https://commons.apache.org/proper/commons-lang/)
+
+###### Hint:
+Although these dependencies can be collected individually. If one installed the simulator according to description above, then except for Java6, all dependencies are located in the local maven repository (e.g., `~/.m2/repository`).  
+
+### Overview of the basic functionalities  
+
 The test cases of the simulator contain many useful examples so one can start working right away with the simulator. In the following list one can find the most essential bits to get to know the internals and the behavior of the simulator:
 * Basic time and event management:
   * `at.ac.uibk.dps.cloud.simulator.test.simple.TimedTest.singleEventFire`
