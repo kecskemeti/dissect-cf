@@ -125,15 +125,18 @@ public class PhysicalMachine extends MaxMinProvider implements
 					this, until);
 			allocated = alloc;
 			realAllocated = realAlloc;
-			int prLen = promisedResources.size();
+			int prLen = promisedResources.length;
 			int i = 0;
-			for (i = 0; i < prLen && promisedResources.get(i) != null; i++)
+			for (i = 0; i < prLen && promisedResources[i] != null; i++)
 				;
 			if (i == prLen) {
-				promisedResources.add(this);
+				ResourceAllocation[] alls=new ResourceAllocation[prLen*2];
+				System.arraycopy(promisedResources, 0, alls, 0, prLen);
+				promisedResources=alls;
+				promisedResources[prLen]=this;
 				myPromisedIndex = prLen;
 			} else {
-				promisedResources.set(i, this);
+				promisedResources[i]= this;
 				myPromisedIndex = i;
 			}
 			promisedCapacities.add(realAllocated);
@@ -149,10 +152,9 @@ public class PhysicalMachine extends MaxMinProvider implements
 		}
 
 		private void promisedCapacityUpdater() {
-			promisedResources.set(myPromisedIndex, null);
+			promisedResources[myPromisedIndex]= null;
 			promisedAllocationsCount--;
 			if (promisedAllocationsCount == 0) {
-				promisedResources.clear();
 				promisedCapacities.subtract(promisedCapacities);
 			} else {
 				promisedCapacities.subtract(realAllocated);
@@ -294,7 +296,7 @@ public class PhysicalMachine extends MaxMinProvider implements
 	 */
 	public final UnalterableConstraintsPropagator freeCapacities;
 	public final Repository localDisk;
-	final ArrayList<ResourceAllocation> promisedResources = new ArrayList<ResourceAllocation>();
+	private ResourceAllocation[] promisedResources = new ResourceAllocation[2];
 	private int promisedAllocationsCount = 0;
 
 	// Internal state management
@@ -600,9 +602,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 			return null;
 		}
 		// Allocation type test (i.e. do we allow underprovisioning?)
-		final int prLen = promisedResources.size();
-		for (int i = 0; i < prLen; i++) {
-			ResourceAllocation olderAllocation = promisedResources.get(i);
+		for (int i = 0; i < promisedResources.length; i++) {
+			ResourceAllocation olderAllocation = promisedResources[i];
 			if (olderAllocation != null) {
 				if (olderAllocation.allocated.isRequiredProcessingIsMinimum() == requested
 						.isRequiredProcessingIsMinimum()) {
@@ -653,8 +654,8 @@ public class PhysicalMachine extends MaxMinProvider implements
 	}
 
 	private boolean checkAllocationsPresence(final ResourceAllocation allocation) {
-		return promisedResources.size() > allocation.myPromisedIndex
-				&& promisedResources.get(allocation.myPromisedIndex) == allocation;
+		return promisedResources.length > allocation.myPromisedIndex
+				&& promisedResources[allocation.myPromisedIndex] == allocation;
 	}
 
 	public boolean cancelAllocation(final ResourceAllocation allocation) {
