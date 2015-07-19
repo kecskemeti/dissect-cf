@@ -51,7 +51,7 @@ public class FirstFitScheduler extends Scheduler {
 	@Override
 	protected ConstantConstraints scheduleQueued() {
 		final PMIterator currIterator = getPMIterator();
-		ConstantConstraints returner = ConstantConstraints.noResources;
+		ConstantConstraints returner = new ConstantConstraints(getTotalQueued());
 		if (currIterator.hasNext()) {
 			QueueingData request;
 			ResourceAllocation allocation;
