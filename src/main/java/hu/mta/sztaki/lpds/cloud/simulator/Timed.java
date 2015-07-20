@@ -31,8 +31,7 @@ import java.util.PriorityQueue;
  * This is the base class for the simulation, every class that should receive
  * timing events should extend this and implement the function named "tick".
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
@@ -96,8 +95,7 @@ public abstract class Timed implements Comparable<Timed> {
 
 	private void updateEvent(final long freq) {
 		if (freq < 0) {
-			throw new IllegalStateException(
-					"ERROR: Negative event frequency cannot simulate further!");
+			throw new IllegalStateException("ERROR: Negative event frequency cannot simulate further!");
 		} else {
 			frequency = freq;
 			nextEvent = calcTimeJump(freq);
@@ -121,10 +119,9 @@ public abstract class Timed implements Comparable<Timed> {
 
 	@Override
 	public int compareTo(final Timed o) {
-		final int unalteredResult = nextEvent < o.nextEvent ? -1
-				: nextEvent == o.nextEvent ? 0 : 1;
-		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0
-				: -1) : (backPreference ? 1 : 0)) : unalteredResult;
+		final int unalteredResult = nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
+		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0 : -1) : (backPreference ? 1 : 0))
+				: unalteredResult;
 	}
 
 	protected void setBackPreference(final boolean backPreference) {
@@ -132,8 +129,7 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public static final void fire() {
-		while (!timedlist.isEmpty()
-				&& timedlist.peek().nextEvent == fireCounter) {
+		while (!timedlist.isEmpty() && timedlist.peek().nextEvent == fireCounter) {
 			final Timed t = underProcessing = timedlist.poll();
 			t.tick(fireCounter);
 			if (t.activeSubscription) {
@@ -168,7 +164,11 @@ public abstract class Timed implements Comparable<Timed> {
 			while (timedlist.peek().nextEvent < desiredTime) {
 				final Timed t = timedlist.poll();
 				final long oldfreq = t.frequency;
-				t.updateFrequency(distance + (oldfreq - distance % oldfreq));
+				long tempFreq = distance;
+				if (oldfreq != 0) {
+					tempFreq += oldfreq - distance % oldfreq;
+				}
+				t.updateFrequency(tempFreq);
 				t.frequency = oldfreq;
 			}
 		}
@@ -212,7 +212,8 @@ public abstract class Timed implements Comparable<Timed> {
 
 	@Override
 	public String toString() {
-		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")").toString();
+		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")")
+				.toString();
 	}
 
 	public abstract void tick(long fires);
