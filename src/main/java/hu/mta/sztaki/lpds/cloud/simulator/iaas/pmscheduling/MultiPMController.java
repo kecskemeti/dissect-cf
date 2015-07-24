@@ -154,12 +154,10 @@ public class MultiPMController extends PhysicalMachineController {
 					parent.sched.getTotalQueued());
 			final int startingLen = currentlyStartingPMs.size();
 			for (int i = 0; i < startingLen; i++) {
-				/*
-				 * final PhysicalMachine pm = currentlyStartingPMs.get(i); if
-				 * (!pm.isRunning()) {
-				 */
-				toSwitchOn.subtract(currentlyStartingPMs.get(i).getCapacities());
-				// }
+				final PhysicalMachine pm = currentlyStartingPMs.get(i);
+				if (!pm.isRunning()) {
+					toSwitchOn.subtract(currentlyStartingPMs.get(i).getCapacities());
+				}
 			}
 			for (int i = 0; i < pmsize && toSwitchOn.compareTo(ConstantConstraints.noResources) > 0; i++) {
 				final PhysicalMachine n = parent.machines.get(i);
