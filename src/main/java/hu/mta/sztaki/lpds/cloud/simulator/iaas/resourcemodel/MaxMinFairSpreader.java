@@ -68,8 +68,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 				for (int i = firstindex; i < lastindex; i++) {
 					final ResourceConsumption con = underProcessing.get(i);
 					if (con.inassginmentprocess) {
-						final double limit = con.getProcessingLimit()
-								- con.limithelper;
+						final double limit = con.getProcessingLimit() - con.limithelper;
 						if (limit < maxShare) {
 							currentProcessable -= limit;
 							updateConsumptionLimit(con, limit);
@@ -116,10 +115,9 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 			for (int i = 0; i < providerCount; i++) {
 				final int upLen = depgroup[i].underProcessing.size();
 				for (int j = 0; j < upLen; j++) {
-					final ResourceConsumption con = depgroup[i].underProcessing
-							.get(j);
+					final ResourceConsumption con = depgroup[i].underProcessing.get(j);
 					if (con.unassigned) {
-						final double currlimit = con.updateRealLimit();
+						final double currlimit = con.updateRealLimit(false);
 						if (currlimit < minProcessing) {
 							minProcessing = currlimit;
 						}
@@ -135,11 +133,10 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 					final ResourceConsumption con = mmfs.underProcessing.get(j);
 					if (con.unassigned) {
 						con.limithelper += minProcessing;
-						final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs
-								.getCounterPart(con);
+						final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs.getCounterPart(con);
 						mmfs.currentUnProcessed -= minProcessing;
 						counterpart.currentUnProcessed -= minProcessing;
-						if (con.getRealLimitPerSecond() == minProcessing) {
+						if (Math.abs(con.getRealLimit() - minProcessing) <= minProcessing * 0.000000001) {
 							con.unassigned = false;
 							mmfs.unassignedNum--;
 							counterpart.unassignedNum--;
@@ -154,18 +151,15 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 		for (int i = 0; i < providerCount; i++) {
 			final int upLen = depgroup[i].underProcessing.size();
 			for (int j = 0; j < upLen; j++) {
-				final ResourceConsumption con = depgroup[i].underProcessing
-						.get(j);
+				final ResourceConsumption con = depgroup[i].underProcessing.get(j);
 				con.consumerLimit = con.providerLimit = con.limithelper;
-				con.updateRealLimit();
+				con.updateRealLimit(true);
 				final long conDistance = con.getCompletionDistance();
-				minCompletionDistance = conDistance < minCompletionDistance ? conDistance
-						: minCompletionDistance;
+				minCompletionDistance = conDistance < minCompletionDistance ? conDistance : minCompletionDistance;
 			}
 		}
 		return minCompletionDistance;
 	}
 
-	protected abstract void updateConsumptionLimit(
-			final ResourceConsumption con, final double limit);
+	protected abstract void updateConsumptionLimit(final ResourceConsumption con, final double limit);
 }

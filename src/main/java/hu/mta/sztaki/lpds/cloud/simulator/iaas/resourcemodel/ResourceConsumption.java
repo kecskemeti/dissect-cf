@@ -40,16 +40,14 @@ import java.util.Comparator;
  * WARNING this is an internal representation of the consumption. This class is
  * not supposed to be used outside of the context of the ResourceModel.
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  * 
  */
 public class ResourceConsumption {
 
 	public static final Comparator<ResourceConsumption> limitComparator = new Comparator<ResourceConsumption>() {
 		@Override
-		public int compare(final ResourceConsumption o1,
-				final ResourceConsumption o2) {
+		public int compare(final ResourceConsumption o1, final ResourceConsumption o2) {
 			final double upOth = o1.realLimit;
 			final double upThis = o2.realLimit;
 			return upOth < upThis ? -1 : (upOth == upThis ? 0 : 1);
@@ -62,8 +60,7 @@ public class ResourceConsumption {
 	 * This interface allows its implementors to get notified when a consumption
 	 * completes.
 	 * 
-	 * @author 
-	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
 	 * 
 	 */
 	public interface ConsumptionEvent {
@@ -116,37 +113,33 @@ public class ResourceConsumption {
 	private boolean registered = false;
 
 	/**
-	 * This constructor describes the basic properties of an individual
-	 * resource consumption.
+	 * This constructor describes the basic properties of an individual resource
+	 * consumption.
 	 * 
 	 * @param total
-	 *            The amount of processing to be done during the lifetime of
-	 *            the just created object
+	 *            The amount of processing to be done during the lifetime of the
+	 *            just created object
 	 * @param e
 	 *            Specify here the event to be fired when the just created
 	 *            object completes its transfers. With this event it is possible
 	 *            to notify the entity who initiated the transfer.
 	 */
-	public ResourceConsumption(final double total, final double limit,
-			final ResourceSpreader consumer, final ResourceSpreader provider,
-			final ConsumptionEvent e) {
+	public ResourceConsumption(final double total, final double limit, final ResourceSpreader consumer,
+			final ResourceSpreader provider, final ConsumptionEvent e) {
 		underProcessing = 0;
 		toBeProcessed = total;
 		this.consumer = consumer;
 		this.provider = provider;
 		if (e == null) {
-			throw new IllegalStateException(
-					"Cannot create a consumption without an event to be fired");
+			throw new IllegalStateException("Cannot create a consumption without an event to be fired");
 		}
 		ev = e;
 		requestedLimit = limit;
 	}
 
 	private void updateHardLimit() {
-		final double provLimit = provider == null ? unlimitedProcessing
-				: provider.perTickProcessingPower;
-		final double conLimit = consumer == null ? unlimitedProcessing
-				: consumer.perTickProcessingPower;
+		final double provLimit = provider == null ? unlimitedProcessing : provider.perTickProcessingPower;
+		final double conLimit = consumer == null ? unlimitedProcessing : consumer.perTickProcessingPower;
 		hardLimit = requestedLimit < provLimit ? requestedLimit : provLimit;
 		if (hardLimit > conLimit) {
 			hardLimit = conLimit;
@@ -193,8 +186,7 @@ public class ResourceConsumption {
 			updateHardLimit();
 			return;
 		} else {
-			throw new IllegalStateException(
-					"Attempted consumer change with a registered consumption");
+			throw new IllegalStateException("Attempted consumer change with a registered consumption");
 		}
 	}
 
@@ -204,8 +196,7 @@ public class ResourceConsumption {
 			updateHardLimit();
 			return;
 		} else {
-			throw new IllegalStateException(
-					"Attempted consumer change with a registered consumption");
+			throw new IllegalStateException("Attempted consumer change with a registered consumption");
 		}
 	}
 
@@ -217,8 +208,7 @@ public class ResourceConsumption {
 		double processed = 0;
 		if (toBeProcessed > 0) {
 			final double possiblePush = ticksPassed * realLimit;
-			processed = possiblePush < toBeProcessed ? possiblePush
-					: toBeProcessed;
+			processed = possiblePush < toBeProcessed ? possiblePush : toBeProcessed;
 			toBeProcessed -= processed;
 			underProcessing += processed;
 			if (toBeProcessed < halfRealLimit) {
@@ -236,8 +226,7 @@ public class ResourceConsumption {
 		double processed = 0;
 		if (underProcessing > 0) {
 			final double possibleProcessing = ticksPassed * realLimit;
-			processed = possibleProcessing < underProcessing ? possibleProcessing
-					: underProcessing;
+			processed = possibleProcessing < underProcessing ? possibleProcessing : underProcessing;
 			underProcessing -= processed;
 			calcCompletionDistance();
 			if (completionDistance == 0) {
@@ -267,7 +256,7 @@ public class ResourceConsumption {
 		return processingLimit;
 	}
 
-	public double getRealLimitPerSecond() {
+	public double getRealLimit() {
 		return realLimit;
 	}
 
@@ -288,23 +277,22 @@ public class ResourceConsumption {
 		halfRealLimit = rL / 2;
 	}
 
-	double updateRealLimit() {
-		final double rlTrial = providerLimit < consumerLimit ? providerLimit
-				: consumerLimit;
+	double updateRealLimit(final boolean updateCD) {
+		final double rlTrial = providerLimit < consumerLimit ? providerLimit : consumerLimit;
 		if (rlTrial == 0) {
 			throw new IllegalStateException(
-					"Cannot calculate the completion distance for a consumption without a real limit! "
-							+ this);
+					"Cannot calculate the completion distance for a consumption without a real limit! " + this);
 		}
 		setRealLimit(rlTrial);
-		calcCompletionDistance();
+		if (updateCD) {
+			calcCompletionDistance();
+		}
 		return realLimit;
 	}
 
 	@Override
 	public String toString() {
-		return "RC(C:" + underProcessing + " T:" + toBeProcessed + " L:"
-				+ realLimit + ")";
+		return "RC(C:" + underProcessing + " T:" + toBeProcessed + " L:" + realLimit + ")";
 	}
 
 	public boolean isRegistered() {

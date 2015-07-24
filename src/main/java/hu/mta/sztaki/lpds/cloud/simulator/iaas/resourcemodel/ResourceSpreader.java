@@ -352,6 +352,7 @@ public abstract class ResourceSpreader {
 									notClassified[providerCount] = notClassified[notClassifiedLen];
 									newpc++;
 								}
+								notClassified[notClassifiedLen]=null;
 								i--;
 							}
 						}
