@@ -61,16 +61,14 @@ public abstract class Scheduler {
 	protected final IaaSService parent;
 
 	protected List<QueueingData> queue = new LinkedList<QueueingData>();
-	protected AlterableResourceConstraints totalQueued = AlterableResourceConstraints
-			.getNoResources();
-	protected UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(
-			totalQueued);
+	protected AlterableResourceConstraints totalQueued = AlterableResourceConstraints.getNoResources();
+	protected UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(totalQueued);
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
 	private int pmCacheLen;
 	private ArrayList<QueueingEvent> queueListeners = new ArrayList<Scheduler.QueueingEvent>();
 	private ConstantConstraints minimumSchedulerRequirement = ConstantConstraints.noResources;
-	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints
-			.getNoResources();
+	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints.getNoResources();
+	private UnalterableConstraintsPropagator[] aggregatedFreeCapacityQuery = new UnalterableConstraintsPropagator[0];
 
 	public final static Comparator<PhysicalMachine> pmComparator = new Comparator<PhysicalMachine>() {
 		@Override
@@ -82,14 +80,29 @@ public abstract class Scheduler {
 
 	protected PhysicalMachine.StateChangeListener pmstateChanged = new PhysicalMachine.StateChangeListener() {
 		@Override
-		public void stateChanged(PhysicalMachine pm, State oldState,
-				State newState) {
+		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
 				freeResourcesSinceLastSchedule.add(pm.freeCapacities);
-				if (freeResourcesSinceLastSchedule
-						.compareTo(minimumSchedulerRequirement) >= 0) {
+				UnalterableConstraintsPropagator[] temp = new UnalterableConstraintsPropagator[aggregatedFreeCapacityQuery.length
+						+ 1];
+				System.arraycopy(aggregatedFreeCapacityQuery, 0, temp, 0, aggregatedFreeCapacityQuery.length);
+				temp[aggregatedFreeCapacityQuery.length] = pm.freeCapacities;
+				aggregatedFreeCapacityQuery = temp;
+				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0) {
 					invokeRealScheduler();
 				}
+			}
+			if (oldState.equals(PhysicalMachine.State.RUNNING)) {
+				int indexToLeaveOut;
+				for (indexToLeaveOut = 0; indexToLeaveOut < aggregatedFreeCapacityQuery.length
+						&& aggregatedFreeCapacityQuery[indexToLeaveOut] != pm.freeCapacities; indexToLeaveOut++)
+					;
+				UnalterableConstraintsPropagator[] temp = new UnalterableConstraintsPropagator[aggregatedFreeCapacityQuery.length
+						- 1];
+				System.arraycopy(aggregatedFreeCapacityQuery, 0, temp, 0, indexToLeaveOut);
+				System.arraycopy(aggregatedFreeCapacityQuery, indexToLeaveOut + 1, temp, indexToLeaveOut,
+						temp.length - indexToLeaveOut);
+				aggregatedFreeCapacityQuery = temp;
 			}
 			if (totalQueued.getRequiredCPUs() != 0) {
 				notifyListeners();
@@ -101,17 +114,14 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
+			freeResourcesSinceLastSchedule
+					.add(newlyFreeResources.toArray(new ResourceConstraints[newlyFreeResources.size()]));
 			if (totalQueued.getRequiredCPUs() != 0) {
-				freeResourcesSinceLastSchedule.add(newlyFreeResources
-						.toArray(new ResourceConstraints[newlyFreeResources
-								.size()]));
-				if (freeResourcesSinceLastSchedule
-						.compareTo(minimumSchedulerRequirement) >= 0) {
+				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0) {
 					invokeRealScheduler();
 				}
 				if (totalQueued.getRequiredCPUs() != 0
-						&& queue.get(0).cumulativeRC.compareTo(parent
-								.getRunningCapacities()) > 0) {
+						&& queue.get(0).cumulativeRC.compareTo(parent.getRunningCapacities()) > 0) {
 					notifyListeners();
 				}
 			}
@@ -122,10 +132,8 @@ public abstract class Scheduler {
 		this.parent = parent;
 		parent.subscribeToCapacityChanges(new VMManager.CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(final ResourceConstraints newCapacity,
-					final List<PhysicalMachine> alteredPMs) {
-				final boolean newRegistration = parent
-						.isRegisteredHost(alteredPMs.get(0));
+			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
+				final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
 				final int pmNum = alteredPMs.size();
 				if (newRegistration) {
 					// Increased pm count
@@ -151,20 +159,17 @@ public abstract class Scheduler {
 		});
 	}
 
-	public final void scheduleVMrequest(final VirtualMachine[] vms,
-			final ResourceConstraints rc, final Repository vaSource,
-			final HashMap<String, Object> schedulingConstraints)
-			throws VMManagementException {
+	public final void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
+			final Repository vaSource, final HashMap<String, Object> schedulingConstraints)
+					throws VMManagementException {
 		final long currentTime = Timed.getFireCount();
-		final QueueingData qd = new QueueingData(vms, rc, vaSource,
-				schedulingConstraints, currentTime);
+		final QueueingData qd = new QueueingData(vms, rc, vaSource, schedulingConstraints, currentTime);
 
 		int hostableVMs = 0;
 		boolean hostable = false;
 		for (int pmid = 0; pmid < pmCacheLen; pmid++) {
 			PhysicalMachine machine = orderedPMcache.get(pmid);
-			AlterableResourceConstraints biggestHostable = new AlterableResourceConstraints(
-					rc);
+			AlterableResourceConstraints biggestHostable = new AlterableResourceConstraints(rc);
 			for (int i = 1; i <= vms.length; i++, hostableVMs++) {
 				if (!machine.isHostableRequest(biggestHostable)) {
 					break;
@@ -190,9 +195,7 @@ public abstract class Scheduler {
 				minimumSchedulerRequirement = ConstantConstraints.noResources;
 			}
 		} else {
-			throw new VMManagementException(
-					"No physical machine is capable to serve this request: "
-							+ qd);
+			throw new VMManagementException("No physical machine is capable to serve this request: " + qd);
 		}
 	}
 
@@ -272,8 +275,7 @@ public abstract class Scheduler {
 	}
 
 	public List<VirtualMachine> getQueuedVMs() {
-		ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(
-				queue.size());
+		ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(queue.size());
 		for (QueueingData qd : queue) {
 			vms.addAll(Arrays.asList(qd.queuedVMs));
 		}
@@ -283,6 +285,7 @@ public abstract class Scheduler {
 	private void invokeRealScheduler() {
 		minimumSchedulerRequirement = scheduleQueued();
 		freeResourcesSinceLastSchedule.subtract(freeResourcesSinceLastSchedule);
+		freeResourcesSinceLastSchedule.add(aggregatedFreeCapacityQuery);
 	}
 
 	protected abstract ConstantConstraints scheduleQueued();
