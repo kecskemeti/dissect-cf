@@ -297,7 +297,7 @@ public class TimedTest extends TestFoundation {
 		Assert.assertEquals(500, Timed.getFireCount());
 	}
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void zeroFrequencySkipper() {
 		SingleFire sf = new SingleFire();
 		sf.changeFreq(0);
@@ -309,5 +309,13 @@ public class TimedTest extends TestFoundation {
 		sf.expectedFire=targetTime;
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Should receive the second fire after the skip events complete", 2, sf.myfires);
+	}
+	
+	@Test(timeout = 100)
+	public void negativeTimeIncrementStopper() {
+		Timed.skipEventsTill(100);
+		Assert.assertEquals("Should allow positive increments", 100, Timed.getFireCount());
+		Timed.skipEventsTill(10);
+		Assert.assertEquals("Should not allow negative time jumps", 100, Timed.getFireCount());
 	}
 }

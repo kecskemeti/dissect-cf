@@ -158,21 +158,35 @@ public abstract class Timed implements Comparable<Timed> {
 		}
 	}
 
+	/**
+	 * Jumps the time until the time given by the user. If some events supposed
+	 * to happen during the jumped time period, then this function cancels them.
+	 * If some events should be recurring during the period, then the first
+	 * recurrence of the event will be after the given time instance. If the
+	 * given time instance has already occurred then this function does nothing!
+	 * 
+	 * @param desiredTime
+	 *            the time at which the simulation should continue after this
+	 *            call. If the time given here already happened then this
+	 *            function will have no effect.
+	 */
 	public static final void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
-		if (timedlist.peek() != null) {
-			while (timedlist.peek().nextEvent < desiredTime) {
-				final Timed t = timedlist.poll();
-				final long oldfreq = t.frequency;
-				long tempFreq = distance;
-				if (oldfreq != 0) {
-					tempFreq += oldfreq - distance % oldfreq;
+		if (distance > 0) {
+			if (timedlist.peek() != null) {
+				while (timedlist.peek().nextEvent < desiredTime) {
+					final Timed t = timedlist.poll();
+					final long oldfreq = t.frequency;
+					long tempFreq = distance;
+					if (oldfreq != 0) {
+						tempFreq += oldfreq - distance % oldfreq;
+					}
+					t.updateFrequency(tempFreq);
+					t.frequency = oldfreq;
 				}
-				t.updateFrequency(tempFreq);
-				t.frequency = oldfreq;
 			}
+			fireCounter = desiredTime;
 		}
-		fireCounter = desiredTime;
 	}
 
 	public static final long getFireCount() {
