@@ -117,7 +117,7 @@ public abstract class Scheduler {
 			freeResourcesSinceLastSchedule
 					.add(newlyFreeResources.toArray(new ResourceConstraints[newlyFreeResources.size()]));
 			if (totalQueued.getRequiredCPUs() != 0) {
-				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0) {
+				if (freeResourcesSinceLastSchedule.compareTo(queue.get(0).cumulativeRC) >= 0) {
 					invokeRealScheduler();
 				}
 				if (totalQueued.getRequiredCPUs() != 0
@@ -283,9 +283,12 @@ public abstract class Scheduler {
 	}
 
 	private void invokeRealScheduler() {
+		final int preQL = queue.size();
 		minimumSchedulerRequirement = scheduleQueued();
-		freeResourcesSinceLastSchedule.subtract(freeResourcesSinceLastSchedule);
-		freeResourcesSinceLastSchedule.add(aggregatedFreeCapacityQuery);
+		if (queue.size() != preQL) {
+			freeResourcesSinceLastSchedule.subtract(freeResourcesSinceLastSchedule);
+			freeResourcesSinceLastSchedule.add(aggregatedFreeCapacityQuery);
+		}
 	}
 
 	protected abstract ConstantConstraints scheduleQueued();
