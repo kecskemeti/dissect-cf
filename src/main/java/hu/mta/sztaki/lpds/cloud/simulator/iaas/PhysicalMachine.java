@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import gnu.trove.list.linked.TDoubleLinkedList;
-import hu.mta.sztaki.lpds.cloud.simulator.AggregatedEventReceiver;
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
@@ -101,81 +101,18 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		void stateChanged(PhysicalMachine pm, State oldState, State newState);
 	}
 
-	public class PeriodicAllocationSweeper extends Timed {
-		private boolean useDefaultFreq = true;
-
-		public void updateSubscription(final long forEvent) {
-			final long currentTime = Timed.getFireCount();
-			final long distance = forEvent - currentTime;
-			if (isSubscribed()) {
-				// We might be able to use the current subscription
-				if (distance <= defaultAllocLen) {
-					if (!useDefaultFreq) {
-						useDefaultFreq = true;
-						updateFrequency(defaultAllocLen);
-					}
-				}
-				// Nothing to do in the missing else branch as the current
-				// subscription suits us well
-			} else {
-				// There is no subscription we need to create one
-				if (distance <= defaultAllocLen) {
-					useDefaultFreq = true;
-					subscribe(defaultAllocLen);
-				} else {
-					useDefaultFreq = false;
-					subscribe(migrationAllocLen);
-				}
-			}
-		}
-
-		@Override
-		public void tick(final long fires) {
-			long minExpiry = Long.MAX_VALUE;
-			int allocCount = 0;
-			for (int i = 0; i < promisedResources.length; i++) {
-				final ResourceAllocation swept = promisedResources[i];
-				if (swept != null && swept.isAvailable()) {
-					if (swept.expiryTime < fires) {
-						swept.receiveEvent(fires);
-					} else {
-						minExpiry = minExpiry < swept.expiryTime ? minExpiry : swept.expiryTime;
-						allocCount++;
-					}
-				}
-			}
-			if (allocCount > 0) {
-				if (minExpiry - fires <= defaultAllocLen) {
-					if (!useDefaultFreq) {
-						useDefaultFreq = true;
-						updateFrequency(defaultAllocLen);
-					}
-				} else {
-					if (useDefaultFreq) {
-						useDefaultFreq = false;
-						updateFrequency(migrationAllocLen);
-					}
-				}
-			} else {
-				unsubscribe();
-			}
-		}
-	}
-
-	public class ResourceAllocation implements AggregatedEventReceiver, VirtualMachine.StateChange {
+	public class ResourceAllocation extends DeferredEvent implements VirtualMachine.StateChange {
 		public final ResourceConstraints allocated;
 		private final ResourceConstraints realAllocated;
 		private VirtualMachine user = null;
 		private final int myPromisedIndex;
 		private boolean swept = false;
-		public final long expiryTime;
 
 		private ResourceAllocation(final ResourceConstraints realAlloc, final ResourceConstraints alloc,
 				final int until) {
+			super(until);
 			allocated = alloc;
 			realAllocated = realAlloc;
-			expiryTime = Timed.calcTimeJump(until);
-			allocationSweeper.updateSubscription(expiryTime);
 			int prLen = promisedResources.length;
 			int i = 0;
 			for (i = 0; i < prLen && promisedResources[i] != null; i++)
@@ -196,7 +133,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		@Override
-		public void receiveEvent(long fires) {
+		protected void eventAction() {
 			System.err.println("Warning! Expiring resource allocation.");
 			swept = true;
 			promisedCapacityUpdater();
@@ -216,8 +153,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		public void cancel() {
+			super.cancel();
 			promisedCapacityUpdater();
-			allocationSweeper.tick(Timed.getFireCount());
 		}
 
 		void use(final VirtualMachine vm) throws VMManagementException {
@@ -342,7 +279,6 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	public final UnalterableConstraintsPropagator freeCapacities;
 	public final Repository localDisk;
 	private ResourceAllocation[] promisedResources = new ResourceAllocation[2];
-	private final PeriodicAllocationSweeper allocationSweeper = new PeriodicAllocationSweeper();
 	private int promisedAllocationsCount = 0;
 
 	// Internal state management

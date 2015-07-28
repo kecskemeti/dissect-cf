@@ -43,7 +43,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 public class BasicSchedulingTest extends IaaSRelatedFoundation {
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void keepFreeUpdated()
 			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {

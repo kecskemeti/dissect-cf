@@ -219,6 +219,7 @@ public abstract class Timed implements Comparable<Timed> {
 
 	public static final void resetTimed() {
 		timedlist.clear();
+		DeferredEvent.reset();
 		underProcessing = null;
 		fireCounter = 0;
 	}

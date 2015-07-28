@@ -25,27 +25,97 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
-public abstract class DeferredEvent extends Timed {
+import gnu.trove.map.hash.TLongObjectHashMap;
 
-	private boolean cancelled = false;
+public abstract class DeferredEvent {
 
-	public DeferredEvent(long delay) {
-		if (delay > 0) {
-			subscribe(delay);
-		} else {
-			eventAction();
+	private static final TLongObjectHashMap<DeferredEvent[]> toSweep = new TLongObjectHashMap<DeferredEvent[]>();
+	private static final AggregatedEventDispatcher dispatcherSingleton = new AggregatedEventDispatcher();
+
+	private static class AggregatedEventDispatcher extends Timed {
+		@Override
+		public void tick(long fires) {
+			final DeferredEvent[] simultaneousReceivers = toSweep.remove(fires);
+			if (simultaneousReceivers != null) {
+				for (int i = 0; i < simultaneousReceivers.length; i++) {
+					if (simultaneousReceivers[i] != null) {
+						simultaneousReceivers[i].eventAction();
+						simultaneousReceivers[i].received = true;
+					}
+				}
+			}
+			updateDispatcher();
+		}
+
+		private void updateDispatcher() {
+			if (toSweep.isEmpty()) {
+				unsubscribe();
+				return;
+			}
+			final long[] keys = toSweep.keys();
+			long minkey = Long.MAX_VALUE;
+			for (long key : keys) {
+				if (key < minkey) {
+					minkey = key;
+				}
+			}
+			updateFrequency(minkey - getFireCount());
 		}
 	}
 
-	@Override
-	public void tick(final long fires) {
-		eventAction();
-		unsubscribe();
+	private boolean cancelled = false;
+	private boolean received = false;
+	private final long eventArrival;
+
+	public DeferredEvent(final long delay) {
+		eventArrival = Timed.calcTimeJump(delay);
+		if (delay <= 0) {
+			eventAction();
+			received = true;
+			return;
+		}
+		DeferredEvent[] simultaneousReceivers = toSweep.get(eventArrival);
+		if (simultaneousReceivers == null) {
+			simultaneousReceivers = new DeferredEvent[5];
+			toSweep.put(eventArrival, simultaneousReceivers);
+		}
+		int pos = 0;
+		for (; pos < simultaneousReceivers.length && simultaneousReceivers[pos] != null; pos++)
+			;
+		if (pos == simultaneousReceivers.length) {
+			DeferredEvent[] temp = new DeferredEvent[simultaneousReceivers.length * 2];
+			System.arraycopy(simultaneousReceivers, 0, temp, 0, pos);
+			simultaneousReceivers = temp;
+			toSweep.put(eventArrival, simultaneousReceivers);
+		}
+		simultaneousReceivers[pos] = this;
+		if (!dispatcherSingleton.isSubscribed() || dispatcherSingleton.getNextEvent() > eventArrival) {
+			dispatcherSingleton.updateDispatcher();
+		}
 	}
 
 	public void cancel() {
-		cancelled = isSubscribed() ? true : cancelled;
-		unsubscribe();
+		if (received)
+			return;
+		if (!cancelled) {
+			cancelled = true;
+			final DeferredEvent[] simultaneousReceivers = toSweep.get(eventArrival);
+			if (simultaneousReceivers != null) {
+				int uselessReceivers = 0;
+				for (int i = 0; i < simultaneousReceivers.length; i++) {
+					if (simultaneousReceivers[i] == this) {
+						simultaneousReceivers[i] = null;
+					}
+					if (simultaneousReceivers[i] == null) {
+						uselessReceivers++;
+					}
+				}
+				if (uselessReceivers == simultaneousReceivers.length) {
+					toSweep.remove(eventArrival);
+					dispatcherSingleton.updateDispatcher();
+				}
+			}
+		}
 	}
 
 	public boolean isCancelled() {
@@ -53,4 +123,8 @@ public abstract class DeferredEvent extends Timed {
 	}
 
 	protected abstract void eventAction();
+
+	static void reset() {
+		toSweep.clear();
+	}
 }
