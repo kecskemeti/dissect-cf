@@ -25,23 +25,25 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
+import org.apache.commons.lang3.tuple.MutablePair;
+
 import gnu.trove.map.hash.TLongObjectHashMap;
 
 public abstract class DeferredEvent {
 
-	private static final TLongObjectHashMap<DeferredEvent[]> toSweep = new TLongObjectHashMap<DeferredEvent[]>();
+	private static final TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>> toSweep = new TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>>();
 	private static final AggregatedEventDispatcher dispatcherSingleton = new AggregatedEventDispatcher();
 
 	private static class AggregatedEventDispatcher extends Timed {
 		@Override
 		public void tick(long fires) {
-			final DeferredEvent[] simultaneousReceivers = toSweep.remove(fires);
-			if (simultaneousReceivers != null) {
-				for (int i = 0; i < simultaneousReceivers.length; i++) {
-					if (simultaneousReceivers[i] != null) {
-						simultaneousReceivers[i].eventAction();
-						simultaneousReceivers[i].received = true;
-					}
+			final MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.remove(fires);
+			if (simultaneousReceiverPairs != null) {
+				final int len = simultaneousReceiverPairs.getLeft();
+				final DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+				for (int i = 0; i < len; i++) {
+					simultaneousReceivers[i].eventAction();
+					simultaneousReceivers[i].received = true;
 				}
 			}
 			updateDispatcher();
@@ -74,21 +76,21 @@ public abstract class DeferredEvent {
 			received = true;
 			return;
 		}
-		DeferredEvent[] simultaneousReceivers = toSweep.get(eventArrival);
-		if (simultaneousReceivers == null) {
-			simultaneousReceivers = new DeferredEvent[5];
-			toSweep.put(eventArrival, simultaneousReceivers);
+		MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
+		if (simultaneousReceiverPairs == null) {
+			simultaneousReceiverPairs = new MutablePair<Integer, DeferredEvent[]>(0, new DeferredEvent[5]);
+			toSweep.put(eventArrival, simultaneousReceiverPairs);
 		}
-		int pos = 0;
-		for (; pos < simultaneousReceivers.length && simultaneousReceivers[pos] != null; pos++)
-			;
-		if (pos == simultaneousReceivers.length) {
+		int len = simultaneousReceiverPairs.getLeft();
+		DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+		if (len == simultaneousReceivers.length) {
 			DeferredEvent[] temp = new DeferredEvent[simultaneousReceivers.length * 2];
-			System.arraycopy(simultaneousReceivers, 0, temp, 0, pos);
+			System.arraycopy(simultaneousReceivers, 0, temp, 0, len);
 			simultaneousReceivers = temp;
-			toSweep.put(eventArrival, simultaneousReceivers);
+			simultaneousReceiverPairs.setRight(temp);
 		}
-		simultaneousReceivers[pos] = this;
+		simultaneousReceivers[len++] = this;
+		simultaneousReceiverPairs.setLeft(len);
 		if (!dispatcherSingleton.isSubscribed() || dispatcherSingleton.getNextEvent() > eventArrival) {
 			dispatcherSingleton.updateDispatcher();
 		}
@@ -99,20 +101,25 @@ public abstract class DeferredEvent {
 			return;
 		if (!cancelled) {
 			cancelled = true;
-			final DeferredEvent[] simultaneousReceivers = toSweep.get(eventArrival);
-			if (simultaneousReceivers != null) {
-				int uselessReceivers = 0;
-				for (int i = 0; i < simultaneousReceivers.length; i++) {
+			MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
+			if (simultaneousReceiverPairs != null) {
+				int len = simultaneousReceiverPairs.getLeft();
+				DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+				for (int i = 0; i < len; i++) {
 					if (simultaneousReceivers[i] == this) {
-						simultaneousReceivers[i] = null;
-					}
-					if (simultaneousReceivers[i] == null) {
-						uselessReceivers++;
+						len--;
+						if (len > i) {
+							simultaneousReceivers[i] = simultaneousReceivers[len];
+						}
+						simultaneousReceivers[len] = null;
+						break;
 					}
 				}
-				if (uselessReceivers == simultaneousReceivers.length) {
+				if (len == 0) {
 					toSweep.remove(eventArrival);
 					dispatcherSingleton.updateDispatcher();
+				} else {
+					simultaneousReceiverPairs.setLeft(len);
 				}
 			}
 		}
