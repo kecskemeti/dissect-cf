@@ -30,13 +30,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocatio
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 public class FirstFitScheduler extends Scheduler {
 
 	ResourceAllocation[] ras = new ResourceAllocation[5];
+	ResourceAllocation raBiggestNotSuitable = null;
 	private final PMIterator it;
 
 	public FirstFitScheduler(IaaSService parent) {
@@ -67,19 +67,36 @@ public class FirstFitScheduler extends Scheduler {
 						final PhysicalMachine pm = currIterator.next();
 						if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum].getVa().size) {
 							try {
-								allocation = pm.allocateResources(request.queuedRC, true,
+								allocation = pm.allocateResources(request.queuedRC, false,
 										PhysicalMachine.defaultAllocLen);
 								if (allocation != null) {
-									currIterator.markLastCollected();
-									if (vmNum == ras.length) {
-										ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
-										System.arraycopy(ras, 0, rasnew, 0, vmNum);
-										ras = rasnew;
+									if (allocation.allocated.compareTo(request.queuedRC) >= 0) {
+										// Successful allocation
+										currIterator.markLastCollected();
+										if (vmNum == ras.length) {
+											ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
+											System.arraycopy(ras, 0, rasnew, 0, vmNum);
+											ras = rasnew;
+										}
+										if (raBiggestNotSuitable != null) {
+											raBiggestNotSuitable.cancel();
+											raBiggestNotSuitable = null;
+										}
+										ras[vmNum] = allocation;
+										processableRequest = true;
+										break;
+									} else {
+										if (raBiggestNotSuitable == null) {
+											raBiggestNotSuitable = allocation;
+										} else {
+											if (allocation.allocated.compareTo(raBiggestNotSuitable.allocated) > 0) {
+												raBiggestNotSuitable.cancel();
+												raBiggestNotSuitable = allocation;
+											} else {
+												allocation.cancel();
+											}
+										}
 									}
-									ras[vmNum] = allocation;
-									processableRequest = true;
-									break;
-
 								}
 							} catch (VMManagementException e) {
 							}
@@ -103,62 +120,14 @@ public class FirstFitScheduler extends Scheduler {
 						processableRequest = false;
 					}
 				} else {
-					currIterator.restart();
-					final AlterableResourceConstraints arc = new AlterableResourceConstraints(request.queuedRC);
-					final int vmsStillMissing = request.queuedVMs.length - vmNum + 1;
-					arc.multiply(vmsStillMissing); // max possible necessary
-													// resources
-					final ResourceConstraints[] allocables = new ResourceConstraints[vmsStillMissing];
-					final ResourceAllocation[] allocated = new ResourceAllocation[vmsStillMissing];
-					for (int i = 0; i < vmsStillMissing; i++) {
-						// Let's find the biggest possible allocations
-						ResourceConstraints maxAllocSize = ConstantConstraints.noResources;
-						ResourceAllocation maxAlloc = null;
-						while (currIterator.hasNext()) {
-							final PhysicalMachine pm = currIterator.next();
-							// Now we are not going for strict allocations, we
-							// just grab what is there:
-							try {
-								final ResourceAllocation ra = pm.allocateResources(request.queuedRC, false,
-										PhysicalMachine.defaultAllocLen);
-								if (ra != null) {
-									if (maxAllocSize.compareTo(ra.allocated) < 0) {
-										maxAllocSize = ra.allocated;
-										if (maxAlloc != null) {
-											maxAlloc.cancel();
-										}
-										maxAlloc = ra;
-									} else {
-										ra.cancel();
-									}
-								}
-							} catch (VMManagementException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-						allocables[i] = maxAllocSize;
-						allocated[i] = maxAlloc;
-						if (maxAllocSize == ConstantConstraints.noResources) {
-							// prematirely terminates the loop as there are no
-							// more resources.
-							for (++i; i < vmsStillMissing; i++) {
-								allocables[i] = ConstantConstraints.noResources;
-								allocated[i] = null;
-							}
-						} else {
-							currIterator.restart();
-						}
+					AlterableResourceConstraints arc = new AlterableResourceConstraints(request.queuedRC);
+					arc.multiply(vmNum - 1);
+					if (raBiggestNotSuitable != null) {
+						arc = new AlterableResourceConstraints(request.queuedRC);
+						arc.subtract(raBiggestNotSuitable.allocated);
+						raBiggestNotSuitable.cancel();
+						raBiggestNotSuitable = null;
 					}
-					for (int i = 0; i < vmsStillMissing; i++) {
-						// Now we release the maximum allocation possible
-						if (allocated[i] != null) {
-							allocated[i].cancel();
-						}
-					}
-					final AlterableResourceConstraints arcDec = AlterableResourceConstraints.getNoResources();
-					arcDec.add(allocables); // total resources already available
-					arc.subtract(arcDec);
 					returner = new ConstantConstraints(arc);
 				}
 			}

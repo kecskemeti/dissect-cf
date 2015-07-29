@@ -25,6 +25,11 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.complex;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -44,12 +49,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
-
 public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 	public IaaSService basic;
 	public Repository repo;
@@ -67,19 +66,16 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 		SeedSyncer.resetCentral();
 	}
 
-	public class VMHandler implements VirtualMachine.StateChange,
-			ConsumptionEvent {
+	public class VMHandler implements VirtualMachine.StateChange, ConsumptionEvent {
 		private final VirtualMachine vm;
 		private int myTaskCount;
 
 		public VMHandler() throws Exception {
-			AlterableResourceConstraints mRC = new AlterableResourceConstraints(
-					baseRC);
+			AlterableResourceConstraints mRC = new AlterableResourceConstraints(baseRC);
 			mRC.multiply(SeedSyncer.centralRnd.nextDouble());
 			vm = basic.requestVM(va, mRC, repo, 1)[0];
 			vm.subscribeStateChange(this);
-			Timed.simulateUntil(Timed.getFireCount()
-					+ SeedSyncer.centralRnd.nextInt((int) maxTaskLen));
+			Timed.simulateUntil(Timed.getFireCount() + SeedSyncer.centralRnd.nextInt((int) maxTaskLen));
 		}
 
 		@Override
@@ -87,12 +83,10 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 			switch (newState) {
 			case RUNNING:
 				runningCounter++;
-				myTaskCount = 1 + SeedSyncer.centralRnd
-						.nextInt(maxTaskCount - 1);
+				myTaskCount = 1 + SeedSyncer.centralRnd.nextInt(maxTaskCount - 1);
 				try {
 					for (int j = 0; j < myTaskCount; j++) {
-						vm.newComputeTask(SeedSyncer.centralRnd.nextDouble()
-								* maxTaskLen,
+						vm.newComputeTask(SeedSyncer.centralRnd.nextDouble() * maxTaskLen,
 								ResourceConsumption.unlimitedProcessing, this);
 					}
 				} catch (Exception e) {
@@ -135,30 +129,25 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Not all VMs ran", vmCount, runningCounter);
 		Assert.assertEquals("Not all VMs terminated", vmCount, destroyCounter);
 		for (PhysicalMachine pm : basic.runningMachines) {
-			Assert.assertFalse("Should not have any running VMs registered",
-					pm.isHostingVMs());
+			Assert.assertFalse("Should not have any running VMs registered", pm.isHostingVMs());
 		}
 	}
 
 	@Test(timeout = 1000)
 	public void performanceTest() throws Exception {
-		genericPerformanceCheck(FirstFitScheduler.class,
-				SchedulingDependentMachines.class);
-		Assert.assertEquals("Should not have any running PMs", 0,
-				basic.runningMachines.size());
+		genericPerformanceCheck(FirstFitScheduler.class, SchedulingDependentMachines.class);
+		Assert.assertEquals("Should not have any running PMs", 0, basic.runningMachines.size());
 	}
 
 	@Test(timeout = 1500)
 	public void roundRobinPerformance() throws Exception {
-		genericPerformanceCheck(RoundRobinScheduler.class,
-				AlwaysOnMachines.class);
+		genericPerformanceCheck(RoundRobinScheduler.class, AlwaysOnMachines.class);
 	}
 
 	// FIXME: this should be below 100ms!
 	@Test(timeout = 700)
 	public void pmRegistrationPerformance() throws Exception {
-		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class,
-				10000, 1);
+		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 10000, 1);
 	}
 
 }
