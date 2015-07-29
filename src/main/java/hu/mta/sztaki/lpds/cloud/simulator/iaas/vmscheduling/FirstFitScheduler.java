@@ -121,7 +121,7 @@ public class FirstFitScheduler extends Scheduler {
 					}
 				} else {
 					AlterableResourceConstraints arc = new AlterableResourceConstraints(request.queuedRC);
-					arc.multiply(vmNum - 1);
+					arc.multiply(request.queuedVMs.length - vmNum + 1);
 					if (raBiggestNotSuitable != null) {
 						arc = new AlterableResourceConstraints(request.queuedRC);
 						arc.subtract(raBiggestNotSuitable.allocated);

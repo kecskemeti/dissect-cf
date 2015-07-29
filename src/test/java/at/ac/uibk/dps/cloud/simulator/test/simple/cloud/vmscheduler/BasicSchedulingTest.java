@@ -35,6 +35,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -61,5 +62,24 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 				VirtualMachine.State.DESTROYED, vmFirst.getState());
 		Assert.assertEquals("The second VM should have a chance to run after the first one",
 				VirtualMachine.State.RUNNING, vmSecond.getState());
+	}
+	
+	@Test(timeout = 100)
+	public void multipleVMAndFreeResourceMaintenance() throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 5, 1);
+		Repository r = s.repositories.get(0);
+		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
+		ResourceConstraints rc = s.machines.get(0).getCapacities();
+		VirtualMachine vmFirst = s.requestVM(va, rc, r, 1)[0];
+		VirtualMachine vmSecond = s.requestVM(va, rc, r, 5)[0];
+		Timed.simulateUntilLastEvent();
+		vmFirst.destroy(true);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("The first VM should have finished by now",
+				VirtualMachine.State.DESTROYED, vmFirst.getState());
+		Assert.assertEquals("The second VM should have a chance to run after the first one",
+				VirtualMachine.State.RUNNING, vmSecond.getState());
+		
+
 	}
 }
