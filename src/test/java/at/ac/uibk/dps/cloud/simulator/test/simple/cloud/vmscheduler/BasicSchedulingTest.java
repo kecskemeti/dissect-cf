@@ -79,7 +79,26 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 				VirtualMachine.State.DESTROYED, vmFirst.getState());
 		Assert.assertEquals("The second VM should have a chance to run after the first one",
 				VirtualMachine.State.RUNNING, vmSecond.getState());
-		
-
+	}
+	
+	@Test(timeout = 100)
+	public void preFailingAllocation()  throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 5, 1);
+		Repository r = s.repositories.get(0);
+		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
+		ResourceConstraints machineCaps = s.machines.get(0).getCapacities();
+		AlterableResourceConstraints rc = new AlterableResourceConstraints(machineCaps);
+		rc.multiply(0.6);
+		VirtualMachine[] vmsFirst = s.requestVM(va, rc, r, 2);
+		VirtualMachine vmSecond = s.requestVM(va, machineCaps, r, 5)[0];
+		Timed.simulateUntilLastEvent();
+		for(VirtualMachine vm:vmsFirst) {
+			vm.destroy(true);
+		}
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("The first VM should have finished by now",
+				VirtualMachine.State.DESTROYED, vmsFirst[0].getState());
+		Assert.assertEquals("The second VM should have a chance to run after the first one",
+				VirtualMachine.State.RUNNING, vmSecond.getState());
 	}
 }

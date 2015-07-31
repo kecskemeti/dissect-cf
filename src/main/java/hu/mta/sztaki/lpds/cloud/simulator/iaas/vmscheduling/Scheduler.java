@@ -101,10 +101,10 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
+			freeResourcesSinceLastSchedule.add(newlyFreeResources
+					.toArray(new ResourceConstraints[newlyFreeResources
+							.size()]));
 			if (totalQueued.getRequiredCPUs() != 0) {
-				freeResourcesSinceLastSchedule.add(newlyFreeResources
-						.toArray(new ResourceConstraints[newlyFreeResources
-								.size()]));
 				if (freeResourcesSinceLastSchedule
 						.compareTo(minimumSchedulerRequirement) >= 0) {
 					invokeRealScheduler();
@@ -248,6 +248,7 @@ public abstract class Scheduler {
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
 		if (queue.isEmpty()) {
 			totalQueued.subtract(totalQueued);
+			minimumSchedulerRequirement=ConstantConstraints.noResources;
 		} else {
 			totalQueued.subtract(qd.cumulativeRC);
 		}

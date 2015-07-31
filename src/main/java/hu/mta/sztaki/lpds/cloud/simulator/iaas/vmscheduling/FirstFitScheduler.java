@@ -72,15 +72,14 @@ public class FirstFitScheduler extends Scheduler {
 								if (allocation != null) {
 									if (allocation.allocated.compareTo(request.queuedRC) >= 0) {
 										// Successful allocation
+										if (pm.freeCapacities.getRequiredCPUs() == 0 && currIterator.hasNext()) {
+											currIterator.next();
+										}
 										currIterator.markLastCollected();
 										if (vmNum == ras.length) {
 											ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
 											System.arraycopy(ras, 0, rasnew, 0, vmNum);
 											ras = rasnew;
-										}
-										if (raBiggestNotSuitable != null) {
-											raBiggestNotSuitable.cancel();
-											raBiggestNotSuitable = null;
 										}
 										ras[vmNum] = allocation;
 										processableRequest = true;
@@ -125,10 +124,12 @@ public class FirstFitScheduler extends Scheduler {
 					if (raBiggestNotSuitable != null) {
 						arc = new AlterableResourceConstraints(request.queuedRC);
 						arc.subtract(raBiggestNotSuitable.allocated);
-						raBiggestNotSuitable.cancel();
-						raBiggestNotSuitable = null;
 					}
 					returner = new ConstantConstraints(arc);
+				}
+				if (raBiggestNotSuitable != null) {
+					raBiggestNotSuitable.cancel();
+					raBiggestNotSuitable = null;
 				}
 			}
 			vmNum--;
