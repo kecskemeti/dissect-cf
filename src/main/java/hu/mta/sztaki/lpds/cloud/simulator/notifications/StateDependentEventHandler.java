@@ -59,7 +59,7 @@ public class StateDependentEventHandler<T,P> {
 	 *            object be capable of dispatching custom events abouts its
 	 *            state change
 	 */
-	public StateDependentEventHandler(SingleNotificationHandler<T, P> handler) {
+	public StateDependentEventHandler(final SingleNotificationHandler<T, P> handler) {
 		myHandler = handler;
 	}
 
@@ -72,7 +72,7 @@ public class StateDependentEventHandler<T,P> {
 	 *            who should receive notifications upon state changes in the
 	 *            observed object
 	 */
-	public void subscribeToEvents(T listener) {
+	public void subscribeToEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
 			listeners.add(listener);
 		} else {
@@ -88,7 +88,7 @@ public class StateDependentEventHandler<T,P> {
 	 *            the listener which does not need the state related events
 	 *            anymore
 	 */
-	public void unsubscribeFromEvents(T listener) {
+	public void unsubscribeFromEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
 			listeners.remove(listener);
 		} else {
@@ -101,7 +101,7 @@ public class StateDependentEventHandler<T,P> {
 	 * it is not prepared to handle cases when the number of subscribers change
 	 * while the dispatching is in process.
 	 */
-	private void mainNotificationLoop(P payload) {
+	private void mainNotificationLoop(final P payload) {
 		final int size = listeners.size();
 		for (int i = 0; i < size; i++) {
 			myHandler.sendNotification(listeners.get(i), payload);
@@ -114,7 +114,7 @@ public class StateDependentEventHandler<T,P> {
 	 * they are added/removed to/from the list of listeners at the end of the
 	 * event dispatching loop.
 	 */
-	public void notifyListeners(P payload) {
+	public void notifyListeners(final P payload) {
 		if (noEventDispatchingInProcess) {
 			// No nesting
 

@@ -178,18 +178,21 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		@Override
 		public void stateChanged(VirtualMachine vm, VirtualMachine.State oldState, VirtualMachine.State newState) {
 			if (oldState.equals(VirtualMachine.State.RUNNING)) {
-				vms.remove(vm);
+				release();
 			}
 		}
 
 		void release() {
-			vms.remove(user);
-			completedVMs++;
-			internalAvailableCaps.singleAdd(realAllocated);
-			internalReallyFreeCaps.singleAdd(realAllocated);
-			increasingFreeCapacityListenerManager.notifyListeners(Collections.singletonList(realAllocated));
-			user = null;
-			swept = true;
+			if (user != null) {
+				vms.remove(user);
+				user.unsubscribeStateChange(this);
+				completedVMs++;
+				internalAvailableCaps.singleAdd(realAllocated);
+				internalReallyFreeCaps.singleAdd(realAllocated);
+				increasingFreeCapacityListenerManager.notifyListeners(Collections.singletonList(realAllocated));
+				user = null;
+				swept = true;
+			}
 		}
 
 		public boolean isUnUsed() {
