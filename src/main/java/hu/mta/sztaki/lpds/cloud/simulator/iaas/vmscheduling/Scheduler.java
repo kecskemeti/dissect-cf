@@ -85,7 +85,7 @@ public abstract class Scheduler {
 		public void stateChanged(PhysicalMachine pm, State oldState,
 				State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
-				freeResourcesSinceLastSchedule.add(pm.freeCapacities);
+				freeResourcesSinceLastSchedule.singleAdd(pm.freeCapacities);
 				if (freeResourcesSinceLastSchedule
 						.compareTo(minimumSchedulerRequirement) >= 0) {
 					invokeRealScheduler();
@@ -101,9 +101,7 @@ public abstract class Scheduler {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {
-			freeResourcesSinceLastSchedule.add(newlyFreeResources
-					.toArray(new ResourceConstraints[newlyFreeResources
-							.size()]));
+			freeResourcesSinceLastSchedule.add(newlyFreeResources);
 			if (totalQueued.getRequiredCPUs() != 0) {
 				if (freeResourcesSinceLastSchedule
 						.compareTo(minimumSchedulerRequirement) >= 0) {
@@ -169,7 +167,7 @@ public abstract class Scheduler {
 				if (!machine.isHostableRequest(biggestHostable)) {
 					break;
 				}
-				biggestHostable.add(rc);
+				biggestHostable.singleAdd(rc);
 			}
 			if (hostableVMs >= vms.length) {
 				hostable = true;
@@ -179,7 +177,7 @@ public abstract class Scheduler {
 		if (hostable) {
 			boolean wasEmpty = queue.isEmpty();
 			queue.add(qd);
-			totalQueued.add(qd.cumulativeRC);
+			totalQueued.singleAdd(qd.cumulativeRC);
 			if (wasEmpty) {
 				invokeRealScheduler();
 				if (queue.size() == 0) {

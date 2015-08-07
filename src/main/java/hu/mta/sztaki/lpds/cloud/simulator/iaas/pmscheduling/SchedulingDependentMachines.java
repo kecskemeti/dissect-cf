@@ -41,9 +41,8 @@ import java.util.List;
 
 public class SchedulingDependentMachines extends PhysicalMachineController {
 
-	private class CapacityChangeManager implements
-			VMManager.CapacityChangeEvent<ResourceConstraints>,
-			PhysicalMachine.StateChangeListener {
+	private class CapacityChangeManager
+			implements VMManager.CapacityChangeEvent<ResourceConstraints>, PhysicalMachine.StateChangeListener {
 
 		final PhysicalMachine observed;
 
@@ -74,8 +73,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 		}
 
 		@Override
-		public void stateChanged(PhysicalMachine pm, State oldState,
-				State newState) {
+		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 			if (PhysicalMachine.State.RUNNING.equals(newState)) {
 				currentlyStartingPM = null;
 				if (parent.sched.getQueueLength() == 0) {
@@ -85,24 +83,19 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 						// we just started the PM for no reason
 						@Override
 						protected void eventAction() {
-							if (!observed.isHostingVMs()
-									&& observed.isRunning()) {
+							if (!observed.isHostingVMs() && observed.isRunning()) {
 								switchoffmachine();
 							}
 						}
 					};
 				} else {
-					ResourceConstraints runningCapacities = parent
-							.getRunningCapacities();
+					ResourceConstraints runningCapacities = parent.getRunningCapacities();
 					if (!parent.runningMachines.contains(observed)) {
 						// parent have not recognize this PM's startup yet
-						runningCapacities = new AlterableResourceConstraints(
-								runningCapacities);
-						((AlterableResourceConstraints) runningCapacities)
-								.add(observed.getCapacities());
+						runningCapacities = new AlterableResourceConstraints(runningCapacities);
+						((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
 					}
-					if (runningCapacities.compareTo(parent.sched
-							.getTotalQueued()) < 0) {
+					if (runningCapacities.compareTo(parent.sched.getTotalQueued()) < 0) {
 						// no capacities to handle the currently queued jobs, so
 						// we need to start up further machines
 						turnOnAMachine();
@@ -123,10 +116,8 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
 		return new CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(final ResourceConstraints newCapacity,
-					final List<PhysicalMachine> alteredPMs) {
-				final boolean newRegistration = parent
-						.isRegisteredHost(alteredPMs.get(0));
+			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
+				final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
 				final int pmNum = alteredPMs.size();
 				if (newRegistration) {
 					// Management of capacity increase
@@ -150,8 +141,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 			@Override
 			public void queueingStarted() {
 				if (currentlyStartingPM == null
-						|| PhysicalMachine.State.RUNNING
-								.equals(currentlyStartingPM.getState())) {
+						|| PhysicalMachine.State.RUNNING.equals(currentlyStartingPM.getState())) {
 					// If there are no machines under their startup procedure,
 					// or the currently started up machine is already running
 					// and we still receive the queueingstarted event

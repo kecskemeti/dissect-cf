@@ -33,7 +33,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import gnu.trove.list.linked.TDoubleLinkedList;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
@@ -53,6 +54,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
 /**
  * 
@@ -127,7 +130,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				promisedResources[i] = this;
 				myPromisedIndex = i;
 			}
-			promisedCapacities.add(realAllocated);
+			promisedCapacities.singleAdd(realAllocated);
 			internalReallyFreeCaps.subtract(realAllocated);
 			promisedAllocationsCount++;
 		}
@@ -148,7 +151,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				promisedCapacities.subtract(realAllocated);
 			}
 			if (isUnUsed()) {
-				internalReallyFreeCaps.add(realAllocated);
+				internalReallyFreeCaps.singleAdd(realAllocated);
 			}
 		}
 
@@ -182,9 +185,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		void release() {
 			vms.remove(user);
 			completedVMs++;
-			internalAvailableCaps.add(realAllocated);
-			internalReallyFreeCaps.add(realAllocated);
-			notifyFreedUpCapacityListeners(realAllocated);
+			internalAvailableCaps.singleAdd(realAllocated);
+			internalReallyFreeCaps.singleAdd(realAllocated);
+			increasingFreeCapacityListenerManager.notifyListeners(Collections.singletonList(realAllocated));
 			user = null;
 			swept = true;
 		}
@@ -295,7 +298,13 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	private final EnumMap<State, PowerState> hostPowerBehavior;
 	private final EnumMap<State, PowerState> storagePowerBehavior;
 	private final EnumMap<State, PowerState> networkPowerBehavior;
-	private CopyOnWriteArrayList<StateChangeListener> listeners = new CopyOnWriteArrayList<StateChangeListener>();
+	private final StateDependentEventHandler<StateChangeListener, Pair<State, State>> stateListenerManager = new StateDependentEventHandler<PhysicalMachine.StateChangeListener, Pair<State, State>>(
+			new SingleNotificationHandler<StateChangeListener, Pair<State, State>>() {
+				@Override
+				public void sendNotification(final StateChangeListener onObject, final Pair<State, State> states) {
+					onObject.stateChanged(PhysicalMachine.this, states.getLeft(), states.getRight());
+				}
+			});
 
 	// Managed VMs
 	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>(); // current
@@ -303,7 +312,14 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	private long completedVMs = 0; // Past
 	// The onOffEvent here is managed by the delayer itself.
 	private PowerStateDelayer onOffEvent = null;
-	private CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>> increasingFreeCapacityListeners = new CopyOnWriteArrayList<CapacityChangeEvent<ResourceConstraints>>();
+	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> increasingFreeCapacityListenerManager = new StateDependentEventHandler<VMManager.CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>(
+			new SingleNotificationHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>() {
+				@Override
+				public void sendNotification(final CapacityChangeEvent<ResourceConstraints> onObject,
+						final List<ResourceConstraints> recentlyFreedUpResources) {
+					onObject.capacityChanged(freeCapacities, recentlyFreedUpResources);
+				}
+			});
 
 	// The "hidden" - non VM - consumer (representing the VMM's actions and the
 	// PM's own operations
@@ -773,21 +789,18 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	public void subscribeStateChangeEvents(final StateChangeListener sl) {
-		listeners.add(sl);
+		stateListenerManager.subscribeToEvents(sl);
 	}
 
 	public void unsubscribeStateChangeEvents(final StateChangeListener sl) {
-		listeners.remove(sl);
+		stateListenerManager.unsubscribeFromEvents(sl);
 	}
 
 	private void setState(final State newState) {
-		final State oldstate = currentState;
+		final State pastState = currentState;
 		currentState = newState;
 		directConsumerUsageMoratory = newState != State.RUNNING;
-		final int size = listeners.size();
-		for (int i = 0; i < size; i++) {
-			listeners.get(i).stateChanged(this, oldstate, newState);
-		}
+		stateListenerManager.notifyListeners(Pair.of(pastState, newState));
 
 		// Power state management:
 		setCurrentPowerBehavior(hostPowerBehavior.get(newState));
@@ -814,19 +827,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	public void subscribeToIncreasingFreeapacityChanges(final CapacityChangeEvent<ResourceConstraints> e) {
-		increasingFreeCapacityListeners.add(e);
+		increasingFreeCapacityListenerManager.subscribeToEvents(e);
+		;
 	}
 
 	public void unsubscribeFromIncreasingFreeCapacityChanges(final CapacityChangeEvent<ResourceConstraints> e) {
-		increasingFreeCapacityListeners.remove(e);
-	}
-
-	private void notifyFreedUpCapacityListeners(final ResourceConstraints freedUpResources) {
-		final int size = increasingFreeCapacityListeners.size();
-		final List<ResourceConstraints> freed = Collections.singletonList(freedUpResources);
-		for (int i = 0; i < size; i++) {
-			increasingFreeCapacityListeners.get(i).capacityChanged(freeCapacities, freed);
-		}
+		increasingFreeCapacityListenerManager.unsubscribeFromEvents(e);
 	}
 
 	public boolean isDirectConsumerUsageMoratory() {

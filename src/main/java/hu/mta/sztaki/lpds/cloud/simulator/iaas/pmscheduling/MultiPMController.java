@@ -95,7 +95,7 @@ public class MultiPMController extends PhysicalMachineController {
 					if (!parent.runningMachines.contains(observed)) {
 						// parent have not recognize this PM's startup yet
 						runningCapacities = new AlterableResourceConstraints(runningCapacities);
-						((AlterableResourceConstraints) runningCapacities).add(observed.getCapacities());
+						((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
 					}
 					if (runningCapacities.compareTo(parent.sched.getTotalQueued()) < 0) {
 						// no capacities to handle the currently queued jobs, so

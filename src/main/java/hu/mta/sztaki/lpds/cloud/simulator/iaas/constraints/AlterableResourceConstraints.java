@@ -24,6 +24,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
+import java.util.List;
+
 public class AlterableResourceConstraints extends ResourceConstraints {
 	private double requiredCPUs;
 	private double requiredProcessingPower;
@@ -31,13 +33,12 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	private long requiredMemory;
 	private double totalProcessingPower;
 
-	public AlterableResourceConstraints(final double cpu,
-			final double processing, final long memory) {
+	public AlterableResourceConstraints(final double cpu, final double processing, final long memory) {
 		this(cpu, processing, false, memory);
 	}
 
-	public AlterableResourceConstraints(final double cpu,
-			final double processing, boolean isMinimum, final long memory) {
+	public AlterableResourceConstraints(final double cpu, final double processing, boolean isMinimum,
+			final long memory) {
 		requiredCPUs = cpu;
 		requiredMemory = memory;
 		requiredProcessingPower = processing;
@@ -46,9 +47,8 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	}
 
 	public AlterableResourceConstraints(final ResourceConstraints toCopy) {
-		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(),
-				toCopy.isRequiredProcessingIsMinimum(), toCopy
-						.getRequiredMemory());
+		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(), toCopy.isRequiredProcessingIsMinimum(),
+				toCopy.getRequiredMemory());
 	}
 
 	public static AlterableResourceConstraints getNoResources() {
@@ -63,28 +63,43 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		}
 	}
 
+	private void simpleAddition(final ResourceConstraints singleAdd) {
+		requiredCPUs += singleAdd.getRequiredCPUs();
+		requiredProcessingPower = singleAdd.getRequiredProcessingPower() < requiredProcessingPower
+				? requiredProcessingPower : singleAdd.getRequiredProcessingPower();
+		requiredMemory += singleAdd.getRequiredMemory();
+	}
+
+	public void singleAdd(final ResourceConstraints toAdd) {
+		simpleAddition(toAdd);
+		updateTotal();
+	}
+
 	public void add(final ResourceConstraints... toAdd) {
 		for (int i = 0; i < toAdd.length; i++) {
-			requiredCPUs += toAdd[i].getRequiredCPUs();
-			requiredProcessingPower = toAdd[i].getRequiredProcessingPower() < requiredProcessingPower ? requiredProcessingPower
-					: toAdd[i].getRequiredProcessingPower();
-			requiredMemory += toAdd[i].getRequiredMemory();
+			simpleAddition(toAdd[i]);
 		}
-		requiredProcessingPower = requiredCPUs == 0 ? 0
-				: requiredProcessingPower;
+		updateTotal();
+	}
+
+	public void add(final List<ResourceConstraints> toAdd) {
+		final int size = toAdd.size();
+		for (int i = 0; i < size; i++) {
+			simpleAddition(toAdd.get(i));
+		}
 		updateTotal();
 	}
 
 	public void subtract(final ResourceConstraints what) {
 		requiredCPUs -= what.getRequiredCPUs();
-		requiredProcessingPower = requiredCPUs == 0 ? 0
-				: requiredProcessingPower < what.getRequiredProcessingPower() ? requiredProcessingPower
-						: what.getRequiredProcessingPower();
+		requiredProcessingPower = requiredProcessingPower < what.getRequiredProcessingPower() ? requiredProcessingPower
+				: what.getRequiredProcessingPower();
 		requiredMemory -= what.getRequiredMemory();
 		updateTotal();
 	}
 
 	private void updateTotal() {
+		requiredProcessingPower = requiredCPUs == 0 ? 0 : requiredProcessingPower;
 		totalProcessingPower = requiredCPUs * requiredProcessingPower;
 	}
 

@@ -97,7 +97,7 @@ public class DeferredEventTest extends TestFoundation {
 	 * of this test is not the failure of the system but the failure of its
 	 * performance!
 	 */
-	@Test(timeout = 150)
+	@Test(timeout = 200)
 	public void performanceTest() {
 		final DeferredTester[] performer = new DeferredTester[limit];
 		for (int i = 0; i < limit; i++) {

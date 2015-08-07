@@ -25,15 +25,16 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
-import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 /**
  * This class ensures equal access to resource limited devices (such as network
@@ -45,12 +46,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * statements in its core. While it also allows to efficiently add new features
  * later on.
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
-public abstract class ResourceSpreader {
+public abstract class ResourceSpreader implements SingleNotificationHandler<PowerBehaviorChangeListener, PowerState> {
 
 	// These final variables define the base behavior of the class:
 	/**
@@ -64,23 +64,17 @@ public abstract class ResourceSpreader {
 	 * this spreader. The order is not guaranteed!
 	 */
 	private final ArrayList<ResourceConsumption> toProcess = new ArrayList<ResourceConsumption>();
-	public final List<ResourceConsumption> underProcessing = Collections
-			.unmodifiableList(toProcess);
+	public final List<ResourceConsumption> underProcessing = Collections.unmodifiableList(toProcess);
 	int underProcessingLen = 0;
 	private FreqSyncer mySyncer = null;
 	private ArrayList<ResourceConsumption> underAddition = new ArrayList<ResourceConsumption>();
 	private ArrayList<ResourceConsumption> underRemoval = new ArrayList<ResourceConsumption>();
-	public final List<ResourceConsumption> toBeRemoved = Collections
-			.unmodifiableList(underRemoval);
-	public final List<ResourceConsumption> toBeAdded = Collections
-			.unmodifiableList(underAddition);
-
-	public interface PowerBehaviorChangeListener {
-		void behaviorChanged(ResourceSpreader onSpreader, PowerState newState);
-	}
+	public final List<ResourceConsumption> toBeRemoved = Collections.unmodifiableList(underRemoval);
+	public final List<ResourceConsumption> toBeAdded = Collections.unmodifiableList(underAddition);
 
 	private PowerState currentPowerBehavior;
-	private CopyOnWriteArrayList<PowerBehaviorChangeListener> listeners = new CopyOnWriteArrayList<PowerBehaviorChangeListener>();
+	private final StateDependentEventHandler<PowerBehaviorChangeListener, PowerState> powerBehaviorListenerManager = new StateDependentEventHandler<PowerBehaviorChangeListener, PowerState>(
+			this);
 
 	protected long lastNotifTime = 0;
 	private double totalProcessed = 0;
@@ -99,8 +93,7 @@ public abstract class ResourceSpreader {
 		private boolean nudged = false;
 		private boolean regularFreqMode = true;
 
-		private FreqSyncer(final ResourceSpreader provider,
-				final ResourceSpreader consumer) {
+		private FreqSyncer(final ResourceSpreader provider, final ResourceSpreader consumer) {
 			myDepGroup = new ResourceSpreader[2];
 			myDepGroup[0] = provider;
 			myDepGroup[1] = consumer;
@@ -110,8 +103,7 @@ public abstract class ResourceSpreader {
 			setBackPreference(true);
 		}
 
-		private FreqSyncer(ResourceSpreader[] myDepGroup, final int provcount,
-				final int dglen) {
+		private FreqSyncer(ResourceSpreader[] myDepGroup, final int provcount, final int dglen) {
 			this.myDepGroup = myDepGroup;
 			firstConsumerId = provcount;
 			depgrouplen = dglen;
@@ -209,8 +201,7 @@ public abstract class ResourceSpreader {
 
 		@Override
 		public String toString() {
-			return "FreqSyncer(" + super.toString() + " depGroup: "
-					+ Arrays.toString(myDepGroup) + ")";
+			return "FreqSyncer(" + super.toString() + " depGroup: " + Arrays.toString(myDepGroup) + ")";
 		}
 
 		public int getFirstConsumerId() {
@@ -241,10 +232,8 @@ public abstract class ResourceSpreader {
 						final int urLen = rs.underRemoval.size();
 						final boolean isConsumer = rs.isConsumer();
 						for (int urIndex = 0; urIndex < urLen; urIndex++) {
-							final ResourceConsumption con = rs.underRemoval
-									.get(urIndex);
-							if (ArrayHandler.removeAndReplaceWithLast(
-									rs.toProcess, con)) {
+							final ResourceConsumption con = rs.underRemoval.get(urIndex);
+							if (ArrayHandler.removeAndReplaceWithLast(rs.toProcess, con)) {
 								rsuLen--;
 							}
 							if (isConsumer) {
@@ -265,8 +254,7 @@ public abstract class ResourceSpreader {
 						}
 						final int uaLen = rs.underAddition.size();
 						for (int i = 0; i < uaLen; i++) {
-							final ResourceConsumption con = rs.underAddition
-									.get(i);
+							final ResourceConsumption con = rs.underAddition.get(i);
 							rs.toProcess.add(con);
 							final ResourceSpreader cp = rs.getCounterPart(con);
 							// Check if counterpart is in the dependency group
@@ -283,10 +271,8 @@ public abstract class ResourceSpreader {
 									cp.mySyncer.unsubscribe();
 									for (int j = 0; j < cp.mySyncer.depgrouplen; j++) {
 										final ResourceSpreader todepgroupextension = cp.mySyncer.myDepGroup[j];
-										if (!depGroupExtension
-												.contains(todepgroupextension)) {
-											depGroupExtension
-													.add(todepgroupextension);
+										if (!depGroupExtension.contains(todepgroupextension)) {
+											depGroupExtension.add(todepgroupextension);
 										}
 									}
 									// Make sure, that if we encounter this cp
@@ -328,8 +314,7 @@ public abstract class ResourceSpreader {
 						notClassifiedLen -= classifiableindex;
 						providerCount -= classifiableindex;
 						// Remove the unused front
-						System.arraycopy(notClassified, classifiableindex,
-								notClassified, 0, notClassifiedLen);
+						System.arraycopy(notClassified, classifiableindex, notClassified, 0, notClassifiedLen);
 						// Remove the not classified items
 						ResourceSpreader[] stillNotClassified = null;
 						int newpc = 0;
@@ -352,7 +337,7 @@ public abstract class ResourceSpreader {
 									notClassified[providerCount] = notClassified[notClassifiedLen];
 									newpc++;
 								}
-								notClassified[notClassifiedLen]=null;
+								notClassified[notClassifiedLen] = null;
 								i--;
 							}
 						}
@@ -364,8 +349,7 @@ public abstract class ResourceSpreader {
 							firstConsumerId = providerCount;
 							subscribeMe = this;
 						} else {
-							subscribeMe = new FreqSyncer(notClassified,
-									providerCount, notClassifiedLen);
+							subscribeMe = new FreqSyncer(notClassified, providerCount, notClassifiedLen);
 						}
 						// Ensuring freq updates for every newly created group
 						subscribeMe.updateMyFreqNow();
@@ -408,14 +392,12 @@ public abstract class ResourceSpreader {
 
 		private void buildDepGroup(final ResourceSpreader startingItem) {
 			final int upLen;
-			if ((upLen = startingItem.toProcess.size()) == 0
-					|| startingItem.stillInDepGroup) {
+			if ((upLen = startingItem.toProcess.size()) == 0 || startingItem.stillInDepGroup) {
 				return;
 			}
 			startingItem.stillInDepGroup = true;
 			for (int i = 0; i < upLen; i++) {
-				buildDepGroup(startingItem
-						.getCounterPart(startingItem.toProcess.get(i)));
+				buildDepGroup(startingItem.getCounterPart(startingItem.toProcess.get(i)));
 			}
 		}
 	}
@@ -437,8 +419,7 @@ public abstract class ResourceSpreader {
 
 	protected abstract long singleGroupwiseFreqUpdater();
 
-	protected final void removeTheseConsumptions(
-			final ResourceConsumption[] conList, final int len) {
+	protected final void removeTheseConsumptions(final ResourceConsumption[] conList, final int len) {
 		for (int i = 0; i < len; i++) {
 			underRemoval.add(conList[i]);
 			ArrayHandler.removeAndReplaceWithLast(underAddition, conList[i]);
@@ -466,9 +447,7 @@ public abstract class ResourceSpreader {
 	static boolean registerConsumption(final ResourceConsumption con) {
 		final ResourceSpreader provider = con.getProvider();
 		final ResourceSpreader consumer = con.getConsumer();
-		if (con.isRegistered()
-				|| !(provider.isAcceptableConsumption(con) && consumer
-						.isAcceptableConsumption(con))) {
+		if (con.isRegistered() || !(provider.isAcceptableConsumption(con) && consumer.isAcceptableConsumption(con))) {
 			return false;
 		}
 		// ResourceConsumption synchronization
@@ -496,8 +475,7 @@ public abstract class ResourceSpreader {
 	}
 
 	protected boolean isAcceptableConsumption(final ResourceConsumption con) {
-		return getSamePart(con).equals(this) && perTickProcessingPower > 0
-				&& con.getHardLimit() > 0;
+		return getSamePart(con).equals(this) && perTickProcessingPower > 0 && con.getHardLimit() > 0;
 	}
 
 	static void cancelConsumption(final ResourceConsumption con) {
@@ -536,14 +514,11 @@ public abstract class ResourceSpreader {
 		lastNotifTime = currentFireCount;
 	}
 
-	protected abstract double processSingleConsumption(
-			final ResourceConsumption con, final long ticksPassed);
+	protected abstract double processSingleConsumption(final ResourceConsumption con, final long ticksPassed);
 
-	protected abstract ResourceSpreader getCounterPart(
-			final ResourceConsumption con);
+	protected abstract ResourceSpreader getCounterPart(final ResourceConsumption con);
 
-	protected abstract ResourceSpreader getSamePart(
-			final ResourceConsumption con);
+	protected abstract ResourceSpreader getSamePart(final ResourceConsumption con);
 
 	protected abstract boolean isConsumer();
 
@@ -572,7 +547,8 @@ public abstract class ResourceSpreader {
 		// if (isSubscribed()) {
 		// // TODO: this case might be interesting to support.
 		// throw new IllegalStateException(
-		// "It is not possible to change the processing power of a spreader while it is subscribed!");
+		// "It is not possible to change the processing power of a spreader
+		// while it is subscribed!");
 		// }
 		this.perTickProcessingPower = perTickProcessingPower;
 		this.negligableProcessing = this.perTickProcessingPower / 1000000000;
@@ -585,35 +561,31 @@ public abstract class ResourceSpreader {
 	// FIXME: this might be protected later on.
 	public void setCurrentPowerBehavior(final PowerState newPowerBehavior) {
 		if (newPowerBehavior == null) {
-			throw new IllegalStateException(
-					"Trying to set an unknown power behavior");
+			throw new IllegalStateException("Trying to set an unknown power behavior");
 		}
 		if (currentPowerBehavior != newPowerBehavior) {
 			currentPowerBehavior = newPowerBehavior;
-			final int size = listeners.size();
-			for (int i = 0; i < size; i++) {
-				listeners.get(i).behaviorChanged(this, newPowerBehavior);
-			}
+			powerBehaviorListenerManager.notifyListeners(newPowerBehavior);
 		}
 	}
 
-	public void subscribePowerBehaviorChangeEvents(
-			final PowerBehaviorChangeListener pbcl) {
-		listeners.add(pbcl);
+	@Override
+	public void sendNotification(final PowerBehaviorChangeListener onObject, final PowerState newPowerBehavior) {
+		onObject.behaviorChanged(this, newPowerBehavior);
 	}
 
-	public void unsubscribePowerBehaviorChangeEvents(
-			final PowerBehaviorChangeListener pbcl) {
-		listeners.remove(pbcl);
+	public void subscribePowerBehaviorChangeEvents(final PowerBehaviorChangeListener pbcl) {
+		powerBehaviorListenerManager.subscribeToEvents(pbcl);
+	}
+
+	public void unsubscribePowerBehaviorChangeEvents(final PowerBehaviorChangeListener pbcl) {
+		powerBehaviorListenerManager.unsubscribeFromEvents(pbcl);
 	}
 
 	@Override
 	public String toString() {
-		return "RS(processing: "
-				+ toProcess.toString()
-				+ " in power state: "
-				+ (currentPowerBehavior == null ? "-" : currentPowerBehavior
-						.toString()) + ")";
+		return "RS(processing: " + toProcess.toString() + " in power state: "
+				+ (currentPowerBehavior == null ? "-" : currentPowerBehavior.toString()) + ")";
 	}
 
 	static int hashCounter = 0;

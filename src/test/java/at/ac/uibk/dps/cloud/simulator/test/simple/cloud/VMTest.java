@@ -25,6 +25,15 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
+import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -40,16 +49,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
-import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
-
 public class VMTest extends IaaSRelatedFoundation {
 
 	PhysicalMachine pm;
@@ -60,11 +59,9 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Before
 	public void initializeObject() throws Exception {
 		pm = dummyPMcreator();
-		va = new VirtualAppliance("BaseVA", 1000, 0, false,
-				pm.localDisk.getMaxStorageCapacity() / 10);
+		va = new VirtualAppliance("BaseVA", 1000, 0, false, pm.localDisk.getMaxStorageCapacity() / 10);
 		centralVM = new VirtualMachine(va);
-		vaWithBG = new VirtualAppliance("BaseVAWithBG", 1000, 10, false,
-				pm.localDisk.getMaxStorageCapacity() / 10);
+		vaWithBG = new VirtualAppliance("BaseVAWithBG", 1000, 10, false, pm.localDisk.getMaxStorageCapacity() / 10);
 		repo = dummyRepoCreator(false);
 		repo.registerObject(va);
 		repo.registerObject(vaWithBG);
@@ -77,10 +74,9 @@ public class VMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void constructionTest() {
-		Assert.assertEquals("The collected VA is not matching", va,
-				centralVM.getVa());
-		Assert.assertEquals("The VM is not in the expected state",
-				VirtualMachine.State.DESTROYED, centralVM.getState());
+		Assert.assertEquals("The collected VA is not matching", va, centralVM.getVa());
+		Assert.assertEquals("The VM is not in the expected state", VirtualMachine.State.DESTROYED,
+				centralVM.getState());
 		Assert.assertTrue("The VM state should be in its string output",
 				centralVM.toString().contains(centralVM.getState().toString()));
 	}
@@ -91,11 +87,10 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void nonServableTest() throws VMManagementException,
-			NetworkException {
+	public void nonServableTest() throws VMManagementException, NetworkException {
 		centralVM.setNonservable();
-		PhysicalMachine.ResourceAllocation ra = pm.allocateResources(
-				pm.getCapacities(), true, PhysicalMachine.defaultAllocLen);
+		PhysicalMachine.ResourceAllocation ra = pm.allocateResources(pm.getCapacities(), true,
+				PhysicalMachine.defaultAllocLen);
 		try {
 			centralVM.migrate(ra);
 			Assert.fail("It should not be possible to do migration if the VM is non servable");
@@ -104,9 +99,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		}
 		ra.cancel();
 		try {
-			centralVM.prepare(new Repository(1, "1", 1, 1, 1,
-					new HashMap<String, Integer>()), new Repository(2, "2", 2,
-					2, 2, new HashMap<String, Integer>()));
+			centralVM.prepare(new Repository(1, "1", 1, 1, 1, new HashMap<String, Integer>()),
+					new Repository(2, "2", 2, 2, 2, new HashMap<String, Integer>()));
 			Assert.fail("It should not be possible to do preparation if the VM is non servable");
 		} catch (StateChangeException ex) {
 			// Correct behavior
@@ -142,244 +136,194 @@ public class VMTest extends IaaSRelatedFoundation {
 		}
 	}
 
-	private void switchOnVMwithMaxCapacity(VirtualMachine target,
-			boolean simulate) throws VMManagementException, NetworkException {
-		target.switchOn(pm.allocateResources(pm.getCapacities(), true,
-				PhysicalMachine.defaultAllocLen), target.getVa()
-				.getBgNetworkLoad() > 0 ? repo : pm.localDisk);
+	private void switchOnVMwithMaxCapacity(VirtualMachine target, boolean simulate)
+			throws VMManagementException, NetworkException {
+		target.switchOn(pm.allocateResources(pm.getCapacities(), true, PhysicalMachine.defaultAllocLen),
+				target.getVa().getBgNetworkLoad() > 0 ? repo : pm.localDisk);
 		if (simulate) {
 			Timed.simulateUntilLastEvent();
 		}
 	}
 
 	@Test(timeout = 100)
-	public void simpleVMStartup() throws VMManagementException,
-			NetworkException {
+	public void simpleVMStartup() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
-		Assert.assertEquals(
-				"Regular VM not in the excpected state after switchon",
-				VirtualMachine.State.RUNNING, centralVM.getState());
+		Assert.assertEquals("Regular VM not in the excpected state after switchon", VirtualMachine.State.RUNNING,
+				centralVM.getState());
 		centralVM.destroy(false);
 		Timed.simulateUntilLastEvent();
 	}
 
 	@Test(timeout = 100)
-	public void bgLoadVMStatrup() throws VMManagementException,
-			NetworkException {
+	public void bgLoadVMStatrup() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVMwithBG, true);
-		Assert.assertEquals(
-				"BGLoad VM not in the excpected state after switchon",
-				VirtualMachine.State.RUNNING, centralVMwithBG.getState());
+		Assert.assertEquals("BGLoad VM not in the excpected state after switchon", VirtualMachine.State.RUNNING,
+				centralVMwithBG.getState());
 		centralVMwithBG.destroy(false);
 		Timed.simulateUntilLastEvent();
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void faultyBgLoadVMStartup() throws VMManagementException,
-			NetworkException {
-		centralVMwithBG.switchOn(pm.allocateResources(pm.getCapacities(), true,
-				PhysicalMachine.defaultAllocLen), pm.localDisk);
+	public void faultyBgLoadVMStartup() throws VMManagementException, NetworkException {
+		centralVMwithBG.switchOn(pm.allocateResources(pm.getCapacities(), true, PhysicalMachine.defaultAllocLen),
+				pm.localDisk);
 	}
 
 	@Test(timeout = 100)
-	public void startupAfterPrepare() throws VMManagementException,
-			NetworkException {
+	public void startupAfterPrepare() throws VMManagementException, NetworkException {
 		centralVM.prepare(pm.localDisk, pm.localDisk);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("VM is not in expected state after prepare",
-				VirtualMachine.State.SHUTDOWN, centralVM.getState());
+		Assert.assertEquals("VM is not in expected state after prepare", VirtualMachine.State.SHUTDOWN,
+				centralVM.getState());
 		switchOnVMwithMaxCapacity(centralVM, true);
-		Assert.assertEquals(
-				"Regular VM not in the excpected state after switchon",
-				VirtualMachine.State.RUNNING, centralVM.getState());
+		Assert.assertEquals("Regular VM not in the excpected state after switchon", VirtualMachine.State.RUNNING,
+				centralVM.getState());
 		centralVM.destroy(false);
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void faultyStartupAfterPrepare() throws VMManagementException,
-			NetworkException {
+	public void faultyStartupAfterPrepare() throws VMManagementException, NetworkException {
 		PhysicalMachine target = dummyPMcreator();
 		centralVM.prepare(pm.localDisk, target.localDisk);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("VM is not in expected state after prepare",
-				VirtualMachine.State.SHUTDOWN, centralVM.getState());
+		Assert.assertEquals("VM is not in expected state after prepare", VirtualMachine.State.SHUTDOWN,
+				centralVM.getState());
 		switchOnVMwithMaxCapacity(centralVM, true);
 	}
 
 	@Test(timeout = 100)
-	public void prepareOnlyTest() throws VMManagementException,
-			NetworkException {
+	public void prepareOnlyTest() throws VMManagementException, NetworkException {
 		long beforeFreeStorage = pm.localDisk.getFreeStorageCapacity();
 		centralVM.prepare(null, pm.localDisk);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("VM is not in expected state after prepare",
-				VirtualMachine.State.SHUTDOWN, centralVM.getState());
+		Assert.assertEquals("VM is not in expected state after prepare", VirtualMachine.State.SHUTDOWN,
+				centralVM.getState());
 		long afterFreeStorage = pm.localDisk.getFreeStorageCapacity();
-		Assert.assertEquals("PM disk free capacity mismatch after prepare",
-				beforeFreeStorage - va.size, afterFreeStorage);
+		Assert.assertEquals("PM disk free capacity mismatch after prepare", beforeFreeStorage - va.size,
+				afterFreeStorage);
 		centralVM.destroy(false);
-		Assert.assertEquals("PM disk free capacity mismatch after destroy",
-				beforeFreeStorage, pm.localDisk.getFreeStorageCapacity());
+		Assert.assertEquals("PM disk free capacity mismatch after destroy", beforeFreeStorage,
+				pm.localDisk.getFreeStorageCapacity());
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void nullVATargetTest() throws VMManagementException,
-			NetworkException {
+	public void nullVATargetTest() throws VMManagementException, NetworkException {
 		centralVM.prepare(pm.localDisk, null);
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void doubleNullPrepareTest() throws VMManagementException,
-			NetworkException {
+	public void doubleNullPrepareTest() throws VMManagementException, NetworkException {
 		centralVM.prepare(null, null);
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void noFreeSpacePrepareTest() throws VMManagementException,
-			NetworkException {
-		pm.localDisk.registerObject(new StorageObject("MakesLocalDiskFull",
-				pm.localDisk.getFreeStorageCapacity(), false));
+	public void noFreeSpacePrepareTest() throws VMManagementException, NetworkException {
+		pm.localDisk
+				.registerObject(new StorageObject("MakesLocalDiskFull", pm.localDisk.getFreeStorageCapacity(), false));
 		centralVM.prepare(null, pm.localDisk);
 	}
 
 	@Test(timeout = 100)
-	public void taskKillingSwitchOff() throws VMManagementException,
-			NetworkException {
+	public void taskKillingSwitchOff() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		ResourceConsumption con = centralVM.newComputeTask(2,
-				ResourceConsumption.unlimitedProcessing, cae);
+		ResourceConsumption con = centralVM.newComputeTask(2, ResourceConsumption.unlimitedProcessing, cae);
 		Timed.fire();
 		centralVM.switchoff(true);
 		Timed.fire();
-		Assert.assertTrue(
-				"The compute task should be cancelled after switchoff",
-				cae.isCancelled());
-		Assert.assertFalse(
-				"The compute task should be non-resumable after switchoff",
-				con.registerConsumption());
+		Assert.assertTrue("The compute task should be cancelled after switchoff", cae.isCancelled());
+		Assert.assertFalse("The compute task should be non-resumable after switchoff", con.registerConsumption());
 	}
 
 	@Test(timeout = 100)
-	public void failingSwitchOff() throws VMManagementException,
-			NetworkException {
+	public void failingSwitchOff() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		centralVM.newComputeTask(1, ResourceConsumption.unlimitedProcessing,
-				cae);
+		centralVM.newComputeTask(1, ResourceConsumption.unlimitedProcessing, cae);
 		Timed.fire();
 		try {
 			centralVM.switchoff(false);
-			Assert.fail("On a VM with compute tasks, switchoff should not succeed if it was not asked to kill the compute tasks");
+			Assert.fail(
+					"On a VM with compute tasks, switchoff should not succeed if it was not asked to kill the compute tasks");
 		} catch (VMManagementException ex) {
 			// Expected
 		}
-		Assert.assertFalse(
-				"The compute task should not be cancelled after faulty switchoff",
-				cae.isCancelled());
+		Assert.assertFalse("The compute task should not be cancelled after faulty switchoff", cae.isCancelled());
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue(
-				"It should be possible to finish the compute task after faulty switchoff",
-				cae.isCompleted());
+		Assert.assertTrue("It should be possible to finish the compute task after faulty switchoff", cae.isCompleted());
 		centralVM.destroy(false);
 	}
 
 	@Test(timeout = 100)
-	public void subscriptionTest() throws VMManagementException,
-			NetworkException {
+	public void subscriptionTest() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		final ArrayList<VirtualMachine.State> receivedStates = new ArrayList<VirtualMachine.State>();
 		VirtualMachine.StateChange sc = new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState,
-					State newState) {
+			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
 				receivedStates.add(newState);
 			}
 		};
 		centralVM.subscribeStateChange(sc);
 		centralVM.destroy(false);
-		centralVM.unsubscribeStateChange(sc);
+		centralVM.unsubscribeStateChange(sc);;
 		Assert.assertArrayEquals("Did not receive the necessary state changes",
-				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN,
-						VirtualMachine.State.DESTROYED },
-				receivedStates.toArray(new VirtualMachine.State[receivedStates
-						.size()]));
+				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN, VirtualMachine.State.DESTROYED },
+				receivedStates.toArray(new VirtualMachine.State[receivedStates.size()]));
 	}
 
 	@Test(timeout = 100)
-	public void consumptionRejectionTest() throws VMManagementException,
-			NetworkException {
-		final ResourceConsumption con = new ResourceConsumption(1,
-				ResourceConsumption.unlimitedProcessing, centralVM, pm,
-				new ConsumptionEventAssert());
+	public void consumptionRejectionTest() throws VMManagementException, NetworkException {
+		final ResourceConsumption con = new ResourceConsumption(1, ResourceConsumption.unlimitedProcessing, centralVM,
+				pm, new ConsumptionEventAssert());
 		double initialUnpr = con.getUnProcessed();
-		Assert.assertFalse(
-				"Consumption registration should not succeed unless in consuming state",
+		Assert.assertFalse("Consumption registration should not succeed unless in consuming state",
 				con.registerConsumption());
 		switchOnVMwithMaxCapacity(centralVM, false);
-		Assert.assertFalse(
-				"Consumption registration should not succeed in inital transfer phase",
+		Assert.assertFalse("Consumption registration should not succeed in inital transfer phase",
 				con.registerConsumption());
-		Assert.assertEquals("Unprocessed consumption mismatch", initialUnpr,
-				con.getUnProcessed(), 0);
+		Assert.assertEquals("Unprocessed consumption mismatch", initialUnpr, con.getUnProcessed(), 0);
 		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState,
-					State newState) {
-				if (VirtualMachine.consumingStates.contains(newState)
-						&& !con.isRegistered()) {
-					Assert.assertTrue(
-							"Consumption registration should now proceed",
-							con.registerConsumption());
+			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
+				if (VirtualMachine.consumingStates.contains(newState) && !con.isRegistered()) {
+					Assert.assertTrue("Consumption registration should now proceed", con.registerConsumption());
 				}
 			}
 		});
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Unprocessed consumption mismatch", 0,
-				con.getUnProcessed(), 0);
+		Assert.assertEquals("Unprocessed consumption mismatch", 0, con.getUnProcessed(), 0);
 	}
 
 	@Test(timeout = 100)
-	public void newConsumptionRejectionTest() throws VMManagementException,
-			NetworkException {
-		Assert.assertEquals("VM should not accept consumption while destroyed",
-				null,
+	public void newConsumptionRejectionTest() throws VMManagementException, NetworkException {
+		Assert.assertEquals("VM should not accept consumption while destroyed", null,
 				centralVM.newComputeTask(1, 1, new ConsumptionEventAssert()));
 		switchOnVMwithMaxCapacity(centralVM, false);
-		Assert.assertEquals(
-				"VM should not accept consumption in initial transfer phase",
-				null,
+		Assert.assertEquals("VM should not accept consumption in initial transfer phase", null,
 				centralVM.newComputeTask(1, 1, new ConsumptionEventAssert()));
 	}
 
 	@Test(expected = StateChangeException.class, timeout = 100)
-	public void errenousAllocationRequest() throws VMManagementException,
-			NetworkException {
-		AlterableResourceConstraints constraints = new AlterableResourceConstraints(
-				pm.getCapacities());
+	public void errenousAllocationRequest() throws VMManagementException, NetworkException {
+		AlterableResourceConstraints constraints = new AlterableResourceConstraints(pm.getCapacities());
 		constraints.multiply(0.1);
-		centralVM.switchOn(pm.allocateResources(constraints, true,
-				PhysicalMachine.defaultAllocLen), pm.localDisk);
-		centralVM.setResourceAllocation(pm.allocateResources(constraints, true,
-				PhysicalMachine.defaultAllocLen));
+		centralVM.switchOn(pm.allocateResources(constraints, true, PhysicalMachine.defaultAllocLen), pm.localDisk);
+		centralVM.setResourceAllocation(pm.allocateResources(constraints, true, PhysicalMachine.defaultAllocLen));
 	}
 
 	@Test(timeout = 100)
-	public void allocationHandlingCorrectness() throws VMManagementException,
-			NetworkException {
-		PhysicalMachine.ResourceAllocation alloc = pm.allocateResources(
-				pm.getCapacities(), true, PhysicalMachine.defaultAllocLen);
+	public void allocationHandlingCorrectness() throws VMManagementException, NetworkException {
+		PhysicalMachine.ResourceAllocation alloc = pm.allocateResources(pm.getCapacities(), true,
+				PhysicalMachine.defaultAllocLen);
 		centralVM.switchOn(alloc, pm.localDisk);
-		Assert.assertEquals("Resource allocation mismatch", alloc,
-				centralVM.getResourceAllocation());
+		Assert.assertEquals("Resource allocation mismatch", alloc, centralVM.getResourceAllocation());
 		Timed.simulateUntilLastEvent();
 		centralVM.destroy(false);
-		Assert.assertEquals("Resource allocation should be released", null,
-				centralVM.getResourceAllocation());
+		Assert.assertEquals("Resource allocation should be released", null, centralVM.getResourceAllocation());
 	}
 
-	private void simpleSusResume(VirtualMachine vmToUse)
-			throws VMManagementException, NetworkException {
+	private void simpleSusResume(VirtualMachine vmToUse) throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(vmToUse, true);
 		ConsumptionEventAssert cea = new ConsumptionEventAssert();
 		PhysicalMachine.ResourceAllocation ra = vmToUse.getResourceAllocation();
@@ -393,73 +337,56 @@ public class VMTest extends IaaSRelatedFoundation {
 		} catch (VMManagementException ex) {
 			// expected operation
 		}
-		Assert.assertEquals("Not in expected state",
-				VirtualMachine.State.SUSPEND_TR, vmToUse.getState());
+		Assert.assertEquals("Not in expected state", VirtualMachine.State.SUSPEND_TR, vmToUse.getState());
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(
-				"PM's local storage should decrease with memory size", memless
-						- memsize, pm.localDisk.getFreeStorageCapacity());
-		Assert.assertEquals("Not in expected state",
-				VirtualMachine.State.SUSPENDED, vmToUse.getState());
-		Assert.assertFalse(
-				"The consumption should not finish because it should be suspended",
+		Assert.assertEquals("PM's local storage should decrease with memory size", memless - memsize,
+				pm.localDisk.getFreeStorageCapacity());
+		Assert.assertEquals("Not in expected state", VirtualMachine.State.SUSPENDED, vmToUse.getState());
+		Assert.assertFalse("The consumption should not finish because it should be suspended",
 				cea.isCancelled() || cea.isCompleted());
-		Assert.assertTrue("The allocation should be unused by now",
-				ra.isUnUsed());
-		vmToUse.setResourceAllocation(pm.allocateResources(pm.getCapacities(),
-				true, PhysicalMachine.defaultAllocLen));
+		Assert.assertTrue("The allocation should be unused by now", ra.isUnUsed());
+		vmToUse.setResourceAllocation(pm.allocateResources(pm.getCapacities(), true, PhysicalMachine.defaultAllocLen));
 		vmToUse.resume();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("The consumption should finish after resume",
-				cea.isCompleted());
-		Assert.assertEquals(
-				"The PM's local storage should return to the original levels of free capacities",
-				memless, pm.localDisk.getFreeStorageCapacity());
+		Assert.assertTrue("The consumption should finish after resume", cea.isCompleted());
+		Assert.assertEquals("The PM's local storage should return to the original levels of free capacities", memless,
+				pm.localDisk.getFreeStorageCapacity());
 	}
 
 	@Test(timeout = 100)
-	public void successfulSuspendResumeTest() throws VMManagementException,
-			NetworkException {
+	public void successfulSuspendResumeTest() throws VMManagementException, NetworkException {
 		simpleSusResume(centralVM);
 	}
 
 	@Test(timeout = 100)
-	public void successfulSuspendResumeTestWithBGLoad()
-			throws VMManagementException, NetworkException {
+	public void successfulSuspendResumeTestWithBGLoad() throws VMManagementException, NetworkException {
 		simpleSusResume(centralVMwithBG);
 	}
 
 	@Test(timeout = 100)
-	public void ensureSuspendUsesJustEnoughDisk() throws VMManagementException,
-			NetworkException {
+	public void ensureSuspendUsesJustEnoughDisk() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		long memless = pm.localDisk.getFreeStorageCapacity();
-		long memsize = centralVM.getResourceAllocation().allocated
-				.getRequiredMemory();
-		pm.localDisk.registerObject(new StorageObject("SpaceFiller", memless
-				- memsize, false));
+		long memsize = centralVM.getResourceAllocation().allocated.getRequiredMemory();
+		pm.localDisk.registerObject(new StorageObject("SpaceFiller", memless - memsize, false));
 		centralVM.suspend();
 	}
 
 	@Test(expected = VMManagementException.class, timeout = 100)
-	public void ensureSuspendFailsIfNotEnoughDiskSpace()
-			throws VMManagementException, NetworkException {
+	public void ensureSuspendFailsIfNotEnoughDiskSpace() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
-		pm.localDisk.registerObject(new StorageObject("SpaceFiller",
-				pm.localDisk.getFreeStorageCapacity(), false));
+		pm.localDisk.registerObject(new StorageObject("SpaceFiller", pm.localDisk.getFreeStorageCapacity(), false));
 		centralVM.suspend();
 	}
 
 	@Test(timeout = 100)
-	public void ensureResumeUsesJustEnoughDisk() throws VMManagementException,
-			NetworkException {
+	public void ensureResumeUsesJustEnoughDisk() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		centralVM.suspend();
 		Timed.simulateUntilLastEvent();
-		pm.localDisk.registerObject(new StorageObject("SpaceFiller",
-				pm.localDisk.getFreeStorageCapacity(), false));
-		centralVM.setResourceAllocation(pm.allocateResources(
-				pm.getCapacities(), true, PhysicalMachine.defaultAllocLen));
+		pm.localDisk.registerObject(new StorageObject("SpaceFiller", pm.localDisk.getFreeStorageCapacity(), false));
+		centralVM
+				.setResourceAllocation(pm.allocateResources(pm.getCapacities(), true, PhysicalMachine.defaultAllocLen));
 		centralVM.resume();
 		Timed.simulateUntilLastEvent();
 	}
@@ -471,22 +398,18 @@ public class VMTest extends IaaSRelatedFoundation {
 		return pmtarget;
 	}
 
-	private void doMigration(PhysicalMachine from, PhysicalMachine to,
-			VirtualMachine vm, boolean sim) throws VMManagementException,
-			NetworkException {
+	private void doMigration(PhysicalMachine from, PhysicalMachine to, VirtualMachine vm, boolean sim)
+			throws VMManagementException, NetworkException {
 		from.migrateVM(vm, to);
 		if (sim) {
 			Timed.simulateUntilLastEvent();
 		}
 	}
 
-	private PhysicalMachine simpleMigrate(final VirtualMachine toUse)
-			throws VMManagementException, NetworkException {
+	private PhysicalMachine simpleMigrate(final VirtualMachine toUse) throws VMManagementException, NetworkException {
 		final PhysicalMachine pmtarget = createAndExecutePM();
-		Assert.assertTrue(
-				"The target PM should not have anything in its storage",
-				pmtarget.localDisk.getMaxStorageCapacity() == pmtarget.localDisk
-						.getFreeStorageCapacity());
+		Assert.assertTrue("The target PM should not have anything in its storage",
+				pmtarget.localDisk.getMaxStorageCapacity() == pmtarget.localDisk.getFreeStorageCapacity());
 		switchOnVMwithMaxCapacity(toUse, true);
 		final double beforePmCon = pm.getTotalProcessed();
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
@@ -494,51 +417,37 @@ public class VMTest extends IaaSRelatedFoundation {
 		toUse.newComputeTask(ctLen, 1, cae);
 		Timed.simulateUntil(Timed.getFireCount() + aSecond);
 		doMigration(pm, pmtarget, toUse, true);
-		Assert.assertTrue("VM is not on its new host",
-				pmtarget.publicVms.contains(toUse));
-		Assert.assertFalse("VM is still on its old host",
-				pm.publicVms.contains(toUse));
-		Assert.assertEquals("VM is not properly resumed",
-				VirtualMachine.State.RUNNING, toUse.getState());
-		Assert.assertEquals(
-				"Source VM should have minority of the consumption",
-				beforePmCon + aSecond, pm.getTotalProcessed(), 0.01);
-		Assert.assertEquals(
-				"Target VM should have the majority of the consumption", ctLen
-						- aSecond, pmtarget.getTotalProcessed(), 0.01);
+		Assert.assertTrue("VM is not on its new host", pmtarget.publicVms.contains(toUse));
+		Assert.assertFalse("VM is still on its old host", pm.publicVms.contains(toUse));
+		Assert.assertEquals("VM is not properly resumed", VirtualMachine.State.RUNNING, toUse.getState());
+		Assert.assertEquals("Source VM should have minority of the consumption", beforePmCon + aSecond,
+				pm.getTotalProcessed(), 0.01);
+		Assert.assertEquals("Target VM should have the majority of the consumption", ctLen - aSecond,
+				pmtarget.getTotalProcessed(), 0.01);
 		return pmtarget;
 	}
 
 	@Test(timeout = 100)
-	public void simpleMigration() throws VMManagementException,
-			NetworkException {
+	public void simpleMigration() throws VMManagementException, NetworkException {
 		final long beforeSize = pm.localDisk.getFreeStorageCapacity();
 		PhysicalMachine pmtarget = simpleMigrate(centralVM);
-		Assert.assertEquals(
-				"The source of the migration should not have any storage occupied by the VM's remainders",
+		Assert.assertEquals("The source of the migration should not have any storage occupied by the VM's remainders",
 				beforeSize, pm.localDisk.getFreeStorageCapacity());
-		Assert.assertEquals(
-				"The target of the migration should only have the disk of the VM",
-				pmtarget.localDisk.getMaxStorageCapacity() - va.size,
-				pmtarget.localDisk.getFreeStorageCapacity());
+		Assert.assertEquals("The target of the migration should only have the disk of the VM",
+				pmtarget.localDisk.getMaxStorageCapacity() - va.size, pmtarget.localDisk.getFreeStorageCapacity());
 	}
 
 	@Test(timeout = 100)
-	public void simpleMigrationWithBgNWL() throws VMManagementException,
-			NetworkException {
+	public void simpleMigrationWithBgNWL() throws VMManagementException, NetworkException {
 		final long beforeSize = pm.localDisk.getFreeStorageCapacity();
 		PhysicalMachine pmtarget = simpleMigrate(centralVMwithBG);
-		Assert.assertEquals(
-				"The source of the migration should not have any storage occupied by the VM's remainders",
+		Assert.assertEquals("The source of the migration should not have any storage occupied by the VM's remainders",
 				beforeSize, pm.localDisk.getFreeStorageCapacity());
-		Assert.assertEquals(
-				"The target of the migration should not have any storage occupied by the VM's remainders",
-				pmtarget.localDisk.getMaxStorageCapacity(),
-				pmtarget.localDisk.getFreeStorageCapacity());
+		Assert.assertEquals("The target of the migration should not have any storage occupied by the VM's remainders",
+				pmtarget.localDisk.getMaxStorageCapacity(), pmtarget.localDisk.getFreeStorageCapacity());
 	}
 
-	private void doubleMigrate(final VirtualMachine toUse)
-			throws VMManagementException, NetworkException {
+	private void doubleMigrate(final VirtualMachine toUse) throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		final PhysicalMachine pmtarget = createAndExecutePM();
 		final double beforePmCon = pm.getTotalProcessed();
@@ -551,10 +460,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		haveNotBeenThere[0] = true;
 		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
 			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState,
-					State newState) {
-				if (newState.equals(VirtualMachine.State.RUNNING)
-						&& haveNotBeenThere[0]) {
+			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
+				if (newState.equals(VirtualMachine.State.RUNNING) && haveNotBeenThere[0]) {
 					haveNotBeenThere[0] = false;
 					new DeferredEvent(aSecond) {
 						@Override
@@ -562,8 +469,7 @@ public class VMTest extends IaaSRelatedFoundation {
 							try {
 								doMigration(pmtarget, pm, centralVM, false);
 							} catch (Exception e) {
-								throw new IllegalStateException(
-										"Second migration failed", e);
+								throw new IllegalStateException("Second migration failed", e);
 							}
 						}
 					};
@@ -571,59 +477,46 @@ public class VMTest extends IaaSRelatedFoundation {
 			}
 		});
 		Timed.simulateUntilLastEvent();
-		Assert.assertFalse("VM is still on its new host",
-				pmtarget.publicVms.contains(centralVM));
-		Assert.assertTrue("VM is not on its old host",
-				pm.publicVms.contains(centralVM));
-		Assert.assertEquals("VM is not properly resumed",
-				VirtualMachine.State.RUNNING, centralVM.getState());
-		Assert.assertEquals(
-				"Source VM should have the majority of the consumption",
-				beforePmCon + ctLen - aSecond, pm.getTotalProcessed(), 0.01);
-		Assert.assertEquals(
-				"Target VM should have the minority of the consumption",
-				aSecond, pmtarget.getTotalProcessed(), 0.01);
+		Assert.assertFalse("VM is still on its new host", pmtarget.publicVms.contains(centralVM));
+		Assert.assertTrue("VM is not on its old host", pm.publicVms.contains(centralVM));
+		Assert.assertEquals("VM is not properly resumed", VirtualMachine.State.RUNNING, centralVM.getState());
+		Assert.assertEquals("Source VM should have the majority of the consumption", beforePmCon + ctLen - aSecond,
+				pm.getTotalProcessed(), 0.01);
+		Assert.assertEquals("Target VM should have the minority of the consumption", aSecond,
+				pmtarget.getTotalProcessed(), 0.01);
 
 	}
 
 	@Test(timeout = 100)
-	public void doubleMigration() throws VMManagementException,
-			NetworkException {
+	public void doubleMigration() throws VMManagementException, NetworkException {
 		doubleMigrate(centralVM);
 	}
 
 	@Test(timeout = 100)
-	public void doubleMigrationWithBgNWL() throws VMManagementException,
-			NetworkException {
+	public void doubleMigrationWithBgNWL() throws VMManagementException, NetworkException {
 		doubleMigrate(centralVMwithBG);
 	}
 
 	@Test(timeout = 100)
-	public void migrationAfterSuspend() throws VMManagementException,
-			NetworkException {
+	public void migrationAfterSuspend() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		ResourceConstraints original = centralVM.getResourceAllocation().allocated;
 		centralVM.suspend();
 		final PhysicalMachine pmtarget = createAndExecutePM();
-		centralVM.migrate(pmtarget.allocateResources(original, true,
-				PhysicalMachine.migrationAllocLen));
+		centralVM.migrate(pmtarget.allocateResources(original, true, PhysicalMachine.migrationAllocLen));
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Source should not host the VM anymore",
-				pm.publicVms.isEmpty());
-		Assert.assertTrue("Target should host the VM",
-				pmtarget.publicVms.contains(centralVM));
+		Assert.assertTrue("Source should not host the VM anymore", pm.publicVms.isEmpty());
+		Assert.assertTrue("Target should host the VM", pmtarget.publicVms.contains(centralVM));
 	}
 
 	private void failMigrationProcedureAfterSuspendPhase(long spaceToLeave)
 			throws VMManagementException, NetworkException {
 		final PhysicalMachine pmtarget = createAndExecutePM();
-		pmtarget.localDisk.registerObject(new StorageObject(
-				"TargetStorageFiller", pmtarget.localDisk
-						.getFreeStorageCapacity() - spaceToLeave, false));
+		pmtarget.localDisk.registerObject(new StorageObject("TargetStorageFiller",
+				pmtarget.localDisk.getFreeStorageCapacity() - spaceToLeave, false));
 		switchOnVMwithMaxCapacity(centralVM, true);
 		doMigration(pm, pmtarget, centralVM, true);
-		Assert.assertEquals("Migration should not succeed",
-				VirtualMachine.State.SUSPENDED_MIG, centralVM.getState());
+		Assert.assertEquals("Migration should not succeed", VirtualMachine.State.SUSPENDED_MIG, centralVM.getState());
 	}
 
 	@Test(timeout = 100)
@@ -642,82 +535,66 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void failMigrationProcedureBeforeResumePhase()
-			throws VMManagementException, NetworkException {
+	public void failMigrationProcedureBeforeResumePhase() throws VMManagementException, NetworkException {
 		// Does not allow the copying of the memory to the VM's state
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
 	}
 
 	@Test(timeout = 100)
-	public void migrationFailureandRetry() throws VMManagementException,
-			NetworkException {
+	public void migrationFailureandRetry() throws VMManagementException, NetworkException {
 		final PhysicalMachine pmnewtarget = createAndExecutePM();
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
-		centralVM.migrate(pmnewtarget.allocateResources(
-				pmnewtarget.getCapacities(), true,
-				PhysicalMachine.migrationAllocLen));
+		centralVM.migrate(
+				pmnewtarget.allocateResources(pmnewtarget.getCapacities(), true, PhysicalMachine.migrationAllocLen));
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("The VM is now expected to be running",
-				VirtualMachine.State.RUNNING, centralVM.getState());
+		Assert.assertEquals("The VM is now expected to be running", VirtualMachine.State.RUNNING, centralVM.getState());
 	}
 
 	@Test(expected = StateChangeException.class, timeout = 100)
-	public void migrationFailureandResume() throws VMManagementException,
-			NetworkException {
+	public void migrationFailureandResume() throws VMManagementException, NetworkException {
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
 		centralVM.resume();
 	}
 
 	@Test(timeout = 100)
-	public void suspendUseForOtherResume() throws VMManagementException,
-			NetworkException {
+	public void suspendUseForOtherResume() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
 		ConsumptionEventAssert first = new ConsumptionEventAssert(), second = new ConsumptionEventAssert();
 		centralVM.newComputeTask(1, 1, first);
 		long memless = pm.localDisk.getFreeStorageCapacity();
 		centralVM.suspend();
 		Timed.simulateUntilLastEvent();
-		VirtualMachine otherVM = pm.requestVM(va,
-				new AlterableResourceConstraints(pm.freeCapacities), repo, 1)[0];
+		VirtualMachine otherVM = pm.requestVM(va, new AlterableResourceConstraints(pm.freeCapacities), repo, 1)[0];
 		Timed.simulateUntilLastEvent();
 		otherVM.newComputeTask(1, 1, second);
 		Timed.simulateUntilLastEvent();
-		Assert.assertFalse(
-				"The first task should not be executed as it is in the suspended VM",
+		Assert.assertFalse("The first task should not be executed as it is in the suspended VM",
 				first.isCompleted() || first.isCancelled());
-		Assert.assertTrue("The second task should be complete by now",
-				second.isCompleted());
+		Assert.assertTrue("The second task should be complete by now", second.isCompleted());
 		otherVM.destroy(false);
-		centralVM.setResourceAllocation(pm.allocateResources(
-				pm.getCapacities(), true, PhysicalMachine.defaultAllocLen));
+		centralVM
+				.setResourceAllocation(pm.allocateResources(pm.getCapacities(), true, PhysicalMachine.defaultAllocLen));
 		centralVM.resume();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("The consumption should finish after resume",
-				first.isCompleted());
-		Assert.assertEquals(
-				"The PM's local storage should return to the original levels of free capacities",
-				memless, pm.localDisk.getFreeStorageCapacity());
+		Assert.assertTrue("The consumption should finish after resume", first.isCompleted());
+		Assert.assertEquals("The PM's local storage should return to the original levels of free capacities", memless,
+				pm.localDisk.getFreeStorageCapacity());
 	}
 
 	@Test(timeout = 100)
-	public void consumptionBlocking() throws VMManagementException,
-			NetworkException {
-		final VirtualMachine vm = pm.requestVM(va,
-				new AlterableResourceConstraints(pm.availableCapacities),
+	public void consumptionBlocking() throws VMManagementException, NetworkException {
+		final VirtualMachine vm = pm.requestVM(va, new AlterableResourceConstraints(pm.availableCapacities),
 				pm.localDisk, 1)[0];
-		ResourceConsumption conVM = new ResourceConsumption(100000,
-				ResourceConsumption.unlimitedProcessing, vm, pm,
+		ResourceConsumption conVM = new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, vm, pm,
 				new ConsumptionEventAssert());
-		Assert.assertFalse(
-				"A virtual machine should not allow registering a consumption in a non-running state",
+		Assert.assertFalse("A virtual machine should not allow registering a consumption in a non-running state",
 				conVM.registerConsumption());
 		Timed.simulateUntilLastEvent();
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
 	}
 
-	private boolean vmDestroyerinState(VirtualMachine.State st,
-			VirtualMachine vm) throws VMManagementException {
+	private boolean vmDestroyerinState(VirtualMachine.State st, VirtualMachine vm) throws VMManagementException {
 		if (vm.getState().equals(st)) {
 			vm.destroy(true);
 			return true;
@@ -726,8 +603,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void ensuringReleasewithDestroy() throws VMManagementException,
-			NetworkException {
+	public void ensuringReleasewithDestroy() throws VMManagementException, NetworkException {
 		for (final VirtualMachine.State st : VirtualMachine.State.values()) {
 			if (vmDestroyerinState(st, centralVM))
 				continue;
@@ -736,39 +612,34 @@ public class VMTest extends IaaSRelatedFoundation {
 			switchOnVMwithMaxCapacity(centralVM, false);
 			try {
 				if (!vmDestroyerinState(st, centralVM)) {
-					centralVM
-							.subscribeStateChange(new VirtualMachine.StateChange() {
-								@Override
-								public void stateChanged(VirtualMachine vmInt,
-										State oldState, State newState) {
-									try {
-										vmDestroyerinState(st, centralVM);
-									} catch (VMManagementException ex) {
-										marker[0] = true;
-									}
-								}
-							});
+					centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
+						@Override
+						public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
+							try {
+								vmDestroyerinState(st, centralVM);
+							} catch (VMManagementException ex) {
+								marker[0] = true;
+							}
+						}
+					});
 				}
 			} catch (VMManagementException e) {
 				marker[0] = true;
 			}
 			Timed.simulateUntilLastEvent();
 			if (marker[0]) {
-				Assert.assertEquals("Should be running from state " + st,
-						VirtualMachine.State.RUNNING, centralVM.getState());
+				Assert.assertEquals("Should be running from state " + st, VirtualMachine.State.RUNNING,
+						centralVM.getState());
 				centralVM.destroy(true);
 			} else {
-				Assert.assertEquals("Should be destroyed from state " + st,
-						VirtualMachine.State.DESTROYED, centralVM.getState());
+				Assert.assertEquals("Should be destroyed from state " + st, VirtualMachine.State.DESTROYED,
+						centralVM.getState());
 			}
 			Timed.simulateUntilLastEvent();
-			Assert.assertEquals(
-					"After the second destroy it should be destroyed from state "
-							+ st, VirtualMachine.State.DESTROYED,
-					centralVM.getState());
-			Assert.assertNull(
-					"Should not have any resource allocations starting from state "
-							+ st, centralVM.getResourceAllocation());
+			Assert.assertEquals("After the second destroy it should be destroyed from state " + st,
+					VirtualMachine.State.DESTROYED, centralVM.getState());
+			Assert.assertNull("Should not have any resource allocations starting from state " + st,
+					centralVM.getResourceAllocation());
 		}
 	}
 }

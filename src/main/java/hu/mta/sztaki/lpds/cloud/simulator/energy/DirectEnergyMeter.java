@@ -25,6 +25,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.PowerBehaviorChangeListener;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 
 /**
@@ -36,7 +37,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
  * 
  */
 public class DirectEnergyMeter extends EnergyMeter implements
-		ResourceSpreader.PowerBehaviorChangeListener,
+		PowerBehaviorChangeListener,
 		PowerState.PowerCharacteristicsChange {
 	private ResourceSpreader measuredResource;
 	private PowerState usedPowerState;
