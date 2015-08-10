@@ -23,39 +23,31 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import org.apache.commons.lang3.tuple.Triple;
+
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChange;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
-public class NonQueueingScheduler extends FirstFitScheduler {
+public class VMStateChangeNotificationHandler
+		implements SingleNotificationHandler<StateChange, Triple<VirtualMachine, State, State>> {
 
-	public NonQueueingScheduler(IaaSService parent) {
-		super(parent);
+	private static final VMStateChangeNotificationHandler handlerSingleton = new VMStateChangeNotificationHandler();
+
+	private VMStateChangeNotificationHandler() {
+
+	}
+
+	public static StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> getHandlerInstance() {
+		return new StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>>(handlerSingleton);
 	}
 
 	@Override
-	protected ConstantConstraints scheduleQueued() {
-		while (true) {
-			super.scheduleQueued();
-			if (queue.size() != 0) {
-				if (parent.runningMachines.size() == parent.machines.size()) {
-					QueueingData request;
-					if ((request = manageQueueRemoval()) != null) {
-						for (final VirtualMachine vm : request.queuedVMs) {
-							vm.setNonservable();
-						}
-					} else {
-						break;
-					}
-				} else {
-					break;
-				}
-			} else {
-				break;
-			}
-		}
-		return ConstantConstraints.noResources;
+	public void sendNotification(final StateChange onObject, Triple<VirtualMachine, State, State> stateData) {
+		onObject.stateChanged(stateData.getLeft(), stateData.getMiddle(), stateData.getRight());
 	}
 }

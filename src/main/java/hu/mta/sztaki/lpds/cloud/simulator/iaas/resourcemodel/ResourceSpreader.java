@@ -30,9 +30,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
-import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications.PowerStateChangeNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
@@ -50,7 +52,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
-public abstract class ResourceSpreader implements SingleNotificationHandler<PowerBehaviorChangeListener, PowerState> {
+public abstract class ResourceSpreader {
 
 	// These final variables define the base behavior of the class:
 	/**
@@ -73,8 +75,8 @@ public abstract class ResourceSpreader implements SingleNotificationHandler<Powe
 	public final List<ResourceConsumption> toBeAdded = Collections.unmodifiableList(underAddition);
 
 	private PowerState currentPowerBehavior;
-	private final StateDependentEventHandler<PowerBehaviorChangeListener, PowerState> powerBehaviorListenerManager = new StateDependentEventHandler<PowerBehaviorChangeListener, PowerState>(
-			this);
+	private final StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> powerBehaviorListenerManager = PowerStateChangeNotificationHandler
+			.getHandlerInstance();
 
 	protected long lastNotifTime = 0;
 	private double totalProcessed = 0;
@@ -565,13 +567,8 @@ public abstract class ResourceSpreader implements SingleNotificationHandler<Powe
 		}
 		if (currentPowerBehavior != newPowerBehavior) {
 			currentPowerBehavior = newPowerBehavior;
-			powerBehaviorListenerManager.notifyListeners(newPowerBehavior);
+			powerBehaviorListenerManager.notifyListeners(Pair.of(this, newPowerBehavior));
 		}
-	}
-
-	@Override
-	public void sendNotification(final PowerBehaviorChangeListener onObject, final PowerState newPowerBehavior) {
-		onObject.behaviorChanged(this, newPowerBehavior);
 	}
 
 	public void subscribePowerBehaviorChangeEvents(final PowerBehaviorChangeListener pbcl) {

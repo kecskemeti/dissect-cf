@@ -256,9 +256,9 @@ public abstract class Scheduler {
 		}
 	}
 
-	public List<VirtualMachine> getQueuedVMs() {
-		ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(queue.size());
-		for (QueueingData qd : queue) {
+	public final List<VirtualMachine> getQueuedVMs() {
+		final ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(queue.size());
+		for (final QueueingData qd : queue) {
 			vms.addAll(Arrays.asList(qd.queuedVMs));
 		}
 		return vms;

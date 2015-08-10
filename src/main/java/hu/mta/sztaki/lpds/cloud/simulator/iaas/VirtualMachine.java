@@ -29,18 +29,18 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications.VMStateChangeNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
-import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
 /**
@@ -137,7 +137,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
 	 * 
 	 */
-	private class EventSetup {
+	private static class EventSetup {
 
 		public final State expectedState;
 
@@ -149,13 +149,38 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * Implementing this function allows the implementor to provide a custom
 		 * VM state change function
 		 */
-		public void changeEvents() {
-			setState(expectedState);
+		public void changeEvents(final VirtualMachine onMe) {
+			onMe.setState(expectedState);
 		}
 	}
 
-	private final EventSetup sdEvent = new EventSetup(State.SHUTDOWN);
-	private final EventSetup susEvent = new EventSetup(State.SUSPENDED);
+	private static class StartupProcedure extends EventSetup {
+		public StartupProcedure() {
+			super(State.STARTUP);
+		}
+
+		@Override
+		public void changeEvents(final VirtualMachine onMe) {
+			final State preEventState = onMe.currState;
+			super.changeEvents(onMe);
+			try {
+				onMe.newComputeTask(onMe.va.getStartupProcessing(), onMe.ra.allocated.getRequiredProcessingPower(),
+						new ConsumptionEventAdapter() {
+							@Override
+							public void conComplete() {
+								super.conComplete();
+								onMe.setState(State.RUNNING);
+							}
+						});
+			} catch (NetworkException e) {
+				onMe.setState(preEventState);
+			}
+		}
+	};
+
+	private static final EventSetup sdEvent = new EventSetup(State.SHUTDOWN);
+	private static final EventSetup susEvent = new EventSetup(State.SUSPENDED);
+	private static final EventSetup switchonEvent = new StartupProcedure();
 
 	private VirtualAppliance va;
 	private PhysicalMachine.ResourceAllocation ra = null;
@@ -238,13 +263,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	public final static EnumSet<State> preScheduleState = EnumSet.of(State.DESTROYED, State.NONSERVABLE);
 
 	private State currState = State.DESTROYED;
-	private final StateDependentEventHandler<StateChange, Pair<State, State>> vmStateChangelistenerManager = new StateDependentEventHandler<StateChange, Pair<State, State>>(
-			new SingleNotificationHandler<StateChange, Pair<State, State>>() {
-				@Override
-				public void sendNotification(final StateChange onObject, Pair<State, State> stateData) {
-					onObject.stateChanged(VirtualMachine.this, stateData.getLeft(), stateData.getRight());
-				}
-			});
+	private final StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> vmStateChangelistenerManager = VMStateChangeNotificationHandler
+			.getHandlerInstance();
 
 	public static final float loadwhilenotrunning = 0.2f;
 
@@ -274,7 +294,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	private void setState(final State newstate) {
 		final State oldState = currState;
 		currState = newstate;
-		vmStateChangelistenerManager.notifyListeners(Pair.of(oldState, newstate));
+		vmStateChangelistenerManager.notifyListeners(Triple.of(this, oldState, newstate));
 	}
 
 	/**
@@ -331,7 +351,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		@Override
 		public void conComplete() {
 			disk = target.lookup(diskid);
-			esetup.changeEvents();
+			esetup.changeEvents(VirtualMachine.this);
 		}
 	}
 
@@ -385,26 +405,6 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	}
 
-	final EventSetup switchonEvent = new EventSetup(State.STARTUP) {
-		@Override
-		public void changeEvents() {
-			final State preEventState = currState;
-			super.changeEvents();
-			try {
-				newComputeTask(va.getStartupProcessing(), ra.allocated.getRequiredProcessingPower(),
-						new ConsumptionEventAdapter() {
-					@Override
-					public void conComplete() {
-						super.conComplete();
-						setState(State.RUNNING);
-					}
-				});
-			} catch (NetworkException e) {
-				setState(preEventState);
-			}
-		}
-	};
-
 	/**
 	 * Initiates the startup procedure of a VM. If the VM is in destroyed state
 	 * then it ensures the disk image for the VM is ready to be used.
@@ -434,7 +434,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				throw new VMManagementException("VM was not prepared for this PM");
 			}
 			setResourceAllocation(allocation);
-			switchonEvent.changeEvents();
+			switchonEvent.changeEvents(this);
 			break;
 		default:
 			throw new StateChangeException("The VM is not shut down or destroyed");
@@ -571,8 +571,8 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 			suspend(new EventSetup(State.MIGRATING) {
 				@Override
-				public void changeEvents() {
-					super.changeEvents();
+				public void changeEvents(final VirtualMachine onMe) {
+					super.changeEvents(onMe);
 					try {
 						actualMigration(target);
 					} catch (NetworkException e) {
@@ -692,7 +692,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			public void conComplete() {
 				ra.release();
 				ra = null;
-				ev.changeEvents();
+				ev.changeEvents(VirtualMachine.this);
 			}
 		}
 		if (!pmdisk.storeInMemoryObject(savedmemory, new SuspendComplete())) {
