@@ -40,8 +40,8 @@ public class PMIterator implements Iterator<PhysicalMachine> {
 	}
 
 	public void reset() {
-		restart();
 		maxIndex = pmList.size();
+		restart();
 	}
 
 	public void restart() {
