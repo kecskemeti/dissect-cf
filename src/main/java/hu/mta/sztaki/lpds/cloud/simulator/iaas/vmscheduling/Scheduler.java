@@ -81,8 +81,9 @@ public abstract class Scheduler {
 		@Override
 		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
-				freeResourcesSinceLastSchedule.singleAdd(pm.freeCapacities);
-				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0) {
+				freeResourcesSinceLastSchedule.add(pm.freeCapacities);
+				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0
+						&& totalQueued.getRequiredCPUs() != 0) {
 					invokeRealScheduler();
 				}
 			}
