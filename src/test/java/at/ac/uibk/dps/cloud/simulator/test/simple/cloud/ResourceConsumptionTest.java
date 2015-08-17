@@ -70,7 +70,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				con.getProcessingLimit(), 0);
 		Assert.assertTrue(
 				"Real processing power should be always smaller than equal to the processing limit",
-				con.getRealLimitPerSecond() <= con.getProcessingLimit());
+				con.getRealLimit() <= con.getProcessingLimit());
 		con.registerConsumption();
 		try {
 			con.setConsumer(utilize);

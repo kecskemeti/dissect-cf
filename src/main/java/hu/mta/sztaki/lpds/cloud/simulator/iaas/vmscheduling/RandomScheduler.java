@@ -23,34 +23,23 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package hu.mta.sztaki.lpds.cloud.simulator.energy;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RandomIterator;
 
-/**
- * Derives VM consumption from its hosting PM.
- * 
- * Does not support migrations, and provides only a rough estimate on the energy
- * cost of actions taken by the particular VM.
- * 
- * @author gaborkecskemeti
- * 
- */
-public class SimpleVMEnergyMeter extends PhysicalMachineEnergyMeter {
-	/**
-	 * Cannot be created for unallocated VMs!
-	 * 
-	 * @param vm
-	 */
-	public SimpleVMEnergyMeter(final VirtualMachine vm) {
-		super(vm.getResourceAllocation().host);
+public class RandomScheduler extends FirstFitScheduler {
+	private final RandomIterator rit;
+
+	public RandomScheduler(IaaSService parent) {
+		super(parent);
+		rit = new RandomIterator(parent.runningMachines);
 	}
 
-	/**
-	 * cons(PM)/NumVMs(PM)
-	 */
 	@Override
-	public double getTotalConsumption() {
-		return super.getTotalConsumption() / getObserved().numofCurrentVMs();
+	protected PMIterator getPMIterator() {
+		rit.reset();
+		return rit;
 	}
 }

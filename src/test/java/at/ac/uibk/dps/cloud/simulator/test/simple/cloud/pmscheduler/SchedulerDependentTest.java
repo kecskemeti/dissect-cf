@@ -25,20 +25,21 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
 
-import java.util.HashSet;
-
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService.IaaSHandlingException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+
+import java.util.HashSet;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,7 +53,8 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 
 	@Before
 	public void resetSim() throws Exception {
-		basic = setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 2);
+		basic = setupIaaS(FirstFitScheduler.class,
+				SchedulingDependentMachines.class, 2, 1);
 		repo = basic.repositories.get(0);
 	}
 
@@ -67,13 +69,14 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 				basic.runningMachines.size());
 	}
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void simpleLoadTest() throws VMManagementException, NetworkException {
 		final HashSet<PhysicalMachine> affectedpms = new HashSet<PhysicalMachine>();
 		for (final PhysicalMachine pm : basic.machines) {
 			pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 				@Override
-				public void stateChanged(State oldState, State newState) {
+				public void stateChanged(PhysicalMachine pm, State oldState,
+						State newState) {
 					affectedpms.add(pm);
 				}
 			});
@@ -124,9 +127,11 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void smallVMLoadTest() throws VMManagementException,
 			NetworkException {
+		AlterableResourceConstraints rc = new AlterableResourceConstraints(
+				basic.machines.get(0).getCapacities());
+		rc.multiply(0.5);
 		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo
-				.contents().iterator().next(), basic.machines.get(0)
-				.getCapacities().multiply(0.5), repo, 2);
+				.contents().iterator().next(), rc, repo, 2);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Should only switch on a single PM", 1,
 				basic.runningMachines.size());

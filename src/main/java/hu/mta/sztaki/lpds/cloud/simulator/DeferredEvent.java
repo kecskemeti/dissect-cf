@@ -25,27 +25,104 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
-public abstract class DeferredEvent extends Timed {
+import org.apache.commons.lang3.tuple.MutablePair;
 
-	private boolean cancelled = false;
+import gnu.trove.map.hash.TLongObjectHashMap;
 
-	public DeferredEvent(long delay) {
-		if (delay > 0) {
-			subscribe(delay);
-		} else {
-			eventAction();
+public abstract class DeferredEvent {
+
+	private static final TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>> toSweep = new TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>>();
+	private static final AggregatedEventDispatcher dispatcherSingleton = new AggregatedEventDispatcher();
+
+	private static class AggregatedEventDispatcher extends Timed {
+		@Override
+		public void tick(long fires) {
+			final MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.remove(fires);
+			if (simultaneousReceiverPairs != null) {
+				final int len = simultaneousReceiverPairs.getLeft();
+				final DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+				for (int i = 0; i < len; i++) {
+					simultaneousReceivers[i].eventAction();
+					simultaneousReceivers[i].received = true;
+				}
+			}
+			updateDispatcher();
+		}
+
+		private void updateDispatcher() {
+			if (toSweep.isEmpty()) {
+				unsubscribe();
+				return;
+			}
+			final long[] keys = toSweep.keys();
+			long minkey = Long.MAX_VALUE;
+			for (long key : keys) {
+				if (key < minkey) {
+					minkey = key;
+				}
+			}
+			updateFrequency(minkey - getFireCount());
 		}
 	}
 
-	@Override
-	public void tick(final long fires) {
-		eventAction();
-		unsubscribe();
+	private boolean cancelled = false;
+	private boolean received = false;
+	private final long eventArrival;
+
+	public DeferredEvent(final long delay) {
+		eventArrival = Timed.calcTimeJump(delay);
+		if (delay <= 0) {
+			eventAction();
+			received = true;
+			return;
+		}
+		MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
+		if (simultaneousReceiverPairs == null) {
+			simultaneousReceiverPairs = new MutablePair<Integer, DeferredEvent[]>(0, new DeferredEvent[5]);
+			toSweep.put(eventArrival, simultaneousReceiverPairs);
+		}
+		int len = simultaneousReceiverPairs.getLeft();
+		DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+		if (len == simultaneousReceivers.length) {
+			DeferredEvent[] temp = new DeferredEvent[simultaneousReceivers.length * 2];
+			System.arraycopy(simultaneousReceivers, 0, temp, 0, len);
+			simultaneousReceivers = temp;
+			simultaneousReceiverPairs.setRight(temp);
+		}
+		simultaneousReceivers[len++] = this;
+		simultaneousReceiverPairs.setLeft(len);
+		if (!dispatcherSingleton.isSubscribed() || dispatcherSingleton.getNextEvent() > eventArrival) {
+			dispatcherSingleton.updateDispatcher();
+		}
 	}
 
 	public void cancel() {
-		cancelled = isSubscribed() ? true : cancelled;
-		unsubscribe();
+		if (received)
+			return;
+		if (!cancelled) {
+			cancelled = true;
+			MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
+			if (simultaneousReceiverPairs != null) {
+				int len = simultaneousReceiverPairs.getLeft();
+				DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
+				for (int i = 0; i < len; i++) {
+					if (simultaneousReceivers[i] == this) {
+						len--;
+						if (len > i) {
+							simultaneousReceivers[i] = simultaneousReceivers[len];
+						}
+						simultaneousReceivers[len] = null;
+						break;
+					}
+				}
+				if (len == 0) {
+					toSweep.remove(eventArrival);
+					dispatcherSingleton.updateDispatcher();
+				} else {
+					simultaneousReceiverPairs.setLeft(len);
+				}
+			}
+		}
 	}
 
 	public boolean isCancelled() {
@@ -53,4 +130,8 @@ public abstract class DeferredEvent extends Timed {
 	}
 
 	protected abstract void eventAction();
+
+	static void reset() {
+		toSweep.clear();
+	}
 }

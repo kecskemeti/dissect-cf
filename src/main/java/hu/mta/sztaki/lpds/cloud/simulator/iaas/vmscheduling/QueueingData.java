@@ -25,11 +25,14 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import java.util.HashMap;
-
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+
+import java.util.Collections;
+import java.util.Map;
 
 public class QueueingData {
 	public final VirtualMachine[] queuedVMs;
@@ -39,18 +42,20 @@ public class QueueingData {
 	/**
 	 * Data for custom schedulers, if null then there is no data.
 	 */
-	public final HashMap<String, Object> schedulingConstraints;
+	public final Map<String, Object> schedulingConstraints;
 	public final long receivedTime;
 
 	public QueueingData(final VirtualMachine[] vms,
 			final ResourceConstraints rc, final Repository vaSource,
-			HashMap<String, Object> schedulingConstraints, final long received) {
+			Map<String, Object> schedulingConstraints, final long received) {
 		queuedVMs = vms;
 		queuedRC = rc;
 		queuedRepo = vaSource;
-		cumulativeRC = queuedRC.multiply(queuedVMs.length);
+		AlterableResourceConstraints cRC = new AlterableResourceConstraints(rc);
+		cRC.multiply(queuedVMs.length);
+		cumulativeRC=new UnalterableConstraintsPropagator(cRC);
 		receivedTime = received;
-		this.schedulingConstraints = schedulingConstraints;
+		this.schedulingConstraints = schedulingConstraints==null?null:Collections.unmodifiableMap(schedulingConstraints);
 	}
 
 	@Override

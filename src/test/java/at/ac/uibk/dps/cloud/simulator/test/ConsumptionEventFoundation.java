@@ -30,7 +30,7 @@ import org.junit.Before;
 public class ConsumptionEventFoundation extends TestFoundation {
 	@Before
 	public void resetConsumptions() {
-		ConsumptionEventAssert.hits.clear();
+		ConsumptionEventAssert.resetHits();
 	}
 
 }

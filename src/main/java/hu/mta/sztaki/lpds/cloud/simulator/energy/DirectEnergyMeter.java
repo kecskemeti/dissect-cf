@@ -25,6 +25,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.PowerBehaviorChangeListener;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 
 /**
@@ -36,7 +37,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
  * 
  */
 public class DirectEnergyMeter extends EnergyMeter implements
-		ResourceSpreader.PowerBehaviorChangeListener,
+		PowerBehaviorChangeListener,
 		PowerState.PowerCharacteristicsChange {
 	private ResourceSpreader measuredResource;
 	private PowerState usedPowerState;
@@ -68,18 +69,22 @@ public class DirectEnergyMeter extends EnergyMeter implements
 
 	@Override
 	public void stopMeter() {
-		super.stopMeter();
-		usedPowerState.unsubscribePowerCharacteristicsChanges(this);
-		measuredResource.unsubscribePowerBehaviorChangeEvents(this);
+		if (isSubscribed()) {
+			super.stopMeter();
+			usedPowerState.unsubscribePowerCharacteristicsChanges(this);
+			measuredResource.unsubscribePowerBehaviorChangeEvents(this);
+		}
 	}
 
 	@Override
 	public void behaviorChanged(final ResourceSpreader onSpreader,
 			final PowerState newState) {
-		usedPowerState.unsubscribePowerCharacteristicsChanges(this);
-		usedPowerState = newState;
-		usedPowerState.subscribePowerCharacteristicsChanges(this);
-		readjustMeter();
+		if (isSubscribed()) {
+			usedPowerState.unsubscribePowerCharacteristicsChanges(this);
+			usedPowerState = newState;
+			usedPowerState.subscribePowerCharacteristicsChanges(this);
+			readjustMeter();
+		}
 	}
 
 	@Override

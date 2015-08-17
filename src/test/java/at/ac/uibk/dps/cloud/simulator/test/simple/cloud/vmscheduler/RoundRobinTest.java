@@ -26,6 +26,8 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmscheduler;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.RoundRobinScheduler;
 
@@ -37,30 +39,36 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class RoundRobinTest extends IaaSRelatedFoundation {
-	public static int maxPMCount = 10;
-	public static int VMcount = 1000;
-	public static int vmspread = 100;
-	public static double proclen = 5;
 
 	@Test(timeout = 100)
 	public void regularVMSchedule() throws InstantiationException,
 			IllegalAccessException, IllegalArgumentException,
 			InvocationTargetException, NoSuchMethodException, SecurityException {
-		IaaSService iaas = new IaaSService(RoundRobinScheduler.class,
-				SchedulingDependentMachines.class);
-		iaas.registerHost(dummyPMcreator(2));
-		iaas.registerHost(dummyPMcreator(2));
-		iaas.registerRepository(dummyRepoCreator(true));
+		IaaSService iaas = setupIaaS(RoundRobinScheduler.class,
+				SchedulingDependentMachines.class, 2, 2);
 		Assert.assertTrue("No machines should be running now",
 				iaas.runningMachines.isEmpty());
 		fireVMat(iaas, 50, 5000, 1);
 		fireVMat(iaas, 200, 5000, 1);
 		fireVMat(iaas, 500, 5000, 1);
 		Timed.simulateUntil(Timed.getFireCount() + 400);
-		Assert.assertEquals("Only one machine should be running now",
-				1, iaas.runningMachines.size());
+		Assert.assertEquals("Only one machine should be running now", 1,
+				iaas.runningMachines.size());
 		Timed.simulateUntil(Timed.getFireCount() + 300);
-		Assert.assertEquals("Both machines should be running now",
-				2, iaas.runningMachines.size());
+		Assert.assertEquals("Both machines should be running now", 2,
+				iaas.runningMachines.size());
+	}
+
+	@Test(timeout = 100)
+	public void seqVMSchedule() throws Exception {
+		IaaSService iaas = setupIaaS(RoundRobinScheduler.class,
+				AlwaysOnMachines.class, 2, 2);
+		fireVMat(iaas, 50, 5000, 1);
+		fireVMat(iaas, 51, 5000, 1);
+		Timed.simulateUntil(Timed.getFireCount() + 400);
+		for (PhysicalMachine pm : iaas.machines) {
+			Assert.assertEquals("Should not be any PM with more than one VM",
+					1, pm.numofCurrentVMs());
+		}
 	}
 }

@@ -44,7 +44,7 @@ import java.util.PriorityQueue;
  * 
  */
 public class MonitorConsumption extends Timed {
-	private class SpreadingRecord implements Comparable<SpreadingRecord> {
+	private static class SpreadingRecord implements Comparable<SpreadingRecord> {
 		public long timestamp;
 		public double totalProcessed;
 

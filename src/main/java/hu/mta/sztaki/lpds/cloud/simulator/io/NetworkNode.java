@@ -30,7 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
-import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class represents a networked element in the system. The class also
@@ -108,9 +108,11 @@ public class NetworkNode {
 	public final MaxMinProvider outbws;
 	public final MaxMinConsumer diskinbws;
 	public final MaxMinProvider diskoutbws;
+	public final MaxMinConsumer meminbws;
+	public final MaxMinProvider memoutbws;
 
 	private final String name;
-	private final HashMap<String, Integer> latencies;
+	private final Map<String, Integer> latencies;
 
 	/**
 	 * This function initializes the bandwidth spreaders for the node to ensure
@@ -125,12 +127,17 @@ public class NetworkNode {
 	 */
 	public NetworkNode(final String id, final long maxInBW,
 			final long maxOutBW, final long diskBW,
-			final HashMap<String, Integer> latencymap) {
+			final Map<String, Integer> latencymap) {
 		name = id;
 		outbws = new MaxMinProvider(maxOutBW);
 		inbws = new MaxMinConsumer(maxInBW);
 		diskinbws = new MaxMinConsumer(diskBW / 2f);
 		diskoutbws = new MaxMinProvider(diskBW / 2f);
+		// Just making sure we will have enough bandwidht for every operation we
+		// could possibly have
+		final double memBW = (maxOutBW + maxInBW + diskBW);
+		meminbws = new MaxMinConsumer(memBW);
+		memoutbws = new MaxMinProvider(memBW);
 		latencies = latencymap;
 	}
 
@@ -191,6 +198,20 @@ public class NetworkNode {
 		}
 	}
 
+	public ResourceConsumption pushFromMemory(final long size,
+			final double limit, boolean toDisk,
+			final ResourceConsumption.ConsumptionEvent e) {
+		return new SingleTransfer(0, size, limit, toDisk ? diskinbws : inbws,
+				memoutbws, e);
+	}
+
+	public ResourceConsumption readToMemory(final long size,
+			final double limit, boolean fromDisk,
+			final ResourceConsumption.ConsumptionEvent e) {
+		return new SingleTransfer(0, size, limit, meminbws,
+				fromDisk ? diskoutbws : outbws, e);
+	}
+
 	public static int checkConnectivity(final NetworkNode from,
 			final NetworkNode to) throws NetworkException {
 		if (from == to) {
@@ -211,8 +232,8 @@ public class NetworkNode {
 	public String toString() {
 		return "NetworkNode(Id:" + name + " NI:" + getInputbw() + ",NO:"
 				+ getOutputbw() + " -- RX:" + inbws.getTotalProcessed()
-				+ " TX:" + outbws.getTotalProcessed() + " --, D:"
-				+ getDiskbw() + ")";
+				+ " TX:" + outbws.getTotalProcessed() + " --, D:" + getDiskbw()
+				+ ")";
 	}
 
 }

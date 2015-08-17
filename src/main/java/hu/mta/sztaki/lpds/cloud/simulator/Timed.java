@@ -31,8 +31,7 @@ import java.util.PriorityQueue;
  * This is the base class for the simulation, every class that should receive
  * timing events should extend this and implement the function named "tick".
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
@@ -96,13 +95,12 @@ public abstract class Timed implements Comparable<Timed> {
 
 	private void updateEvent(final long freq) {
 		if (freq < 0) {
-			throw new IllegalStateException(
-					"ERROR: Negative event frequency cannot simulate further!");
+			throw new IllegalStateException("ERROR: Negative event frequency cannot simulate further!");
 		} else {
 			frequency = freq;
 			nextEvent = calcTimeJump(freq);
 			if (nextEvent == Long.MAX_VALUE) {
-				throw new IllegalStateException("Event to never occur!");
+				throw new IllegalStateException("Event to never occur: " + freq);
 			}
 		}
 	}
@@ -121,10 +119,9 @@ public abstract class Timed implements Comparable<Timed> {
 
 	@Override
 	public int compareTo(final Timed o) {
-		final int unalteredResult = nextEvent < o.nextEvent ? -1
-				: nextEvent == o.nextEvent ? 0 : 1;
-		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0
-				: -1) : (backPreference ? 1 : 0)) : unalteredResult;
+		final int unalteredResult = nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
+		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0 : -1) : (backPreference ? 1 : 0))
+				: unalteredResult;
 	}
 
 	protected void setBackPreference(final boolean backPreference) {
@@ -132,8 +129,7 @@ public abstract class Timed implements Comparable<Timed> {
 	}
 
 	public static final void fire() {
-		while (!timedlist.isEmpty()
-				&& timedlist.peek().nextEvent == fireCounter) {
+		while (!timedlist.isEmpty() && timedlist.peek().nextEvent == fireCounter) {
 			final Timed t = underProcessing = timedlist.poll();
 			t.tick(fireCounter);
 			if (t.activeSubscription) {
@@ -145,7 +141,7 @@ public abstract class Timed implements Comparable<Timed> {
 		fireCounter++;
 	}
 
-	private static long calcTimeJump(long jump) {
+	public static long calcTimeJump(long jump) {
 		final long targettime = fireCounter + jump;
 		return targettime < 0 ? Long.MAX_VALUE : targettime;
 	}
@@ -162,17 +158,35 @@ public abstract class Timed implements Comparable<Timed> {
 		}
 	}
 
+	/**
+	 * Jumps the time until the time given by the user. If some events supposed
+	 * to happen during the jumped time period, then this function cancels them.
+	 * If some events should be recurring during the period, then the first
+	 * recurrence of the event will be after the given time instance. If the
+	 * given time instance has already occurred then this function does nothing!
+	 * 
+	 * @param desiredTime
+	 *            the time at which the simulation should continue after this
+	 *            call. If the time given here already happened then this
+	 *            function will have no effect.
+	 */
 	public static final void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
-		if (timedlist.peek() != null) {
-			while (timedlist.peek().nextEvent < desiredTime) {
-				final Timed t = timedlist.poll();
-				final long oldfreq = t.frequency;
-				t.updateFrequency(distance + (oldfreq - distance % oldfreq));
-				t.frequency = oldfreq;
+		if (distance > 0) {
+			if (timedlist.peek() != null) {
+				while (timedlist.peek().nextEvent < desiredTime) {
+					final Timed t = timedlist.poll();
+					final long oldfreq = t.frequency;
+					long tempFreq = distance;
+					if (oldfreq != 0) {
+						tempFreq += oldfreq - distance % oldfreq;
+					}
+					t.updateFrequency(tempFreq);
+					t.frequency = oldfreq;
+				}
 			}
+			fireCounter = desiredTime;
 		}
-		fireCounter = desiredTime;
 	}
 
 	public static final long getFireCount() {
@@ -205,13 +219,15 @@ public abstract class Timed implements Comparable<Timed> {
 
 	public static final void resetTimed() {
 		timedlist.clear();
+		DeferredEvent.reset();
 		underProcessing = null;
 		fireCounter = 0;
 	}
 
 	@Override
 	public String toString() {
-		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")").toString();
+		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")")
+				.toString();
 	}
 
 	public abstract void tick(long fires);

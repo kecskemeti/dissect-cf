@@ -25,11 +25,11 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple;
 
-import java.util.Random;
-
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;

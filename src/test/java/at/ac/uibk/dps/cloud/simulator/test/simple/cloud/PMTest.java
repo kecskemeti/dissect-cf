@@ -29,10 +29,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -52,42 +55,43 @@ import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 public class PMTest extends IaaSRelatedFoundation {
 	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
-	final static ResourceConstraints smallConstraints = new ResourceConstraints(
+	final static ResourceConstraints smallConstraints = new ConstantConstraints(
 			reqcores / 2, reqProcessing, reqmem / 2);
-	final static ResourceConstraints overCPUConstraints = new ResourceConstraints(
+	final static ResourceConstraints overCPUConstraints = new ConstantConstraints(
 			reqcores * 2, reqProcessing, reqmem);
-	final static ResourceConstraints overMemoryConstraints = new ResourceConstraints(
+	final static ResourceConstraints overMemoryConstraints = new ConstantConstraints(
 			reqcores, reqProcessing, reqmem * 2);
-	final static ResourceConstraints overProcessingConstraints = new ResourceConstraints(
+	final static ResourceConstraints overProcessingConstraints = new ConstantConstraints(
 			reqcores, reqProcessing * 2, reqmem);
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
+	Repository reqDisk;
 	HashMap<String, Integer> latmap = new HashMap<String, Integer>();
 
 	@Before
 	public void initializeTests() throws Exception {
-		ConsumptionEventAssert.hits.clear();
 		latmap.put(pmid, 1);
-		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem,
-				new Repository(123, pmid, 456, 789, 12,
-						new HashMap<String, Integer>()), reqond, reqoffd,
-				defaultTransitions);
+		reqDisk = new Repository(123, pmid, 456, 789, 12,
+				new HashMap<String, Integer>());
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				reqond, reqoffd, defaultTransitions);
 	}
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void constructionTest() {
-		Assert.assertEquals("Cores mismatch", reqcores,
-				(int) pm.getCapacities().requiredCPUs);
-		Assert.assertEquals("Memory mismatch", reqmem,
-				(int) pm.getCapacities().requiredMemory);
+		Assert.assertEquals("Cores mismatch", reqcores, (int) pm
+				.getCapacities().getRequiredCPUs());
+		Assert.assertEquals("Memory mismatch", reqmem, (int) pm.getCapacities()
+				.getRequiredMemory());
 		Assert.assertEquals("Per core processing power mismatch",
-				reqProcessing, (int) pm.getCapacities().requiredProcessingPower);
+				reqProcessing, (int) pm.getCapacities()
+						.getRequiredProcessingPower());
 		Assert.assertEquals("Total processing power mismatch", reqcores
 				* reqProcessing, (int) pm.getPerTickProcessingPower());
-		Assert.assertEquals("On delay mismatch", reqond, pm.onDelay);
-		Assert.assertEquals("Off delay mismatch", reqoffd, pm.offDelay);
-		Assert.assertTrue("Free capacity mismatch", pm.getFreeCapacities()
-				.compareTo(pm.getCapacities()) == 0);
+		Assert.assertEquals("On delay mismatch", reqond,
+				pm.getCurrentOnOffDelay());
+		Assert.assertTrue("Free capacity mismatch",
+				pm.freeCapacities.compareTo(pm.getCapacities()) == 0);
 		Assert.assertTrue("Machine's id is not in the machine's toString", pm
 				.toString().contains(pmid));
 		Assert.assertEquals("Machine's state is not initial",
@@ -107,7 +111,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<String> list = new ArrayList<String>();
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				list.add(newState.toString());
 			}
 		});
@@ -137,7 +142,8 @@ public class PMTest extends IaaSRelatedFoundation {
 			final String message) {
 		return new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				Assert.fail(message);
 			}
 		};
@@ -168,7 +174,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		long after = Timed.getFireCount();
 		Assert.assertEquals(
 				"Off and on delays are not executed to their full extent", 2
-						* pm.onDelay + pm.offDelay, after - before - 1);
+						* reqond + reqoffd, after - before - 1);
 		pm.subscribeStateChangeEvents(sl);
 		pm.turnon(); // After already running
 		pm.unsubscribeStateChangeEvents(sl);
@@ -250,7 +256,10 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void failingDirectVMRequest() throws VMManagementException,
 			NetworkException {
 		preparePM();
-		VirtualMachine[] vms = requestVMs(smallConstraints.multiply(2), null, 2);
+		AlterableResourceConstraints arc = new AlterableResourceConstraints(
+				smallConstraints);
+		arc.multiply(2);
+		VirtualMachine[] vms = requestVMs(arc, null, 2);
 		Assert.assertArrayEquals(
 				"If the PM cannot fulfill all VM requests then it should not accept a single one",
 				new VirtualMachine[] { null, null }, vms);
@@ -260,8 +269,10 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void swithchoffWhileRunningVMs() throws VMManagementException,
 			NetworkException {
 		preparePM();
-		VirtualMachine[] vms = requestVMs(smallConstraints.multiply(0.5), null,
-				4);
+		AlterableResourceConstraints arc = new AlterableResourceConstraints(
+				smallConstraints);
+		arc.multiply(0.5);
+		VirtualMachine[] vms = requestVMs(arc, null, 4);
 		Timed.simulateUntilLastEvent();
 		Assert.assertFalse(
 				"Should not be able to terminate a PM while VMs are running on it",
@@ -340,18 +351,19 @@ public class PMTest extends IaaSRelatedFoundation {
 	public void checkIncreasingFreeCapacityNotifications()
 			throws VMManagementException, NetworkException {
 		preparePM();
-		ResourceConstraints beforeCreation = pm.getFreeCapacities();
+		ResourceConstraints beforeCreation = new AlterableResourceConstraints(
+				pm.freeCapacities);
 		VirtualMachine[] vm = requestVMs(smallConstraints, null, 2);
-		ResourceConstraints afterRequest = pm.getFreeCapacities();
+		ResourceConstraints afterRequest = new AlterableResourceConstraints(
+				pm.freeCapacities);
 		Assert.assertTrue("Unallocated resouce capacity maintanance failure",
-				afterRequest.requiredCPUs == 0);
+				afterRequest.getRequiredCPUs() == 0);
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue("PM should report that it hosts VMs",
 				pm.isHostingVMs());
-		ResourceConstraints afterCreation = pm.getFreeCapacities();
 		Assert.assertTrue(
 				"Unallocated resource capacity should not change after request",
-				afterRequest.compareTo(afterCreation) == 0);
+				afterRequest.compareTo(pm.freeCapacities) == 0);
 		final ArrayList<ResourceConstraints> eventReceived = new ArrayList<ResourceConstraints>();
 		PhysicalMachine.CapacityChangeEvent<ResourceConstraints> ev = new PhysicalMachine.CapacityChangeEvent<ResourceConstraints>() {
 			@Override
@@ -368,9 +380,12 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(
 				"Mismach in the expected number of free capacity increase events",
 				1, eventReceived.size());
+		AlterableResourceConstraints upd = new AlterableResourceConstraints(
+				eventReceived.get(0));
+		upd.multiply(2);
 		Assert.assertTrue(
 				"Mismach in the expected free capacity between the event and query",
-				beforeCreation.compareTo(eventReceived.get(0).multiply(2)) == 0);
+				beforeCreation.compareTo(upd) == 0);
 		pm.unsubscribeFromIncreasingFreeCapacityChanges(ev);
 		vm[1].destroy(false);
 		Timed.simulateUntilLastEvent();
@@ -407,12 +422,14 @@ public class PMTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("On delay misreported after on-off cycle", reqond,
 				pm.getCurrentOnOffDelay());
+		long switchOnRequestTime = Timed.getFireCount();
 		pm.turnon();
-		Timed.simulateUntil(Timed.getFireCount() + timeDiff);
+		Timed.simulateUntil(switchOnRequestTime + timeDiff);
 		pm.switchoff(null);
-		Assert.assertEquals("Delays should add up together", reqoffd + reqond
-				- timeDiff, pm.getCurrentOnOffDelay());
 		Timed.simulateUntilLastEvent();
+		long completeSwithcOffTime = Timed.getFireCount();
+		Assert.assertEquals("Delays should add up together", reqoffd + reqond,
+				completeSwithcOffTime - switchOnRequestTime - 1);
 	}
 
 	@Test(timeout = 100)
@@ -505,7 +522,9 @@ public class PMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void obeseConsumptionRequestTest() throws VMManagementException {
 		preparePM();
-		ResourceConstraints obese = smallConstraints.multiply(3);
+		AlterableResourceConstraints obese = new AlterableResourceConstraints(
+				smallConstraints);
+		obese.multiply(3);
 		Assert.assertFalse(
 				"The PM should not allow such big requests as hostable",
 				pm.isHostableRequest(obese));
@@ -585,8 +604,10 @@ public class PMTest extends IaaSRelatedFoundation {
 		VirtualAppliance va = new VirtualAppliance("MyVA", 3000, 0, false,
 				first.localDisk.getFreeStorageCapacity() / 10);
 		first.localDisk.registerObject(va);
-		VirtualMachine[] vms = first.requestVM(va, first.getCapacities()
-				.multiply(0.5), first.localDisk, 2);
+		AlterableResourceConstraints rc = new AlterableResourceConstraints(
+				first.getCapacities());
+		rc.multiply(0.5);
+		VirtualMachine[] vms = first.requestVM(va, rc, first.localDisk, 2);
 		Timed.simulateUntilLastEvent();
 		vms[0].newComputeTask(1, 1, new ConsumptionEventAssert());
 		vms[1].newComputeTask(1, 1, new ConsumptionEventAssert());
@@ -595,7 +616,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Both tasks should be finished by now", 2,
 				ConsumptionEventAssert.hits.size());
 		Assert.assertEquals("The VM should be on the second machine now",
-				second, vms[0].getResourceAllocation().host);
+				second, vms[0].getResourceAllocation().getHost());
 		Assert.assertEquals("The first PM should be off now",
 				PhysicalMachine.State.OFF, first.getState());
 	}
@@ -606,7 +627,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<PhysicalMachine.State> changehits = new ArrayList<PhysicalMachine.State>();
 		PhysicalMachine.StateChangeListener sl = new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				changehits.add(newState);
 				pm.unsubscribeStateChangeEvents(this);
 			}
@@ -632,7 +654,8 @@ public class PMTest extends IaaSRelatedFoundation {
 		final ArrayList<PhysicalMachine.State> statelist = new ArrayList<PhysicalMachine.State>();
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			@Override
-			public void stateChanged(State oldState, State newState) {
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
 				statelist.add(newState);
 				try {
 					if (newState.equals(PhysicalMachine.State.RUNNING)) {
@@ -672,4 +695,140 @@ public class PMTest extends IaaSRelatedFoundation {
 				conVM.registerConsumption());
 	}
 
+	@Test(timeout = 100)
+	public void parallelVMMuse() throws VMManagementException, NetworkException {
+		preparePM();
+		VirtualAppliance va = (VirtualAppliance) pm.localDisk.contents()
+				.iterator().next();
+		final VirtualMachine vm = pm.requestVM(va, pm.getCapacities(),
+				pm.localDisk, 1)[0];
+		Timed.simulateUntilLastEvent();
+		long startTime = Timed.getFireCount();
+		vm.newComputeTask(aSecond, ResourceConsumption.unlimitedProcessing,
+				new ConsumptionEventAssert());
+		Timed.simulateUntilLastEvent();
+		vm.newComputeTask(aSecond, ResourceConsumption.unlimitedProcessing,
+				new ConsumptionEventAssert() {
+					@Override
+					public void conComplete() {
+						super.conComplete();
+						try {
+							vm.destroy(false);
+						} catch (VMManagementException e) {
+							throw new IllegalStateException(e);
+						}
+					}
+				});
+		ResourceConsumption consumption = new ResourceConsumption(2 * aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAdapter());
+		consumption.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"The second task execution should take longer due to the VMM activity registered",
+				ConsumptionEventAssert.hits.get(1)
+						- ConsumptionEventAssert.hits.get(0),
+				(ConsumptionEventAssert.hits.get(0) - startTime) * 2);
+	}
+
+	@Test(timeout = 100)
+	public void terminatePMduringVMMActivity() throws VMManagementException,
+			NetworkException {
+		preparePM();
+		long startTime = Timed.getFireCount();
+		final long totalProcessing = 1000 * aSecond;
+		// Check how long the first consumption takes
+		ResourceConsumption consumption = new ResourceConsumption(
+				totalProcessing, ResourceConsumption.unlimitedProcessing,
+				pm.directConsumer, pm, new ConsumptionEventAssert());
+		consumption.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		// Ensure the second consumption takes that much time as well despite
+		// the switchoff
+		consumption = new ResourceConsumption(totalProcessing,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAssert(Timed.getFireCount()
+						+ ConsumptionEventAssert.hits.get(0) - startTime, true));
+		consumption.registerConsumption();
+		Timed.fire();
+		long currentTime = Timed.getFireCount();
+		Timed.simulateUntil(currentTime + (Timed.getNextFire() - currentTime)
+				/ 2);
+		pm.switchoff(null);
+		final ArrayList<Long> lastHit = new ArrayList<Long>();
+		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+			@Override
+			public void stateChanged(PhysicalMachine pm, State oldState,
+					State newState) {
+				if (newState.equals(PhysicalMachine.State.OFF)) {
+					lastHit.add(Timed.getFireCount());
+				}
+			}
+		});
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue(
+				"The PM should not get switched off before its VMM finishes its activities",
+				lastHit.get(0) > ConsumptionEventAssert.hits.get(1));
+	}
+
+	@Test(timeout = 100)
+	public void registerWhileSwitchedOff() throws VMManagementException,
+			NetworkException {
+		preparePM();
+		ResourceConsumption consumption = new ResourceConsumption(aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				new ConsumptionEventAdapter());
+		Assert.assertTrue("Should be able to register to a running PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		pm.switchoff(null);
+		ConsumptionEventAdapter cae = new ConsumptionEventAdapter();
+		consumption = new ResourceConsumption(aSecond,
+				ResourceConsumption.unlimitedProcessing, pm.directConsumer, pm,
+				cae);
+		Assert.assertFalse(
+				"Should not be able to register to a switching off PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertFalse("Should not ever complete if it was not registered",
+				cae.isCompleted());
+		Assert.assertFalse("Should not be able to register to an off PM",
+				consumption.registerConsumption());
+		pm.turnon();
+		Assert.assertFalse("Should not be able to register to turning on PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Should be able to register to a running PM",
+				consumption.registerConsumption());
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Should be complete by now", cae.isCompleted());
+	}
+
+	@Test(timeout = 100)
+	public void complexBootup() throws VMManagementException, NetworkException {
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				new double[] { 1, 0.1, 2, 0.05, 3, 3 }, new double[] { 3, 0.3,
+						12, ResourceConsumption.unlimitedProcessing },
+				defaultTransitions);
+		final long turnOnTime = 10 + 40 + 1;
+		final long switchOffTime = 10 + 2;
+		long before = Timed.getFireCount();
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Turnon should take this much time: ", turnOnTime,
+				Timed.getFireCount() - before - 1);
+		before = Timed.getFireCount();
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Switchoff should take this much time: ",
+				switchOffTime, Timed.getFireCount() - before - 1);
+		before = Timed.getFireCount();
+		pm.turnon();
+		Timed.simulateUntil(before + turnOnTime / 2);
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"A complete turnon-switchoff cycle should take this much time: ",
+				turnOnTime + switchOffTime, Timed.getFireCount() - before - 1);
+	}
 }

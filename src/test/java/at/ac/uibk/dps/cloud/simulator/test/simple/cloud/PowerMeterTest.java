@@ -28,16 +28,19 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.EnergyMeter;
-import hu.mta.sztaki.lpds.cloud.simulator.energy.PhysicalMachineEnergyMeter;
-import hu.mta.sztaki.lpds.cloud.simulator.energy.SimpleVMEnergyMeter;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.ConstantConsumptionModel;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.LinearConsumptionModel;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.specialized.IaaSEnergyMeter;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.specialized.PhysicalMachineEnergyMeter;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.specialized.SimpleVMEnergyMeter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
@@ -46,6 +49,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
@@ -95,8 +99,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		ResourceConstraints rc = vm.getResourceAllocation().allocated;
 		final long taskleninms = 10 * aSecond;
 		Assert.assertEquals(0, ConsumptionEventAssert.hits.size());
-		vm.newComputeTask(rc.requiredCPUs * rc.requiredProcessingPower
-				* taskleninms, ResourceConsumption.unlimitedProcessing,
+		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms,
+				ResourceConsumption.unlimitedProcessing,
 				new ConsumptionEventAssert(Timed.getFireCount() + taskleninms,
 						true) {
 					@Override
@@ -112,8 +116,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 				taskleninms * (maxpower - idlepower + totalIdle),
 				meter.getTotalConsumption(), 0.1);
 		meter.startMeter(aSecond / 10, true);
-		vm.newComputeTask(rc.requiredCPUs * rc.requiredProcessingPower
-				* taskleninms, rc.requiredProcessingPower * 0.5,
+		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms,
+				rc.getRequiredProcessingPower() * 0.5,
 				new ConsumptionEventAssert());
 		Timed.simulateUntil(Timed.getFireCount() + taskleninms);
 		Assert.assertEquals(
@@ -137,7 +141,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 				psConstant.getCurrentPower(0.5), 0.001);
 	}
 
-	class MeterManager extends Timed {
+	static class MeterManager extends Timed {
 		IaaSService iaas;
 		int expectedVMnum;
 		List<? extends EnergyMeter> managed;
@@ -179,7 +183,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void checkforPMSchedulerConflict() throws Exception {
 		final IaaSService iaas = setupIaaS(FirstFitScheduler.class,
-				SchedulingDependentMachines.class, 2);
+				SchedulingDependentMachines.class, 2, 1);
 		final int vmNum = 3;
 		final int parallelThreads = 2;
 		final long startAt = 100;
@@ -196,7 +200,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 150)
+	@Test(timeout = 300)
 	public void prolongedMeterTestThroughIaaS() throws Exception {
 		final long[] fireAt = { 1135130133000l, 1135130401000l, 1135130415000l,
 				1135130438000l, 1135130471000l, 1135130835000l, 1138120593000l,
@@ -229,4 +233,104 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
+	@Test(timeout = 100)
+	public void aggregatedIaaStest() throws Exception {
+		final int machineCount = 2;
+		final int coreCount = 16;
+		final int meterFreq = 500;
+		final long[] len = new long[1];
+		final double[] meteredResults = new double[3];
+
+		for (int i = 0; i < 4; i++) {
+			// Round 0 => getting the timing of the four PM's startup
+			// Round 1 => measuring the energy of two PM's operation during that
+			// time
+			// Round 2 => measuring the energy of the four PM's startup
+			// Round 3 => measuring the energy of two PM's operation as it would
+			// happen with just the second two PMs within the four PM setup
+			final int round = i;
+			final IaaSService iaas = setupIaaS(FirstFitScheduler.class,
+					AlwaysOnMachines.class, machineCount, coreCount);
+			final int[] counter = new int[] { 0 };
+			final IaaSEnergyMeter myMeter = new IaaSEnergyMeter(iaas);
+			PhysicalMachine.StateChangeListener myListener = new PhysicalMachine.StateChangeListener() {
+				@Override
+				public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+					if (newState.equals(PhysicalMachine.State.RUNNING)) {
+						counter[0]++;
+						if (counter[0] == machineCount) {
+							// The first two machines are up and running
+							final PhysicalMachine.StateChangeListener localListener = this;
+							// Round 1: keep this event running until round 0
+							// was running.
+							new DeferredEvent((round == 1 ? len[0]
+									- Timed.getFireCount() : 1000)) {
+								@Override
+								protected void eventAction() {
+									// We make sure the meter's reading is
+									// updated
+									switch (round) {
+									case 0:
+									case 2:
+										// Let's add another two machines
+										List<PhysicalMachine> newpmlist = Arrays
+												.asList(dummyPMsCreator(
+														machineCount, coreCount));
+										for (PhysicalMachine pm : newpmlist) {
+											pm.subscribeStateChangeEvents(localListener);
+										}
+										iaas.bulkHostRegistration(newpmlist);
+										break;
+									case 1:
+										myMeter.stopMeter();
+										meteredResults[0] = myMeter
+												.getTotalConsumption();
+										break;
+									case 3:
+										myMeter.stopMeter();
+										meteredResults[2] = myMeter
+												.getTotalConsumption();
+									default:
+
+									}
+								}
+							};
+						} else if (counter[0] == machineCount * 2) {
+							// All four machines running, let's wait a little
+							// for some idle consumptions
+							new DeferredEvent(1000) {
+								@Override
+								protected void eventAction() {
+									switch (round) {
+									case 1:
+									case 3:
+										// Should not get here!
+										break;
+									case 0:
+										len[0] = Timed.getFireCount();
+									case 2:
+										myMeter.stopMeter();
+										// Final consumption results with all
+										// machines running
+										meteredResults[1] = myMeter
+												.getTotalConsumption();
+									default:
+									}
+								}
+							};
+						}
+					}
+				}
+			};
+			for (PhysicalMachine pm : iaas.machines) {
+				pm.subscribeStateChangeEvents(myListener);
+			}
+			myMeter.startMeter(meterFreq, true);
+			Timed.simulateUntilLastEvent();
+			Timed.resetTimed();
+		}
+		Assert.assertEquals(
+				"The energy consumption should be increasing with the two new machine's consumption",
+				meteredResults[1] - meteredResults[0], meteredResults[2], 0.01);
+	}
 }
