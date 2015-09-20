@@ -119,8 +119,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	public IaaSService(Class<? extends Scheduler> s, Class<? extends PhysicalMachineController> c)
 			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
-		sched = s.getConstructor(getClass()).newInstance(this);
-		pmcontroller = c.getConstructor(getClass()).newInstance(this);
+		sched = s.getConstructor(IaaSService.class).newInstance(this);
+		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
 	}
 
 	@Override
