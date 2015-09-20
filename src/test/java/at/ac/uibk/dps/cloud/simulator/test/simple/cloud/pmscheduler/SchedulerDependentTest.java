@@ -166,4 +166,26 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Should not have any running PMs", 0,
 				basic.runningMachines.size());
 	}
+
+	@Test(timeout = 100)
+	public void deregistrationTest() throws VMManagementException,
+			NetworkException, IaaSHandlingException {
+		PhysicalMachine pm = basic.machines.get(0);
+		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo
+				.contents().iterator().next(), pm.getCapacities(), repo,
+				basic.machines.size());
+		Timed.simulateUntilLastEvent();
+		for (VirtualMachine vm : vms) {
+			vm.destroy(false);
+		}
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should be switched off",
+				PhysicalMachine.State.OFF, pm.getState());
+		basic.deregisterHost(pm);
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should be running", PhysicalMachine.State.RUNNING,
+				pm.getState());
+
+	}
 }
