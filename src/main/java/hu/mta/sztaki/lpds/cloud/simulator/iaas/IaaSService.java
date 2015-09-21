@@ -207,6 +207,9 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		final ResourceConstraints[] caps = new ResourceConstraints[size];
 		for (int i = 0; i < size; i++) {
 			final PhysicalMachine pm = newPMs.get(i);
+			if (PhysicalMachine.State.RUNNING.equals(pm.getState())) {
+				stateChanged(pm, PhysicalMachine.State.RUNNING, PhysicalMachine.State.RUNNING);
+			}
 			pm.subscribeStateChangeEvents(this);
 			caps[i] = pm.getCapacities();
 		}
