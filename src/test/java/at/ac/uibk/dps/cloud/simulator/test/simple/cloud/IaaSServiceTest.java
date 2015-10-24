@@ -44,6 +44,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
@@ -475,5 +476,46 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 							+ " VMS: " + s.sched.getClass().getName(),
 					VirtualMachine.State.RUNNING, vms.get(i).getState());
 		}
+	}
+
+	@Test(timeout = 100)
+	public void maxRequest() throws Exception {
+		IaaSService iaas = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 3, 2);
+		Repository repo = iaas.repositories.get(0);
+		VirtualAppliance va = (VirtualAppliance) repo.contents().iterator().next();
+		double maxCOrig = Double.MAX_VALUE;
+		double maxPOrig = Double.MAX_VALUE;
+		long maxMOrig = Long.MAX_VALUE;
+		for (int i = 0; i < 10; i++) {
+			double maxC = 0;
+			double maxP = 0;
+			long maxM = 0;
+			for (PhysicalMachine pm : iaas.machines) {
+				maxC = Math.max(pm.freeCapacities.getRequiredCPUs(), maxC);
+				maxM = Math.max(pm.freeCapacities.getRequiredMemory(), maxM);
+				maxP = Math.max(pm.freeCapacities.getRequiredProcessingPower(), maxP);
+			}
+			Assert.assertTrue("MaxC", maxC <= maxCOrig);
+			maxCOrig = maxC;
+			Assert.assertTrue("MaxP", maxP <= maxPOrig);
+			maxPOrig = maxP;
+			Assert.assertTrue("MaxM", maxM <= maxMOrig);
+			maxMOrig = maxM;
+
+			ResourceConstraints rc = new ConstantConstraints(maxC / 10, maxP / 10, maxM / 10);
+			iaas.requestVM(va, rc, repo, 1);
+			Timed.simulateUntilLastEvent();
+		}
+	}
+	
+	@Test(timeout=100)
+	public void dropARunningPM() throws Exception {
+		int pmcount=3;
+		IaaSService iaas=setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, pmcount, 1);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should have all machines running", pmcount, iaas.runningMachines.size());
+		iaas.deregisterHost(iaas.machines.get(0));
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should have one less machine running", pmcount -1, iaas.runningMachines.size());
 	}
 }

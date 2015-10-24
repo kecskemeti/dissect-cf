@@ -831,4 +831,24 @@ public class PMTest extends IaaSRelatedFoundation {
 				"A complete turnon-switchoff cycle should take this much time: ",
 				turnOnTime + switchOffTime, Timed.getFireCount() - before - 1);
 	}
+	
+	@Test(timeout = 100)
+	public void testZeroLenDelays() throws VMManagementException, NetworkException {
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 0, 1, defaultTransitions);
+		pm.turnon();
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		pm.switchoff(null);
+		Timed.simulateUntilLastEvent();
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 1, 0, defaultTransitions);
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		pm.switchoff(null);
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		pm.switchoff(null);
+		pm.turnon();
+	}
 }

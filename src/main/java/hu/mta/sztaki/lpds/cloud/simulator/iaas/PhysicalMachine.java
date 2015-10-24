@@ -523,6 +523,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		switch (currentState) {
 		case SWITCHINGOFF:
 		case OFF:
+			setState(State.SWITCHINGON);
+
 			if (onOffEvent == null) {
 				new PowerStateDelayer(onTransition, State.RUNNING);
 			} else {
@@ -530,7 +532,6 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				onOffEvent.setNewState(State.RUNNING);
 			}
 
-			setState(State.SWITCHINGON);
 			break;
 		case RUNNING:
 		case SWITCHINGON:

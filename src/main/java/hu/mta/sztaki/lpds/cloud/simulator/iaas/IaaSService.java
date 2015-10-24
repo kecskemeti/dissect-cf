@@ -238,57 +238,61 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	public void deregisterHost(final PhysicalMachine pm) throws IaaSHandlingException {
 		if (ArrayHandler.removeAndReplaceWithLast(internalMachines, pm)) {
-			if (pm.isHostingVMs()) {
-				AlterableResourceConstraints needed = new AlterableResourceConstraints(pm.getCapacities());
-				needed.subtract(pm.freeCapacities);
-				PhysicalMachine receiver = null;
-				for (PhysicalMachine curr : machines) {
-					if (needed.compareTo(curr.freeCapacities) <= 0) {
-						receiver = curr;
-						break;
-					}
-				}
-				if (receiver == null) {
-					throw new IaaSHandlingException(
-							"You cannot deregister the host before all its VMs are terminated, or if all VMs can be migrated to somewhere else");
-				}
-				try {
-					pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
-						@Override
-						public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-							if (newState.equals(PhysicalMachine.State.OFF)) {
-								realDeregistration(pm);
-							}
+			if (pm.isRunning()) {
+				ArrayHandler.removeAndReplaceWithLast(internalRunningMachines, pm);
+				if (pm.isHostingVMs()) {
+					AlterableResourceConstraints needed = new AlterableResourceConstraints(pm.getCapacities());
+					needed.subtract(pm.freeCapacities);
+					PhysicalMachine receiver = null;
+					for (PhysicalMachine curr : machines) {
+						if (needed.compareTo(curr.freeCapacities) <= 0) {
+							receiver = curr;
+							break;
 						}
-					});
-					if (receiver.isRunning()) {
-						pm.switchoff(receiver);
-					} else {
-						final PhysicalMachine rcopy = receiver;
-						receiver.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+					}
+					if (receiver == null) {
+						throw new IaaSHandlingException(
+								"You cannot deregister the host before all its VMs are terminated, or if all VMs can be migrated to somewhere else");
+					}
+					try {
+						pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 							@Override
 							public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-								try {
-									if (newState.equals(PhysicalMachine.State.RUNNING)) {
-										pm.switchoff(rcopy);
-									}
-								} catch (VMManagementException e) {
-									e.printStackTrace();
-								} catch (NetworkNode.NetworkException e) {
-									e.printStackTrace();
+								if (newState.equals(PhysicalMachine.State.OFF)) {
+									realDeregistration(pm);
 								}
 							}
 						});
-						receiver.turnon();
+						if (receiver.isRunning()) {
+							pm.switchoff(receiver);
+						} else {
+							final PhysicalMachine rcopy = receiver;
+							receiver.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+								@Override
+								public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+									try {
+										if (newState.equals(PhysicalMachine.State.RUNNING)) {
+											pm.switchoff(rcopy);
+										}
+									} catch (VMManagementException e) {
+										e.printStackTrace();
+									} catch (NetworkNode.NetworkException e) {
+										e.printStackTrace();
+									}
+								}
+							});
+							receiver.turnon();
+						}
+					} catch (VMManagementException e) {
+						throw new IaaSHandlingException("Some error has happened during the switchoff procedure", e);
+					} catch (NetworkNode.NetworkException e) {
+						throw new IaaSHandlingException("All PMs should be able to connect to each other in the IaaS",
+								e);
 					}
-				} catch (VMManagementException e) {
-					throw new IaaSHandlingException("Some error has happened during the switchoff procedure", e);
-				} catch (NetworkNode.NetworkException e) {
-					throw new IaaSHandlingException("All PMs should be able to connect to each other in the IaaS", e);
+					return;
 				}
-			} else {
-				realDeregistration(pm);
 			}
+			realDeregistration(pm);
 		} else {
 			throw new IaaSHandlingException("No such registered physical machine");
 		}
