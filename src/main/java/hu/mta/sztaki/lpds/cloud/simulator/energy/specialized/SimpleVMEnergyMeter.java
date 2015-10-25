@@ -33,7 +33,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
  * Does not support migrations, and provides only a rough estimate on the energy
  * cost of actions taken by the particular VM.
  * 
- * @author gaborkecskemeti
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"
  * 
  */
 public class SimpleVMEnergyMeter extends PhysicalMachineEnergyMeter {

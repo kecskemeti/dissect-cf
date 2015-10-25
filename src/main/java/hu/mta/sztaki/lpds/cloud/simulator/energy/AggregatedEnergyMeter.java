@@ -26,11 +26,28 @@ package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
 import java.util.List;
 
+/**
+ * Allows a group of energy meters to be operated simultaneously.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ */
 public class AggregatedEnergyMeter extends EnergyMeter {
 
-	// Allows aggregator users to update the supervised list any time they like
+	/**
+	 * The list of meters that supposed to be used together.
+	 * 
+	 * It is defined as public so aggregator users can freely update the
+	 * supervised list any time they like
+	 */
 	public final List<EnergyMeter> supervised;
 
+	/**
+	 * Constructs an aggregated meter with a list of energy meters to operate on
+	 * top.
+	 * 
+	 * @param toAggregate
+	 *            the list of energy meters to sopervise
+	 */
 	public AggregatedEnergyMeter(List<EnergyMeter> toAggregate) {
 		supervised = toAggregate;
 	}
@@ -89,6 +106,11 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 		return sum;
 	}
 
+	/**
+	 * This operation is ignored as the actual metering is done in the
+	 * supervised meters, and the totalconsumption values are always calculated
+	 * on demand.
+	 */
 	@Override
 	public void tick(long fires) {
 		// Do nothing

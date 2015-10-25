@@ -27,11 +27,34 @@ package hu.mta.sztaki.lpds.cloud.simulator.energy;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 
+/**
+ * Base class for all energy meters. Defines the basic operations but allows
+ * high level of customization
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014-5"
+ */
 public abstract class EnergyMeter extends Timed {
 
+	/**
+	 * the currently collected totalConsumption in all metering sessions so far.
+	 */
 	private double totalConsumption = 0;
+	/**
+	 * determines the time instance when the current metering session has
+	 * started. This does not actually specify the time instance when the first
+	 * metering session starts if there are gaps between metering sessions.
+	 * instead it gives the time instance when a continuous metering session
+	 * would start.
+	 */
 	private long meteringStarted;
+	/**
+	 * when was the last metering result collected.
+	 */
 	protected long lastMetered;
+	/**
+	 * when did the metering stopped reported in absolute time.
+	 */
 	private long meteringStopped = 0;
 
 	/**
@@ -46,7 +69,8 @@ public abstract class EnergyMeter extends Timed {
 	 *            values will start from 0 after the completion of this
 	 *            function.
 	 *            </ul>
-	 * @return <ul>
+	 * @return
+	 * 		<ul>
 	 *         <li>False: if a metering session is already underway
 	 *         <li>True: if the metering session was successfully initiated
 	 *         </ul>
@@ -71,8 +95,8 @@ public abstract class EnergyMeter extends Timed {
 	}
 
 	/**
-	 * Terminates the metering session, the totalconsumption values will no longer be
-	 * updated!
+	 * Terminates the metering session, the totalconsumption values will no
+	 * longer be updated!
 	 */
 	public void stopMeter() {
 		if (unsubscribe()) {
@@ -122,6 +146,15 @@ public abstract class EnergyMeter extends Timed {
 		return meteringStopped;
 	}
 
+	/**
+	 * increases the total consumption value with the specified amount. this is
+	 * one of the main functions to be used by energy meters. Ensures that
+	 * metering values are continuously increasing from a particular meter.
+	 * 
+	 * @param amount
+	 *            the amount of additional energy consumed to be reported in
+	 *            this meter
+	 */
 	protected void increaseTotalConsumption(final double amount) {
 		totalConsumption += amount;
 	}

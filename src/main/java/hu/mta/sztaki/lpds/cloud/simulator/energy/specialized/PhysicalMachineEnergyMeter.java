@@ -35,20 +35,38 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import java.util.Arrays;
 import java.util.List;
 
-public class PhysicalMachineEnergyMeter extends AggregatedEnergyMeter implements
-		VMManager.CapacityChangeEvent<ResourceConstraints> {
+/**
+ * Allows to energy meter all resource spreaders (e.g. CPU, Network) associated
+ * with a single PhysicalMachine.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"
+ */
+public class PhysicalMachineEnergyMeter extends AggregatedEnergyMeter
+		implements VMManager.CapacityChangeEvent<ResourceConstraints> {
 
+	/**
+	 * The physical machine that is under monitoring
+	 */
 	private final PhysicalMachine observed;
 
+	/**
+	 * instantiates a physical machine meter based on the meter aggregator
+	 * concept of DISSECT-CF
+	 * 
+	 * @param pm
+	 *            the physical machine to be metered
+	 */
 	public PhysicalMachineEnergyMeter(final PhysicalMachine pm) {
 		super(Arrays.asList(new EnergyMeter[] { new DirectEnergyMeter(pm),
-				new DirectEnergyMeter(pm.localDisk.diskinbws),
-				new DirectEnergyMeter(pm.localDisk.diskoutbws),
-				new DirectEnergyMeter(pm.localDisk.inbws),
-				new DirectEnergyMeter(pm.localDisk.outbws) }));
+				new DirectEnergyMeter(pm.localDisk.diskinbws), new DirectEnergyMeter(pm.localDisk.diskoutbws),
+				new DirectEnergyMeter(pm.localDisk.inbws), new DirectEnergyMeter(pm.localDisk.outbws) }));
 		observed = pm;
 	}
 
+	/**
+	 * ensures the newly started metering will consider capacity changes in the
+	 * PM (e.g. DVFS like behavior)
+	 */
 	@Override
 	public boolean startMeter(long interval, boolean dropPriorReading) {
 		boolean returner = super.startMeter(interval, dropPriorReading);
@@ -56,18 +74,31 @@ public class PhysicalMachineEnergyMeter extends AggregatedEnergyMeter implements
 		return returner;
 	}
 
+	/**
+	 * terminates the metering session for the aggregation and ensures that we
+	 * no longer consider capacity changes for the PM as they don't need to be
+	 * reflected in the metering results anymore
+	 */
 	@Override
 	public void stopMeter() {
 		super.stopMeter();
 		observed.unsubscribeFromCapacityChanges(this);
 	}
 
+	/**
+	 * readjusts the meter (and thus evaluate actual consumption values) if the
+	 * capacity of the metered physical machine changes
+	 */
 	@Override
-	public void capacityChanged(ResourceConstraints newCapacity,
-			List<ResourceConstraints> affectedCapacity) {
+	public void capacityChanged(ResourceConstraints newCapacity, List<ResourceConstraints> affectedCapacity) {
 		readjustMeter();
 	}
 
+	/**
+	 * allows determining which PM is under observation
+	 * 
+	 * @return the metered pm
+	 */
 	public PhysicalMachine getObserved() {
 		return observed;
 	}

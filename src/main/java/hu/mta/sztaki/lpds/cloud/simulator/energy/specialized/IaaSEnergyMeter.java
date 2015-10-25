@@ -36,11 +36,30 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class IaaSEnergyMeter extends AggregatedEnergyMeter implements
-		VMManager.CapacityChangeEvent<PhysicalMachine> {
+/**
+ * Allows a complete IaaS system to be monitored energywise with single energy
+ * metering operations.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ */
+public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.CapacityChangeEvent<PhysicalMachine> {
+	/**
+	 * The IaaSService to be observed with this meter
+	 */
 	private final IaaSService observed;
+	/**
+	 * record of the past capacity on the observed IaaSservice (used to
+	 * determine in which direction did its capacity change).
+	 */
 	private ResourceConstraints oldCapacity;
 
+	/**
+	 * Allows the construction of a new metering object building on top of the
+	 * generic aggregated energy meter concept
+	 * 
+	 * @param iaas
+	 *            the IaaS to be monitored energywise
+	 */
 	public IaaSEnergyMeter(IaaSService iaas) {
 		super(subMeterCreator(iaas.machines));
 		observed = iaas;
@@ -48,8 +67,15 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements
 		oldCapacity = observed.getCapacities();
 	}
 
-	private static List<EnergyMeter> subMeterCreator(
-			List<PhysicalMachine> machines) {
+	/**
+	 * This function creates a list of PhysicalMachineMeters from a list of
+	 * physical machines.
+	 * 
+	 * @param machines
+	 *            the list of machines from which the meter set must be crearted
+	 * @return the list of meters
+	 */
+	private static List<EnergyMeter> subMeterCreator(List<PhysicalMachine> machines) {
 		final int machineCount = machines.size();
 		ArrayList<EnergyMeter> meters = new ArrayList<EnergyMeter>(machineCount);
 		for (int i = 0; i < machineCount; i++) {
@@ -58,9 +84,13 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements
 		return meters;
 	}
 
+	/**
+	 * manages the changes in size of the infrastructure (e.g. PM additions or
+	 * removals) this is important to support dynamic IaaS systems where the
+	 * metering results are still properly recorded
+	 */
 	@Override
-	public void capacityChanged(ResourceConstraints newCapacity,
-			List<PhysicalMachine> affectedCapacity) {
+	public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> affectedCapacity) {
 		long freq = -1;
 		if (isSubscribed()) {
 			freq = getFrequency();
@@ -70,8 +100,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements
 			// Decreased
 			Iterator<? extends EnergyMeter> meters = supervised.iterator();
 			while (meters.hasNext()) {
-				PhysicalMachineEnergyMeter m = (PhysicalMachineEnergyMeter) meters
-						.next();
+				PhysicalMachineEnergyMeter m = (PhysicalMachineEnergyMeter) meters.next();
 				if (affectedCapacity.remove(m.getObserved())) {
 					meters.remove();
 				}
@@ -86,6 +115,11 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements
 		}
 	}
 
+	/**
+	 * Allows to determine what is the
+	 * 
+	 * @return the observed IaaS system
+	 */
 	public IaaSService getObserved() {
 		return observed;
 	}

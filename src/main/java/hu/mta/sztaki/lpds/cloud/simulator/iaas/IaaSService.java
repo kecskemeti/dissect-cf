@@ -85,19 +85,57 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	}
 
 	/**
-	 * The order of internal machines is not guaranteed
+	 * The actual writable list of the machine set maintained behind this
+	 * IaaSService
+	 * 
+	 * WARNING: The order of internal machines is not guaranteed
 	 */
 	private final ArrayList<PhysicalMachine> internalMachines = new ArrayList<PhysicalMachine>();
+	/**
+	 * The actual writable list of the running machine set maintained behind
+	 * this IaaSService
+	 * 
+	 * WARNING: The order of internal running machines is not guaranteed
+	 */
 	private final ArrayList<PhysicalMachine> internalRunningMachines = new ArrayList<PhysicalMachine>();
 
+	/**
+	 * publicly available read only version of the internal machines field
+	 */
 	public final List<PhysicalMachine> machines = Collections.unmodifiableList(internalMachines);
+	/**
+	 * publicly available read only version of the internal running machines
+	 * field
+	 */
 	public final List<PhysicalMachine> runningMachines = Collections.unmodifiableList(internalRunningMachines);
 
+	/**
+	 * the total capacity of all machines in this iaas service, for use only
+	 * internally in the IaaS service class
+	 */
 	private AlterableResourceConstraints totalCapacity = AlterableResourceConstraints.getNoResources();
+	/**
+	 * the total capacity to be reported for external users. This field
+	 * propagates the totalCapacity field. Keep in mind that the capacity
+	 * reported by this field could change without notification.
+	 */
 	private ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(totalCapacity);
+	/**
+	 * the capacity of the machines that are actually running in the system -
+	 * this is for internal use only again
+	 */
 	private AlterableResourceConstraints runningCapacity = AlterableResourceConstraints.getNoResources();
+	/**
+	 * The capacity of the running machines to be reported externally. This is
+	 * implemented with a propagator thus changes in runningcapacity will be
+	 * immediately reflected here as well without notification.
+	 */
 	private ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(runningCapacity);
 
+	/**
+	 * event handler for capacity changes in terms of added/removed physical
+	 * machines
+	 */
 	private final StateDependentEventHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>> capacityListenerManager = new StateDependentEventHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>>(
 			new SingleNotificationHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>>() {
 				@Override
@@ -108,14 +146,44 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 			});
 
 	/**
+	 * The list of repositories under direct control of this IaaS service - this
+	 * is for internal purposes the list is writeable
+	 * 
 	 * The order of internal repositories is not guaranteed
 	 */
 	private final ArrayList<Repository> internalRepositories = new ArrayList<Repository>();
+	/**
+	 * the read only list of all repositories in the system
+	 */
 	public final List<Repository> repositories = Collections.unmodifiableList(internalRepositories);
 
+	/**
+	 * the VM scheduler applied by this IaaSservice object
+	 */
 	public final Scheduler sched;
+	/**
+	 * the PM scheduler applied by this IaaSService object
+	 */
 	public final PhysicalMachineController pmcontroller;
 
+	/**
+	 * Constructs an IaaS service object directly. The VM and PM schedulers for
+	 * this IaaS service will be created during the creation of the IaaSService
+	 * itself. This ensures that users cannot alter the link between the
+	 * IaaSService and the various schedulers. The <i>exceptions</i> are thrown
+	 * because reflection is used to create the scheduler objects.
+	 * 
+	 * @param s
+	 *            class of the VM scheduler to be used
+	 * @param c
+	 *            class of the PM scheduler to be used
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws IllegalArgumentException
+	 * @throws InvocationTargetException
+	 * @throws NoSuchMethodException
+	 * @throws SecurityException
+	 */
 	public IaaSService(Class<? extends Scheduler> s, Class<? extends PhysicalMachineController> c)
 			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
@@ -123,10 +191,23 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
 	}
 
+	/**
+	 * Not implemented! Will allow migrating VMs across IaaSServices.
+	 */
 	@Override
 	public void migrateVM(final VirtualMachine vm, final IaaSService target) {
 	}
 
+	/**
+	 * Determines if the VM is hosted locally in one of the physical machines of
+	 * this IaaSServie
+	 * 
+	 * @param vm
+	 *            the VM to be checked
+	 * @return the PM that hosts the VM
+	 * @throws NoSuchVMException
+	 *             if the VM is not hosted by any of the PMs in the system
+	 */
 	private PhysicalMachine checkVMHost(final VirtualMachine vm) throws NoSuchVMException {
 		ResourceAllocation ra = vm.getResourceAllocation();
 		PhysicalMachine host;
@@ -136,17 +217,69 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		return host;
 	}
 
+	/**
+	 * NOT IMPLEMENTED! Reallocates the VM's resources according to the
+	 * newresources on the host of the VM.
+	 */
 	@Override
 	public void reallocateResources(VirtualMachine vm, ResourceConstraints newresources)
 			throws NoSuchVMException, VMManagementException {
 		checkVMHost(vm).reallocateResources(vm, newresources);
 	}
 
+	/**
+	 * Allows the request of multiple VMs without propagating any scheduling
+	 * constraints.
+	 * 
+	 * @param va
+	 *            the VA to be used as the disk of the VM
+	 * @param rc
+	 *            the resource requirements of the future VM
+	 * @param vaSource
+	 *            the repository that currently stores the VA
+	 * @param count
+	 *            the number of VMs that this request should be returning with
+	 * @return the list of VMs created by the call (please note the VMs returned
+	 *         might never actually get running, if the PMs are always blocked
+	 *         by some other activities, or if they go to NONSERVABLE state)
+	 * @throws VMManagementException
+	 *             if there are no pms that could run the VMs. or if the request
+	 *             is too big to be hosted across the complete infrastructure
+	 * @throws NetworkNode.NetworkException
+	 *             if there are network connectivity problems within the
+	 *             infrastructure
+	 */
 	public VirtualMachine[] requestVM(final VirtualAppliance va, final ResourceConstraints rc,
 			final Repository vaSource, final int count) throws VMManagementException, NetworkNode.NetworkException {
 		return requestVM(va, rc, vaSource, count, null);
 	}
 
+	/**
+	 * Allows the request of multiple VMs.
+	 * 
+	 * @param va
+	 *            the VA to be used as the disk of the VM
+	 * @param rc
+	 *            the resource requirements of the future VM
+	 * @param vaSource
+	 *            the repository that currently stores the VA
+	 * @param count
+	 *            the number of VMs that this request should be returning with
+	 * @param schedulingConstraints
+	 *            The VM scheduler dependent additional requirements for the
+	 *            newly requested VMs (e.g. please go for a specific host etc.)
+	 *            For understanding what you can send here please have a look at
+	 *            the documentation of the particular VM scheduler in question.
+	 * @return the list of VMs created by the call (please note the VMs returned
+	 *         might never actually get running, if the PMs are always blocked
+	 *         by some other activities, or if they go to NONSERVABLE state)
+	 * @throws VMManagementException
+	 *             if there are no pms that could run the VMs. or if the request
+	 *             is too big to be hosted across the complete infrastructure
+	 * @throws NetworkNode.NetworkException
+	 *             if there are network connectivity problems within the
+	 *             infrastructure
+	 */
 	@Override
 	public VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc, Repository vaSource, int count,
 			HashMap<String, Object> schedulingConstraints)
@@ -180,6 +313,10 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		checkVMHost(vm).terminateVM(vm, killTasks);
 	}
 
+	/**
+	 * lists all VMs running or requested (and queued at a VM scheduler) from
+	 * the IaaSservice
+	 */
 	@Override
 	public Collection<VirtualMachine> listVMs() {
 		final ArrayList<VirtualMachine> completeList = new ArrayList<VirtualMachine>();
@@ -192,7 +329,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	}
 
 	/**
-	 * This function allows the IaaS to grow in size
+	 * This function allows the IaaS to grow in size with a single PM
 	 * 
 	 * @param pm
 	 *            the new physical machine to be utilized within the system
@@ -201,6 +338,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		bulkHostRegistration(Collections.singletonList(pm));
 	}
 
+	/**
+	 * This function allows rapid registration of several PMs
+	 * 
+	 * @param newPMs
+	 *            the list of PMs to be registered
+	 */
 	public void bulkHostRegistration(final List<PhysicalMachine> newPMs) {
 		internalMachines.addAll(newPMs);
 		final int size = newPMs.size();
@@ -217,6 +360,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		capacityListenerManager.notifyListeners(newPMs);
 	}
 
+	/**
+	 * Really deregisters a PM from the list of PMs.
+	 * 
+	 * @param pm
+	 *            the PM to be deregistered
+	 */
 	private void realDeregistration(PhysicalMachine pm) {
 		pm.unsubscribeStateChangeEvents(this);
 		totalCapacity.subtract(pm.getCapacities());
@@ -326,33 +475,70 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		ArrayHandler.removeAndReplaceWithLast(internalRepositories, r);
 	}
 
+	/**
+	 * returns with the total capacities of this service (cumulative value for
+	 * all its PMs)
+	 */
 	public ResourceConstraints getCapacities() {
 		return publicTCap;
 	}
 
+	/**
+	 * returns with the total running capacities of this service (cumulative
+	 * value for all its PMs that are in a running state)
+	 */
 	public ResourceConstraints getRunningCapacities() {
 		return publicRCap;
 	}
 
+	/**
+	 * get notified about capacity changes (PM additions/removals)
+	 * 
+	 * This call is propagated to StateDependentEventHandler.
+	 */
 	@Override
 	public void subscribeToCapacityChanges(final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListenerManager.subscribeToEvents(e);
 	}
 
+	/**
+	 * cancel the notifications about capacity changes (PM additions/removals)
+	 * 
+	 * This call is propagated to StateDependentEventHandler.
+	 */
 	@Override
 	public void unsubscribeFromCapacityChanges(final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListenerManager.unsubscribeFromEvents(e);
 	}
 
+	/**
+	 * A function to determine if a host is within the premises of this
+	 * IaaSService.
+	 * 
+	 * @param pm
+	 *            the host in question
+	 * @return
+	 * 		<ul>
+	 *         <li><i>true</i> if the host is part of the IaaS
+	 *         <li><i>false</i> otherwise
+	 *         </ul>
+	 */
 	public boolean isRegisteredHost(PhysicalMachine pm) {
 		return internalMachines.contains(pm);
 	}
 
+	/**
+	 * Provides a convenient way to debug the IaaS.
+	 */
 	@Override
 	public String toString() {
 		return "IaaS(Machines(" + machines + "), Repositories(" + repositories + "))";
 	}
 
+	/**
+	 * Implements the PhysicalMachine's state change listener to manage the
+	 * internalRunningMachines list.
+	 */
 	@Override
 	public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 		switch (newState) {

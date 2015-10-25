@@ -24,10 +24,16 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 
+/**
+ * Defines a power draw model that interpolates the returned instantaneous power
+ * draw values between the minimum and maximum power draw values from the power
+ * state.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"
+ */
 public class LinearConsumptionModel extends PowerState.ConsumptionModel {
 	@Override
 	protected double evaluateConsumption(double load) {
-		return load * myPowerState.getConsumptionRange()
-				+ myPowerState.getMinConsumption();
+		return load * myPowerState.getConsumptionRange() + myPowerState.getMinConsumption();
 	}
 }
