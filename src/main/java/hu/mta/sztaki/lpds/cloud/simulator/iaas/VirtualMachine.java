@@ -139,6 +139,9 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	private static class EventSetup {
 
+		/**
+		 * the state that the VM needs to be after the eventsetup completes
+		 */
 		public final State expectedState;
 
 		public EventSetup(final State eState) {
@@ -154,11 +157,28 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	}
 
+	/**
+	 * Provides an implementation of the eventsetup class for the startup
+	 * procedure which is modelled with a single taks that utilizes a single
+	 * core of the VM for a specified amount of time (in ticks)
+	 * 
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 *
+	 */
 	private static class StartupProcedure extends EventSetup {
+		/**
+		 * initiates the class and remarks that the modeled state should be
+		 * startup
+		 */
 		public StartupProcedure() {
 			super(State.STARTUP);
 		}
 
+		/**
+		 * Once the startup state is reached, the VM's boot process is imitated
+		 * with a single core process which runs on the VM for a given amount of
+		 * ticks.
+		 */
 		@Override
 		public void changeEvents(final VirtualMachine onMe) {
 			final State preEventState = onMe.currState;
@@ -166,6 +186,10 @@ public class VirtualMachine extends MaxMinConsumer {
 			try {
 				onMe.newComputeTask(onMe.va.getStartupProcessing(), onMe.ra.allocated.getRequiredProcessingPower(),
 						new ConsumptionEventAdapter() {
+							/**
+							 * Once the startup process is complete we set the
+							 * VM's state to running
+							 */
 							@Override
 							public void conComplete() {
 								super.conComplete();
@@ -178,17 +202,53 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	};
 
+	/**
+	 * The operations to do on shutdown
+	 */
 	private static final EventSetup sdEvent = new EventSetup(State.SHUTDOWN);
+	/**
+	 * The operations to do on suspend
+	 */
 	private static final EventSetup susEvent = new EventSetup(State.SUSPENDED);
+	/**
+	 * The operations to do on switchon
+	 */
 	private static final EventSetup switchonEvent = new StartupProcedure();
 
+	/**
+	 * the virtual appliance that this VM is using for its disk
+	 */
 	private VirtualAppliance va;
+	/**
+	 * the resource allocation of this VM (this is only not null when the VM is
+	 * actually running on a pm, or about to run)
+	 */
 	private PhysicalMachine.ResourceAllocation ra = null;
+	/**
+	 * the VM's disk that is stored on the vatarget. if the VM is not past its
+	 * initial transfer phase then the disk could be null.
+	 */
 	private StorageObject disk = null;
+	/**
+	 * if the VM is suspended then its memory is saved in the following storage
+	 * object.
+	 */
 	private StorageObject savedmemory = null;
+	/**
+	 * where should the VM's virtual appliance be located
+	 */
 	private Repository vasource = null;
+	/**
+	 * where should the VM's disk storage be placed during the VM's initiation
+	 * procedure.
+	 */
 	private Repository vatarget = null;
 
+	/**
+	 * the possible states of a virtual machine in DISSECT-CF.
+	 * 
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+	 */
 	public static enum State {
 		/**
 		 * The VA of the machine is arranged to be usable for the execution. The
@@ -254,27 +314,54 @@ public class VirtualMachine extends MaxMinConsumer {
 		NONSERVABLE
 	};
 
+	/**
+	 * the set of those VM states that are expected to consume energy
+	 */
 	public final static EnumSet<State> consumingStates = EnumSet.of(State.STARTUP, State.RUNNING, State.MIGRATING,
 			State.RESUME_TR);
+	/**
+	 * the set of those VM states that are transferring VM related data
+	 */
 	public final static EnumSet<State> transferringStates = EnumSet.of(State.INITIAL_TR, State.SUSPEND_TR,
 			State.RESUME_TR, State.MIGRATING);
+	/**
+	 * the states in which the VM is suspended to disk
+	 */
 	public final static EnumSet<State> suspendedStates = EnumSet.of(State.SUSPENDED, State.SUSPENDED_MIG);
+	/**
+	 * the states that can preceed the startup phase
+	 */
 	public final static EnumSet<State> preStartupStates = EnumSet.of(State.DESTROYED, State.SHUTDOWN);
+	/**
+	 * the set of states that show that a VM scheduler was not able to schedule
+	 * the VM (maybe just yet)
+	 */
 	public final static EnumSet<State> preScheduleState = EnumSet.of(State.DESTROYED, State.NONSERVABLE);
 
+	/**
+	 * the current state of the VM
+	 */
 	private State currState = State.DESTROYED;
+	/**
+	 * the local handler of VM state change events.
+	 */
 	private final StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> vmStateChangelistenerManager = VMStateChangeNotificationHandler
 			.getHandlerInstance();
 
-	public static final float loadwhilenotrunning = 0.2f;
-
+	/**
+	 * the list of resourceconsumptions (i.e. compute tasks) that were suspended
+	 * and need to be resumed after the VM itself is resumed.
+	 */
 	private final ArrayList<ResourceConsumption> suspendedTasks = new ArrayList<ResourceConsumption>();
 
 	/**
 	 * Instantiates a VM object
 	 * 
 	 * @param va
-	 *            the virtual appliance that should be the base for this VM
+	 *            the virtual appliance that should be the base for this VM,
+	 * 
+	 * @throws IllegalStateException
+	 *             if the va is <i>null</i>
 	 */
 	public VirtualMachine(final VirtualAppliance va) {
 		super(0);
@@ -307,7 +394,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Query the current state of the VM
+	 * Queries the current state of the VM
 	 * 
 	 * @return the current vm state
 	 */
@@ -337,17 +424,51 @@ public class VirtualMachine extends MaxMinConsumer {
 		initialTransfer(vasource, vatarget, sdEvent);
 	}
 
+	/**
+	 * The event that will be received upon the completion of the VA's copy from
+	 * vasource to vatarget.
+	 * 
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+	 *
+	 * 
+	 */
 	class InitialTransferEvent extends ConsumptionEventAdapter {
+		/**
+		 * the target repository where the VA is expected to turn up
+		 */
 		final Repository target;
+		/**
+		 * the event to be fired after the transfer is complete
+		 */
 		final EventSetup esetup;
+		/**
+		 * the expected id of the storage object in the target repository
+		 */
 		final String diskid;
 
+		/**
+		 * Initiates the event handler object
+		 * 
+		 * @param t
+		 *            the repository to observe
+		 * @param event
+		 *            the event to fire after the transfer to the target repo
+		 *            happened
+		 * @param did
+		 *            the disk id of the newly created storage object in the
+		 *            target repo for the new runnable VA.
+		 */
 		public InitialTransferEvent(final Repository t, final EventSetup event, final String did) {
 			target = t;
 			esetup = event;
 			diskid = did;
 		}
 
+		/**
+		 * stores the newly transferred storage object into the VM's disk field,
+		 * and then continues with the next step in the VM state management
+		 * (represented with the event setup)
+		 */
 		@Override
 		public void conComplete() {
 			disk = target.lookup(diskid);
@@ -372,6 +493,9 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *            fire an event on this channel if the VA is cloned properly
 	 * @throws VMManagementException
 	 *             if the VA transfer failed and the state change was reverted
+	 * @throws NetworkException
+	 *             if the VA's transfer cannot be completed (e.g., because of
+	 *             connectivity issues)
 	 */
 	private void initialTransfer(final Repository vasource, final Repository vatarget, final EventSetup es)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -407,7 +531,8 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	/**
 	 * Initiates the startup procedure of a VM. If the VM is in destroyed state
-	 * then it ensures the disk image for the VM is ready to be used.
+	 * then it ensures the disk image for the VM is ready to be used (i.e. first
+	 * it starts the inittransfer procedure).
 	 * 
 	 * @param pm
 	 *            the physical machine that hosts the VM.
@@ -704,7 +829,14 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	}
 
-	private void realResume() throws VMManagementException, NetworkNode.NetworkException {
+	/**
+	 * Actually manages the resume operation (could be invoked from migration as
+	 * well as from resume)
+	 * 
+	 * @throws VMManagementException
+	 *             if the VM's memory cannot be recalled.
+	 */
+	private void realResume() throws VMManagementException {
 		State priorState = currState;
 		setState(State.RESUME_TR);
 		final Repository pmdisk = ra.getHost().localDisk;
@@ -777,11 +909,26 @@ public class VirtualMachine extends MaxMinConsumer {
 		vmStateChangelistenerManager.unsubscribeFromEvents(consumer);
 	}
 
+	/**
+	 * determines if a resourceconsumption object can be registered. it is going
+	 * to be determined acceptable all the time if the VM is in one of its
+	 * consuming states.
+	 */
 	@Override
 	protected boolean isAcceptableConsumption(ResourceConsumption con) {
 		return consumingStates.contains(currState) ? super.isAcceptableConsumption(con) : false;
 	}
 
+	/**
+	 * This is the function users expected to use to create computing tasks on
+	 * the VMs (not using resourceconsumptions directly).
+	 * 
+	 * @param total
+	 * @param limit
+	 * @param e
+	 * @return
+	 * @throws NetworkException
+	 */
 	public ResourceConsumption newComputeTask(final double total, final double limit,
 			final ResourceConsumption.ConsumptionEvent e) throws NetworkException {
 		if (ra == null) {
