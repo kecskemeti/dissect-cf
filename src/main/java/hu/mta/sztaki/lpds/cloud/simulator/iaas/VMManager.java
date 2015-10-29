@@ -43,11 +43,11 @@ import java.util.List;
  * 
  * @param <E>
  *            The type of the system that will manage the VMs.
- *            
+ * 
  * @param <F>
- * 			  The kind of the managed capacities behind the VMManager.
+ *            The kind of the managed capacities behind the VMManager.
  */
-public interface VMManager<E,F> {
+public interface VMManager<E, F> {
 
 	/**
 	 * This is a generic class to represent all kinds of problems that could
@@ -90,8 +90,30 @@ public interface VMManager<E,F> {
 		}
 	}
 
+	/**
+	 * The interface to implement for those events where a VMManager object
+	 * changes its capacity.
+	 * 
+	 * @author Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013
+	 * 
+	 * @param <F>
+	 *            the kind of capacity that changes
+	 */
 	interface CapacityChangeEvent<F> {
-		void capacityChanged(ResourceConstraints newCapacity, List<F> affectedCapacity);
+		/**
+		 * This function is called by the object that has changed its capacities
+		 * 
+		 * @param newCapacity
+		 *            the size of the new capacity in terms of physical
+		 *            resources
+		 * @param affectedCapacity
+		 *            the list of those objects (representing the computing
+		 *            capacity of the particular VMManager) that were
+		 *            added/removed during the change
+		 */
+		void capacityChanged(ResourceConstraints newCapacity,
+				List<F> affectedCapacity);
 	}
 
 	/**
@@ -171,9 +193,26 @@ public interface VMManager<E,F> {
 	 */
 	Collection<VirtualMachine> listVMs();
 
+	/**
+	 * Allows the query of the total capacities
+	 * 
+	 * @return the total computing capacities of this VMManager
+	 */
 	ResourceConstraints getCapacities();
 
+	/**
+	 * manages the subscriptions for capacity change (increase/decrease) events
+	 * 
+	 * @param sl
+	 *            the listener object which expects state change events
+	 */
 	void subscribeToCapacityChanges(CapacityChangeEvent<F> e);
 
+	/**
+	 * manages the subscriptions for capacity change (increase/decrease) events
+	 * 
+	 * @param sl
+	 *            the listener object that no longer expects state change events
+	 */
 	void unsubscribeFromCapacityChanges(CapacityChangeEvent<F> e);
 }

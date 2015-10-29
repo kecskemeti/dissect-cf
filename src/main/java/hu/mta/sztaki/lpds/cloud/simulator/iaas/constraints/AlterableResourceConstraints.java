@@ -26,19 +26,57 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 import java.util.List;
 
+/**
+ * Provides an implementation of a resource constraints class that allows in
+ * place alterations on its instances
+ * 
+ * @author 
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ */
 public class AlterableResourceConstraints extends ResourceConstraints {
+	// data members to represent the state required for the standard RC calls
 	private double requiredCPUs;
 	private double requiredProcessingPower;
 	private boolean requiredProcessingIsMinimum;
 	private long requiredMemory;
 	private double totalProcessingPower;
 
-	public AlterableResourceConstraints(final double cpu, final double processing, final long memory) {
+	/**
+	 * A constructor to define resource constraints with exact amount of
+	 * resources to start with
+	 * 
+	 * @param cpu
+	 *            number of cores
+	 * @param processing
+	 *            per core processing power in instructions/tick
+	 * @param memory
+	 *            number of bytes
+	 */
+	public AlterableResourceConstraints(final double cpu,
+			final double processing, final long memory) {
 		this(cpu, processing, false, memory);
 	}
 
-	public AlterableResourceConstraints(final double cpu, final double processing, boolean isMinimum,
-			final long memory) {
+	/**
+	 * The main constructor to define alterable resource constraints
+	 * 
+	 * @param cpu
+	 *            number of cores
+	 * @param processing
+	 *            per core processing power in instructions/tick
+	 * @param isMinimum
+	 *            <ul>
+	 *            <li><i>true</i> if the constraints define an absolute minimum
+	 *            (i.e., the constraints object could represent any exact
+	 *            constraints object with at least as much memory/processors)
+	 *            <li><i>false</i> if the constraints defined here are exactly
+	 *            defined no difference from them are accepted.
+	 *            </ul>
+	 * @param memory
+	 *            number of bytes
+	 */
+	public AlterableResourceConstraints(final double cpu,
+			final double processing, boolean isMinimum, final long memory) {
 		requiredCPUs = cpu;
 		requiredMemory = memory;
 		requiredProcessingPower = processing;
@@ -46,15 +84,36 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		requiredProcessingIsMinimum = isMinimum;
 	}
 
+	/**
+	 * Allows to make an arbitrary resourceconstraints object into an alterable
+	 * one
+	 * 
+	 * @param toCopy
+	 *            the other resource constraints to copy
+	 */
 	public AlterableResourceConstraints(final ResourceConstraints toCopy) {
-		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(), toCopy.isRequiredProcessingIsMinimum(),
-				toCopy.getRequiredMemory());
+		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(),
+				toCopy.isRequiredProcessingIsMinimum(), toCopy
+						.getRequiredMemory());
 	}
 
+	/**
+	 * An easy way to get alterable constraints with zero resources - as a basis
+	 * for calculations with RCs
+	 * 
+	 * @return an alterable version of ConstantConstraints.noResources
+	 */
 	public static AlterableResourceConstraints getNoResources() {
 		return new AlterableResourceConstraints(ConstantConstraints.noResources);
 	}
 
+	/**
+	 * Allows to increase/decrease the amount of cpu cores and required memory
+	 * by this constraints object linearly
+	 * 
+	 * @param times
+	 *            the number of times the cpu/memory count should be multiplied
+	 */
 	public void multiply(final double times) {
 		if (times != 1) {
 			requiredCPUs *= times;
@@ -63,18 +122,43 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		}
 	}
 
+	/**
+	 * Allows a single resource constraints object to be added to this one
+	 * 
+	 * WARNING: this is for internal purposes only. It does not update the total
+	 * values for performance reasons!
+	 * 
+	 * @param singleAdd
+	 *            the other resource constraints object to be added to this one
+	 */
 	private void simpleAddition(final ResourceConstraints singleAdd) {
 		requiredCPUs += singleAdd.getRequiredCPUs();
-		requiredProcessingPower = singleAdd.getRequiredProcessingPower() < requiredProcessingPower
-				? requiredProcessingPower : singleAdd.getRequiredProcessingPower();
+		requiredProcessingPower = singleAdd.getRequiredProcessingPower() < requiredProcessingPower ? requiredProcessingPower
+				: singleAdd.getRequiredProcessingPower();
 		requiredMemory += singleAdd.getRequiredMemory();
 	}
 
+	/**
+	 * Allows a single resource constraints object to be added to this one
+	 * 
+	 * @param toAdd
+	 *            the other resource constraints object to be added
+	 */
 	public void singleAdd(final ResourceConstraints toAdd) {
 		simpleAddition(toAdd);
 		updateTotal();
 	}
 
+	/**
+	 * Allows multiple RC objects to be added to this one with variable
+	 * parameter length
+	 * 
+	 * This operation is good when the RC objects are held in an array. This way
+	 * they don't need a conversion
+	 * 
+	 * @param toAdd
+	 *            several resource constraints objects to be added
+	 */
 	public void add(final ResourceConstraints... toAdd) {
 		for (int i = 0; i < toAdd.length; i++) {
 			simpleAddition(toAdd[i]);
@@ -82,6 +166,16 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		updateTotal();
 	}
 
+	/**
+	 * Allows multiple RC objects to be added to this one with variable
+	 * parameter length
+	 * 
+	 * This operation expects a list of RC objects thus it is optimally used
+	 * when the RC objects are stored in a List anyways.
+	 * 
+	 * @param toAdd
+	 *            A list of several resource constraints objects to be added
+	 */
 	public void add(final List<ResourceConstraints> toAdd) {
 		final int size = toAdd.size();
 		for (int i = 0; i < size; i++) {
@@ -90,18 +184,32 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		updateTotal();
 	}
 
+	/**
+	 * Subtracts another RC object from this one
+	 * 
+	 * @param what
+	 *            the other party to subtract
+	 */
 	public void subtract(final ResourceConstraints what) {
 		requiredCPUs -= what.getRequiredCPUs();
-		requiredProcessingPower = requiredProcessingPower < what.getRequiredProcessingPower() ? requiredProcessingPower
-				: what.getRequiredProcessingPower();
+		requiredProcessingPower = requiredProcessingPower < what
+				.getRequiredProcessingPower() ? requiredProcessingPower : what
+				.getRequiredProcessingPower();
 		requiredMemory -= what.getRequiredMemory();
 		updateTotal();
 	}
 
+	/**
+	 * the total processing field is updated with this function. This is to be
+	 * used for the internal operations of the class.
+	 */
 	private void updateTotal() {
-		requiredProcessingPower = requiredCPUs == 0 ? 0 : requiredProcessingPower;
+		requiredProcessingPower = requiredCPUs == 0 ? 0
+				: requiredProcessingPower;
 		totalProcessingPower = requiredCPUs * requiredProcessingPower;
 	}
+
+	// Standard set of RC calls
 
 	@Override
 	public double getRequiredCPUs() {
