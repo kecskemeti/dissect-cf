@@ -26,9 +26,11 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 /**
- * This class is intentionally non mutable, allowing those users (e.g. the class
- * of IaaSService or Scheduler) who would want to share their current capacities
- * not to create a new instance for every new query.
+ * This class defines the basic properties (cpu core count, per core processing
+ * power, and memory size) and operations on resoruce constraints. These
+ * constraints are expected to be used to express resource capacities of
+ * physical/virtual machines or complete infrastructures, as well as requests
+ * for resource allocations/virtual machines.
  * 
  * @author 
  *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
@@ -37,6 +39,10 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 public abstract class ResourceConstraints implements
 		Comparable<ResourceConstraints> {
 
+	/**
+	 * provides a simple one line representation of resource constraints listing
+	 * all its inherent properties. good for debugging and tracing.
+	 */
 	@Override
 	public String toString() {
 		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:"
@@ -44,6 +50,9 @@ public abstract class ResourceConstraints implements
 				+ ")";
 	}
 
+	/**
+	 * offers a comparator between two constraints objects.
+	 */
 	@Override
 	public int compareTo(ResourceConstraints o) {
 		return getRequiredCPUs() == o.getRequiredCPUs()
@@ -56,14 +65,49 @@ public abstract class ResourceConstraints implements
 								.getRequiredProcessingPower() ? -1 : 1);
 	}
 
+	/**
+	 * Allows to query how many CPUs this constraints object represent
+	 * 
+	 * @return the amount of CPU cores represented by the object
+	 */
 	public abstract double getRequiredCPUs();
 
+	/**
+	 * Allows to query the performance of a single CPU core represented by this
+	 * constraints object represent
+	 * 
+	 * @return the performance of a CPU core in instructions/tick
+	 */
 	public abstract double getRequiredProcessingPower();
 
+	/**
+	 * Determines if the specified amounts of resources are minimally or exactly
+	 * required.
+	 * 
+	 * @return <ul>
+	 *         <li><i>true</i> if the specified amount of resources could be
+	 *         over-fulfilled
+	 *         <li><i>false</i> if the object represents an exact amount of
+	 *         resources
+	 *         </ul>
+	 */
 	public abstract boolean isRequiredProcessingIsMinimum();
 
+	/**
+	 * Allows to query how much memory this constraints object represent
+	 * 
+	 * @return the amount in bytes
+	 */
 	public abstract long getRequiredMemory();
 
+	/**
+	 * The total processing power of all cores represented by this constraints
+	 * object:
+	 * 
+	 * total=cpus*processingpower
+	 * 
+	 * @return the total processing power in instructions/tick
+	 */
 	public abstract double getTotalProcessingPower();
 
 }

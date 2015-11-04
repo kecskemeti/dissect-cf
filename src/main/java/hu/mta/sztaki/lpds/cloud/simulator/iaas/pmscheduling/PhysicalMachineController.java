@@ -31,15 +31,34 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 
 /**
+ * This class contains the main interface for the schedulers of Physical machine
+ * states. Although the interface is rather simplistic, its powers lie in the
+ * possible events that could come because the returned objects of the
+ * interfaces will be used for subscribing to various events.
  * 
  * @author 
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
 public abstract class PhysicalMachineController {
+	/**
+	 * The Infrastructure service that will have the physical machines to be
+	 * controlled and overseen by the particular implementations of this class
+	 */
 	protected final IaaSService parent;
+	/**
+	 * The event consumer object that will get notifications if the VM scheduler
+	 * of the IaaS is under stress.
+	 */
 	protected final Scheduler.QueueingEvent queueingEvent;
 
+	/**
+	 * The main constructor which initiates the class and manages the
+	 * subscriptions to the necessary basic events
+	 * 
+	 * @param parent
+	 *            the iaas service the future object will need to oversee
+	 */
 	public PhysicalMachineController(IaaSService parent) {
 		this.parent = parent;
 		parent.subscribeToCapacityChanges(getHostRegEvent());
@@ -47,8 +66,22 @@ public abstract class PhysicalMachineController {
 		parent.sched.subscribeQueueingEvents(queueingEvent);
 	}
 
+	/**
+	 * Calling this function should return an object which knows what to do in
+	 * case a new host registration/deregistration happens on the parent IaaS
+	 * service.
+	 * 
+	 * @return the object to handle the registration events
+	 */
 	protected abstract VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent();
 
+	/**
+	 * Calling this function should return an object that knows the necessary
+	 * actions to take when the IaaS's VM scheduler alarms us for overutilized
+	 * infrastructure.
+	 * 
+	 * @return the object to handle the VM scheduling related events
+	 */
 	protected abstract Scheduler.QueueingEvent getQueueingEvent();
 
 }
