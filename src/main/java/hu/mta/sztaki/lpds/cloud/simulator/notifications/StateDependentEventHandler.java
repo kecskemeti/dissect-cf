@@ -38,17 +38,43 @@ import java.util.ArrayList;
  * 
  * The individual notifications can be customized via the class's constructor.
  * 
- * @author 
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
  *
- * @param <T> the kind of state change for which this handler is prepared to notify about.
+ * @param <T>
+ *            the kind of state change for which this handler is prepared to
+ *            notify about.
+ * @param
+ * 			<P>
+ *            the kind of data to be passed on to the notified party
  */
-public class StateDependentEventHandler<T,P> {
+public class StateDependentEventHandler<T, P> {
 
+	/**
+	 * The listeners that will receive notifications if the notify listeners
+	 * function is called
+	 */
 	private ArrayList<T> listeners = new ArrayList<T>();
+	/**
+	 * if the notificaiton process is underway, then new listeners are
+	 * registered here (they will not receive notifications in the current
+	 * notification round as their registration is actually a result of the
+	 * current notification round)
+	 */
 	private ArrayList<T> newListeners = new ArrayList<T>();
+	/**
+	 * if the notificaiton process is underway, then to be removed listeners are
+	 * registered here (they will still receive notifications in the current
+	 * notification round as their de-registration is actually a result of the
+	 * current notification round)
+	 */
 	private ArrayList<T> cancelledListeners = new ArrayList<T>();
+	/**
+	 * a marker to show if there is a notification process underway
+	 */
 	private boolean noEventDispatchingInProcess = true;
+	/**
+	 * the entity that is actually used to perform the notifications
+	 */
 	private final SingleNotificationHandler<T, P> myHandler;
 
 	/**
@@ -113,6 +139,10 @@ public class StateDependentEventHandler<T,P> {
 	 * currently listed listeners. If there are new/cancelled subscriptions then
 	 * they are added/removed to/from the list of listeners at the end of the
 	 * event dispatching loop.
+	 * 
+	 * @param payload
+	 *            to be sent out for all interested parties upon receiving this
+	 *            notification
 	 */
 	public void notifyListeners(final P payload) {
 		if (noEventDispatchingInProcess) {

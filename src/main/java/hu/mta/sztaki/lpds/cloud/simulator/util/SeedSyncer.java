@@ -27,12 +27,29 @@ package hu.mta.sztaki.lpds.cloud.simulator.util;
 
 import java.util.Random;
 
+/**
+ * A class to manage the random generator to be used if reproducible but random
+ * results are expected from the simulator
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ */
 public class SeedSyncer {
+	/**
+	 * The random generator that will be used by the system components and that
+	 * is recommended to be used by simulations built on top of DISSECT-CF
+	 */
 	public static final Random centralRnd;
+	/**
+	 * The random seed for the central random generator.
+	 * 
+	 * To set this seed, you must define the system property of
+	 * "hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer.seed" before running
+	 * any simulations.
+	 */
 	public static final int seed;
+
 	static {
-		String seedText = System
-				.getProperty("hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer.seed");
+		String seedText = System.getProperty("hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer.seed");
 		if (seedText == null) {
 			seed = 1;
 		} else {
@@ -41,6 +58,9 @@ public class SeedSyncer {
 		centralRnd = new Random(seed);
 	}
 
+	/**
+	 * To restart the simulator's random generator
+	 */
 	public static void resetCentral() {
 		centralRnd.setSeed(seed);
 	}

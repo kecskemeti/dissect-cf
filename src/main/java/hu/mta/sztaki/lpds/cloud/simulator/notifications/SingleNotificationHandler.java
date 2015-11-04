@@ -25,6 +25,31 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.notifications;
 
+/**
+ * the handler for a particular kind of notification. the implementer of this
+ * interface should be prepared to notify the interested party (T) that a state
+ * change has happened and it should send the payload to the interested party.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ *
+ * @param <T>
+ *            the kind of state change for which this handler is prepared to
+ *            notify about.
+ * @param
+ * 			<P>
+ *            the kind of data to be passed on to the notified party
+ * 
+ */
 public interface SingleNotificationHandler<T, P> {
+	/**
+	 * this function is called by the statedependenteventhandler class when a
+	 * notification is needed for a particular kind of event.
+	 * 
+	 * @param onObject
+	 *            the subscribed object that is expecting to receive the
+	 *            notifications
+	 * @param payload
+	 *            the data to be sent alongside the notification
+	 */
 	public void sendNotification(final T onObject, final P payload);
 }

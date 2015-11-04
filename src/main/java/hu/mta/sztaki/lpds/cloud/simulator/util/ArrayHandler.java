@@ -27,6 +27,12 @@ package hu.mta.sztaki.lpds.cloud.simulator.util;
 
 import java.util.ArrayList;
 
+/**
+ * A class to simplify often used arraylist handling operations
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *
+ */
 public class ArrayHandler {
 	/**
 	 * An item removal function that brings the last element from the array to
@@ -39,8 +45,7 @@ public class ArrayHandler {
 	 *            The element to be removed
 	 * @return true if the element was successfully removed, false otherwise.
 	 */
-	public static <T> boolean removeAndReplaceWithLast(
-			final ArrayList<T> toRemoveFrom, final T toRemoveWhat) {
+	public static <T> boolean removeAndReplaceWithLast(final ArrayList<T> toRemoveFrom, final T toRemoveWhat) {
 		final int loc = toRemoveFrom.indexOf(toRemoveWhat);
 		if (loc >= 0) {
 			final int sizeMinus = toRemoveFrom.size() - 1;

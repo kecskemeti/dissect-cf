@@ -39,9 +39,8 @@ import java.util.Map;
  * system. The instances of this class are always present and represent the
  * general network capabilities in the hosts.
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012,2014-"
  * 
  */
 public class NetworkNode {
@@ -63,11 +62,11 @@ public class NetworkNode {
 	 * To create a new instance of this class, one must use the initTransfer
 	 * method of the NetworkNode.
 	 * 
-	 * WARNING this is an internal representation of the transfer. This class is
-	 * not supposed to be used outside of the context of the NetworkNode.
+	 * <i>WARNING</i> this is an internal representation of the transfer. This
+	 * class is not supposed to be used outside of the context of the
+	 * NetworkNode.
 	 * 
-	 * @author 
-	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
 	 * 
 	 */
 	static class SingleTransfer extends ResourceConsumption {
@@ -84,10 +83,8 @@ public class NetworkNode {
 		 *            object completes its transfers. With this event it is
 		 *            possible to notify the entity who initiated the transfer.
 		 */
-		private SingleTransfer(final int latency, final long tottr,
-				final double limit, final MaxMinConsumer in,
-				final MaxMinProvider out,
-				final ResourceConsumption.ConsumptionEvent e) {
+		private SingleTransfer(final int latency, final long tottr, final double limit, final MaxMinConsumer in,
+				final MaxMinProvider out, final ResourceConsumption.ConsumptionEvent e) {
 			super(tottr, limit, in, out, e);
 			if (latency != 0) {
 				new DeferredEvent(latency) {
@@ -102,16 +99,48 @@ public class NetworkNode {
 		}
 	}
 
-	// BW spreaders among pipes:
-
+	/**
+	 * Models the incoming network connections of this network node
+	 */
 	public final MaxMinConsumer inbws;
+	/**
+	 * Models the outgoing network connections of this network node
+	 */
 	public final MaxMinProvider outbws;
+	/**
+	 * Models the write bandwidth of the disk of this network node
+	 */
 	public final MaxMinConsumer diskinbws;
+	/**
+	 * Models the read bandwidth of the disk of this network node
+	 */
 	public final MaxMinProvider diskoutbws;
+	/**
+	 * Models the memory write bandwidth on this network node
+	 */
 	public final MaxMinConsumer meminbws;
+	/**
+	 * Models the memory read bandwidth on this network node
+	 */
 	public final MaxMinProvider memoutbws;
 
+	/**
+	 * The name of this network node (this could be an IP or what is most
+	 * suitable for the simulation at hand).
+	 */
 	private final String name;
+	/**
+	 * The direct network connections of this network node.
+	 * 
+	 * Contents of the map:
+	 * <ul>
+	 * <li>The key of this map lists the names of the network nodes to which
+	 * this particular network node is connected.
+	 * <li>The value of this map lists the latencies in ticks between this
+	 * network node and the node named in the key.
+	 * </ul>
+	 * 
+	 */
 	private final Map<String, Integer> latencies;
 
 	/**
@@ -125,8 +154,7 @@ public class NetworkNode {
 	 * @param diskBW
 	 *            the disk bw of the node
 	 */
-	public NetworkNode(final String id, final long maxInBW,
-			final long maxOutBW, final long diskBW,
+	public NetworkNode(final String id, final long maxInBW, final long maxOutBW, final long diskBW,
 			final Map<String, Integer> latencymap) {
 		name = id;
 		outbws = new MaxMinProvider(maxOutBW);
@@ -184,56 +212,117 @@ public class NetworkNode {
 	 * @param e
 	 *            defines the way the initiator will be notified upon the
 	 *            completion of the transfer
+	 * @return the resource consumption object representing the transfer. This
+	 *         is returned to allow the cancellation of the object or to allow
+	 *         the observation of its state.
 	 */
-	public static ResourceConsumption initTransfer(final long size,
-			final double limit, final NetworkNode from, final NetworkNode to,
-			final ResourceConsumption.ConsumptionEvent e)
-			throws NetworkException {
+	public static ResourceConsumption initTransfer(final long size, final double limit, final NetworkNode from,
+			final NetworkNode to, final ResourceConsumption.ConsumptionEvent e) throws NetworkException {
 		if (from == to) {
-			return new SingleTransfer(0, size, limit, from.diskinbws,
-					from.diskoutbws, e);
+			return new SingleTransfer(0, size, limit, from.diskinbws, from.diskoutbws, e);
 		} else {
-			return new SingleTransfer(checkConnectivity(from, to), size, limit,
-					to.inbws, from.outbws, e);
+			return new SingleTransfer(checkConnectivity(from, to), size, limit, to.inbws, from.outbws, e);
 		}
 	}
 
-	public ResourceConsumption pushFromMemory(final long size,
-			final double limit, boolean toDisk,
+	/**
+	 * This function allows the simplified creation of singletransfer objects
+	 * for modeling the operation of writing data to the disk/network of this
+	 * node from its memory.
+	 * 
+	 * @param size
+	 *            the amount of data to be transferred from the memory to the
+	 *            disk/network (in bytes)
+	 * @param limit
+	 *            the maximum bandwidth allowed to be available for this
+	 *            particular transfer (in bytes/tick)
+	 * @param toDisk
+	 *            <ul>
+	 *            <li><i>true</i> if the transfer should be managed to the
+	 *            network node's disk
+	 *            <li><i>false</i> if the bytes read from memory should be sent
+	 *            over the network
+	 *            </ul>
+	 * @param e
+	 *            to be fired when the transfer completes
+	 * @return the resource consumption object that models the transfer. This is
+	 *         returned to allow the cancellation of the object or to allow the
+	 *         observation of its state.
+	 */
+	public ResourceConsumption pushFromMemory(final long size, final double limit, boolean toDisk,
 			final ResourceConsumption.ConsumptionEvent e) {
-		return new SingleTransfer(0, size, limit, toDisk ? diskinbws : inbws,
-				memoutbws, e);
+		return new SingleTransfer(0, size, limit, toDisk ? diskinbws : inbws, memoutbws, e);
 	}
 
-	public ResourceConsumption readToMemory(final long size,
-			final double limit, boolean fromDisk,
+	/**
+	 * This function allows the simplified creation of singletransfer objects
+	 * for modeling the operation of reading data from the disk/network of this
+	 * node to its memory.
+	 * 
+	 * @param size
+	 *            the amount of data to be transferred to the memory from the
+	 *            disk/network (in bytes)
+	 * @param limit
+	 *            the maximum bandwidth allowed to be available for this
+	 *            particular transfer (in bytes/tick)
+	 * @param toDisk
+	 *            <ul>
+	 *            <li><i>true</i> if the transfer should be managed from the
+	 *            network node's disk
+	 *            <li><i>false</i> if the bytes written to memory should be
+	 *            received over the network
+	 *            </ul>
+	 * @param e
+	 *            to be fired when the transfer completes
+	 * @return the resource consumption object that models the transfer. This is
+	 *         returned to allow the cancellation of the object or to allow the
+	 *         observation of its state.
+	 */
+	public ResourceConsumption readToMemory(final long size, final double limit, boolean fromDisk,
 			final ResourceConsumption.ConsumptionEvent e) {
-		return new SingleTransfer(0, size, limit, meminbws,
-				fromDisk ? diskoutbws : outbws, e);
+		return new SingleTransfer(0, size, limit, meminbws, fromDisk ? diskoutbws : outbws, e);
 	}
 
-	public static int checkConnectivity(final NetworkNode from,
-			final NetworkNode to) throws NetworkException {
+	/**
+	 * Determines if there is direct network connection possible between two
+	 * network nodes
+	 * 
+	 * @param from
+	 *            the network node which is expected to send some data
+	 * @param to
+	 *            the network node which is expected to receive the sent data
+	 * @return the network latency of the connection between the two
+	 * @throws NetworkException
+	 *             if there is no direct connection possible between the two
+	 *             specified nodes.
+	 */
+	public static int checkConnectivity(final NetworkNode from, final NetworkNode to) throws NetworkException {
 		if (from == to) {
 			return 0;
 		}
 		final Integer lat = from.latencies.get(to.name);
 		if (lat == null)
-			throw new NetworkException("No connection between: '" + from.name
-					+ "' and '" + to.name + "'");
+			throw new NetworkException("No connection between: '" + from.name + "' and '" + to.name + "'");
 		return lat;
 	}
 
+	/**
+	 * Allows to query the networknode's name
+	 * 
+	 * @return the name of the node
+	 */
 	public String getName() {
 		return name;
 	}
 
+	/**
+	 * provides an overview of the network node concentrating on the network's
+	 * properties. useful for tracing and debug.
+	 */
 	@Override
 	public String toString() {
-		return "NetworkNode(Id:" + name + " NI:" + getInputbw() + ",NO:"
-				+ getOutputbw() + " -- RX:" + inbws.getTotalProcessed()
-				+ " TX:" + outbws.getTotalProcessed() + " --, D:" + getDiskbw()
-				+ ")";
+		return "NetworkNode(Id:" + name + " NI:" + getInputbw() + ",NO:" + getOutputbw() + " -- RX:"
+				+ inbws.getTotalProcessed() + " TX:" + outbws.getTotalProcessed() + " --, D:" + getDiskbw() + ")";
 	}
 
 }
