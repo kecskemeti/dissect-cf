@@ -25,118 +25,52 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
-import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.CapacityChangeEvent;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
-public class MultiPMController extends PhysicalMachineController {
+/**
+ * A reactive PM controller that increases/decreases the powered on pm set on
+ * demands of the vm scheduler. This controller implementation is always
+ * changing the machine set size with the amount that matches the size of the VM
+ * queue of the VM scheduler. This might cause unrealistic PM number increases
+ * which would ruin power lines in real life.
+ * 
+ * The logic of this controller is very similar to the one in
+ * SchedulingDependentMachines, the only difference is how it grows the number
+ * of machines needed for the current operation of the infrastructure.
+ * 
+ * <i>WARNING:</i> this is an experimental class, it is not widely tested,
+ * handle with care
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ */
 
-	private class CapacityChangeManager
-			implements VMManager.CapacityChangeEvent<ResourceConstraints>, PhysicalMachine.StateChangeListener {
+public class MultiPMController extends SchedulingDependentMachines {
 
-		final PhysicalMachine observed;
-
-		public CapacityChangeManager(final PhysicalMachine pm) {
-			observed = pm;
-			observed.subscribeToIncreasingFreeapacityChanges(this);
-			observed.subscribeStateChangeEvents(this);
-		}
-
-		private void switchoffmachine() {
-			try {
-				observed.switchoff(null);
-				// These exceptions below are only relevant if migration
-				// is requested now they will never come.
-			} catch (VMManagementException e) {
-			} catch (NetworkException e) {
-			}
-		}
-
-		@Override
-		public void capacityChanged(final ResourceConstraints newCapacity,
-				final List<ResourceConstraints> newlyFreeCapacities) {
-			if (observed.getCapacities().compareTo(newCapacity) <= 0
-					&& parent.sched.getTotalQueued().getRequiredCPUs() == 0) {
-				// Totally free machine and nothing queued
-				switchoffmachine();
-			}
-		}
-
-		@Override
-		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-			if (PhysicalMachine.State.RUNNING.equals(newState)) {
-				currentlyStartingPMs.remove(pm);
-				if (parent.sched.getQueueLength() == 0) {
-					new DeferredEvent(observed.getCurrentOnOffDelay()) {
-						// Keeps the just started PM on for a short while to
-						// allow some new VMs to arrive, otherwise it seems like
-						// we just started the PM for no reason
-						@Override
-						protected void eventAction() {
-							if (!observed.isHostingVMs() && observed.isRunning()) {
-								switchoffmachine();
-							}
-						}
-					};
-				} else {
-					ResourceConstraints runningCapacities = parent.getRunningCapacities();
-					if (!parent.runningMachines.contains(observed)) {
-						// parent have not recognize this PM's startup yet
-						runningCapacities = new AlterableResourceConstraints(runningCapacities);
-						((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
-					}
-					if (runningCapacities.compareTo(parent.sched.getTotalQueued()) < 0) {
-						// no capacities to handle the currently queued jobs, so
-						// we need to start up further machines
-						turnOnSomeMachines();
-					}
-				}
-			}
-		}
-	}
-
-	private final HashMap<PhysicalMachine, CapacityChangeManager> capacityManagers = new HashMap<PhysicalMachine, CapacityChangeManager>();
+	/**
+	 * the list of machines that are currently turned on by this controller.
+	 */
 	private final ArrayList<PhysicalMachine> currentlyStartingPMs = new ArrayList<PhysicalMachine>();
 
+	/**
+	 * Constructs the scheduler and passes the parent IaaSService to the
+	 * superclass.
+	 * 
+	 * @param parent
+	 *            the IaaSService to serve
+	 */
 	public MultiPMController(final IaaSService parent) {
 		super(parent);
 	}
 
-	@Override
-	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
-		return new CapacityChangeEvent<PhysicalMachine>() {
-			@Override
-			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
-				final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
-				final int pmNum = alteredPMs.size();
-				if (newRegistration) {
-					// Management of capacity increase
-					for (int i = pmNum - 1; i >= 0; i--) {
-						final PhysicalMachine pm = alteredPMs.get(i);
-						capacityManagers.put(pm, new CapacityChangeManager(pm));
-					}
-				} else {
-					// Management of capacity decrease
-					for (int i = pmNum - 1; i >= 0; i--) {
-						capacityManagers.remove(alteredPMs.get(i));
-					}
-				}
-			}
-		};
-	}
-
+	/**
+	 * Implements a reaction to the starting of the VM queue that is capable to
+	 * turn on multiple PMs in parallel.
+	 */
 	@Override
 	protected Scheduler.QueueingEvent getQueueingEvent() {
 		return new Scheduler.QueueingEvent() {
@@ -147,6 +81,19 @@ public class MultiPMController extends PhysicalMachineController {
 		};
 	}
 
+	/**
+	 * Forwards the single PM turnon request to multi PM turnon.
+	 */
+	@Override
+	protected void turnOnAMachine() {
+		turnOnSomeMachines();
+	}
+
+	/**
+	 * Turns on as many PMs as many required to fulfill the total resource
+	 * requirements of the queued VMs at the VM scheduler of the parent
+	 * IaasService
+	 */
 	protected void turnOnSomeMachines() {
 		final int pmsize = parent.machines.size();
 		if (parent.runningMachines.size() != pmsize) {

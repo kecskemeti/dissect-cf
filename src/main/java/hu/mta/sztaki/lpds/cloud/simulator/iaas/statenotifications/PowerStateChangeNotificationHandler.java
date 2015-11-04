@@ -33,19 +33,52 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
+/**
+ * implements a notification handler for sending out notifications about power
+ * state changes in resource spreaders
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ *
+ */
+
 public class PowerStateChangeNotificationHandler
 		implements SingleNotificationHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> {
 
+	/**
+	 * the single object that will handle all notification operations on the
+	 * same way
+	 */
 	private static final PowerStateChangeNotificationHandler handlerSingleton = new PowerStateChangeNotificationHandler();
+
+	/**
+	 * disables the instantiation of the handler so we really just have a single
+	 * instance for all handling operations
+	 */
 
 	private PowerStateChangeNotificationHandler() {
 	}
 
+	/**
+	 * gets the event handler that will manage the notification subscriptions
+	 * for the particular resource spreader object that asked for the handler.
+	 * 
+	 * @return the eventh handler
+	 */
 	public static StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> getHandlerInstance() {
 		return new StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>>(
 				handlerSingleton);
 	}
 
+	/**
+	 * The event handling mechanism for power state change notifications about
+	 * resource spreaders
+	 * 
+	 * @param onObject
+	 *            The listener to send the event to
+	 * @param stateData
+	 *            a data pair containing the resource spreader that changed its
+	 *            state and the power state that the spreader just switches to.
+	 */
 	@Override
 	public void sendNotification(final PowerBehaviorChangeListener onObject,
 			final Pair<ResourceSpreader, PowerState> newPowerBehavior) {

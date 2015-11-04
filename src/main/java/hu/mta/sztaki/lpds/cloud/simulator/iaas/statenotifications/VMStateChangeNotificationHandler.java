@@ -33,19 +33,50 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChange;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
+/**
+ * implements a notification handler for sending out notifications about VM
+ * state changes
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ *
+ */
 public class VMStateChangeNotificationHandler
 		implements SingleNotificationHandler<StateChange, Triple<VirtualMachine, State, State>> {
 
+	/**
+	 * the singleton notification sender object that will send out all
+	 * notifications about a VM state changes on a uniform way
+	 */
 	private static final VMStateChangeNotificationHandler handlerSingleton = new VMStateChangeNotificationHandler();
 
+	/**
+	 * disables the instantiation of the handler so we really just have a single
+	 * instance for all handling operations
+	 */
 	private VMStateChangeNotificationHandler() {
 
 	}
 
+	/**
+	 * gets the event handler that will manage the subscriptions for the
+	 * particular VM object that asked for the handler. One should be requested for
+	 * every VM that expects to send out state change notifications.
+	 * 
+	 * @return the eventh handler
+	 */
 	public static StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> getHandlerInstance() {
 		return new StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>>(handlerSingleton);
 	}
 
+	/**
+	 * The event handling mechanism for VM state change notifications
+	 * 
+	 * @param onObject
+	 *            The listener to send the event to
+	 * @param stateData
+	 *            a data triplet containing the VM and its the past and future
+	 *            states.
+	 */
 	@Override
 	public void sendNotification(final StateChange onObject, Triple<VirtualMachine, State, State> stateData) {
 		onObject.stateChanged(stateData.getLeft(), stateData.getMiddle(), stateData.getRight());
