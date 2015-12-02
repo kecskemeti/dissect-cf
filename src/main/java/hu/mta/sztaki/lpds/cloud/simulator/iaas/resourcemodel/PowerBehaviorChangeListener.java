@@ -27,6 +27,23 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 
+/**
+ * This interface should be implemented in case one would like to observe the
+ * power behavior changes of a resource spreader. This is expected to be used in
+ * the energy related part of the simulator.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014-5"
+ * 
+ */
 public interface PowerBehaviorChangeListener {
+	/**
+	 * Until subscribed, this function is called every time when a resource
+	 * spreader switches to a new power state.
+	 * 
+	 * @param onSpreader
+	 *            the resource spreader which changed its power state
+	 * @param newState
+	 *            the new power state that is used by the spreader from now on.
+	 */
 	void behaviorChanged(final ResourceSpreader onSpreader, final PowerState newState);
 }
