@@ -29,17 +29,35 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RoundRobinIterator;
 
+/**
+ * Provides a scheduler that uses the round robin PM iterator to traverse
+ * through the IaaS's running machines list. This ensures uniform use of the PMs
+ * on the long run. Other than the random PM selection this class utilizes the
+ * FirstFitScheduler's logic of VM placement and queue management.
+ * 
+ * Unless VM migration is used to reduce the PMs under utilization this
+ * scheduler is less energy efficient than the generic first fit as that is
+ * always trying to exhaust the resources of a PM before going for another one.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
+ */
 public class RoundRobinScheduler extends FirstFitScheduler {
-	private final RoundRobinIterator rit;
-
+	/**
+	 * Passes the IaaSService further to its super class.
+	 * 
+	 * @param parent
+	 *            the IaaS Service which this RoundRobinScheduler operates on
+	 */
 	public RoundRobinScheduler(IaaSService parent) {
 		super(parent);
-		rit = new RoundRobinIterator(parent.runningMachines);
 	}
 
+	/**
+	 * Returns with the RoundRobin PM iterator.
+	 */
 	@Override
-	protected PMIterator getPMIterator() {
-		rit.reset();
-		return rit;
+	protected PMIterator instantiateIterator() {
+		return new RoundRobinIterator(parent.runningMachines);
 	}
 }

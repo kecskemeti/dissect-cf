@@ -34,33 +34,75 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * The data stored about a single queued VM request.
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ */
 public class QueueingData {
+	/**
+	 * The VMs to be placed on a PM
+	 */
 	public final VirtualMachine[] queuedVMs;
+	/**
+	 * A single VM should have this much resources allocated to it
+	 */
 	public final ResourceConstraints queuedRC;
+	/**
+	 * All VMs in the request should have this much resources in total
+	 */
 	public final ResourceConstraints cumulativeRC;
+	/**
+	 * The repository that is storing the VM's virtual appliance.
+	 */
 	public final Repository queuedRepo;
 	/**
-	 * Data for custom schedulers, if null then there is no data.
+	 * Data for custom schedulers (e.g., like specific placement requirements -
+	 * please put me on this machine and this machine only), if null then there
+	 * is no data.
 	 */
 	public final Map<String, Object> schedulingConstraints;
+	/**
+	 * The time stamp when the VM request has been received by the VM scheduler
+	 */
 	public final long receivedTime;
 
-	public QueueingData(final VirtualMachine[] vms,
-			final ResourceConstraints rc, final Repository vaSource,
+	/**
+	 * Instantiates the queueing data object which auto-populates the derivable
+	 * fields and safeguards all data stored.
+	 * 
+	 * @param vms
+	 *            the virtual machine set to work on
+	 * @param rc
+	 *            the resource requirements for a single VM
+	 * @param vaSource
+	 *            the repository which hosts the virtual appliance required for
+	 *            the instantiation of the VMs
+	 * @param schedulingConstraints
+	 *            custom scheduler data
+	 * @param received
+	 *            the timestamp
+	 */
+	public QueueingData(final VirtualMachine[] vms, final ResourceConstraints rc, final Repository vaSource,
 			Map<String, Object> schedulingConstraints, final long received) {
 		queuedVMs = vms;
 		queuedRC = rc;
 		queuedRepo = vaSource;
 		AlterableResourceConstraints cRC = new AlterableResourceConstraints(rc);
 		cRC.multiply(queuedVMs.length);
-		cumulativeRC=new UnalterableConstraintsPropagator(cRC);
+		cumulativeRC = new UnalterableConstraintsPropagator(cRC);
 		receivedTime = received;
-		this.schedulingConstraints = schedulingConstraints==null?null:Collections.unmodifiableMap(schedulingConstraints);
+		this.schedulingConstraints = schedulingConstraints == null ? null
+				: Collections.unmodifiableMap(schedulingConstraints);
 	}
 
+	/**
+	 * Provides a user readable single line representation of the queued VMs.
+	 * Good for debugging and tracing.
+	 */
 	@Override
 	public String toString() {
-		return "QueueingData(" + queuedVMs.length + " * " + queuedRC + " @"
-				+ receivedTime + ")";
+		return "QueueingData(" + queuedVMs.length + " * " + queuedRC + " @" + receivedTime + ")";
 	}
 }

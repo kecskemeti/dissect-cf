@@ -29,17 +29,32 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RandomIterator;
 
+/**
+ * Provides a scheduler that uses the random PM iterator to traverse through the
+ * IaaS's running machines list. This ensures uniform use of the PMs on the long
+ * run. Other than the random PM selection this class utilizes the
+ * FirstFitScheduler's logic of VM placement and queue management.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
+ */
 public class RandomScheduler extends FirstFitScheduler {
-	private final RandomIterator rit;
 
+	/**
+	 * Passes the IaaSService further to its super class.
+	 * 
+	 * @param parent
+	 *            the IaaS Service which this RandomScheduler operates on
+	 */
 	public RandomScheduler(IaaSService parent) {
 		super(parent);
-		rit = new RandomIterator(parent.runningMachines);
 	}
 
+	/**
+	 * Returns with the Random PM iterator.
+	 */
 	@Override
-	protected PMIterator getPMIterator() {
-		rit.reset();
-		return rit;
+	protected PMIterator instantiateIterator() {
+		return new RandomIterator(parent.runningMachines);
 	}
 }

@@ -33,22 +33,77 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
+/**
+ * This class implements one of the simplest VM schedulers: it places every VM
+ * on the first PM that would actually accept it. The scheduler does not
+ * rearrange the queue, thus if there would be some queued entities that would
+ * be possible to schedule this scheduler just ignores them until they reach the
+ * head of the queue.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012"
+ */
 public class FirstFitScheduler extends Scheduler {
 
+	/**
+	 * The set of resource allocations made for the current VM request (this is
+	 * important for multi VM requests)
+	 */
 	ResourceAllocation[] ras = new ResourceAllocation[5];
+	/**
+	 * the largest allocation that was possible to collect from all running PMs
+	 * in the infrastructure. this is important to determine the amount of
+	 * resources that need to become free before the scheduler would be able to
+	 * place the head of the queue to any of the PMs in the infrastructure.
+	 */
 	ResourceAllocation raBiggestNotSuitable = null;
+	/**
+	 * the iterator of the running PMs allowing to easily traverse the PM set in
+	 * a predefined order. The iterator plays a crucial role in this
+	 * implementation as several FirstFit derivatives only differ in their
+	 * handling of the PMs.
+	 */
 	private final PMIterator it;
 
+	/**
+	 * the constructor of the scheduler that passes on the parent IaaS service
+	 * and initiates the basic PM iterator for this scheduler which will
+	 * 
+	 * @param parent
+	 */
 	public FirstFitScheduler(IaaSService parent) {
 		super(parent);
-		it = new PMIterator(parent.runningMachines);
+		it = instantiateIterator();
 	}
 
+	/**
+	 * Allows the customization of the PM iterator by subclasses. This function
+	 * is not intended to be used by anything else but the constructor of this
+	 * class.
+	 * 
+	 * @return the desired PM iterator to be used for traversing the PMs while
+	 *         doing the scheduling
+	 */
+	protected PMIterator instantiateIterator() {
+		return new PMIterator(parent.runningMachines);
+	}
+
+	/**
+	 * Resets the iterator then offers it to the caller
+	 * 
+	 * @return the PMIterator that is ready to be used during the scheduling
+	 *         process
+	 */
 	protected PMIterator getPMIterator() {
 		it.reset();
 		return it;
 	}
 
+	/**
+	 * The actual first fit scheduling implementation. This implementation
+	 * supports requests with multiple VMs. It assumes that users want to deploy
+	 * all VMs or nothing so it waits until all VMs could be deployed at once.
+	 */
 	@Override
 	protected ConstantConstraints scheduleQueued() {
 		final PMIterator currIterator = getPMIterator();
