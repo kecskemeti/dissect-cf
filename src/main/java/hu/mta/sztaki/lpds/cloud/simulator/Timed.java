@@ -40,7 +40,8 @@ import java.util.PriorityQueue;
  * of a networknode then you should set it in bytes/tick. Thus if your tick=ms
  * you must set it in bytes/ms.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
@@ -91,8 +92,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * Allows to determine if a particular timed object is receiving
 	 * notifications from the system
 	 * 
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li><i>true</i> if this object will receive recurrign events in
 	 *         the future
 	 *         <li><i>false</i> otherwise
@@ -110,8 +110,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * @param freq
 	 *            the event frequency with which the tick() function should be
 	 *            called on the particular implementation of timed.
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li><i>true</i> if the subscription succeeded
 	 *         <li><i>false</i> otherwise (i.e. when there was already a
 	 *         subscription). Please note that if you receive false, then the
@@ -143,8 +142,7 @@ public abstract class Timed implements Comparable<Timed> {
 	/**
 	 * Cancels the future recurrance of this event.
 	 * 
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li><i>true</i> if the unsubscription succeeded
 	 *         <li><i>false</i> otherwise (i.e., this timed object was already
 	 *         cancelled)
@@ -203,7 +201,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	private void updateEvent(final long freq) {
 		if (freq < 0) {
-			throw new IllegalStateException("ERROR: Negative event frequency cannot simulate further!");
+			throw new IllegalStateException(
+					"ERROR: Negative event frequency cannot simulate further!");
 		} else {
 			frequency = freq;
 			nextEvent = calcTimeJump(freq);
@@ -239,8 +238,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * Determines the next event at which point this object will receive a
 	 * tick() call.
 	 * 
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li><i>if subscribed</i> the number of ticks till the next tick()
 	 *         call arrives
 	 *         <li><i>if not subscribed</i> Long.MAX_VALUE.
@@ -257,9 +255,10 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	@Override
 	public int compareTo(final Timed o) {
-		final int unalteredResult = nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
-		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0 : -1) : (backPreference ? 1 : 0))
-				: unalteredResult;
+		final int unalteredResult = nextEvent < o.nextEvent ? -1
+				: nextEvent == o.nextEvent ? 0 : 1;
+		return unalteredResult == 0 ? (o.backPreference ? (backPreference ? 0
+				: -1) : (backPreference ? 1 : 0)) : unalteredResult;
 	}
 
 	/**
@@ -286,7 +285,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 * instance then this function just advances the time by one tick.
 	 */
 	public static final void fire() {
-		while (!timedlist.isEmpty() && timedlist.peek().nextEvent == fireCounter) {
+		while (!timedlist.isEmpty()
+				&& timedlist.peek().nextEvent == fireCounter) {
 			final Timed t = underProcessing = timedlist.poll();
 			t.tick(fireCounter);
 			if (t.activeSubscription) {
@@ -417,8 +417,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 * 
 	 * The function is ensuring that all events are fired during its operation.
 	 * 
-	 * @param the
-	 *            time instance that should not happen but the time should
+	 * @param time
+	 *            the time instance that should not happen but the time should
 	 *            advance to this point.
 	 */
 	public static final void simulateUntil(final long time) {
@@ -446,8 +446,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	@Override
 	public String toString() {
-		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")")
-				.toString();
+		return new StringBuilder("Timed(Freq: ").append(frequency)
+				.append(" NE:").append(nextEvent).append(")").toString();
 	}
 
 	/**

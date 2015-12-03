@@ -31,7 +31,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
  * Base class for all energy meters. Defines the basic operations but allows
  * high level of customization
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014-5"
  */
 public abstract class EnergyMeter extends Timed {
@@ -69,8 +70,7 @@ public abstract class EnergyMeter extends Timed {
 	 *            values will start from 0 after the completion of this
 	 *            function.
 	 *            </ul>
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li>False: if a metering session is already underway
 	 *         <li>True: if the metering session was successfully initiated
 	 *         </ul>
@@ -111,7 +111,7 @@ public abstract class EnergyMeter extends Timed {
 	/**
 	 * Allows the reading of the meter's current consumption report.
 	 * 
-	 * @return
+	 * @return the total consumption collected during the metering sessions
 	 */
 	public double getTotalConsumption() {
 		return totalConsumption;

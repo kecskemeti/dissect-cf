@@ -660,7 +660,7 @@ public abstract class ResourceSpreader {
 	 * in. If null, then this spreader is not having any resource consumptions
 	 * registered.
 	 * 
-	 * @return
+	 * @return the object representing this spreader's influence group.
 	 */
 	public final FreqSyncer getSyncer() {
 		return mySyncer;

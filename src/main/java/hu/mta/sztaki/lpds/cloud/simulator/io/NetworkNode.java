@@ -265,7 +265,7 @@ public class NetworkNode {
 	 * @param limit
 	 *            the maximum bandwidth allowed to be available for this
 	 *            particular transfer (in bytes/tick)
-	 * @param toDisk
+	 * @param fromDisk
 	 *            <ul>
 	 *            <li><i>true</i> if the transfer should be managed from the
 	 *            network node's disk

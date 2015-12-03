@@ -203,16 +203,16 @@ public interface VMManager<E, F> {
 	/**
 	 * manages the subscriptions for capacity change (increase/decrease) events
 	 * 
-	 * @param sl
-	 *            the listener object which expects state change events
+	 * @param e
+	 *            the listener object which expects capacity change events
 	 */
 	void subscribeToCapacityChanges(CapacityChangeEvent<F> e);
 
 	/**
 	 * manages the subscriptions for capacity change (increase/decrease) events
 	 * 
-	 * @param sl
-	 *            the listener object that no longer expects state change events
+	 * @param e
+	 *            the listener object that no longer expects capacity change events
 	 */
 	void unsubscribeFromCapacityChanges(CapacityChangeEvent<F> e);
 }

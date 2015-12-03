@@ -60,7 +60,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	/**
 	 * Constructs a generic Max Min fairness based resource spreader.
 	 * 
-	 * @param initialProcessing
+	 * @param perSecondProcessing
 	 *            determines the amount of resources this resource spreader
 	 *            could handle in a single tick
 	 */

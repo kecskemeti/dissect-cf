@@ -75,7 +75,7 @@ public class PowerStateChangeNotificationHandler
 	 * 
 	 * @param onObject
 	 *            The listener to send the event to
-	 * @param stateData
+	 * @param newPowerBehavior
 	 *            a data pair containing the resource spreader that changed its
 	 *            state and the power state that the spreader just switches to.
 	 */

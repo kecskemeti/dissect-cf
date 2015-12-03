@@ -494,8 +494,9 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * the state beforehand. If successful it allows the caller to change the
 	 * event on the way it sees fit.
 	 * 
-	 * @param pm
-	 *            the physical machine that hosts the VM.
+	 * @param vatarget
+	 *            the storage that will host the VM's working image (typically
+	 *            this is going to be the disk of the PM that will host the VM).
 	 * @param vasource
 	 *            the repository where the VA for this VM is found. If null, the
 	 *            function assumes it is found in the hosting PM's repository.
@@ -550,8 +551,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * then it ensures the disk image for the VM is ready to be used (i.e. first
 	 * it starts the inittransfer procedure).
 	 * 
-	 * @param pm
-	 *            the physical machine that hosts the VM.
+	 * @param allocation
+	 *            the resource allocation which will be used to deploy the VM on.
 	 * @param vasource
 	 *            the repository where the VA for this VM is found. If null, the
 	 *            function assumes it is found in the hosting PM's repository.

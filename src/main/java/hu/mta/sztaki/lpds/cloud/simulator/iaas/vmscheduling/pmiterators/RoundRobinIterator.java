@@ -53,7 +53,7 @@ public class RoundRobinIterator extends PMIterator {
 	 * The constructor of the round robin iterator just passes the pm list to
 	 * its superclass.
 	 * 
-	 * @param pmlist
+	 * @param pmList
 	 */
 	public RoundRobinIterator(List<PhysicalMachine> pmList) {
 		super(pmList);

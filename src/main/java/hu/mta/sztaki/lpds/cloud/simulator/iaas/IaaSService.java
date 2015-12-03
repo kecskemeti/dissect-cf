@@ -52,16 +52,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
  * and management of the physical machines and the scheduling of the VM requests
  * among the PMs.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author 
+ *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
  * 
  */
-public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, PhysicalMachine.StateChangeListener {
+public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
+		PhysicalMachine.StateChangeListener {
 
 	/**
 	 * This class represents a generic error that occurred during the operation
 	 * of the IaaS service.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * @author 
+	 *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
 	 * 
 	 */
 	public static class IaaSHandlingException extends Exception {
@@ -102,35 +105,41 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	/**
 	 * publicly available read only version of the internal machines field
 	 */
-	public final List<PhysicalMachine> machines = Collections.unmodifiableList(internalMachines);
+	public final List<PhysicalMachine> machines = Collections
+			.unmodifiableList(internalMachines);
 	/**
 	 * publicly available read only version of the internal running machines
 	 * field
 	 */
-	public final List<PhysicalMachine> runningMachines = Collections.unmodifiableList(internalRunningMachines);
+	public final List<PhysicalMachine> runningMachines = Collections
+			.unmodifiableList(internalRunningMachines);
 
 	/**
 	 * the total capacity of all machines in this iaas service, for use only
 	 * internally in the IaaS service class
 	 */
-	private AlterableResourceConstraints totalCapacity = AlterableResourceConstraints.getNoResources();
+	private AlterableResourceConstraints totalCapacity = AlterableResourceConstraints
+			.getNoResources();
 	/**
 	 * the total capacity to be reported for external users. This field
 	 * propagates the totalCapacity field. Keep in mind that the capacity
 	 * reported by this field could change without notification.
 	 */
-	private ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(totalCapacity);
+	private ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(
+			totalCapacity);
 	/**
 	 * the capacity of the machines that are actually running in the system -
 	 * this is for internal use only again
 	 */
-	private AlterableResourceConstraints runningCapacity = AlterableResourceConstraints.getNoResources();
+	private AlterableResourceConstraints runningCapacity = AlterableResourceConstraints
+			.getNoResources();
 	/**
 	 * The capacity of the running machines to be reported externally. This is
 	 * implemented with a propagator thus changes in runningcapacity will be
 	 * immediately reflected here as well without notification.
 	 */
-	private ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(runningCapacity);
+	private ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(
+			runningCapacity);
 
 	/**
 	 * event handler for capacity changes in terms of added/removed physical
@@ -139,7 +148,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	private final StateDependentEventHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>> capacityListenerManager = new StateDependentEventHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>>(
 			new SingleNotificationHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>>() {
 				@Override
-				public void sendNotification(CapacityChangeEvent<PhysicalMachine> onObject,
+				public void sendNotification(
+						CapacityChangeEvent<PhysicalMachine> onObject,
 						List<PhysicalMachine> pmsetchange) {
 					onObject.capacityChanged(totalCapacity, pmsetchange);
 				}
@@ -155,7 +165,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	/**
 	 * the read only list of all repositories in the system
 	 */
-	public final List<Repository> repositories = Collections.unmodifiableList(internalRepositories);
+	public final List<Repository> repositories = Collections
+			.unmodifiableList(internalRepositories);
 
 	/**
 	 * the VM scheduler applied by this IaaSservice object
@@ -184,8 +195,10 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * @throws NoSuchMethodException
 	 * @throws SecurityException
 	 */
-	public IaaSService(Class<? extends Scheduler> s, Class<? extends PhysicalMachineController> c)
-			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+	public IaaSService(Class<? extends Scheduler> s,
+			Class<? extends PhysicalMachineController> c)
+			throws InstantiationException, IllegalAccessException,
+			IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
 		sched = s.getConstructor(IaaSService.class).newInstance(this);
 		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
@@ -208,11 +221,13 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * @throws NoSuchVMException
 	 *             if the VM is not hosted by any of the PMs in the system
 	 */
-	private PhysicalMachine checkVMHost(final VirtualMachine vm) throws NoSuchVMException {
+	private PhysicalMachine checkVMHost(final VirtualMachine vm)
+			throws NoSuchVMException {
 		ResourceAllocation ra = vm.getResourceAllocation();
 		PhysicalMachine host;
 		if (!(ra != null && runningMachines.contains(host = ra.getHost()))) {
-			throw new NoSuchVMException("This VM is not run by any of the managed PMs in this IaaS service");
+			throw new NoSuchVMException(
+					"This VM is not run by any of the managed PMs in this IaaS service");
 		}
 		return host;
 	}
@@ -222,8 +237,9 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * newresources on the host of the VM.
 	 */
 	@Override
-	public void reallocateResources(VirtualMachine vm, ResourceConstraints newresources)
-			throws NoSuchVMException, VMManagementException {
+	public void reallocateResources(VirtualMachine vm,
+			ResourceConstraints newresources) throws NoSuchVMException,
+			VMManagementException {
 		checkVMHost(vm).reallocateResources(vm, newresources);
 	}
 
@@ -249,8 +265,10 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 *             if there are network connectivity problems within the
 	 *             infrastructure
 	 */
-	public VirtualMachine[] requestVM(final VirtualAppliance va, final ResourceConstraints rc,
-			final Repository vaSource, final int count) throws VMManagementException, NetworkNode.NetworkException {
+	public VirtualMachine[] requestVM(final VirtualAppliance va,
+			final ResourceConstraints rc, final Repository vaSource,
+			final int count) throws VMManagementException,
+			NetworkNode.NetworkException {
 		return requestVM(va, rc, vaSource, count, null);
 	}
 
@@ -281,11 +299,14 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 *             infrastructure
 	 */
 	@Override
-	public VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc, Repository vaSource, int count,
+	public VirtualMachine[] requestVM(VirtualAppliance va,
+			ResourceConstraints rc, Repository vaSource, int count,
 			HashMap<String, Object> schedulingConstraints)
-					throws hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException, NetworkException {
+			throws hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException,
+			NetworkException {
 		if (machines.isEmpty()) {
-			throw new VMManagementException("There are no phyisical machines that can run VMs!");
+			throw new VMManagementException(
+					"There are no phyisical machines that can run VMs!");
 		}
 		VirtualMachine[] vms = new VirtualMachine[count];
 		for (int i = 0; i < count; i++) {
@@ -306,7 +327,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		if (VirtualMachine.State.DESTROYED.equals(vm.getState())) {
 			// The VM is still under scheduling, the queue needs to be cleared
 			if (!sched.dropVMrequest(vm)) {
-				throw new NoSuchVMException("This VM is not queued in this IaaS service");
+				throw new NoSuchVMException(
+						"This VM is not queued in this IaaS service");
 			}
 			return;
 		}
@@ -351,7 +373,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		for (int i = 0; i < size; i++) {
 			final PhysicalMachine pm = newPMs.get(i);
 			if (PhysicalMachine.State.RUNNING.equals(pm.getState())) {
-				stateChanged(pm, PhysicalMachine.State.RUNNING, PhysicalMachine.State.RUNNING);
+				stateChanged(pm, PhysicalMachine.State.RUNNING,
+						PhysicalMachine.State.RUNNING);
 			}
 			pm.subscribeStateChangeEvents(this);
 			caps[i] = pm.getCapacities();
@@ -385,12 +408,15 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 *            the physical machine to be dropped from the control of the
 	 *            system
 	 */
-	public void deregisterHost(final PhysicalMachine pm) throws IaaSHandlingException {
+	public void deregisterHost(final PhysicalMachine pm)
+			throws IaaSHandlingException {
 		if (ArrayHandler.removeAndReplaceWithLast(internalMachines, pm)) {
 			if (pm.isRunning()) {
-				ArrayHandler.removeAndReplaceWithLast(internalRunningMachines, pm);
+				ArrayHandler.removeAndReplaceWithLast(internalRunningMachines,
+						pm);
 				if (pm.isHostingVMs()) {
-					AlterableResourceConstraints needed = new AlterableResourceConstraints(pm.getCapacities());
+					AlterableResourceConstraints needed = new AlterableResourceConstraints(
+							pm.getCapacities());
 					needed.subtract(pm.freeCapacities);
 					PhysicalMachine receiver = null;
 					for (PhysicalMachine curr : machines) {
@@ -406,7 +432,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 					try {
 						pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 							@Override
-							public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+							public void stateChanged(PhysicalMachine pm,
+									State oldState, State newState) {
 								if (newState.equals(PhysicalMachine.State.OFF)) {
 									realDeregistration(pm);
 								}
@@ -418,9 +445,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 							final PhysicalMachine rcopy = receiver;
 							receiver.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 								@Override
-								public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+								public void stateChanged(PhysicalMachine pm,
+										State oldState, State newState) {
 									try {
-										if (newState.equals(PhysicalMachine.State.RUNNING)) {
+										if (newState
+												.equals(PhysicalMachine.State.RUNNING)) {
 											pm.switchoff(rcopy);
 										}
 									} catch (VMManagementException e) {
@@ -433,9 +462,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 							receiver.turnon();
 						}
 					} catch (VMManagementException e) {
-						throw new IaaSHandlingException("Some error has happened during the switchoff procedure", e);
+						throw new IaaSHandlingException(
+								"Some error has happened during the switchoff procedure",
+								e);
 					} catch (NetworkNode.NetworkException e) {
-						throw new IaaSHandlingException("All PMs should be able to connect to each other in the IaaS",
+						throw new IaaSHandlingException(
+								"All PMs should be able to connect to each other in the IaaS",
 								e);
 					}
 					return;
@@ -443,7 +475,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 			}
 			realDeregistration(pm);
 		} else {
-			throw new IaaSHandlingException("No such registered physical machine");
+			throw new IaaSHandlingException(
+					"No such registered physical machine");
 		}
 	}
 
@@ -467,11 +500,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * 
 	 * Currently there is no transfer implemented!
 	 * 
-	 * @param pm
-	 *            the physical machine to be dropped from the control of the
-	 *            system
+	 * @param r
+	 *            the repository to be dropped from the control of the system
 	 */
-	public void deregisterRepository(final Repository r) throws IaaSHandlingException {
+	public void deregisterRepository(final Repository r)
+			throws IaaSHandlingException {
 		ArrayHandler.removeAndReplaceWithLast(internalRepositories, r);
 	}
 
@@ -497,7 +530,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * This call is propagated to StateDependentEventHandler.
 	 */
 	@Override
-	public void subscribeToCapacityChanges(final CapacityChangeEvent<PhysicalMachine> e) {
+	public void subscribeToCapacityChanges(
+			final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListenerManager.subscribeToEvents(e);
 	}
 
@@ -507,7 +541,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * This call is propagated to StateDependentEventHandler.
 	 */
 	@Override
-	public void unsubscribeFromCapacityChanges(final CapacityChangeEvent<PhysicalMachine> e) {
+	public void unsubscribeFromCapacityChanges(
+			final CapacityChangeEvent<PhysicalMachine> e) {
 		capacityListenerManager.unsubscribeFromEvents(e);
 	}
 
@@ -517,8 +552,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * 
 	 * @param pm
 	 *            the host in question
-	 * @return
-	 * 		<ul>
+	 * @return <ul>
 	 *         <li><i>true</i> if the host is part of the IaaS
 	 *         <li><i>false</i> otherwise
 	 *         </ul>
@@ -532,7 +566,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public String toString() {
-		return "IaaS(Machines(" + machines + "), Repositories(" + repositories + "))";
+		return "IaaS(Machines(" + machines + "), Repositories(" + repositories
+				+ "))";
 	}
 
 	/**

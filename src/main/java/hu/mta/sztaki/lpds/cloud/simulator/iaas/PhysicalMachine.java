@@ -1447,7 +1447,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * there are some resources that are either not allocated anymore or when
 	 * there is a VM that terminates on the PM)
 	 * 
-	 * @param sl
+	 * @param e
 	 *            the listener object which expects free capacity events
 	 */
 	public void subscribeToIncreasingFreeapacityChanges(final CapacityChangeEvent<ResourceConstraints> e) {
@@ -1459,7 +1459,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * there are some resources that are either not allocated anymore or when
 	 * there is a VM that terminates on the PM)
 	 * 
-	 * @param sl
+	 * @param e
 	 *            the listener object that no longer expects free capacity
 	 *            events
 	 */
