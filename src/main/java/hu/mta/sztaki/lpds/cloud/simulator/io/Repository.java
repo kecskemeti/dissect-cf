@@ -32,25 +32,77 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
+/**
+ * This class represents the storage entities in the system. Data transfers
+ * could take place among these entities. Data is simulated to be stored in the
+ * repositories.
+ * 
+ * To allow initial contents in a repository without delays, the class contains
+ * the registerObject function. For regular use during the simulation, please
+ * use its requestContentDelivery, and duplicateContent functions.
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012, 2014-"
+ */
 public class Repository extends NetworkNode {
 
-	final HashMap<String, StorageObject> contents = new HashMap<String, StorageObject>(
-			16);
+	/**
+	 * Stuff that is already in the current repository
+	 */
+	final HashMap<String, StorageObject> contents = new HashMap<String, StorageObject>(16);
+
+	/**
+	 * Contents that are under transfer, to ensure that we are not allowing the
+	 * deletion of contents that are being transferred currently
+	 */
 
 	final HashSet<String> underTransfer = new HashSet<String>();
 
+	/**
+	 * The total possible size of the contents in the current repository
+	 */
 	final private long maxStorageCapacity;
+	/**
+	 * The current total size of the contents in the actual repository object
+	 */
 	private long currentStorageUse = 0;
+	/**
+	 * The amount of contents that are about to arrive.
+	 */
 	private long promisedStorage = 0;
 
-	public Repository(final long capacity, final String id, final long maxInBW,
-			final long maxOutBW, final long diskBW,
-			final HashMap<String, Integer> latencyMap) {
+	/**
+	 * Constructor for repository objects
+	 * 
+	 * @param capacity
+	 *            the storage capacity of the repository
+	 * @param maxInBW
+	 *            the input network bandwidth of the repository
+	 * @param maxOutBW
+	 *            the output network bandwidth of the repository
+	 * @param diskBW
+	 *            the disk bandwidth of the repository
+	 */
+
+	public Repository(final long capacity, final String id, final long maxInBW, final long maxOutBW, final long diskBW,
+			final Map<String, Integer> latencyMap) {
 		super(id, maxInBW, maxOutBW, diskBW, latencyMap);
 		maxStorageCapacity = capacity;
 	}
 
+	/**
+	 * This function is designed to initially set up the repository contents. It
+	 * does not simulate data movement, for data movement simulation please use
+	 * the request content delivery function. The function also ensures that the
+	 * given StorageObject is only stored once.
+	 * 
+	 * @param so
+	 *            is the object to be stored
+	 * @return true if the reuqested object was stored, false when there is not
+	 *         enough space to store the object
+	 */
 	public boolean registerObject(final StorageObject so) {
 		if (!contents.containsKey(so.id)) {
 			final long futureFree = getFreeStorageCapacity() - so.size;
@@ -63,15 +115,42 @@ public class Repository extends NetworkNode {
 		return true;
 	}
 
+	/**
+	 * This function is designed to simulate the erase function of the
+	 * repository given that its user knows the StorageObject to be dropped.
+	 * 
+	 * @param so
+	 *            The storage object to be removed from the repository
+	 * @return
+	 * 		<ul>
+	 *         <li>true, if the requested object was dropped from the repo,
+	 *         <li>false if there are ongoing transfers involving the object
+	 *         </ul>
+	 */
 	public boolean deregisterObject(final StorageObject so) {
 		if (so == null) {
+			// Nothing to remove so we can report success.
 			return true;
 		}
 		return deregisterObject(so.id);
 	}
 
+	/**
+	 * This function is designed to simulate the erase function of the
+	 * repository given that its user knows the identifier of the content to be
+	 * dropped.
+	 * 
+	 * @param soid
+	 *            The storage object identifier
+	 * @return
+	 * 		<ul>
+	 *         <li>true, if the requested object was dropped from the repo,
+	 *         <li>false if there are ongoing transfers involving the object
+	 *         </ul>
+	 */
 	public boolean deregisterObject(final String soid) {
 		if (soid == null) {
+			// Nothing to remove so we can report success.
 			return true;
 		}
 		if (!underTransfer.contains(soid)) {
@@ -84,73 +163,264 @@ public class Repository extends NetworkNode {
 		return false;
 	}
 
-	public boolean requestContentDelivery(final String id,
-			final Repository target,
-			final ResourceConsumption.ConsumptionEvent ev)
-			throws NetworkException {
+	/**
+	 * Initiates transfer from a remote location
+	 * 
+	 * @param id
+	 *            The storage object id that will be transferred
+	 * @param target
+	 *            The target repository where the transferred data will reside
+	 * @param ev
+	 *            the event to be fired if the transfer is completed
+	 * @return true if the transfer was successfully initiated, false otherwise
+	 */
+	public boolean requestContentDelivery(final String id, final Repository target,
+			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		return requestContentDelivery(id, null, target, ev);
 	}
 
-	public boolean duplicateContent(final String id, final String newId,
-			final ResourceConsumption.ConsumptionEvent ev)
+	/**
+	 * Initiates the duplication of some repository content <br>
+	 * 
+	 * @param id
+	 *            The storage object id that will be duplicated
+	 * @param newId
+	 *            The name of the copied storage object id if the target is the
+	 *            same repository where the request is made.
+	 * @param ev
+	 *            the event to be fired if the transfer is completed
+	 * @return true if the duplication request was successfully initiated, false
+	 *         otherwise
+	 */
+	public boolean duplicateContent(final String id, final String newId, final ResourceConsumption.ConsumptionEvent ev)
 			throws NetworkException {
 		return requestContentDelivery(id, newId, this, ev);
 	}
 
-	public boolean requestContentDelivery(final String id, final String newId,
-			final Repository target,
-			final ResourceConsumption.ConsumptionEvent ev)
-			throws NetworkException {
-		if (target == null
-				|| (this == target && (newId == null || newId.equals(id))))
+	/**
+	 * This function registers a storage object for transfer. This object must
+	 * be already stored in the requested repository. After the transfer is
+	 * completed the function ensures that the target repository registers the
+	 * transferred object.
+	 * 
+	 * @param id
+	 *            The storage object id that will be transferred
+	 * @param newId
+	 *            The name of the copied storage object id if it needs to be
+	 *            changed. If the target is the same repository this must be
+	 *            specified. If the caller needs the same storage id then null
+	 *            can be specified here.
+	 * @param target
+	 *            The target repository where the transferred data will reside.
+	 *            If the target is the same repository please check the specific
+	 *            requirements for newId!
+	 * @param ev
+	 *            the event to be fired if the transfer is completed
+	 * @return true if the transfer was successfully initiated, false otherwise
+	 *         (the system will not fire a transfer event if false is returned!)
+	 */
+	public boolean requestContentDelivery(final String id, final String newId, final Repository target,
+			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
+		if (target == null || (this == target && (newId == null || newId.equals(id))))
 			return false;
 		final StorageObject totransfer = contents.get(id);
 		if (totransfer == null) {
 			return false;
 		}
-		final long increasedpromise = target.promisedStorage + totransfer.size;
-		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
-			underTransfer.add(id);
-			target.promisedStorage = increasedpromise;
-			initTransfer(totransfer.size,
-					ResourceConsumption.unlimitedProcessing, this, target,
-					new ConsumptionEventAdapter() {
-						@Override
-						public void conComplete() {
-							underTransfer.remove(id);
-							final StorageObject toRegister = (target == Repository.this || newId != null) ? totransfer
-									.newCopy(newId) : totransfer;
+		return manageStoragePromise(totransfer.size, id, target, new MainStorageActivity() {
+			@Override
+			public void doStorage() throws NetworkException {
+				underTransfer.add(id);
+				initTransfer(totransfer.size, ResourceConsumption.unlimitedProcessing, Repository.this, target,
+						new ConsumptionEventAdapter() {
+					@Override
+					public void conComplete() {
+						underTransfer.remove(id);
+						final StorageObject toRegister = (target == Repository.this || newId != null)
+								? totransfer.newCopy(newId) : totransfer;
 
-							target.promisedStorage -= totransfer.size;
-							target.registerObject(toRegister);
-							if (ev != null) {
-								ev.conComplete();
-							}
+						target.promisedStorage -= totransfer.size;
+						target.registerObject(toRegister);
+						if (ev != null) {
+							ev.conComplete();
 						}
-					});
+					}
+				});
+			}
+		});
+	}
+
+	/**
+	 * An internal interface for managing storage related operations
+	 * 
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+	 *
+	 */
+	private static interface MainStorageActivity {
+		/**
+		 * The action that actually does the depositing of the requested content
+		 * 
+		 * @throws NetworkException
+		 *             if there are connectivity errors amongst repositories
+		 */
+		void doStorage() throws NetworkException;
+	}
+
+	/**
+	 * Manages the promisedStorage field of repository objects. It is used
+	 * internally to uniformly manage the promised storage from the various
+	 * functions of the repository.
+	 * 
+	 * WARNING: tis function only manages the increase of the promised storage,
+	 * the decrease must be handled by the entity implementing the actual
+	 * storage activity
+	 * 
+	 * @param size
+	 *            the amount of size to be deposited in the repository
+	 * @param id
+	 *            the storage object's id to be deposited
+	 * @param target
+	 *            the repository in which the storage object will be deposited
+	 * @param mainActivity
+	 *            the storage activity to be done if there is enough promised
+	 *            storage on the target repository
+	 * @return
+	 * 		<ul>
+	 *         <li><i>true</i> if the storage object was successfully stored
+	 *         <li><i>false</i> otherwise
+	 *         </ul>
+	 * @throws NetworkException
+	 *             if there were connectivity problems with the target
+	 *             reppository
+	 */
+	private static boolean manageStoragePromise(final long size, final String id, final Repository target,
+			final MainStorageActivity mainActivity) throws NetworkException {
+		final long increasedpromise = target.promisedStorage + size;
+		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
+			target.promisedStorage = increasedpromise;
+			mainActivity.doStorage();
 			return true;
 		}
 		return false;
+
 	}
 
+	/**
+	 * Allows the modeling of storing data that previously resided in the memory
+	 * of this repository.
+	 * 
+	 * @param so
+	 *            the storage object that represents the data in memory
+	 * @param ev
+	 *            the event to be fired upon completing the storage operation
+	 * @return
+	 * 		<ul>
+	 *         <li><i>true</i> if the storage object was successfully stored
+	 *         <li><i>false</i> otherwise (e.g., if the to be stored storage
+	 *         object is already in the repository)
+	 *         </ul>
+	 * @throws NetworkException
+	 *             propagated from MainStorageActivity, never used here.
+	 */
+	public boolean storeInMemoryObject(final StorageObject so, final ResourceConsumption.ConsumptionEvent ev)
+			throws NetworkException {
+		if (lookup(so.id) != null) {
+			return false;
+		}
+		return manageStoragePromise(so.size, so.id, this, new MainStorageActivity() {
+			@Override
+			public void doStorage() throws NetworkException {
+				pushFromMemory(so.size, ResourceConsumption.unlimitedProcessing, true, new ConsumptionEventAdapter() {
+					@Override
+					public void conComplete() {
+						promisedStorage -= so.size;
+						registerObject(so);
+						if (ev != null) {
+							ev.conComplete();
+						}
+					}
+				});
+			}
+		});
+	}
+
+	/**
+	 * Allows the modeling of getting an storage object from the disk into the
+	 * memory.
+	 * 
+	 * @param so
+	 *            the storage object to be read from the repository
+	 * @param ev
+	 *            the event to be fired upon completing the transfer of the
+	 *            above object to the memory of the repository.
+	 * @return
+	 * 		<ul>
+	 *         <li><i>true</i> if the storage object was successfully read
+	 *         <li><i>false</i> if the to be read storage object was not found
+	 *         in the repository
+	 *         </ul>
+	 */
+	public boolean fetchObjectToMemory(final StorageObject so, final ResourceConsumption.ConsumptionEvent ev) {
+		if (lookup(so.id) == null) {
+			return false;
+		}
+		underTransfer.add(so.id);
+		readToMemory(so.size, ResourceConsumption.unlimitedProcessing, true, new ConsumptionEventAdapter() {
+			@Override
+			public void conComplete() {
+				underTransfer.remove(so.id);
+				if (ev != null) {
+					ev.conComplete();
+				}
+			}
+		});
+		return true;
+	}
+
+	/**
+	 * Searches and returns the storage object with a given identifier
+	 * 
+	 * @param soid
+	 *            the id of the storage object in question
+	 * @return if found, the storage object, otherwise null
+	 */
 	public StorageObject lookup(final String soid) {
 		return contents.get(soid);
 	}
 
+	/**
+	 * Offers an unmodifiable list of contents.
+	 * 
+	 * @return the list of storage objects stored in this repository
+	 */
 	public Collection<StorageObject> contents() {
 		return Collections.unmodifiableCollection(contents.values());
 	}
 
+	/**
+	 * provides a summary of this repository good for debugging.
+	 */
 	@Override
 	public String toString() {
-		return "Repo(DS:" + maxStorageCapacity + " Used:" + currentStorageUse
-				+ " " + super.toString() + ")";
+		return "Repo(DS:" + maxStorageCapacity + " Used:" + currentStorageUse + " " + super.toString() + ")";
 	}
 
+	/**
+	 * Retrieves the maximum storage capacity of this repository. This is
+	 * constant during the life of the repository.
+	 * 
+	 * @return the maximum storage capacity
+	 */
 	public long getMaxStorageCapacity() {
 		return maxStorageCapacity;
 	}
 
+	/**
+	 * Retrieves the currently available free space on this repository. This can
+	 * vary from call to call.
+	 * 
+	 * @return the available storage for depositing storage objects.
+	 */
 	public long getFreeStorageCapacity() {
 		return maxStorageCapacity - currentStorageUse - promisedStorage;
 	}

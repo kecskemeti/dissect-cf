@@ -23,7 +23,7 @@
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
-package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
+package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -39,20 +39,20 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 	IaaSService basic;
+	Repository r;
 
 	@Before
 	public void resetSim() throws Exception {
-		Timed.resetTimed();
-		ConsumptionEventAssert.hits.clear();
 		basic = new IaaSService(NonQueueingScheduler.class,
 				AlwaysOnMachines.class);
 		basic.registerHost(dummyPMcreator());
 		basic.registerHost(dummyPMcreator());
+		r = dummyRepoCreator(true);
+		basic.registerRepository(r);
 	}
 
 	@Test(timeout = 100)
@@ -76,8 +76,6 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void vmCreationTest() throws VMManagementException, NetworkException {
-		Repository r = dummyRepoCreator(true);
-		basic.registerRepository(r);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Did not switch on all machines as expected",
 				basic.machines.size(), basic.runningMachines.size());
@@ -99,8 +97,6 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void prematureVMCreationTest() throws VMManagementException,
 			NetworkException {
-		Repository r = dummyRepoCreator(true);
-		basic.registerRepository(r);
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) r.contents()
 				.iterator().next(), basic.machines.get(0)
 				.getCapacities(), r, 1)[0];

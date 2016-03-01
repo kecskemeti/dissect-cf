@@ -41,15 +41,18 @@ import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
 
 public class NetworkNodeTest extends ConsumptionEventFoundation {
 	public final static String completeMessage = "Complete";
-	public final static long inBW = 100000000;
-	public final static long outBW = 100000000;
-	public final static long diskBW = 50000000;
-	public final static int targetlat = 3;
-	public final static int sourcelat = 2;
+	// 1 tick is assumed 1ms
+	public final static long inBW = 100000; // bytes/tick
+	public final static long outBW = 100000; // bytes/tick
+	public final static long diskBW = 50000; // bytes/tick
+	public final static int targetlat = 3; // ticks
+	public final static int sourcelat = 2; // ticks
 	public final static String sourceName = "Source";
 	public final static String targetName = "Target";
 	public final static String thirdName = "Unconnected";
 	NetworkNode source, target, third;
+	static final long dataToBeSent = aSecond * inBW;
+	static final long dataToBeStored = aSecond * diskBW / 2;
 
 	public static HashMap<String, Integer> setupALatencyMap() {
 		HashMap<String, Integer> lm = new HashMap<String, Integer>();
@@ -86,6 +89,7 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 
 	@Test(timeout = 100)
 	public void checkConnectivity() {
+		// Node source tests:
 		try {
 			Assert.assertEquals(
 					"Internal connectivity for node source is not without latency",
@@ -104,8 +108,10 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 			NetworkNode.checkConnectivity(source, third);
 			Assert.fail("Node 1 should not be able to connect to node third");
 		} catch (NetworkException ex) {
+			// Expected behavior
 		}
 
+		// Node target tests:
 		try {
 			Assert.assertEquals(
 					"External connectivity between node target and source is with an unexpected latency",
@@ -124,8 +130,10 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 			NetworkNode.checkConnectivity(target, third);
 			Assert.fail("Node target should not be able to connect to node third");
 		} catch (NetworkException ex) {
+			// Expected behavior
 		}
 
+		// Node third tests:
 		try {
 			Assert.assertEquals(
 					"External connectivity between node third and source is with an unexpected latency",
@@ -165,7 +173,7 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 
 	@Test(timeout = 100)
 	public void interNodeTransferTest() throws NetworkException {
-		setupTransfer(inBW, source, target, 1000 + targetlat);
+		setupTransfer(dataToBeSent, source, target, aSecond + targetlat);
 		simulateThenExpectEventNum(1);
 		Assert.assertEquals(
 				"It is not expected to have incoming transfers in source", 0,
@@ -174,14 +182,14 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 				"It is not expected to have outgoing transfers in target", 0,
 				target.outbws.getTotalProcessed(), 0);
 		Assert.assertEquals("Outgoing transfers on source are reported badly",
-				inBW, source.outbws.getTotalProcessed(), 0);
+				dataToBeSent, source.outbws.getTotalProcessed(), 0);
 		Assert.assertEquals("Incoming transfers on target are reported badly",
-				inBW, target.inbws.getTotalProcessed(), 0);
+				dataToBeSent, target.inbws.getTotalProcessed(), 0);
 	}
 
 	@Test(timeout = 100)
 	public void intraNodeTransferTest() throws NetworkException {
-		setupTransfer(diskBW / 2, source, source, 1000);
+		setupTransfer(dataToBeStored, source, source, aSecond);
 		simulateThenExpectEventNum(1);
 		Assert.assertEquals(
 				"It is not expected to have network transfers within the node",
@@ -193,33 +201,45 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 
 	@Test(timeout = 100)
 	public void noInterferenceTest() throws NetworkException {
-		setupTransfer(inBW, source, target, 1000 + targetlat);
-		setupTransfer(inBW, target, source, 1000 + sourcelat);
-		setupTransfer(diskBW / 2, source, source, 1000);
+		setupTransfer(dataToBeSent, source, target, aSecond + targetlat);
+		setupTransfer(dataToBeSent, target, source, aSecond + sourcelat);
+		setupTransfer(dataToBeStored, source, source, aSecond);
 		simulateThenExpectEventNum(3);
 		Assert.assertEquals("Incoming transfers on source are reported badly",
-				inBW, source.inbws.getTotalProcessed(), 0);
+				dataToBeSent, source.inbws.getTotalProcessed(), 0);
 		Assert.assertEquals("Outgoing transfers on source are reported badly",
-				inBW, source.outbws.getTotalProcessed(), 0);
+				dataToBeSent, source.outbws.getTotalProcessed(), 0);
 		Assert.assertEquals("Incoming transfers on target are reported badly",
-				inBW, target.inbws.getTotalProcessed(), 0);
+				dataToBeSent, target.inbws.getTotalProcessed(), 0);
 		Assert.assertEquals("Outgoing transfers on target are reported badly",
-				inBW, target.outbws.getTotalProcessed(), 0);
+				dataToBeSent, target.outbws.getTotalProcessed(), 0);
 	}
 
+	/**
+	 * Expected simulation behavior:
+	 * <ul>
+	 * <li>Transfer1: lat(targetlat ms), transfer(300ms), transfer(1400ms)
+	 * complete.
+	 * <li>Transfer2: delay(300ms) lat(targetlat ms), transfer(1400ms), transfer
+	 * (300ms) complete
+	 * </ul>
+	 */
 	@Test(timeout = 100)
 	public void interferenceTest() throws NetworkException {
-		setupTransfer(inBW, source, target, 1700 + targetlat);
+		final int offset = 300;
+		setupTransfer(dataToBeSent, source, target, 2 * aSecond
+				- offset + targetlat);
 		Timed.simulateUntil(Timed.getFireCount() + 300);
-		setupTransfer(inBW, source, target, 1700 + targetlat);
+		setupTransfer(dataToBeSent, source, target, 2 * aSecond
+				- offset + targetlat);
 		simulateThenExpectEventNum(2);
 		Assert.assertEquals("Outgoing transfers on source are reported badly",
-				2 * inBW, source.outbws.getTotalProcessed(), 0);
+				2 * dataToBeSent, source.outbws.getTotalProcessed(), 0);
 	}
 
 	@Test(timeout = 100)
 	public void midSimulationRxTest() throws NetworkException {
-		setupTransfer(inBW, source, target, 1000 + targetlat);
+		setupTransfer(dataToBeSent, source, target, aSecond + targetlat);
 		Timed.simulateUntil(Timed.getFireCount() + targetlat);
 		double startingPoint = source.outbws.getTotalProcessed();
 		do {
@@ -234,6 +254,6 @@ public class NetworkNodeTest extends ConsumptionEventFoundation {
 		} while (ConsumptionEventAssert.hits.isEmpty());
 		Assert.assertEquals(
 				"The final outgoing transfer amount is reported incorrectly",
-				inBW, source.outbws.getTotalProcessed(), 0);
+				dataToBeSent, source.outbws.getTotalProcessed(), 0);
 	}
 }

@@ -22,84 +22,176 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
-import java.util.LinkedList;
-
+/**
+ * This class implements one of the simplest VM schedulers: it places every VM
+ * on the first PM that would actually accept it. The scheduler does not
+ * rearrange the queue, thus if there would be some queued entities that would
+ * be possible to schedule this scheduler just ignores them until they reach the
+ * head of the queue.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012"
+ */
 public class FirstFitScheduler extends Scheduler {
 
+	/**
+	 * The set of resource allocations made for the current VM request (this is
+	 * important for multi VM requests)
+	 */
+	ResourceAllocation[] ras = new ResourceAllocation[5];
+	/**
+	 * the largest allocation that was possible to collect from all running PMs
+	 * in the infrastructure. this is important to determine the amount of
+	 * resources that need to become free before the scheduler would be able to
+	 * place the head of the queue to any of the PMs in the infrastructure.
+	 */
+	ResourceAllocation raBiggestNotSuitable = null;
+	/**
+	 * the iterator of the running PMs allowing to easily traverse the PM set in
+	 * a predefined order. The iterator plays a crucial role in this
+	 * implementation as several FirstFit derivatives only differ in their
+	 * handling of the PMs.
+	 */
+	private final PMIterator it;
+
+	/**
+	 * the constructor of the scheduler that passes on the parent IaaS service
+	 * and initiates the basic PM iterator for this scheduler which will
+	 * 
+	 * @param parent
+	 */
 	public FirstFitScheduler(IaaSService parent) {
 		super(parent);
+		it = instantiateIterator();
 	}
 
+	/**
+	 * Allows the customization of the PM iterator by subclasses. This function
+	 * is not intended to be used by anything else but the constructor of this
+	 * class.
+	 * 
+	 * @return the desired PM iterator to be used for traversing the PMs while
+	 *         doing the scheduling
+	 */
+	protected PMIterator instantiateIterator() {
+		return new PMIterator(parent.runningMachines);
+	}
+
+	/**
+	 * Resets the iterator then offers it to the caller
+	 * 
+	 * @return the PMIterator that is ready to be used during the scheduling
+	 *         process
+	 */
+	protected PMIterator getPMIterator() {
+		it.reset();
+		return it;
+	}
+
+	/**
+	 * The actual first fit scheduling implementation. This implementation
+	 * supports requests with multiple VMs. It assumes that users want to deploy
+	 * all VMs or nothing so it waits until all VMs could be deployed at once.
+	 */
 	@Override
-	protected void scheduleQueued() {
-		final int totalMachineNum = parent.runningMachines.size();
-		if (totalMachineNum != 0) {
+	protected ConstantConstraints scheduleQueued() {
+		final PMIterator currIterator = getPMIterator();
+		ConstantConstraints returner = new ConstantConstraints(getTotalQueued());
+		if (currIterator.hasNext()) {
 			QueueingData request;
-			LinkedList<ResourceAllocation> ras = new LinkedList<ResourceAllocation>();
 			ResourceAllocation allocation;
 			boolean processableRequest = true;
-			while ((request = queue.peek()) != null && processableRequest) {
-				ras.clear();
-				int vmNum = 0;
+			int vmNum = 0;
+			while (queue.size() > 0 && processableRequest) {
+				request = queue.get(0);
+				vmNum = 0;
 				do {
-					VirtualMachine vm = request.queuedVMs[vmNum];
 					processableRequest = false;
-					for (int i = 0; i < totalMachineNum; i++) {
-						PhysicalMachine pm = parent.runningMachines.get(i);
-						if (pm.localDisk.getFreeStorageCapacity() >= vm.getVa().size) {
+					do {
+						final PhysicalMachine pm = currIterator.next();
+						if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum].getVa().size) {
 							try {
-								allocation = pm.allocateResources(
-										request.queuedRC, true,
+								allocation = pm.allocateResources(request.queuedRC, false,
 										PhysicalMachine.defaultAllocLen);
 								if (allocation != null) {
-									if (allocation.allocated == request.queuedRC) {
-										ras.add(allocation);
+									if (allocation.allocated.compareTo(request.queuedRC) >= 0) {
+										// Successful allocation
+										if (pm.freeCapacities.getRequiredCPUs() == 0 && currIterator.hasNext()) {
+											currIterator.next();
+										}
+										currIterator.markLastCollected();
+										if (vmNum == ras.length) {
+											ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
+											System.arraycopy(ras, 0, rasnew, 0, vmNum);
+											ras = rasnew;
+										}
+										ras[vmNum] = allocation;
 										processableRequest = true;
 										break;
 									} else {
-										allocation.cancel();
-										System.err
-												.println("WARNING: an allocation has had to be cancelled with strict allocation mode.");
-
+										if (raBiggestNotSuitable == null) {
+											raBiggestNotSuitable = allocation;
+										} else {
+											if (allocation.allocated.compareTo(raBiggestNotSuitable.allocated) > 0) {
+												raBiggestNotSuitable.cancel();
+												raBiggestNotSuitable = allocation;
+											} else {
+												allocation.cancel();
+											}
+										}
 									}
 								}
 							} catch (VMManagementException e) {
 							}
 						}
-					}
-				} while (++vmNum < request.queuedVMs.length
-						&& processableRequest);
+					} while (currIterator.hasNext());
+					currIterator.restart(true);
+				} while (++vmNum < request.queuedVMs.length && processableRequest);
 				if (processableRequest) {
 					try {
-						for (int i = 0; i < request.queuedVMs.length; i++) {
-							allocation = ras.poll();
-							allocation.host.deployVM(request.queuedVMs[i],
-									allocation, request.queuedRepo);
+						for (int i = request.queuedVMs.length - 1; i >= 0; i--) {
+							vmNum--;
+							allocation = ras[i];
+							allocation.getHost().deployVM(request.queuedVMs[i], allocation, request.queuedRepo);
 						}
 						manageQueueRemoval(request);
 					} catch (VMManagementException e) {
 						processableRequest = false;
 					} catch (NetworkException e) {
-						System.err
-								.println("WARNING: there are connectivity issues in the system."
-										+ e.getMessage());
+						// Connectivity issues! Should not happen!
+						System.err.println("WARNING: there are connectivity issues in the system." + e.getMessage());
 						processableRequest = false;
 					}
+				} else {
+					AlterableResourceConstraints arc = new AlterableResourceConstraints(request.queuedRC);
+					arc.multiply(request.queuedVMs.length - vmNum + 1);
+					if (raBiggestNotSuitable != null) {
+						arc = new AlterableResourceConstraints(request.queuedRC);
+						arc.subtract(raBiggestNotSuitable.allocated);
+					}
+					returner = new ConstantConstraints(arc);
+				}
+				if (raBiggestNotSuitable != null) {
+					raBiggestNotSuitable.cancel();
+					raBiggestNotSuitable = null;
 				}
 			}
-			while ((allocation = ras.poll()) != null) {
-				allocation.cancel();
+			vmNum--;
+			for (int i = 0; i < vmNum; i++) {
+				ras[i].cancel();
 			}
 		}
+		return returner;
 	}
 }

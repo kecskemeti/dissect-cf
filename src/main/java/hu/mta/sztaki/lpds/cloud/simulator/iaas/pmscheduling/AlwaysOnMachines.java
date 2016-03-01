@@ -27,35 +27,73 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEvent;
 
+import java.util.List;
+
+/**
+ * This PM controller ensures that all newly registered PMs are switched on
+ * immediately and newer turned off again.
+ * 
+ * <i>WARNING:</i> using this PM controller does not guarantee that all the PMs
+ * will be switched on in a given time instance. There are transient cases when
+ * a just registered PM is not yet turned on completely.
+ * 
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ */
 public class AlwaysOnMachines extends PhysicalMachineController {
+	/**
+	 * Constructs the scheduler and passes the parent IaaSService to the
+	 * superclass.
+	 * 
+	 * @param parent
+	 *            the IaaSService to serve
+	 */
 	public AlwaysOnMachines(final IaaSService parent) {
 		super(parent);
 	}
 
+	/**
+	 * When a new PM is registered to the IaaS service the below controller
+	 * automatically turns it on.
+	 * 
+	 * <i>WARNING</i> if one independently switches off a PM while it is
+	 * registered with the IaaS service, this controller will not turn it on
+	 * again.
+	 */
 	@Override
-	protected VMManager.CapacityChangeEvent getHostRegEvent() {
-		return new VMManager.CapacityChangeEvent() {
+	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
+		return new VMManager.CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(ResourceConstraints newCapacity) {
-				int size = parent.machines.size();
-				for (int i = 0; i < size; i++) {
-					if (PhysicalMachine.ToOfforOff.contains(parent.machines.get(i).getState())) {
-						parent.machines.get(i).turnon();
+			public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> alteredPMs) {
+				final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
+				if (newRegistration) {
+					final int size = alteredPMs.size();
+					for (int i = 0; i < size; i++) {
+						PhysicalMachine pm = alteredPMs.get(i);
+						if (PhysicalMachine.ToOfforOff.contains(pm.getState())) {
+							pm.turnon();
+						}
 					}
 				}
 			}
 		};
 	}
 
+	/**
+	 * Describes an event handler that does nothing upon the start of VM
+	 * queueing. This PM controller would not have anything to do anyway as all
+	 * the PMs in the iaas are ensured to be on all the time.
+	 */
 	@Override
 	protected QueueingEvent getQueueingEvent() {
 		return new QueueingEvent() {
 			@Override
 			public void queueingStarted() {
+				// do nothing, we already have all the machines running
 			}
 		};
 	}

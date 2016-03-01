@@ -22,107 +22,251 @@
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
-
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
-import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-
+/**
+ * The base class for all VM schedulers, provides the foundational logic and
+ * simplifies the implementation of VM schedulers by allowing them to mainly
+ * focus on their scheduling logic.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012"
+ */
 public abstract class Scheduler {
 
+	/**
+	 * Implementing this interface allows the implementor to receive events from
+	 * the scheduler about cases when it believes the infrastructure is not
+	 * sufficient for its needs. Allows the collaboration between PM controllers
+	 * and VM schedulers.
+	 * 
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
+	 *         Systems, MTA SZTAKI (c) 2012"
+	 */
 	public interface QueueingEvent {
+
+		/**
+		 * This function is called when the VM scheduler believes the
+		 * infrastructure could be improved for better suiting its needs.
+		 */
 		void queueingStarted();
 	}
 
-	public static final long unknownPMStateDelay = 1000;
-
+	/**
+	 * The IaaS for which this VM scheduler manages the VM requests.
+	 */
 	protected final IaaSService parent;
 
-	protected LinkedList<QueueingData> queue = new LinkedList<QueueingData>();
-	protected ResourceConstraints totalQueued = ResourceConstraints.noResources;
+	/**
+	 * The queue of the scheduler. This is intentionally made protected so
+	 * subclasses could replace the list implementation to one that suits them
+	 * better.
+	 */
+	protected List<QueueingData> queue = new LinkedList<QueueingData>();
+	/**
+	 * the amount of resources needed for fulfilling all VM requests in the
+	 * queue
+	 */
+	private AlterableResourceConstraints totalQueued = AlterableResourceConstraints.getNoResources();
+	/**
+	 * the public version of totalQueued that mirrors its contents but does not
+	 * allow changes on it
+	 */
+	protected UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(totalQueued);
+	/**
+	 * This field contains an automatically updated list of all machines in the
+	 * parent IaaS. The list is kept in the order of the PM's size to allow
+	 * rapid decisions on the possible fitting of VM requests.
+	 */
 	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<PhysicalMachine>();
+	/**
+	 * current length of the pm cache so we don't need to query its size all the
+	 * time
+	 */
 	private int pmCacheLen;
-	private ArrayList<QueueingEvent> queueListeners = new ArrayList<Scheduler.QueueingEvent>();
+	/**
+	 * the manager of those objects who shown interest in receiving queuing
+	 * related event notifications
+	 */
+	private final StateDependentEventHandler<QueueingEvent, Integer> queueListenerManager = new StateDependentEventHandler<QueueingEvent, Integer>(
+			new SingleNotificationHandler<QueueingEvent, Integer>() {
+				@Override
+				public void sendNotification(QueueingEvent onObject, Integer ignore) {
+					onObject.queueingStarted();
+				}
+			});
+
+	/**
+	 * Here we keep an account of the amount of resources a particular scheduler
+	 * would need before it would be able to schedule a new VM request
+	 */
+	private ConstantConstraints minimumSchedulerRequirement = ConstantConstraints.noResources;
+	/**
+	 * In this field the simulator maintains those recently freed up resources
+	 * that could be allowing a new scheduling run
+	 */
+	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints.getNoResources();
+
+	/**
+	 * A PM comparator that offers inverse ordering of PMs if used during sort
+	 */
+	public final static Comparator<PhysicalMachine> pmComparator = new Comparator<PhysicalMachine>() {
+		@Override
+		public int compare(final PhysicalMachine o1, final PhysicalMachine o2) {
+			// Ensures inverse order based on capacities
+			return -o1.getCapacities().compareTo(o2.getCapacities());
+		}
+	};
+
+	/**
+	 * This is the action that takes place when one of the PMs at the IaaS
+	 * changes its state. If this listener is called because a new PM has turned
+	 * on then the scheduler is again given a chance to allocate some VMs.
+	 * 
+	 * If there are some queued requests even after doing the scheduling then
+	 * the queuelisteners are notified so they can improve the IaaS's
+	 * infrastructure setup.
+	 */
 	protected PhysicalMachine.StateChangeListener pmstateChanged = new PhysicalMachine.StateChangeListener() {
 		@Override
-		public void stateChanged(State oldState, State newState) {
+		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
 			if (newState.equals(PhysicalMachine.State.RUNNING)) {
-				scheduleQueued();
+				freeResourcesSinceLastSchedule.add(pm.freeCapacities);
+				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0
+						&& totalQueued.getRequiredCPUs() != 0) {
+					invokeRealScheduler();
+				}
 			}
-			if (totalQueued.requiredCPUs != 0) {
-				notifyListeners();
+			if (totalQueued.getRequiredCPUs() != 0) {
+				queueListenerManager.notifyListeners(null);
 			}
 		}
 	};
 
-	protected VMManager.CapacityChangeEvent freeCapacity = new VMManager.CapacityChangeEvent() {
+	/**
+	 * This field represents the action to be done when some resources become
+	 * free on one of the currently running PMs in the IaaS. If necessary this
+	 * action invokes the scheduling and also notifies the queuing listeners
+	 * about having a VM queue despite newly free resources.
+	 */
+	protected VMManager.CapacityChangeEvent<ResourceConstraints> freeCapacity = new VMManager.CapacityChangeEvent<ResourceConstraints>() {
 		@Override
-		public void capacityChanged(ResourceConstraints newCapacity) {
-			scheduleQueued();
-			if (queue.size() != 0
-					&& queue.peek().cumulativeRC.compareTo(parent
-							.getRunningCapacities()) > 0) {
-				notifyListeners();
+		public void capacityChanged(final ResourceConstraints newCapacity,
+				final List<ResourceConstraints> newlyFreeResources) {
+			freeResourcesSinceLastSchedule.add(newlyFreeResources);
+			if (totalQueued.getRequiredCPUs() != 0) {
+				if (freeResourcesSinceLastSchedule.compareTo(minimumSchedulerRequirement) >= 0) {
+					invokeRealScheduler();
+				}
+				if (totalQueued.getRequiredCPUs() != 0
+						&& queue.get(0).cumulativeRC.compareTo(parent.getRunningCapacities()) > 0) {
+					queueListenerManager.notifyListeners(null);
+				}
 			}
 		}
 	};
 
+	/**
+	 * The main constructor of all schedulers. This constructor ensures that the
+	 * orderedPMcache is maintained and it also connects the scheduler's free
+	 * capacity and pm state listeners.
+	 * 
+	 * @param parent
+	 *            the IaaS service for which this scheduler is expected to act
+	 *            as the VM request scheduler
+	 */
 	public Scheduler(final IaaSService parent) {
 		this.parent = parent;
-		parent.subscribeToCapacityChanges(new IaaSService.CapacityChangeEvent() {
+		parent.subscribeToCapacityChanges(new VMManager.CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(ResourceConstraints newCapacity) {
-				orderedPMcache = new ArrayList<PhysicalMachine>(parent.machines);
-				pmCacheLen = orderedPMcache.size();
-				Collections.sort(orderedPMcache,
-						new Comparator<PhysicalMachine>() {
-							@Override
-							public int compare(final PhysicalMachine o1,
-									final PhysicalMachine o2) {
-								return -o1.getCapacities().compareTo(
-										o2.getCapacities());
-							}
-						});
-				for (int i = 0; i < pmCacheLen; i++) {
-					PhysicalMachine pm = orderedPMcache.get(i);
-					pm.unsubscribeStateChangeEvents(pmstateChanged);
-					pm.subscribeStateChangeEvents(pmstateChanged);
-					pm.unsubscribeFromIncreasingFreeCapacityChanges(freeCapacity);
-					pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
+			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
+				final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
+				final int pmNum = alteredPMs.size();
+				if (newRegistration) {
+					// Increased pm count
+					orderedPMcache.addAll(alteredPMs);
+					Collections.sort(orderedPMcache, pmComparator);
+					pmCacheLen += pmNum;
+					for (int i = 0; i < pmNum; i++) {
+						final PhysicalMachine pm = alteredPMs.get(i);
+						pm.subscribeStateChangeEvents(pmstateChanged);
+						pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
+					}
+				} else {
+					// Decreased pm count
+					for (int i = 0; i < pmNum; i++) {
+						final PhysicalMachine pm = alteredPMs.get(i);
+						orderedPMcache.remove(pm);
+						pm.unsubscribeStateChangeEvents(pmstateChanged);
+						pm.unsubscribeFromIncreasingFreeCapacityChanges(freeCapacity);
+					}
+					pmCacheLen -= pmNum;
 				}
 			}
 		});
 	}
 
-	public final void scheduleVMrequest(final VirtualMachine[] vms,
-			final ResourceConstraints rc, final Repository vaSource,
-			final HashMap<String, Object> schedulingConstraints)
-			throws VMManagementException {
+	/**
+	 * The main entry point to the schedulers. This function checks if a request
+	 * could be possibly hosted on the IaaS's infrastructure, if so then it
+	 * queues it. And if necessary it also invokes the actual scheduling
+	 * operation implemented in the subclasses.
+	 * 
+	 * @param vms
+	 *            the virtual machines that should be placed on the IaaS's
+	 *            machine set
+	 * @param rc
+	 *            the resource requirements for the VMs
+	 * @param vaSource
+	 *            the repository that stores the virtual appliance for the above
+	 *            VM set.
+	 * @param schedulingConstraints
+	 *            custom data to be passed on to subclassed schedulers
+	 * @throws VMManagementException
+	 *             if the request is impossible to schedule on the current
+	 *             infrastructure
+	 */
+	public final void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
+			final Repository vaSource, final HashMap<String, Object> schedulingConstraints)
+					throws VMManagementException {
 		final long currentTime = Timed.getFireCount();
-		final QueueingData qd = new QueueingData(vms, rc, vaSource,
-				schedulingConstraints, currentTime);
+		final QueueingData qd = new QueueingData(vms, rc, vaSource, schedulingConstraints, currentTime);
 
 		int hostableVMs = 0;
 		boolean hostable = false;
 		for (int pmid = 0; pmid < pmCacheLen; pmid++) {
 			PhysicalMachine machine = orderedPMcache.get(pmid);
-			for (int i = 1; i <= vms.length
-					&& machine.isHostableRequest(rc.multiply(i)); i++, hostableVMs++)
-				;
+			AlterableResourceConstraints biggestHostable = new AlterableResourceConstraints(rc);
+			for (int i = 1; i <= vms.length; i++, hostableVMs++) {
+				if (!machine.isHostableRequest(biggestHostable)) {
+					break;
+				}
+				biggestHostable.singleAdd(rc);
+			}
 			if (hostableVMs >= vms.length) {
 				hostable = true;
 				break;
@@ -130,66 +274,174 @@ public abstract class Scheduler {
 		}
 		if (hostable) {
 			boolean wasEmpty = queue.isEmpty();
-			queue.offer(qd);
-			totalQueued = ResourceConstraints.add(totalQueued, qd.cumulativeRC);
+			queue.add(qd);
+			totalQueued.singleAdd(qd.cumulativeRC);
 			if (wasEmpty) {
-				scheduleQueued();
+				invokeRealScheduler();
 				if (queue.size() == 0) {
 					return;
 				}
-				notifyListeners();
+				queueListenerManager.notifyListeners(null);
+			} else {
+				minimumSchedulerRequirement = ConstantConstraints.noResources;
 			}
 		} else {
-			throw new VMManagementException(
-					"No physical machine is capable to serve this request: "
-							+ qd);
+			throw new VMManagementException("No physical machine is capable to serve this request: " + qd);
 		}
 	}
 
-	public ResourceConstraints getTotalQueued() {
-		return totalQueued;
+	/**
+	 * Cancels a VM request by dropping the corresponding queuing data from the
+	 * scheduler's queue.
+	 * 
+	 * @param vm
+	 *            the VM which is representing the queued request to be dropped
+	 *            from the queue
+	 * @return <i>true</i> if the request was actually dropped, <i>false</i>
+	 *         otherwise.
+	 */
+	public final boolean dropVMrequest(final VirtualMachine vm) {
+		final Iterator<QueueingData> it = queue.iterator();
+		while (it.hasNext()) {
+			final QueueingData qd = it.next();
+			for (int i = 0; i < qd.queuedVMs.length; i++) {
+				if (qd.queuedVMs[i] == vm) {
+					it.remove();
+					for (i = 0; i < qd.queuedVMs.length; i++) {
+						// Mark all VMs in the request to be nonservable
+						qd.queuedVMs[i].setNonservable();
+					}
+					updateTotalQueuedAfterRemoval(qd);
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
+	/**
+	 * The complete resource set required to fulfill the entirety of the VM
+	 * requests in the queue
+	 * 
+	 * @return the complete resource set
+	 */
+	public ResourceConstraints getTotalQueued() {
+		return publicTQ;
+	}
+
+	/**
+	 * The number of VM requests queued at the moment
+	 * 
+	 * @return the length of the request queue
+	 */
 	public int getQueueLength() {
 		return queue.size();
 	}
 
+	/**
+	 * Removes an arbitrary item from the queue (could be a rather slow
+	 * operation!)
+	 * 
+	 * @param qd
+	 *            the item to be removed
+	 */
 	protected void manageQueueRemoval(final QueueingData qd) {
 		queue.remove(qd);
 		updateTotalQueuedAfterRemoval(qd);
 	}
 
+	/**
+	 * Removes the head of the queue
+	 * 
+	 * @return the queuing data object removed from the queue's head
+	 */
 	protected QueueingData manageQueueRemoval() {
 		if (queue.isEmpty()) {
 			return null;
 		}
-		QueueingData removed = queue.remove();
+		QueueingData removed = queue.remove(0);
 		updateTotalQueuedAfterRemoval(removed);
 		return removed;
 	}
 
+	/**
+	 * The common functionality required to manage the update of the total
+	 * queued field.
+	 * 
+	 * @param qd
+	 *            the removed queue member that needs to be deducted from the
+	 *            total queue field
+	 */
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
-		totalQueued = queue.isEmpty() ? ResourceConstraints.noResources
-				: ResourceConstraints.subtract(totalQueued, qd.cumulativeRC);
+		if (queue.isEmpty()) {
+			totalQueued.subtract(totalQueued);
+			minimumSchedulerRequirement = ConstantConstraints.noResources;
+		} else {
+			totalQueued.subtract(qd.cumulativeRC);
+		}
 	}
 
+	/**
+	 * Allows third parties to get notified if the scheduler is not satisfied
+	 * with the current infrastructure (e.g. because it cannot fit the current
+	 * VM request set to the running PM set)
+	 * 
+	 * @param e
+	 *            the object that will handle the notifications
+	 */
 	public final void subscribeQueueingEvents(QueueingEvent e) {
-		queueListeners.add(e);
+		queueListenerManager.subscribeToEvents(e);
 		if (queue.size() != 0) {
 			e.queueingStarted();
 		}
 	}
 
+	/**
+	 * Cancels the notifications about queuing events
+	 * 
+	 * @param e
+	 *            the object that no longer needs notifications
+	 */
 	public final void unsubscribeQueueingEvents(QueueingEvent e) {
-		ArrayHandler.removeAndReplaceWithLast(queueListeners, e);
+		queueListenerManager.unsubscribeFromEvents(e);
 	}
 
-	private void notifyListeners() {
-		final int size = queueListeners.size();
-		for (int i = 0; i < size; i++) {
-			queueListeners.get(i).queueingStarted();
+	/**
+	 * Prepares a list of all the VMs that are queued at the particular moment
+	 * in time
+	 * 
+	 * @return the list of requested and not yet served VMs
+	 */
+	public final List<VirtualMachine> getQueuedVMs() {
+		final ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>(queue.size());
+		for (final QueueingData qd : queue) {
+			vms.addAll(Arrays.asList(qd.queuedVMs));
 		}
+		return vms;
 	}
 
-	protected abstract void scheduleQueued();
+	/**
+	 * This function is actually calling the subclass's scheduler implementation
+	 * and handles the management of minimum scheduler requirements and resets
+	 * the free resource aggregate
+	 */
+	private void invokeRealScheduler() {
+		minimumSchedulerRequirement = scheduleQueued();
+		freeResourcesSinceLastSchedule.subtract(freeResourcesSinceLastSchedule);
+	}
+
+	/**
+	 * When a new VM scheduler is created this is the function to be
+	 * implemented.
+	 * 
+	 * The function is expected to poll or the queue and only remove queued
+	 * entities if they are placed on an actual PM. The removal is supported by
+	 * the manageQueueRemoval function which allows both in order and out of
+	 * order removals thus even allows prioritizing scheduler logic.
+	 * 
+	 * @return the amount of free resources that the IaaS service needs to offer
+	 *         before this scheduler could actually proceed with its next VM
+	 *         placement.
+	 */
+	protected abstract ConstantConstraints scheduleQueued();
 }

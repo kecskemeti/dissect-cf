@@ -25,13 +25,15 @@
 
 package at.ac.uibk.dps.cloud.simulator.test;
 
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.EnumMap;
 
 import org.junit.After;
 import org.junit.Before;
@@ -40,10 +42,31 @@ import org.junit.BeforeClass;
 public class PMRelatedFoundation extends ConsumptionEventFoundation {
 	public final static PrintStream realStdOut = System.out;
 	public final static PrintStream realStdErr = System.err;
+	public static final double minpower = 20;
+	public static final double idlepower = 200;
+	public static final double maxpower = 300;
+	public static final double diskDivider = 10;
+	public static final double netDivider = 20;
+	public static final double totalIdle = idlepower + idlepower / diskDivider
+			+ idlepower / netDivider;
+	public final static EnumMap<PhysicalMachine.PowerStateKind, EnumMap<PhysicalMachine.State, PowerState>> defaultTransitions;
+
+	static {
+		try {
+			defaultTransitions = PowerTransitionGenerator.generateTransitions(
+					minpower, idlepower, maxpower, diskDivider, netDivider);
+		} catch (Exception e) {
+			throw new IllegalStateException(
+					"Cannot initialize the default transitions");
+		}
+	}
 
 	@BeforeClass
 	public static void initStaticParts() {
-		new PhysicalMachine(1, 1, 1, new Repository(1, "", 1, 1, 1, null), 1, 1);
+		// Ensure that the most important classes are loaded before we do
+		// anything (so the timeouts would not occur)
+		new PhysicalMachine(1, 1, 1, new Repository(1, "", 1, 1, 1, null), 1,
+				1, defaultTransitions);
 	}
 
 	@Before

@@ -24,6 +24,13 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 
+/**
+ * Defines a power draw model that either uses the LinearConsumptionModel to
+ * determine the power draw of uses 0W power draw value if there is no load
+ * specified. state.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"
+ */
 public class NoIdleConsumptionModel extends LinearConsumptionModel {
 	@Override
 	protected double evaluateConsumption(double load) {

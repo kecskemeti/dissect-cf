@@ -25,11 +25,11 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple;
 
-import java.util.Random;
-
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,18 +44,18 @@ public class StorageArtifactsTest extends TestFoundation {
 	public void vaConstructionTest() {
 		Random rnd = SeedSyncer.centralRnd;
 		final long bgLoad = rnd.nextLong();
-		final long startdelay = rnd.nextLong();
-		VirtualAppliance va1 = new VirtualAppliance(initialID, startdelay,
+		final double startproc = rnd.nextDouble();
+		VirtualAppliance va1 = new VirtualAppliance(initialID, startproc,
 				bgLoad);
-		VirtualAppliance va2 = new VirtualAppliance("ID2", startdelay, bgLoad,
+		VirtualAppliance va2 = new VirtualAppliance("ID2", startproc, bgLoad,
 				false, baseVASize);
-		VirtualAppliance va3 = new VirtualAppliance("ID3", startdelay, bgLoad,
+		VirtualAppliance va3 = new VirtualAppliance("ID3", startproc, bgLoad,
 				true, baseVASize);
 		VirtualAppliance va4 = va3.newCopy("ID3Copy");
 		Assert.assertEquals("Background load mismatch", bgLoad,
 				va1.getBgNetworkLoad());
-		Assert.assertEquals("Startup delay mismatch", startdelay,
-				va2.getStartupdelay());
+		Assert.assertEquals("Startup delay mismatch", startproc,
+				va2.getStartupProcessing(), 0);
 		Assert.assertEquals("Size mismatch", va3.size, va4.size);
 		Assert.assertTrue("Size variance failure", va2.size != va3.size);
 		Assert.assertTrue(

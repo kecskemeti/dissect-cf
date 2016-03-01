@@ -25,6 +25,12 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 
+/**
+ * Defines a power draw model that always returns an instantaneous power draw
+ * value equivalent to the minimum consumption set for the current power state.
+ * 
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"
+ */
 public class ConstantConsumptionModel extends PowerState.ConsumptionModel {
 	@Override
 	protected double evaluateConsumption(final double load) {

@@ -30,11 +30,15 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAda
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.Assert;
 
 public class ConsumptionEventAssert extends ConsumptionEventAdapter {
-	public static ArrayList<Long> hits = new ArrayList<Long>();
+	private final static ArrayList<Long> hitsInternal = new ArrayList<Long>();
+	public final static List<Long> hits = Collections
+			.unmodifiableList(hitsInternal);
 	long arrivedAt = -1;
 	final long expectedTime;
 	final boolean failOnCancel;
@@ -68,7 +72,7 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 	@Override
 	public void conComplete() {
 		if (expectedTime > 0) {
-			Assert.assertEquals("Network transfer completed at wrong time",
+			Assert.assertEquals("Resource consumption completed at wrong time",
 					expectedTime, Timed.getFireCount());
 		}
 		Assert.assertFalse(
@@ -76,7 +80,7 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 				isCancelled() || isCompleted());
 		super.conComplete();
 		updateArrivedAt();
-		hits.add(arrivedAt);
+		hitsInternal.add(arrivedAt);
 	}
 
 	@Override
@@ -89,5 +93,9 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 				isCancelled() || isCompleted());
 		super.conCancelled(problematic);
 		updateArrivedAt();
+	}
+
+	static void resetHits() {
+		hitsInternal.clear();
 	}
 }
