@@ -4,3 +4,4 @@ bin
 .project
 .DS_Store
 /target
+/nbproject/

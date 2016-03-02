@@ -378,9 +378,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 			}
 			pm.subscribeStateChangeEvents(this);
 			caps[i] = pm.getCapacities();
+			
+			sched.registerPM(pm);
 		}
 		totalCapacity.add(caps);
 		capacityListenerManager.notifyListeners(newPMs);
+		
 	}
 
 	/**
@@ -488,6 +491,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	 */
 	public void registerRepository(final Repository r) {
 		internalRepositories.add(r);
+		sched.registerRepository(r);
 	}
 
 	/**

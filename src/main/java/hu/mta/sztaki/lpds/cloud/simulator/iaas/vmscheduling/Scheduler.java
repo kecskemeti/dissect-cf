@@ -250,7 +250,7 @@ public abstract class Scheduler {
 	 *             if the request is impossible to schedule on the current
 	 *             infrastructure
 	 */
-	public final void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
+	public void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
 			final Repository vaSource, final HashMap<String, Object> schedulingConstraints)
 					throws VMManagementException {
 		final long currentTime = Timed.getFireCount();
@@ -444,4 +444,12 @@ public abstract class Scheduler {
 	 *         placement.
 	 */
 	protected abstract ConstantConstraints scheduleQueued();
+	
+	public void registerPM(PhysicalMachine pm) {
+	
+	};
+	
+	public void registerRepository(Repository repo) {
+		
+	};
 }
