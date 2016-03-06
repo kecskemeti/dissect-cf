@@ -1,7 +1,6 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
 /**
  *
@@ -16,7 +15,7 @@ public class RoundRobinIaasScheduler extends IaasScheduler{
 	@Override
 	public void increasePMIndex() {
 		pmIndex++;
-		if(pmIndex == iaases.length) {
+		if(pmIndex == iaases.size()) {
 			pmIndex = 0;
 		}
 	}
@@ -24,18 +23,18 @@ public class RoundRobinIaasScheduler extends IaasScheduler{
 	@Override
 	public void increaseVMRequestIndex() {
 		vmRequestIndex++;
-		if (vmRequestIndex == iaases.length) {
+		if (vmRequestIndex == iaases.size()) {
 			vmRequestIndex = 0;
 		}
 	}
 
-	@Override
-	public void increaseRepoIndex() {
-		repoIndex++;
-		if(repoIndex == iaases.length) {
-			repoIndex = 0;
-		}
-	}
+//	@Override
+//	public void increaseRepoIndex() {
+//		repoIndex++;
+//		if(repoIndex == iaases.length) {
+//			repoIndex = 0;
+//		}
+//	}
 
 	
 	

@@ -491,7 +491,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	 */
 	public void registerRepository(final Repository r) {
 		internalRepositories.add(r);
-		sched.registerRepository(r);
+		//sched.registerRepository(r);
 	}
 
 	/**
@@ -593,7 +593,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 		}
 	}
 	
-	public IaaSService[] getIaases() {
+	public ArrayList<IaaSService> getIaases() {
 		return sched.getIaases();
 	}
 }
