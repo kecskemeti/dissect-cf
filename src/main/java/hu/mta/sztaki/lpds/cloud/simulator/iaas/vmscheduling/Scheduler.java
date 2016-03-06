@@ -452,4 +452,8 @@ public abstract class Scheduler {
 	public void registerRepository(Repository repo) {
 		
 	};
+	
+	public IaaSService[] getIaases() {
+		return null;
+	};
 }

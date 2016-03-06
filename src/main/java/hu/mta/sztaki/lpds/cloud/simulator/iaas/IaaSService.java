@@ -592,4 +592,8 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 			}
 		}
 	}
+	
+	public IaaSService[] getIaases() {
+		return sched.getIaases();
+	}
 }

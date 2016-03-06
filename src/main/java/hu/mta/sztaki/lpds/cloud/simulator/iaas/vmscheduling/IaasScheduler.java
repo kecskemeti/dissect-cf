@@ -61,9 +61,22 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 		} catch (NetworkNode.NetworkException ex) {
 			Logger.getLogger(IaasScheduler.class.getName()).log(Level.SEVERE, null, ex);
 		}
-
 	}
-
+	
+	public int[] getVMs() {
+		int[] vms = new int[iaases.length];
+		for(int i=0; i<iaases.length; i++) {
+			vms[i] = iaases[i].listVMs().size();
+		}
+		
+		return vms;
+	}
+	
+	@Override
+	public IaaSService[] getIaases() {
+		return iaases;
+	}
+	
 	@Override
 	public void registerPM(PhysicalMachine pm) {
 		iaases[pmIndex].registerHost(pm);
