@@ -83,7 +83,7 @@ public class RoundRobinIaasSchedulerTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(100, iaases.get(1).machines.size());
 		Assert.assertEquals(100, iaases.get(2).machines.size());
 		
-		registerPm(iaas, 1, "D");
+		registerPm(iaas, 1, "F");
 		Assert.assertEquals(4, iaases.size());
 		Assert.assertEquals(76, iaases.get(0).machines.size());
 		Assert.assertEquals(75, iaases.get(1).machines.size());

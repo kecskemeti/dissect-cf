@@ -445,9 +445,9 @@ public abstract class Scheduler {
 	 */
 	protected abstract ConstantConstraints scheduleQueued();
 	
-	public void registerPM(PhysicalMachine pm) {
+	public void registerPM(PhysicalMachine pm) {}
 	
-	};
+	public void deregisterPM(PhysicalMachine pm) {}
 	
 //	public void registerRepository(Repository repo) {
 //		
@@ -455,5 +455,5 @@ public abstract class Scheduler {
 	
 	public ArrayList<IaaSService> getIaases() {
 		return null;
-	};
+	}
 }

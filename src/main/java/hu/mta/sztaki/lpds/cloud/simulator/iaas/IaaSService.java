@@ -477,6 +477,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 				}
 			}
 			realDeregistration(pm);
+			sched.deregisterPM(pm);
 		} else {
 			throw new IaaSHandlingException(
 					"No such registered physical machine");
