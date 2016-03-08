@@ -27,46 +27,32 @@ package hu.mta.sztaki.lpds.cloud.simulator.notifications;
 
 import java.util.ArrayList;
 
-public class LoopedDispatcher implements EventDispatcherCore {
-	public static final LoopedDispatcher instance = new LoopedDispatcher();
+public class NullDispatcher implements EventDispatcherCore {
+	public static final NullDispatcher instance = new NullDispatcher();
 
 	@Override
 	public <T, P> void mainNotificationLoop(final StateDependentEventHandler<T, P> handler, final P payload) {
-		final int size = handler.listeners.size();
-		for (int i = 0; i < size; i++) {
-			handler.myHandler.sendNotification(handler.listeners.get(i), payload);
-		}
 	}
 
 	@Override
 	public <T, P> void add(final StateDependentEventHandler<T, P> handler, final T item) {
 		handler.listeners.add(item);
+		handler.eventing = DirectDispatcher.instance;
 	}
 
 	@Override
 	public <T, P> void addAll(final StateDependentEventHandler<T, P> handler, final ArrayList<T> items) {
 		handler.listeners.addAll(items);
+		handler.eventing = items.size() == 1 ? DirectDispatcher.instance : LoopedDispatcher.instance;
 		items.clear();
 	}
 
 	@Override
 	public <T, P> void remove(final StateDependentEventHandler<T, P> handler, final T item) {
-		handler.listeners.remove(item);
-		if (handler.listeners.size() == 1) {
-			handler.eventing = DirectDispatcher.instance;
-		}
 	}
 
 	@Override
 	public <T, P> void removeAll(final StateDependentEventHandler<T, P> handler, final ArrayList<T> items) {
-		handler.listeners.removeAll(items);
-		switch (handler.listeners.size()) {
-		case 0:
-			handler.eventing = NullDispatcher.instance;
-			break;
-		case 1:
-			handler.eventing = DirectDispatcher.instance;
-		}
 		items.clear();
 	}
 }

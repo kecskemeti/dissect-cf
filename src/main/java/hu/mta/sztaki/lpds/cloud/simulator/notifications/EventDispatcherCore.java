@@ -33,6 +33,13 @@ public interface EventDispatcherCore {
 	 * it is not prepared to handle cases when the number of subscribers change
 	 * while the dispatching is in process.
 	 */
-	<T, P> void mainNotificationLoop(final ArrayList<T> listeners, final SingleNotificationHandler<T, P> myHandler,
-			final P payload);
+	<T, P> void mainNotificationLoop(final StateDependentEventHandler<T, P> handler, final P payload);
+
+	<T, P> void add(final StateDependentEventHandler<T, P> handler, T item);
+
+	<T, P> void addAll(final StateDependentEventHandler<T, P> handler, ArrayList<T> items);
+
+	<T, P> void remove(final StateDependentEventHandler<T, P> handler, T item);
+
+	<T, P> void removeAll(final StateDependentEventHandler<T, P> handler, ArrayList<T> items);
 }
