@@ -76,6 +76,10 @@ public class StateDependentEventHandler<T, P> {
 	 * the entity that is actually used to perform the notifications
 	 */
 	private final SingleNotificationHandler<T, P> myHandler;
+	/**
+	 * the dispatcher to be used when events need to be fired.
+	 */
+	private EventDispatcherCore eventing = DirectDispatcher.getInstance();
 
 	/**
 	 * Initialization of the event handling mechanism.
@@ -100,6 +104,9 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void subscribeToEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
+			if (listeners.size() == 1) {
+				eventing = LoopedDispatcher.getInstance();
+			}
 			listeners.add(listener);
 		} else {
 			newListeners.add(listener);
@@ -116,21 +123,12 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void unsubscribeFromEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
+			if (listeners.size() == 2) {
+				eventing = DirectDispatcher.getInstance();
+			}
 			listeners.remove(listener);
 		} else {
 			cancelledListeners.add(listener);
-		}
-	}
-
-	/**
-	 * The main event dispatching loop. It is not intended for external use as
-	 * it is not prepared to handle cases when the number of subscribers change
-	 * while the dispatching is in process.
-	 */
-	private void mainNotificationLoop(final P payload) {
-		final int size = listeners.size();
-		for (int i = 0; i < size; i++) {
-			myHandler.sendNotification(listeners.get(i), payload);
 		}
 	}
 
@@ -145,28 +143,38 @@ public class StateDependentEventHandler<T, P> {
 	 *            notification
 	 */
 	public void notifyListeners(final P payload) {
+		if (listeners.size() == 0) {
+			return;
+		}
 		if (noEventDispatchingInProcess) {
 			// No nesting
 
 			// Mark for start of dispatching process
 			noEventDispatchingInProcess = false;
-			mainNotificationLoop(payload);
+			eventing.mainNotificationLoop(listeners, myHandler, payload);
 			// Complete dispatching is done (even if there were some nested
 			// events)
 			noEventDispatchingInProcess = true;
 
 			// Additions and deletions are handled only in the outermost call
 			if (newListeners.size() != 0) {
+				if (listeners.size() == 1 || newListeners.size() > 1) {
+					eventing = LoopedDispatcher.getInstance();
+				}
 				listeners.addAll(newListeners);
 				newListeners.clear();
 			}
 			if (cancelledListeners.size() != 0) {
 				listeners.removeAll(cancelledListeners);
+				if (listeners.size() < 2) {
+					eventing = DirectDispatcher.getInstance();
+				}
 				cancelledListeners.clear();
 			}
 		} else {
 			// Nested call handling
-			mainNotificationLoop(payload);
+			eventing.mainNotificationLoop(listeners, myHandler, payload);
 		}
 	}
+
 }
