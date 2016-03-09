@@ -11,6 +11,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,7 +27,8 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 	int pmRegisterIndex = 0;
 	int pmDeregisterIndex = 0;
 	private int maxNumberOfPMPerIaaS = 100;
-	//int repoIndex = 0;
+	Map<Long, Integer> PMIaaSList = new HashMap<Long, Integer>();
+	
 
 	public IaasScheduler(IaaSService parent) {
 		super(parent);
@@ -42,125 +44,124 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 
 	@Override
 	public void registerPM(PhysicalMachine pm) {
+		pmRegisterIndex = 0;
+		if(iaases.size() != 1) {
+			int min = iaases.get(0).machines.size();
+			for(int i=1; i<iaases.size(); i++) {
+				if(iaases.get(i).machines.size() < min) {
+					pmRegisterIndex = i;
+					min = iaases.get(i).machines.size();
+				}
+			}
+		}
+		
 		iaases.get(pmRegisterIndex).registerHost(pm);
+		PMIaaSList.put(pm.id, pmRegisterIndex);
 
 		if (iaases.get(pmRegisterIndex).machines.size() > maxNumberOfPMPerIaaS) {
-			//pmIndex = 0;
-			int i, j;
 			try {
 				iaases.add(new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class));
+
+				reallocatePMs();
+
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
 
-			int numberOfIaases = iaases.size();
-			int totalNumberOfPMs = 0;
-
-			for (IaaSService iaas : iaases) {
-				totalNumberOfPMs += iaas.machines.size();
-			}
-
-			//kiszámolom, hogy melyik iaas-be mennyi gép kell at elosztás után
-			int[] numberOfPMsAfterReallocate = new int[numberOfIaases];
-
-			//egyenlõ arányban elosztom a gépeket az iaas-k között
-			int baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / numberOfIaases);
-			for (i = 0; i < numberOfPMsAfterReallocate.length; i++) {
-				numberOfPMsAfterReallocate[i] = baseNumberOfPMs;
-			}
-
-			//a maradékot szotosztom az elsõ iaas-k között
-			int remainder = totalNumberOfPMs - baseNumberOfPMs * numberOfIaases;
-			for (i = 0; i < remainder; i++) {
-				numberOfPMsAfterReallocate[i] += 1;
-			}
-
-			int numberOfPMsToMove = 1;
-			PhysicalMachine pmToMove;
-			IaaSService iaasTmp = null;
-			for (i = 0; i < numberOfIaases - 1; i++) {
-				iaasTmp = iaases.get(i);
-				numberOfPMsToMove = iaasTmp.machines.size() - numberOfPMsAfterReallocate[i];
-				for (j = 0; j < numberOfPMsToMove; j++) {
-					pmToMove = iaasTmp.machines.get(0);
-
-					try {
-						iaasTmp.deregisterHost(pmToMove);
-						iaases.get(iaases.size() - 1).registerHost(pmToMove);
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-				}
-			}
-
-			pmRegisterIndex = remainder == numberOfIaases ? 0 : remainder;
-
-		} else {
-			increaseRegisterPMIndex();
 		}
 	}
 
 	@Override
 	public void deregisterPM(PhysicalMachine pm) {
 		try {
-			iaases.get(pmDeregisterIndex).deregisterHost(pm);
+			int indexOfIaaS = PMIaaSList.get(pm.id);
+			iaases.get(indexOfIaaS).deregisterHost(pm);
+			PMIaaSList.remove(pm.id);
 			int numberOfIaases = iaases.size();
-			if (iaases.get(pmDeregisterIndex).machines.size() < (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases) {
-				int totalNumberOfPMs = 0;
-				int i, j;
-				IaaSService iaasToDelete = iaases.get(pmDeregisterIndex);
-
-				for (IaaSService iaas : iaases) {
-					totalNumberOfPMs += iaas.machines.size();
-				}
-
-				//kiszámolom, hogy melyik iaas-be mennyi gép kell at elosztás után
-				int[] numberOfPMsAfterReallocate = new int[numberOfIaases];
-
-				//egyenlõ arányban elosztom a gépeket az iaas-k között
-				int baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / (numberOfIaases - 1));
-				for (i = 0; i < numberOfPMsAfterReallocate.length; i++) {
-					if (i == pmDeregisterIndex) {
-						numberOfPMsAfterReallocate[i] = 0;
-					} else {
-						numberOfPMsAfterReallocate[i] = baseNumberOfPMs;
-					}
-				}
-
-				//a maradékot szétosztom az elsõ iaas-k között
-				int remainder = totalNumberOfPMs - baseNumberOfPMs * (numberOfIaases - 1);
-				for (i = 0; i < remainder; i++) {
-					if (i != pmDeregisterIndex) {
-						numberOfPMsAfterReallocate[i] += 1;
-					}
-				}
-
-				int numberOfPMsToMove;
-				PhysicalMachine pmToMove;
-				IaaSService iaasTmp;
-				for (i = 0; i < numberOfIaases - 1; i++) {
-					if (i == pmDeregisterIndex) {
-						continue;
-					}
-					
-					iaasTmp = iaases.get(i);
-					numberOfPMsToMove = numberOfPMsAfterReallocate[i] - iaasTmp.machines.size();
-					for (j = 0; j < numberOfPMsToMove; j++) {
-						pmToMove = iaasToDelete.machines.get(0);
-
-						try {
-							iaasToDelete.deregisterHost(pmToMove);
-							iaasTmp.registerHost(pmToMove);
-						} catch (Exception ex) {
-							ex.printStackTrace();
-						}
-					}
-				}
-
+			if (iaases.get(indexOfIaaS).machines.size() < (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases) {
+				reallocatePMs(indexOfIaaS);
+				iaases.remove(indexOfIaaS);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+	}
+
+	private void reallocatePMs(int indexOfIaaSToDelete) throws Exception {
+		int numberOfIaases = iaases.size();
+		int totalNumberOfPMs = 0;
+
+		int i, j;
+
+		for (IaaSService iaas : iaases) {
+			totalNumberOfPMs += iaas.machines.size();
+		}
+
+		//kiszámolom, hogy melyik iaas-be mennyi gép kell at elosztás után
+		int[] numberOfPMsAfterReallocate = new int[numberOfIaases];
+
+		//egyenlõ arányban elosztom a gépeket az iaas-k között
+		int baseNumberOfPMs;
+		if (indexOfIaaSToDelete == -1) {
+			baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / numberOfIaases);
+		} else {
+			baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / (numberOfIaases -1) );
+		}
+
+		for (i = 0; i < numberOfPMsAfterReallocate.length; i++) {
+			if (i == indexOfIaaSToDelete) {
+				numberOfPMsAfterReallocate[i] = 0;
+			} else {
+				numberOfPMsAfterReallocate[i] = baseNumberOfPMs;
+			}
+		}
+
+		//a maradékot szétosztom az elsõ iaas-k között
+		int remainder;
+		if(indexOfIaaSToDelete == -1) {
+			remainder = totalNumberOfPMs - baseNumberOfPMs * (numberOfIaases);
+		} else {
+			remainder = totalNumberOfPMs - baseNumberOfPMs * (numberOfIaases - 1);
+		}
+		
+		for (i = 0; i < remainder; i++) {
+			if (i != indexOfIaaSToDelete) {
+				numberOfPMsAfterReallocate[i] += 1;
+			}
+		}
+
+		//átdobálom a fölös PM-eket egy ideiglenes listába
+		ArrayList<PhysicalMachine> tempPMList = new ArrayList<PhysicalMachine>(100);
+		PhysicalMachine pm;
+		int diff;
+		for (i = 0; i < numberOfIaases; i++) {
+			diff = iaases.get(i).machines.size() - numberOfPMsAfterReallocate[i];
+			if (iaases.get(i).machines.size() > numberOfPMsAfterReallocate[i]) {
+				for (j = 0; j < diff; j++) {
+					pm = iaases.get(i).machines.get(0);
+					tempPMList.add(pm);
+					iaases.get(i).deregisterHost(pm);
+				}
+			}
+		}
+
+		//a listából odaadom azoknak az IaaS-eknek akiknek kevesebb van mint kellene
+		for (i = 0; i < numberOfIaases; i++) {
+			if (iaases.get(i).machines.size() < numberOfPMsAfterReallocate[i]) {
+				diff = numberOfPMsAfterReallocate[i] - iaases.get(i).machines.size();
+				for (j = 0; j < diff; j++) {
+					pm = tempPMList.get(tempPMList.size() - 1);
+					iaases.get(i).registerHost(pm);
+					tempPMList.remove(tempPMList.size() - 1);
+					PMIaaSList.put(pm.id, i);
+				}
+			}
+		}
+
+	}
+
+	private void reallocatePMs() throws Exception {
+		reallocatePMs(-1);
 	}
 
 	@Override
@@ -188,9 +189,6 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 //	}
 	public abstract void increaseVMRequestIndex();
 
-	public abstract void increaseRegisterPMIndex();
-
-	public abstract void increaseDeregisterPMIndex();
-
+//	public abstract void increaseRegisterPMIndex();
 //	public abstract void increaseRepoIndex();
 }

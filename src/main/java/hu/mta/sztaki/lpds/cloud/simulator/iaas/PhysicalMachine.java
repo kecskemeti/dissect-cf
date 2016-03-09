@@ -722,6 +722,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * running)
 	 */
 	private boolean directConsumerUsageMoratory = true;
+	
+	public final long id;
 
 	/**
 	 * Defines a new physical machine, ensures that there are no VMs running so
@@ -812,6 +814,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			double[] turnonOperations, double[] switchoffOperations,
 			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
 		super(cores * perCorePocessing);
+		
+		id = System.nanoTime();
+		
 		// Init resources:
 		totalCapacities = new ConstantConstraints(cores, perCorePocessing, memory);
 		internalAvailableCaps = new AlterableResourceConstraints(totalCapacities);

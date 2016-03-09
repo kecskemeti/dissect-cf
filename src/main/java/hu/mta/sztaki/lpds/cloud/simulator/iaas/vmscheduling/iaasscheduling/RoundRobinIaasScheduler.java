@@ -13,13 +13,13 @@ public class RoundRobinIaasScheduler extends IaasScheduler {
 		super(parent);
 	}
 
-	@Override
-	public void increaseRegisterPMIndex() {
-		pmRegisterIndex++;
-		if (pmRegisterIndex == iaases.size()) {
-			pmRegisterIndex = 0;
-		}
-	}
+//	@Override
+//	public void increaseRegisterPMIndex() {
+//		pmRegisterIndex++;
+//		if (pmRegisterIndex == iaases.size()) {
+//			pmRegisterIndex = 0;
+//		}
+//	}
 
 	@Override
 	public void increaseVMRequestIndex() {
@@ -36,12 +36,6 @@ public class RoundRobinIaasScheduler extends IaasScheduler {
 //			repoIndex = 0;
 //		}
 //	}
-	@Override
-	public void increaseDeregisterPMIndex() {
-		pmDeregisterIndex++;
-		if (pmDeregisterIndex == iaases.size()) {
-			pmRegisterIndex = 0;
-		}
-	}
+
 
 }
