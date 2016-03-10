@@ -1,6 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import java.util.ArrayList;
 
 /**
  *
@@ -8,8 +9,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  */
 public class RoundRobinIaasScheduler extends IaasScheduler {
 
-	public RoundRobinIaasScheduler(IaaSService parent) {
-		super(parent);
+	public RoundRobinIaasScheduler(IaaSService parent, ArrayList<Class<? extends IaasScheduler>> hierarchy, int hierarchyLevel) {
+		super(parent, hierarchy, hierarchyLevel);
 	}
 
 //	@Override

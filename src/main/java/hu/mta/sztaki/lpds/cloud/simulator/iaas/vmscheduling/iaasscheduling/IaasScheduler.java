@@ -26,17 +26,28 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 	int vmRequestIndex = 0;
 	int pmRegisterIndex = 0;
 	int pmDeregisterIndex = 0;
+	ArrayList<Class<? extends IaasScheduler>> hierarchy;
 	private int maxNumberOfPMPerIaaS = 100;
 	Map<Long, Integer> PMIaaSList = new HashMap<Long, Integer>();
-	
+	schedulerType type;
 
-	public IaasScheduler(IaaSService parent) {
+	private enum schedulerType {
+		IAAS, PM;
+	}
+
+	public IaasScheduler(IaaSService parent, ArrayList<Class<? extends IaasScheduler>> hierarchy, int hierarchyLevel) {
 		super(parent);
 
 		iaases = new ArrayList<IaaSService>();
 
 		try {
-			iaases.add(new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class));
+			if (hierarchyLevel < hierarchy.size() - 1) {
+				iaases.add(new IaaSService(hierarchy, AlwaysOnMachines.class, hierarchyLevel + 1));
+				type = schedulerType.IAAS;
+			} else {
+				type = schedulerType.PM;
+			}
+
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -44,47 +55,51 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 
 	@Override
 	public void registerPM(PhysicalMachine pm) {
-		pmRegisterIndex = 0;
-		if(iaases.size() != 1) {
-			int min = iaases.get(0).machines.size();
-			for(int i=1; i<iaases.size(); i++) {
-				if(iaases.get(i).machines.size() < min) {
-					pmRegisterIndex = i;
-					min = iaases.get(i).machines.size();
+		if (type == schedulerType.IAAS) {
+			pmRegisterIndex = 0;
+			if (iaases.size() != 1) {
+				int min = iaases.get(0).machines.size();
+				for (int i = 1; i < iaases.size(); i++) {
+					if (iaases.get(i).machines.size() < min) {
+						pmRegisterIndex = i;
+						min = iaases.get(i).machines.size();
+					}
 				}
 			}
-		}
-		
-		iaases.get(pmRegisterIndex).registerHost(pm);
-		PMIaaSList.put(pm.id, pmRegisterIndex);
 
-		if (iaases.get(pmRegisterIndex).machines.size() > maxNumberOfPMPerIaaS) {
-			try {
-				iaases.add(new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class));
+			iaases.get(pmRegisterIndex).registerHost(pm);
+			PMIaaSList.put(pm.id, pmRegisterIndex);
 
-				reallocatePMs();
+			if (iaases.get(pmRegisterIndex).machines.size() > maxNumberOfPMPerIaaS) {
+				try {
+					iaases.add(new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class));
 
-			} catch (Exception ex) {
-				ex.printStackTrace();
+					reallocatePMs();
+
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+
 			}
-
 		}
 	}
 
 	@Override
 	public void deregisterPM(PhysicalMachine pm) {
-		try {
-			int indexOfIaaS = PMIaaSList.get(pm.id);
-			iaases.get(indexOfIaaS).deregisterHost(pm);
-			PMIaaSList.remove(pm.id);
-			int numberOfIaases = iaases.size();
-			int min = (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases;
-			if (iaases.get(indexOfIaaS).machines.size() < min) {
-				reallocatePMs(indexOfIaaS);
-				iaases.remove(indexOfIaaS);
+		if (type == schedulerType.IAAS) {
+			try {
+				int indexOfIaaS = PMIaaSList.get(pm.id);
+				iaases.get(indexOfIaaS).deregisterHost(pm);
+				PMIaaSList.remove(pm.id);
+				int numberOfIaases = iaases.size();
+				int min = (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases;
+				if (iaases.get(indexOfIaaS).machines.size() < min) {
+					reallocatePMs(indexOfIaaS);
+					iaases.remove(indexOfIaaS);
+				}
+			} catch (Exception ex) {
+				ex.printStackTrace();
 			}
-		} catch (Exception ex) {
-			ex.printStackTrace();
 		}
 	}
 
@@ -106,7 +121,7 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 		if (indexOfIaaSToDelete == -1) {
 			baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / numberOfIaases);
 		} else {
-			baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / (numberOfIaases -1) );
+			baseNumberOfPMs = (int) Math.floor(((float) totalNumberOfPMs) / (numberOfIaases - 1));
 		}
 
 		for (i = 0; i < numberOfPMsAfterReallocate.length; i++) {
@@ -119,12 +134,12 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 
 		//a maradékot szétosztom az elsõ iaas-k között
 		int remainder;
-		if(indexOfIaaSToDelete == -1) {
+		if (indexOfIaaSToDelete == -1) {
 			remainder = totalNumberOfPMs - baseNumberOfPMs * (numberOfIaases);
 		} else {
 			remainder = totalNumberOfPMs - baseNumberOfPMs * (numberOfIaases - 1);
 		}
-		
+
 		for (i = 0; i < remainder; i++) {
 			if (i != indexOfIaaSToDelete) {
 				numberOfPMsAfterReallocate[i] += 1;
@@ -169,12 +184,15 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 	public void scheduleVMrequest(VirtualMachine[] vms, ResourceConstraints rc,
 			Repository vaSource, HashMap<String, Object> schedulingConstraints)
 			throws VMManager.VMManagementException {
-
-		try {
-			iaases.get(vmRequestIndex).requestVM(vms[0].getVa(), rc, vaSource, vms.length, schedulingConstraints);
-			increaseVMRequestIndex();
-		} catch (NetworkNode.NetworkException ex) {
-			Logger.getLogger(IaasScheduler.class.getName()).log(Level.SEVERE, null, ex);
+		if (type == schedulerType.IAAS) {
+			try {
+				iaases.get(vmRequestIndex).requestVM(vms[0].getVa(), rc, vaSource, vms.length, schedulingConstraints);
+				increaseVMRequestIndex();
+			} catch (NetworkNode.NetworkException ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			super.scheduleVMrequest(vms, rc, vaSource, schedulingConstraints);
 		}
 	}
 

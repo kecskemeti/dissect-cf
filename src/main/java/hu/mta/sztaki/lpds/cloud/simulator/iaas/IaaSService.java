@@ -39,6 +39,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.IaasScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -202,6 +203,18 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 			NoSuchMethodException, SecurityException {
 		sched = s.getConstructor(IaaSService.class).newInstance(this);
 		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
+	}
+	
+	public IaaSService(ArrayList<Class<? extends IaasScheduler>> hierarchy,
+			Class<? extends PhysicalMachineController> c,
+			int hierarchyLevel)
+			throws InstantiationException, IllegalAccessException,
+			IllegalArgumentException, InvocationTargetException,
+			NoSuchMethodException, SecurityException {
+		
+		sched = hierarchy.get(hierarchyLevel).getConstructor(IaaSService.class, ArrayList.class, int.class).newInstance(this, hierarchy, hierarchyLevel);
+		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
+		
 	}
 
 	/**

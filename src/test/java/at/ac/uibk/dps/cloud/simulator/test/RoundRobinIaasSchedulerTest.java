@@ -10,6 +10,9 @@ import static at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation.defaultTra
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.RoundRobinScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.IaasScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.RoundRobinIaasScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import java.util.ArrayList;
@@ -51,7 +54,11 @@ public class RoundRobinIaasSchedulerTest extends IaaSRelatedFoundation {
 
 	@Test
 	public void testDynamicIaaSListSchedulerAdd() throws Exception {
-		iaas = new IaaSService(RoundRobinIaasScheduler.class, AlwaysOnMachines.class);
+		ArrayList<Class<? extends IaasScheduler>> h = new ArrayList<Class<? extends IaasScheduler>>();
+		h.add(RoundRobinIaasScheduler.class);
+		h.add(RoundRobinIaasScheduler.class);
+
+		iaas = new IaaSService(h, AlwaysOnMachines.class, 0);
 		ArrayList<IaaSService> iaases = iaas.getIaases();
 
 		registerPm(iaas, 100, "A");
@@ -92,7 +99,11 @@ public class RoundRobinIaasSchedulerTest extends IaaSRelatedFoundation {
 
 	@Test
 	public void testDynamicIaaSListSchedulerRemove() throws Exception {
-		iaas = new IaaSService(RoundRobinIaasScheduler.class, AlwaysOnMachines.class);
+		ArrayList<Class<? extends IaasScheduler>> h = new ArrayList<Class<? extends IaasScheduler>>();
+		h.add(RoundRobinIaasScheduler.class);
+		h.add(RoundRobinIaasScheduler.class);
+
+		iaas = new IaaSService(h, AlwaysOnMachines.class, 0);
 		ArrayList<IaaSService> iaases = iaas.getIaases();
 
 		registerPm(iaas, 150, "A");
