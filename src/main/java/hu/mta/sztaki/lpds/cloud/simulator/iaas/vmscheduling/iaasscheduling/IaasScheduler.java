@@ -78,7 +78,8 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 			iaases.get(indexOfIaaS).deregisterHost(pm);
 			PMIaaSList.remove(pm.id);
 			int numberOfIaases = iaases.size();
-			if (iaases.get(indexOfIaaS).machines.size() < (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases) {
+			int min = (numberOfIaases - 1) * maxNumberOfPMPerIaaS / numberOfIaases;
+			if (iaases.get(indexOfIaaS).machines.size() < min) {
 				reallocatePMs(indexOfIaaS);
 				iaases.remove(indexOfIaaS);
 			}
