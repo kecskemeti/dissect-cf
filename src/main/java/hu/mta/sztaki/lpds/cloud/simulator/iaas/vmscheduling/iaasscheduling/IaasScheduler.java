@@ -12,8 +12,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -21,18 +19,19 @@ import java.util.logging.Logger;
  */
 public abstract class IaasScheduler extends FirstFitScheduler {
 
-	ArrayList<IaaSService> iaases;
+	protected ArrayList<IaaSService> iaases;
 
-	int vmRequestIndex = 0;
-	int pmRegisterIndex = 0;
-	int pmDeregisterIndex = 0;
-	ArrayList<Class<? extends IaasScheduler>> hierarchy;
+	protected int vmRequestIndex = 0;
+	private int pmRegisterIndex = 0;
+	
+	private ArrayList<Class<? extends IaasScheduler>> hierarchy;
 	private int maxNumberOfPMPerIaaS = 100;
-	Map<Long, Integer> PMIaaSList = new HashMap<Long, Integer>();
-	schedulerType type;
+	private int maxNumberOfIaaS = 10;
+	private Map<Long, Integer> PMIaaSList = new HashMap<Long, Integer>();
+	private schedulerType type;
 
 	private enum schedulerType {
-		IAAS, PM;
+		IAAS, IAAS_LAST, PM;
 	}
 
 	public IaasScheduler(IaaSService parent, ArrayList<Class<? extends IaasScheduler>> hierarchy, int hierarchyLevel) {
@@ -41,12 +40,26 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 		iaases = new ArrayList<IaaSService>();
 
 		try {
-			if (hierarchyLevel < hierarchy.size() - 1) {
+			
+			if(hierarchyLevel == hierarchy.size() - 1) {
+				type = schedulerType.PM;
+			} else if(hierarchyLevel == hierarchy.size() - 2) {
+				iaases.add(new IaaSService(hierarchy, AlwaysOnMachines.class, hierarchyLevel + 1));
+				type = schedulerType.IAAS_LAST;
+			} else if(hierarchyLevel < hierarchy.size() -2) {
 				iaases.add(new IaaSService(hierarchy, AlwaysOnMachines.class, hierarchyLevel + 1));
 				type = schedulerType.IAAS;
 			} else {
-				type = schedulerType.PM;
+				//should never go here
+				throw new Exception("Hierarchylevel is bigger than hierarchy size!");
 			}
+			
+//			if (hierarchyLevel < hierarchy.size() - 1) {
+//				iaases.add(new IaaSService(hierarchy, AlwaysOnMachines.class, hierarchyLevel + 1));
+//				type = schedulerType.IAAS;
+//			} else {
+//				type = schedulerType.PM;
+//			}
 
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -55,7 +68,7 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 
 	@Override
 	public void registerPM(PhysicalMachine pm) {
-		if (type == schedulerType.IAAS) {
+		if (type == schedulerType.IAAS_LAST) {
 			pmRegisterIndex = 0;
 			if (iaases.size() != 1) {
 				int min = iaases.get(0).machines.size();
@@ -66,6 +79,8 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 					}
 				}
 			}
+			
+			
 
 			iaases.get(pmRegisterIndex).registerHost(pm);
 			PMIaaSList.put(pm.id, pmRegisterIndex);
@@ -86,7 +101,7 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 
 	@Override
 	public void deregisterPM(PhysicalMachine pm) {
-		if (type == schedulerType.IAAS) {
+		if (type != schedulerType.IAAS_LAST) {
 			try {
 				int indexOfIaaS = PMIaaSList.get(pm.id);
 				iaases.get(indexOfIaaS).deregisterHost(pm);
