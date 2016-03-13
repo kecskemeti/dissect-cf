@@ -40,6 +40,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraint
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.IaasScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.MaxNumberOfPMsReachedException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -372,6 +373,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	public void registerHost(final PhysicalMachine pm) {
 		bulkHostRegistration(Collections.singletonList(pm));
 	}
+	
+	public void registerHostDinamyc(final PhysicalMachine pm) throws MaxNumberOfPMsReachedException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, IaaSHandlingException {
+		sched.registerPM(pm);
+		bulkHostRegistration(Collections.singletonList(pm));
+		
+	}
 
 	/**
 	 * This function allows rapid registration of several PMs
@@ -392,7 +399,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 			pm.subscribeStateChangeEvents(this);
 			caps[i] = pm.getCapacities();
 			
-			sched.registerPM(pm);
+			
 		}
 		totalCapacity.add(caps);
 		capacityListenerManager.notifyListeners(newPMs);
@@ -609,5 +616,9 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	
 	public ArrayList<IaaSService> getIaases() {
 		return sched.getIaases();
+	}
+	
+	public Scheduler getScheduler() {
+		return sched;
 	}
 }

@@ -44,9 +44,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceCons
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.MaxNumberOfPMsReachedException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * The base class for all VM schedulers, provides the foundational logic and
@@ -445,7 +447,7 @@ public abstract class Scheduler {
 	 */
 	protected abstract ConstantConstraints scheduleQueued();
 	
-	public void registerPM(PhysicalMachine pm) {}
+	public void registerPM(PhysicalMachine pm) throws MaxNumberOfPMsReachedException,InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, IaaSService.IaaSHandlingException {}
 	
 	public void deregisterPM(PhysicalMachine pm) {}
 	
