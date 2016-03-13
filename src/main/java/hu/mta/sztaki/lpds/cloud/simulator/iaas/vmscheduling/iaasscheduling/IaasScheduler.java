@@ -257,15 +257,16 @@ public abstract class IaasScheduler extends FirstFitScheduler {
 	public void scheduleVMrequest(VirtualMachine[] vms, ResourceConstraints rc,
 			Repository vaSource, HashMap<String, Object> schedulingConstraints)
 			throws VMManager.VMManagementException {
-		if (type == schedulerType.IAAS) {
+		if (type == schedulerType.PM) {
+			super.scheduleVMrequest(vms, rc, vaSource, schedulingConstraints);
+			
+		} else {
 			try {
 				iaases.get(vmRequestIndex).requestVM(vms[0].getVa(), rc, vaSource, vms.length, schedulingConstraints);
 				increaseVMRequestIndex();
 			} catch (NetworkNode.NetworkException ex) {
 				ex.printStackTrace();
 			}
-		} else {
-			super.scheduleVMrequest(vms, rc, vaSource, schedulingConstraints);
 		}
 	}
 
