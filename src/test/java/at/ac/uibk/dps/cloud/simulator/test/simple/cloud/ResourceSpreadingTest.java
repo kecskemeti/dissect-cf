@@ -40,6 +40,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAda
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 
 public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 	MaxMinProvider offer;
@@ -287,5 +288,78 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 				.registerConsumption();
 		Timed.simulateUntilLastEvent();
 
+	}
+	
+	@Test(timeout = 100)
+	public void testSpreaderState() {
+		
+		ResourceSpreader.SpreaderState state;
+		ResourceConsumption con;
+		ResourceSpreader restored;
+		
+		restored = offer.getSpreaderState().restore();
+		Assert.assertTrue("State of MaxMinProvider should restore as MaxMinProvider", 
+				          restored instanceof MaxMinProvider);
+
+		restored = utilize.getSpreaderState().restore();
+		Assert.assertTrue("State of MaxMinProvider should restore as MaxMinConsumer", 
+				          restored instanceof MaxMinConsumer);
+		
+		Assert.assertEquals(
+				"perTickProcessingpower should be reset to the same value as it was before saving", 
+				utilize.getPerTickProcessingPower(), restored.getPerTickProcessingPower(), 1e-4);
+		
+		state = offer.getSpreaderState();
+		con = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
+				ResourceConsumption.unlimitedProcessing,utilize,offer,new ConsumptionEventAssert());
+		con.registerConsumption();	
+		Assert.assertNotEquals(
+				"One state object can only represent one valid state of the spreader" +
+		        " in its whole lifetime",
+				state, offer.getSpreaderState());
+		
+		restored = utilize.getSpreaderState().restore();
+		Timed.simulateUntil(Math.round(
+				ResourceConsumptionTest.processingTasklen/ResourceConsumptionTest.permsProcessing));
+		Assert.assertEquals(
+				"The restored state should process the same amount of resources" +
+		        " if used in the same environment",
+				utilize.getTotalProcessed(), restored.getTotalProcessed(), 1e-4);
+		
+		
+		// The state should handle consumption removals properly
+		con = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
+				ResourceConsumption.unlimitedProcessing,utilize,offer,new ConsumptionEventAssert());
+		con.registerConsumption();
+		con.cancel();
+			
+		con = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
+				ResourceConsumption.unlimitedProcessing,utilize,offer,new ConsumptionEventAssert());
+		con.registerConsumption();
+	
+		ResourceSpreader utilize2 = new MaxMinConsumer(ResourceConsumptionTest.permsProcessing);
+		con = new ResourceConsumption(ResourceConsumptionTest.processingTasklen/2,
+				ResourceConsumption.unlimitedProcessing,utilize2,offer,new ConsumptionEventAssert());
+		con.registerConsumption();
+			
+		restored = utilize2.getSpreaderState().restore();
+		
+		
+		Timed.fire();
+		Timed.simulateUntil(Timed.getNextFire()-10);
+		try {
+			utilize2.getSpreaderState();
+			Assert.fail("The spreader must not return a state when it is accessed " +
+			            "during the processing cycle");
+		} catch (IllegalStateException e) {
+			
+		}
+		// Simulate until the first consumption finishes
+		Timed.simulateUntil(Timed.getFireCount() + 10);
+		Assert.assertEquals(
+				"The restored state should process the same amount of resources if used in the same environment", 
+				utilize2.getTotalProcessed(), restored.getTotalProcessed(), 1e-4);
+		
+		
 	}
 }

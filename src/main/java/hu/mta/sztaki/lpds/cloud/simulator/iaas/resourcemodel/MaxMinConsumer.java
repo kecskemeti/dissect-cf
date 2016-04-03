@@ -41,6 +41,23 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
  */
 public class MaxMinConsumer extends MaxMinFairSpreader {
 
+	public static class SpreaderState extends ResourceSpreader.SpreaderState {
+		
+		private SpreaderState(MaxMinConsumer consumer) {
+			super(consumer);
+		}
+		
+		@Override
+		protected ResourceSpreader instantiate() {
+			return new MaxMinConsumer(perTickProcessingPower);
+		}
+	}
+	
+	@Override
+	protected ResourceSpreader.SpreaderState createSpreaderState() {
+		return new SpreaderState(this);
+	}
+	
 	/**
 	 * Constructs a generic Max Min fairness based resource consumer.
 	 * 

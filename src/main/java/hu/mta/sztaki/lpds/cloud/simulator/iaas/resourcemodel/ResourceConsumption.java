@@ -26,6 +26,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import java.util.Comparator;
+import java.util.List;
+
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 
 /**
  * This class is part of the unified resource consumption model of DISSECT-CF.
@@ -94,6 +97,118 @@ public class ResourceConsumption {
 		 * <b>not</b> called.
 		 */
 		void conCancelled(ResourceConsumption problematic);
+	}
+	
+	/**
+	 * Represents the current state of the consumption or null if the current state has
+	 * not been accessed yet.
+	 */
+	private ConsumptionState state;
+	
+	/**
+	 * This class contains the necessary information to recreate a consumption that 
+	 * behaves exactly the same way as this consumption, together with the other
+	 * spreaders and consumptions in the dependency group.
+	 * 
+	 * TODO: Currently restoring always creates a new object. Make restoring
+	 *       possible into already existing objects, too.
+	 */
+	public static class ConsumptionState {
+		
+		/**
+		 * The amount of processing to be done during the lifetime of the
+	     * restored object
+		 */
+		private double total;
+		
+		/**
+		 * the requestedLimit of the original consumption
+		 */
+		private double requestedLimit;
+		
+		/**
+		 * the provider of the original consumpion
+		 */
+		private ResourceSpreader.SpreaderState provider;
+		
+		/**
+		 * the consumer of the original consumption
+		 */
+		private ResourceSpreader.SpreaderState consumer;
+		
+		/**
+		 * Shows whether the original consumption was registered or not
+		 */
+		private boolean registered;
+		
+		/**
+		 * Shows whether the original consumption is resumable or not
+		 */
+		private boolean resumable;
+		
+		/**
+		 * this helper field is used when restoring the consumption, and will
+		 * contain the restored consumption
+		 */
+		private ResourceConsumption consumption;
+		
+		/**
+		 * Create a ConsumptionState instance that represents the current
+		 * state of the given consumption object.
+		 * 
+		 * This constructor should only be called from the getConsumptionState
+		 * method of the original consumption, since the provider and consumer
+		 * will be set from that method, to avoid infinite recursion when
+		 * resetting them.
+		 * 
+		 * @param consumption
+		 *            the ResourceConsumption instance whose actual state we
+		 *            want to get.
+		 */
+		private ConsumptionState(ResourceConsumption consumption) {
+			
+			resumable = consumption.resumable;
+			registered = consumption.registered;
+			total = consumption.getUnProcessed();
+			requestedLimit = consumption.requestedLimit;
+				
+		}
+		
+		/**
+		 * Restore this consumption into a ResourceConsumption instance
+		 * (and restore every other consumption and spreader in the 
+		 * dependency group) 
+		 * 
+		 * @return the new ResourceConsumption instance which will behave the same
+		 *         way as the original one
+		 */
+		public ResourceConsumption restore() {
+			if (consumption != null) {
+				return consumption;
+			}
+			
+			consumption = new ResourceConsumption(
+					total,requestedLimit,null,null,
+					new ConsumptionEventAdapter());
+			
+			if (provider != null) {
+				consumption.setProvider(provider.restore());
+			}
+			
+			if (consumer != null) {
+				consumption.setConsumer(consumer.restore());
+			}	
+			
+			consumption.resumable = resumable;
+			if (registered) {
+				consumption.registerConsumption();
+			}
+			
+			consumption.updateHardLimit();
+			
+			return consumption;
+		}
+		
 	}
 
 	/**
@@ -313,6 +428,7 @@ public class ResourceConsumption {
 				updateHardLimit();
 				if (ResourceSpreader.registerConsumption(this)) {
 					registered = true;
+					invalidateState();
 					return true;
 				}
 			}
@@ -337,6 +453,7 @@ public class ResourceConsumption {
 	public void cancel() {
 		suspend();
 		resumable = false;
+		invalidateState();
 	}
 
 	/**
@@ -348,6 +465,7 @@ public class ResourceConsumption {
 		if (registered) {
 			ResourceSpreader.cancelConsumption(this);
 			registered = false;
+			invalidateState();
 		}
 	}
 
@@ -363,6 +481,7 @@ public class ResourceConsumption {
 		if (!registered) {
 			this.provider = provider;
 			updateHardLimit();
+			invalidateState();
 			return;
 		} else {
 			throw new IllegalStateException("Attempted consumer change with a registered consumption");
@@ -381,6 +500,7 @@ public class ResourceConsumption {
 		if (!registered) {
 			this.consumer = consumer;
 			updateHardLimit();
+			invalidateState();
 			return;
 		} else {
 			throw new IllegalStateException("Attempted consumer change with a registered consumption");
@@ -475,6 +595,7 @@ public class ResourceConsumption {
 				underProcessing = 0;
 				return -processed;
 			}
+			invalidateState();
 		}
 		return processed;
 	}
@@ -591,6 +712,52 @@ public class ResourceConsumption {
 			calcCompletionDistance();
 		}
 		return realLimit;
+	}
+	
+	/**
+	 * This method must be called after changes to this consumption are made.
+	 * (including processing the given resources)
+	 * It will ensure that the state member never contains an object that 
+	 * does not represent the current state of the consumption.
+	 */
+	protected void invalidateState() {
+		if (state == null) {
+			return;
+		}
+		/* 
+		 * Recursively invalidate every other spreader and consumption in the
+		 * dependency group.
+		 */
+		state = null;
+		if (provider != null) {
+			provider.invalidateState();
+		} 
+		if (consumer != null) {
+			consumer.invalidateState();
+		}
+	}
+	
+	/**
+	 * Returns the ConsumptionState which represents this consumption at the current
+	 * time instance.
+	 * 
+	 * @throws IllegalStateException if called during the processing cycle
+	 * @return the state of this consumption
+	 */
+	public ConsumptionState getConsumptionState() throws IllegalStateException {
+		if (provider != null && !provider.canProduceSpreaderState()) {
+			throw new IllegalStateException("CAnt. You definetily cant!");
+		}
+		if (state == null) {
+			state = new ConsumptionState(this);
+			if (provider != null) {
+				state.provider = provider.getSpreaderState();
+			}			
+			if (consumer != null) {
+				state.consumer = consumer.getSpreaderState();
+			}		
+		}
+		return state;
 	}
 
 	/**
