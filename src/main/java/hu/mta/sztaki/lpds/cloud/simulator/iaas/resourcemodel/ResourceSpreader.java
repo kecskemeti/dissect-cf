@@ -1151,7 +1151,7 @@ public abstract class ResourceSpreader {
 	 */
 	public ResourceSpreader.SpreaderState getSpreaderState() {
 		if (!canProduceSpreaderState()) {
-			throw new IllegalStateException("Cannot create State during the operation");
+			getTotalProcessed();
 		}
 		if (state == null) {
 			state = createSpreaderState();

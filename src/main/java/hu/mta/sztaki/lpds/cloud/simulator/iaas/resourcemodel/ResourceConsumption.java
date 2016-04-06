@@ -746,7 +746,7 @@ public class ResourceConsumption {
 	 */
 	public ConsumptionState getConsumptionState() throws IllegalStateException {
 		if (provider != null && !provider.canProduceSpreaderState()) {
-			throw new IllegalStateException("CAnt. You definetily cant!");
+			provider.getTotalProcessed();
 		}
 		if (state == null) {
 			state = new ConsumptionState(this);

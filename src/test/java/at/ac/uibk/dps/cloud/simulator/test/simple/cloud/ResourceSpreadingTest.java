@@ -342,22 +342,17 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 				ResourceConsumption.unlimitedProcessing,utilize2,offer,new ConsumptionEventAssert());
 		con.registerConsumption();
 			
-		restored = utilize2.getSpreaderState().restore();
-		
 		
 		Timed.fire();
 		Timed.simulateUntil(Timed.getNextFire()-10);
-		try {
-			utilize2.getSpreaderState();
-			Assert.fail("The spreader must not return a state when it is accessed " +
-			            "during the processing cycle");
-		} catch (IllegalStateException e) {
-			
-		}
+	
+		restored = utilize2.getSpreaderState().restore();
+
 		// Simulate until the first consumption finishes
 		Timed.simulateUntil(Timed.getFireCount() + 10);
 		Assert.assertEquals(
-				"The restored state should process the same amount of resources if used in the same environment", 
+				"The restored state should be valid when accessed without explicitly " +
+		        "executing the spreaders processing functions", 
 				utilize2.getTotalProcessed(), restored.getTotalProcessed(), 1e-4);
 		
 		

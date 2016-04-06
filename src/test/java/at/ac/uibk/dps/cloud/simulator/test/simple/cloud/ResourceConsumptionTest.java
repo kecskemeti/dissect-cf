@@ -309,12 +309,12 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				offer,
 				new ConsumptionEventAdapter());
 		con2.registerConsumption();	
-		
+	
+		restored = con.getConsumptionState().restore();
 		// Simulate until con2 finishes
 		Timed.simulateUntil(
 				Math.round(Timed.getFireCount() + processingTasklen/(2*permsProcessing)));
 		
-		restored = con.getConsumptionState().restore();
 		Assert.assertEquals(
 				"The restored consumption should process the same amount of " +
 		        "resources in the same environment as the original consumption",
@@ -331,17 +331,13 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		
 		Timed.simulateUntil(
 				Math.round(Timed.getFireCount() + processingTasklen/(2*permsProcessing))-1);
-		try {
-			state = con.getConsumptionState();
-			Assert.fail(
-					"The getState method should throw an exception if called during " +
-			        "the processing cycle");
-		} catch (IllegalStateException e) {
-			
-		}
 		
+		restored = con.getConsumptionState().restore();
 		// Simulate until con finishes
 		Timed.simulateUntil(Timed.getFireCount() + 1);
-		// Should we examine anything else?
+		Assert.assertEquals(
+				"The restored state should be valid when accessed without explicitly " +
+				"executing the spreaders processing functions", 
+				con.getUnProcessed(), restored.getUnProcessed(), 1e-4);
 	}
 }
