@@ -1129,17 +1129,16 @@ public abstract class ResourceSpreader {
 	}
 	
 	/**
-	 * This method shows whether this spreader can create a valid state from
-	 * which a spreader with the exact same behavior can be restored.
-	 * 
-	 * Situations where such a state can't be produced are those where the 
-	 * spreader is scheduled to process resources, and the processing has already
-	 * started.
-	 * 
-	 * @return true if a valid state can be created, false otherwise
+	 * This method ensures that getSpreaderState will return a valid result
+	 * even when invoked after the resources were scheduled and the spreader
+	 * has processed some resources, and the next scheduling cycle did not 
+	 * happen yet.
 	 */
-	protected boolean canProduceSpreaderState() {
-		return Timed.getFireCount() - lastNotifTime <= 1 || underProcessingLen == 0;
+	protected void updateState() {
+		if (Timed.getFireCount() - lastNotifTime > 1 && underProcessingLen != 0) {
+			invalidateState();
+			getTotalProcessed();
+		}
 	}
 	
 	/**
@@ -1150,9 +1149,7 @@ public abstract class ResourceSpreader {
 	 * @return the state of this spreader
 	 */
 	public ResourceSpreader.SpreaderState getSpreaderState() {
-		if (!canProduceSpreaderState()) {
-			getTotalProcessed();
-		}
+		updateState();
 		if (state == null) {
 			state = createSpreaderState();
 			

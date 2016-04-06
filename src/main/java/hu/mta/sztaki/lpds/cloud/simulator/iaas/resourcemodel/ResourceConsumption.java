@@ -745,8 +745,8 @@ public class ResourceConsumption {
 	 * @return the state of this consumption
 	 */
 	public ConsumptionState getConsumptionState() throws IllegalStateException {
-		if (provider != null && !provider.canProduceSpreaderState()) {
-			provider.getTotalProcessed();
+		if (provider != null) {
+			provider.updateState();
 		}
 		if (state == null) {
 			state = new ConsumptionState(this);
