@@ -206,17 +206,22 @@ public abstract class ResourceSpreader {
 		 * (and restore every other consumption and spreader in the 
 		 * dependency group) 
 		 * 
+		 * @param restoreEvent 
+		 *            set to true to use the same ConsumerEvent instance as
+		 *            the original consumption for every consumption in the
+		 *            dependency group (if those instances still exist)
+		 * 
 		 * @return the new ResourceSpreader instance which will behave the same
 		 *         way as the original one
 		 */
-		public ResourceSpreader restore() {
+		public ResourceSpreader restore(boolean restoreEvent) {
 			if (spreader != null) {
 				return spreader;
 			}
 			spreader = instantiate();
 			spreader.totalProcessed = totalProcessed;
 			for (ResourceConsumption.ConsumptionState c : consumptions) {
-				c.restore();
+				c.restore(restoreEvent);
 			}
 			return spreader;
 		}	

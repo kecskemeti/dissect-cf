@@ -252,7 +252,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		con = createAUnitConsumption(null);
 		con.setProvider(null);
 		con.setConsumer(null);
-		restored = con.getConsumptionState().restore();
+		restored = con.getConsumptionState().restore(false);
 		Assert.assertFalse(
 				"A nonregistered consumption should be nonregistered when restored", 
 				restored.isRegistered());
@@ -291,7 +291,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				con.getConsumptionState(), state);
 		Assert.assertTrue(
 				"The restored consumer should be registered if the original was",
-				con.getConsumptionState().restore().isRegistered());
+				con.getConsumptionState().restore(false).isRegistered());
 		
 		state = con.getConsumptionState();
 		con.suspend();
@@ -310,7 +310,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				new ConsumptionEventAdapter());
 		con2.registerConsumption();	
 	
-		restored = con.getConsumptionState().restore();
+		restored = con.getConsumptionState().restore(false);
 		// Simulate until con2 finishes
 		Timed.simulateUntil(
 				Math.round(Timed.getFireCount() + processingTasklen/(2*permsProcessing)));
@@ -321,7 +321,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		        con.getUnProcessed(), restored.getUnProcessed(), 1e-4);
 		
 		restored.cancel();
-		restored = restored.getConsumptionState().restore();
+		restored = restored.getConsumptionState().restore(false);
 		Assert.assertFalse(
 				"The restored consumption should not be registered if the original got canceled",
 		        restored.isRegistered());
@@ -329,15 +329,24 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				"The restored consumption should not be resumable if the original got canceled",
 				restored.isResumable());
 		
-		Timed.simulateUntil(
-				Math.round(Timed.getFireCount() + processingTasklen/(2*permsProcessing))-1);
-		
-		restored = con.getConsumptionState().restore();
+		/* Check if we can get the valid state after processing started */
+		Timed.fire();	
+		restored = con.getConsumptionState().restore(false);
 		// Simulate until con finishes
-		Timed.simulateUntil(Timed.getFireCount() + 1);
+		Timed.simulateUntilLastEvent();
 		Assert.assertEquals(
 				"The restored state should be valid when accessed without explicitly " +
 				"executing the spreaders processing functions", 
 				con.getUnProcessed(), restored.getUnProcessed(), 1e-4);
+		
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		con = this.createAUnitConsumption(cae);
+		con.registerConsumption();
+		restored = con.getConsumptionState().restore(true);
+		con.suspend();
+		Timed.simulateUntil(Timed.getFireCount() + Math.round(processingTasklen/permsProcessing));
+		Assert.assertTrue(
+				"The restored consumption should fire the same event as the original one",
+				cae.isCompleted());
 	}
 }

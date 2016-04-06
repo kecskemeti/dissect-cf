@@ -137,6 +137,11 @@ public class ResourceConsumption {
 		private ResourceSpreader.SpreaderState consumer;
 		
 		/**
+		 * the ev field of the parent
+		 */
+		private ConsumptionEvent ev;
+		
+		/**
 		 * Shows whether the original consumption was registered or not
 		 */
 		private boolean registered;
@@ -171,6 +176,7 @@ public class ResourceConsumption {
 			registered = consumption.registered;
 			total = consumption.getUnProcessed();
 			requestedLimit = consumption.requestedLimit;
+			ev = consumption.ev;
 				
 		}
 		
@@ -179,24 +185,29 @@ public class ResourceConsumption {
 		 * (and restore every other consumption and spreader in the 
 		 * dependency group) 
 		 * 
+		 * @param restoreEvent 
+		 *            set to true to use the same ConsumerEvent instance as
+		 *            the original consumption for every consumption in the
+		 *            dependency group
+		 * 
 		 * @return the new ResourceConsumption instance which will behave the same
 		 *         way as the original one
 		 */
-		public ResourceConsumption restore() {
+		public ResourceConsumption restore(boolean restoreEvent) {
 			if (consumption != null) {
 				return consumption;
 			}
 			
+			ConsumptionEvent event = restoreEvent ? ev : new ConsumptionEventAdapter();
 			consumption = new ResourceConsumption(
-					total,requestedLimit,null,null,
-					new ConsumptionEventAdapter());
+					total,requestedLimit,null,null,event);
 			
 			if (provider != null) {
-				consumption.setProvider(provider.restore());
+				consumption.setProvider(provider.restore(restoreEvent));
 			}
 			
 			if (consumer != null) {
-				consumption.setConsumer(consumer.restore());
+				consumption.setConsumer(consumer.restore(restoreEvent));
 			}	
 			
 			consumption.resumable = resumable;

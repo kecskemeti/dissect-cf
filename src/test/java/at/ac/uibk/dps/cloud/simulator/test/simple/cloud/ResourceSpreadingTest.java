@@ -297,11 +297,11 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		ResourceConsumption con;
 		ResourceSpreader restored;
 		
-		restored = offer.getSpreaderState().restore();
+		restored = offer.getSpreaderState().restore(false);
 		Assert.assertTrue("State of MaxMinProvider should restore as MaxMinProvider", 
 				          restored instanceof MaxMinProvider);
 
-		restored = utilize.getSpreaderState().restore();
+		restored = utilize.getSpreaderState().restore(false);
 		Assert.assertTrue("State of MaxMinProvider should restore as MaxMinConsumer", 
 				          restored instanceof MaxMinConsumer);
 		
@@ -318,7 +318,7 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		        " in its whole lifetime",
 				state, offer.getSpreaderState());
 		
-		restored = utilize.getSpreaderState().restore();
+		restored = utilize.getSpreaderState().restore(false);
 		Timed.simulateUntil(Math.round(
 				ResourceConsumptionTest.processingTasklen/ResourceConsumptionTest.permsProcessing));
 		Assert.assertEquals(
@@ -346,7 +346,7 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		Timed.fire();
 		Timed.simulateUntil(Timed.getNextFire()-10);
 	
-		restored = utilize2.getSpreaderState().restore();
+		restored = utilize2.getSpreaderState().restore(false);
 
 		// Simulate until the first consumption finishes
 		Timed.simulateUntil(Timed.getFireCount() + 10);
@@ -354,6 +354,9 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 				"The restored state should be valid when accessed without explicitly " +
 		        "executing the spreaders processing functions", 
 				utilize2.getTotalProcessed(), restored.getTotalProcessed(), 1e-4);
+		
+		//TODO: we should check cases where we restore the same event instances
+		//      as well. (i.e. we call restore(true)
 		
 		
 	}
