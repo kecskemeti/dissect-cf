@@ -53,21 +53,21 @@ public class StateDependentEventHandler<T, P> {
 	 * The listeners that will receive notifications if the notify listeners
 	 * function is called
 	 */
-	private ArrayList<T> listeners = new ArrayList<T>();
+	final ArrayList<T> listeners = new ArrayList<T>();
 	/**
 	 * if the notificaiton process is underway, then new listeners are
 	 * registered here (they will not receive notifications in the current
 	 * notification round as their registration is actually a result of the
 	 * current notification round)
 	 */
-	private ArrayList<T> newListeners = new ArrayList<T>();
+	final private ArrayList<T> newListeners = new ArrayList<T>();
 	/**
 	 * if the notificaiton process is underway, then to be removed listeners are
 	 * registered here (they will still receive notifications in the current
 	 * notification round as their de-registration is actually a result of the
 	 * current notification round)
 	 */
-	private ArrayList<T> cancelledListeners = new ArrayList<T>();
+	final private ArrayList<T> cancelledListeners = new ArrayList<T>();
 	/**
 	 * a marker to show if there is a notification process underway
 	 */
@@ -75,7 +75,11 @@ public class StateDependentEventHandler<T, P> {
 	/**
 	 * the entity that is actually used to perform the notifications
 	 */
-	private final SingleNotificationHandler<T, P> myHandler;
+	final SingleNotificationHandler<T, P> myHandler;
+	/**
+	 * the dispatcher to be used when events need to be fired.
+	 */
+	EventDispatcherCore eventing = NullDispatcher.instance;
 
 	/**
 	 * Initialization of the event handling mechanism.
@@ -100,7 +104,7 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void subscribeToEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
-			listeners.add(listener);
+			eventing.add(StateDependentEventHandler.this, listener);
 		} else {
 			newListeners.add(listener);
 		}
@@ -116,21 +120,9 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void unsubscribeFromEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
-			listeners.remove(listener);
+			eventing.remove(StateDependentEventHandler.this, listener);
 		} else {
 			cancelledListeners.add(listener);
-		}
-	}
-
-	/**
-	 * The main event dispatching loop. It is not intended for external use as
-	 * it is not prepared to handle cases when the number of subscribers change
-	 * while the dispatching is in process.
-	 */
-	private void mainNotificationLoop(final P payload) {
-		final int size = listeners.size();
-		for (int i = 0; i < size; i++) {
-			myHandler.sendNotification(listeners.get(i), payload);
 		}
 	}
 
@@ -145,28 +137,27 @@ public class StateDependentEventHandler<T, P> {
 	 *            notification
 	 */
 	public void notifyListeners(final P payload) {
-		if (noEventDispatchingInProcess) {
-			// No nesting
+		if (eventing != NullDispatcher.instance) {
+			if (noEventDispatchingInProcess) {
+				noEventDispatchingInProcess = false;
+				eventing.mainNotificationLoop(StateDependentEventHandler.this, payload);
+				// Complete dispatching is done (even if there were some nested
+				// events)
+				noEventDispatchingInProcess = true;
 
-			// Mark for start of dispatching process
-			noEventDispatchingInProcess = false;
-			mainNotificationLoop(payload);
-			// Complete dispatching is done (even if there were some nested
-			// events)
-			noEventDispatchingInProcess = true;
-
-			// Additions and deletions are handled only in the outermost call
-			if (newListeners.size() != 0) {
-				listeners.addAll(newListeners);
-				newListeners.clear();
+				// Additions and deletions are handled only in the outermost
+				// call
+				if (newListeners.size() != 0) {
+					eventing.addAll(StateDependentEventHandler.this, newListeners);
+				}
+				if (cancelledListeners.size() != 0) {
+					eventing.removeAll(StateDependentEventHandler.this, cancelledListeners);
+				}
+			} else {
+				// Nested call handling
+				eventing.mainNotificationLoop(StateDependentEventHandler.this, payload);
 			}
-			if (cancelledListeners.size() != 0) {
-				listeners.removeAll(cancelledListeners);
-				cancelledListeners.clear();
-			}
-		} else {
-			// Nested call handling
-			mainNotificationLoop(payload);
 		}
 	}
+
 }
