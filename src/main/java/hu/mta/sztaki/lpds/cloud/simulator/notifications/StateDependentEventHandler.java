@@ -63,7 +63,7 @@ public class StateDependentEventHandler<T, P> {
 	 * notification round as their registration is actually a result of the
 	 * current notification round).
 	 */
-	final private ArrayList<T> changedListeners = new ArrayList<T>();
+	private ArrayList<T> changedListeners;
 	int newCount = 0;
 	/**
 	 * a marker to show if there is a notification process underway
@@ -103,6 +103,9 @@ public class StateDependentEventHandler<T, P> {
 		if (noEventDispatchingInProcess) {
 			eventing.add(StateDependentEventHandler.this, listener);
 		} else {
+			if (changedListeners == null) {
+				changedListeners = new ArrayList<T>();
+			}
 			if (changedListeners.size() == newCount) {
 				changedListeners.add(listener);
 			} else {
@@ -126,6 +129,9 @@ public class StateDependentEventHandler<T, P> {
 		if (noEventDispatchingInProcess) {
 			eventing.remove(StateDependentEventHandler.this, listener);
 		} else {
+			if (changedListeners == null) {
+				changedListeners = new ArrayList<T>();
+			}
 			changedListeners.add(listener);
 		}
 	}
@@ -151,8 +157,8 @@ public class StateDependentEventHandler<T, P> {
 
 				// Additions and deletions are handled only in the outermost
 				// call
-				int chls = changedListeners.size();
-				if (chls > 0) {
+				if (changedListeners != null) {
+					int chls = changedListeners.size();
 					if (newCount != 0) {
 						eventing.addAll(StateDependentEventHandler.this, changedListeners.subList(0, newCount));
 					}
