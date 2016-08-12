@@ -38,13 +38,13 @@ import java.util.ArrayList;
  * 
  * The individual notifications can be customized via the class's constructor.
  * 
- * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
  *
  * @param <T>
  *            the kind of state change for which this handler is prepared to
  *            notify about.
- * @param
- * 			<P>
+ * @param <P>
  *            the kind of data to be passed on to the notified party
  */
 public class StateDependentEventHandler<T, P> {
@@ -55,19 +55,13 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	final ArrayList<T> listeners = new ArrayList<T>();
 	/**
-	 * if the notificaiton process is underway, then new listeners are
-	 * registered here (they will not receive notifications in the current
+	 * if the notificaiton process is underway, then new and cancelled listeners
+	 * are registered here (they will not receive notifications in the current
 	 * notification round as their registration is actually a result of the
-	 * current notification round)
+	 * current notification round).
 	 */
-	final private ArrayList<T> newListeners = new ArrayList<T>();
-	/**
-	 * if the notificaiton process is underway, then to be removed listeners are
-	 * registered here (they will still receive notifications in the current
-	 * notification round as their de-registration is actually a result of the
-	 * current notification round)
-	 */
-	final private ArrayList<T> cancelledListeners = new ArrayList<T>();
+	final private ArrayList<T> changedListeners = new ArrayList<T>();
+	int newCount = 0;
 	/**
 	 * a marker to show if there is a notification process underway
 	 */
@@ -106,7 +100,14 @@ public class StateDependentEventHandler<T, P> {
 		if (noEventDispatchingInProcess) {
 			eventing.add(StateDependentEventHandler.this, listener);
 		} else {
-			newListeners.add(listener);
+			if (changedListeners.size() == newCount) {
+				changedListeners.add(listener);
+			} else {
+				// Ensure we save the to be overwritten item
+				changedListeners.add(changedListeners.get(newCount));
+				changedListeners.set(newCount, listener);
+			}
+			newCount++;
 		}
 	}
 
@@ -122,7 +123,7 @@ public class StateDependentEventHandler<T, P> {
 		if (noEventDispatchingInProcess) {
 			eventing.remove(StateDependentEventHandler.this, listener);
 		} else {
-			cancelledListeners.add(listener);
+			changedListeners.add(listener);
 		}
 	}
 
@@ -147,11 +148,16 @@ public class StateDependentEventHandler<T, P> {
 
 				// Additions and deletions are handled only in the outermost
 				// call
-				if (newListeners.size() != 0) {
-					eventing.addAll(StateDependentEventHandler.this, newListeners);
-				}
-				if (cancelledListeners.size() != 0) {
-					eventing.removeAll(StateDependentEventHandler.this, cancelledListeners);
+				int chls = changedListeners.size();
+				if (chls > 0) {
+					if (newCount != 0) {
+						eventing.addAll(StateDependentEventHandler.this, changedListeners.subList(0, newCount));
+					}
+					if (chls - newCount > 0) {
+						eventing.removeAll(StateDependentEventHandler.this,
+								changedListeners.subList(newCount, changedListeners.size()));
+					}
+					changedListeners.clear();
 				}
 			} else {
 				// Nested call handling

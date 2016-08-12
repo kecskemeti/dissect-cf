@@ -25,7 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.notifications;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class NullDispatcher implements EventDispatcherCore {
 	public static final NullDispatcher instance = new NullDispatcher();
@@ -41,10 +41,9 @@ public class NullDispatcher implements EventDispatcherCore {
 	}
 
 	@Override
-	public <T, P> void addAll(final StateDependentEventHandler<T, P> handler, final ArrayList<T> items) {
+	public <T, P> void addAll(final StateDependentEventHandler<T, P> handler, final List<T> items) {
 		handler.listeners.addAll(items);
 		handler.eventing = items.size() == 1 ? DirectDispatcher.instance : LoopedDispatcher.instance;
-		items.clear();
 	}
 
 	@Override
@@ -52,7 +51,6 @@ public class NullDispatcher implements EventDispatcherCore {
 	}
 
 	@Override
-	public <T, P> void removeAll(final StateDependentEventHandler<T, P> handler, final ArrayList<T> items) {
-		items.clear();
+	public <T, P> void removeAll(final StateDependentEventHandler<T, P> handler, final List<T> items) {
 	}
 }

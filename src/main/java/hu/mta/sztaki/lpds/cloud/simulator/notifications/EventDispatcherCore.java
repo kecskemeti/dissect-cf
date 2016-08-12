@@ -25,7 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.notifications;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public interface EventDispatcherCore {
 	/**
@@ -37,9 +37,9 @@ public interface EventDispatcherCore {
 
 	<T, P> void add(final StateDependentEventHandler<T, P> handler, T item);
 
-	<T, P> void addAll(final StateDependentEventHandler<T, P> handler, ArrayList<T> items);
+	<T, P> void addAll(final StateDependentEventHandler<T, P> handler, List<T> items);
 
 	<T, P> void remove(final StateDependentEventHandler<T, P> handler, T item);
 
-	<T, P> void removeAll(final StateDependentEventHandler<T, P> handler, ArrayList<T> items);
+	<T, P> void removeAll(final StateDependentEventHandler<T, P> handler, List<T> items);
 }
