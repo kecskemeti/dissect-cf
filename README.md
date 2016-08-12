@@ -30,6 +30,8 @@ http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF
 Licensing:
 GNU Lesser General Public License 3 and later
 
+Optimisations on the code were done using the java profiler called [jprofiler](http://www.ej-technologies.com/products/jprofiler/overview.html). 
+
 ## Compilation & Installation
 
 Prerequisites: [Apache Maven 3.](http://maven.apache.org/), Java 1.6
