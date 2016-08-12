@@ -164,6 +164,7 @@ public class FirstFitScheduler extends Scheduler {
 							vmNum--;
 							allocation = ras[i];
 							allocation.getHost().deployVM(request.queuedVMs[i], allocation, request.queuedRepo);
+							ras[i]=null;
 						}
 						manageQueueRemoval(request);
 					} catch (VMManagementException e) {
@@ -190,6 +191,7 @@ public class FirstFitScheduler extends Scheduler {
 			vmNum--;
 			for (int i = 0; i < vmNum; i++) {
 				ras[i].cancel();
+				ras[i] = null;
 			}
 		}
 		return returner;

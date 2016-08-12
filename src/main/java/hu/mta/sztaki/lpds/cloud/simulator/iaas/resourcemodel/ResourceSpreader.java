@@ -51,8 +51,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
  * statements in its core. While it also allows to efficiently add new features
  * later on.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
 public abstract class ResourceSpreader {
@@ -116,8 +117,7 @@ public abstract class ResourceSpreader {
 	 * resource spreader. Resource spreaders use this object to handle power
 	 * state related events.
 	 */
-	private final StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> powerBehaviorListenerManager = PowerStateChangeNotificationHandler
-			.getHandlerInstance();
+	private StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> powerBehaviorListenerManager;
 
 	/**
 	 * The last time there were some processing operations done by this object.
@@ -153,8 +153,9 @@ public abstract class ResourceSpreader {
 	 * consumptions complete), and then make sure that all spreaders in the
 	 * influence group receive timing events at the same time instance.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
-	 *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory
+	 *         of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
 	 *
 	 */
 	public static class FreqSyncer extends Timed {
@@ -404,8 +405,8 @@ public abstract class ResourceSpreader {
 		}
 
 		/**
-		 * Implementation of Algorithm 1 from
-		 * "DISSECT-CF: a simulator to foster energy-aware scheduling in infrastructure clouds"
+		 * Implementation of Algorithm 1 from "DISSECT-CF: a simulator to foster
+		 * energy-aware scheduling in infrastructure clouds"
 		 * 
 		 * Manages the influence group's growth and decomposition.
 		 * 
@@ -711,7 +712,7 @@ public abstract class ResourceSpreader {
 	 * @param con
 	 *            The consumption object to be registered
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li><i>true</i> if the registration was successful
 	 *         <li><i>false</i> if the consumption was already registered or if
 	 *         the consumption is not acceptable by its set provider or
@@ -980,6 +981,9 @@ public abstract class ResourceSpreader {
 		// FIXME: this might be protected later on.
 		if (newPowerBehavior == null) {
 			throw new IllegalStateException("Trying to set an unknown power behavior");
+		}
+		if (currentPowerBehavior == null) {
+			powerBehaviorListenerManager = PowerStateChangeNotificationHandler.getHandlerInstance();
 		}
 		if (currentPowerBehavior != newPowerBehavior) {
 			currentPowerBehavior = newPowerBehavior;

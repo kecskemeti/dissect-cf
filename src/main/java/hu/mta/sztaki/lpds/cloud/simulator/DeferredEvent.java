@@ -38,8 +38,9 @@ import gnu.trove.map.hash.TLongObjectHashMap;
  * approach allows that only one Timed event is registered for a bunch of
  * non-recurring events.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2015"
  */
 public abstract class DeferredEvent {
 
@@ -65,7 +66,8 @@ public abstract class DeferredEvent {
 	 * Improves the performance of deferred events significantly if multiple
 	 * events should occur at once
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
+	 *         Systems, MTA SZTAKI (c) 2015"
 	 *
 	 */
 	private static class AggregatedEventDispatcher extends Timed {
@@ -135,12 +137,13 @@ public abstract class DeferredEvent {
 	 *            event object's eventAction() will be called.
 	 */
 	public DeferredEvent(final long delay) {
-		eventArrival = Timed.calcTimeJump(delay);
 		if (delay <= 0) {
+			eventArrival = Timed.getFireCount();
 			eventAction();
 			received = true;
 			return;
 		}
+		eventArrival = Timed.calcTimeJump(delay);
 		MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
 		if (simultaneousReceiverPairs == null) {
 			simultaneousReceiverPairs = new MutablePair<Integer, DeferredEvent[]>(0, new DeferredEvent[5]);
@@ -205,7 +208,7 @@ public abstract class DeferredEvent {
 	 * not.
 	 * 
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li><i>true</i> if the event will not arrive in the future as it
 	 *         was cancelled,
 	 *         <li><i>false</i> otherwise

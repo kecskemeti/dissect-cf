@@ -69,7 +69,7 @@ public class UtilTest extends TestFoundation {
 			+ "</powerstates>\n" + "<latency towards=\"disk\" value=\"5\" />\n"
 			+ "</repository>\n" + "</cloud>\n";
 
-	@Test(timeout = 400)
+	@Test(timeout = 600)
 	public void cloudLoaderTest() throws Exception {
 		File temp = File.createTempFile("dissect-test", "cloudLoader");
 		RandomAccessFile raf = new RandomAccessFile(temp, "rw");
