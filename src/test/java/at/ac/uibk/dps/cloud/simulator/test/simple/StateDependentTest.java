@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2016, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -92,6 +93,27 @@ public class StateDependentTest extends TestFoundation {
 		};
 		sdeh.subscribeToEvents(listener);
 		sdeh.subscribeToEvents(easyListener);
+		sdeh.notifyListeners(null);
+	}
+
+	@Test(timeout = 100)
+	public void nestedAdditionWithRepeatedNotify() {
+		final int[] counters=new int[2];
+		final MyHandler easyListener = new MyHandler() {
+			@Override
+			public void handle(String data) {
+				counters[0]++;
+			}
+		};
+		MyHandler listener = new MyHandler() {
+			@Override
+			public void handle(String data) {
+				counters[1]++;
+				sdeh.subscribeToEvents(easyListener);
+			}
+		};
+		sdeh.subscribeToEvents(listener);
+		sdeh.notifyListeners(null);
 		sdeh.notifyListeners(null);
 	}
 

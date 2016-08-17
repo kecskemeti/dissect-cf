@@ -166,7 +166,8 @@ public class StateDependentEventHandler<T, P> {
 						eventing.removeAll(StateDependentEventHandler.this,
 								changedListeners.subList(newCount, changedListeners.size()));
 					}
-					changedListeners.clear();
+					changedListeners=null;
+					newCount=0;
 				}
 			} else {
 				// Nested call handling
