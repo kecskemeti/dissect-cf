@@ -258,6 +258,8 @@ public class ResourceConsumption {
 		this.provider = provider;
 		if (e == null) {
 			throw new IllegalStateException("Cannot create a consumption without an event to be fired");
+		} else if(total<0||limit<0) {
+			throw new IllegalArgumentException("Cannot create negative consumptions");
 		}
 		ev = e;
 		requestedLimit = limit;

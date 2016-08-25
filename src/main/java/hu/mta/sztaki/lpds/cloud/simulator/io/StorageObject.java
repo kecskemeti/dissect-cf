@@ -31,8 +31,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
  * Represents arbitrary data fragments (e.g. files) to be stored in a
  * repository. Also useful for modeling file transfers.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2012"
  */
 public class StorageObject {
 	// TODO: think about if it would make things easier if we would refer here
@@ -80,6 +81,9 @@ public class StorageObject {
 	 *            <i>false</i> otherwise
 	 */
 	public StorageObject(final String myid, final long mysize, boolean vary) {
+		if (mysize < 0) {
+			throw new IllegalArgumentException("Cannot create negative sized Storage Objects");
+		}
 		id = myid;
 		size = vary ? (1 + 2 * mysize - (long) (2 * SeedSyncer.centralRnd.nextDouble() * mysize)) : mysize;
 	}
