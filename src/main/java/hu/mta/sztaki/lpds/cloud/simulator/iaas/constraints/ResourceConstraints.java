@@ -32,12 +32,14 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
  * physical/virtual machines or complete infrastructures, as well as requests
  * for resource allocations/virtual machines.
  * 
- * @author 
- *         "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University (c) 2017"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012"
  */
-public abstract class ResourceConstraints implements
-		Comparable<ResourceConstraints> {
+public abstract class ResourceConstraints implements Comparable<ResourceConstraints> {
 
 	/**
 	 * provides a simple one line representation of resource constraints listing
@@ -45,9 +47,8 @@ public abstract class ResourceConstraints implements
 	 */
 	@Override
 	public String toString() {
-		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:"
-				+ getRequiredProcessingPower() + " M:" + getRequiredMemory()
-				+ ")";
+		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:" + getRequiredProcessingPower() + " M:"
+				+ getRequiredMemory() + ")";
 	}
 
 	/**
@@ -55,14 +56,8 @@ public abstract class ResourceConstraints implements
 	 */
 	@Override
 	public int compareTo(ResourceConstraints o) {
-		return getRequiredCPUs() == o.getRequiredCPUs()
-				&& getRequiredMemory() == o.getRequiredMemory()
-				&& getRequiredProcessingPower() == o
-						.getRequiredProcessingPower() ? 0
-				: (getRequiredCPUs() <= o.getRequiredCPUs()
-						&& getRequiredMemory() <= o.getRequiredMemory()
-						&& getRequiredProcessingPower() <= o
-								.getRequiredProcessingPower() ? -1 : 1);
+		return ((Double) (this.getTotalProcessingPower() * this.getRequiredMemory()))
+				.compareTo(o.getTotalProcessingPower() * o.getRequiredMemory());
 	}
 
 	/**
@@ -84,7 +79,8 @@ public abstract class ResourceConstraints implements
 	 * Determines if the specified amounts of resources are minimally or exactly
 	 * required.
 	 * 
-	 * @return <ul>
+	 * @return
+	 *         <ul>
 	 *         <li><i>true</i> if the specified amount of resources could be
 	 *         over-fulfilled
 	 *         <li><i>false</i> if the object represents an exact amount of
