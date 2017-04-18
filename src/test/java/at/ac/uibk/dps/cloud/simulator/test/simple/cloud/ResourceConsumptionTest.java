@@ -211,4 +211,110 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		con.registerConsumption();
 		Timed.simulateUntilLastEvent();
 	}
+	
+	@Test(timeout = 100)
+	public void testConsumptionState() {
+		ResourceConsumption restored;
+		ResourceConsumption.ConsumptionState state;
+		
+		con = createAUnitConsumption(null);
+		con.setProvider(null);
+		con.setConsumer(null);
+		restored = con.getConsumptionState().restore(false);
+		Assert.assertFalse(
+				"A nonregistered consumption should be nonregistered when restored", 
+				restored.isRegistered());
+		Assert.assertTrue(
+				"A resumable consumption should be resumable when restored",
+				restored.isResumable());
+		Assert.assertEquals(
+				"The unprocessed amount of resources should be the same after restoring",
+				con.getUnProcessed(),restored.getUnProcessed(),1e-4);
+		Assert.assertNull(
+				"If the provider was null, the restored consumption's provider should be null, too", 
+				restored.getProvider());
+		Assert.assertNull(
+				"If the consumer was null, the restored consumption's consumer should be null, too",
+				restored.getConsumer());
+		Assert.assertEquals(
+				"The restored hard limit should match the original",
+				con.getHardLimit(), restored.getHardLimit(),1e-4);
+		
+		state = con.getConsumptionState();
+		con.setProvider(offer);
+		Assert.assertNotEquals(
+				"The consumer must return a new state when the provider is changed",
+				con.getConsumptionState(), state);
+		
+		state = con.getConsumptionState();
+		con.setConsumer(utilize);
+		Assert.assertNotEquals(
+				"The consumer must return a new state when the consumer is changed",
+				con.getConsumptionState(), state);
+		
+		state = con.getConsumptionState();
+		con.registerConsumption();
+		Assert.assertNotEquals(
+				"The consumer must return a new state after registering",
+				con.getConsumptionState(), state);
+		Assert.assertTrue(
+				"The restored consumer should be registered if the original was",
+				con.getConsumptionState().restore(false).isRegistered());
+		
+		state = con.getConsumptionState();
+		con.suspend();
+		Assert.assertNotEquals(
+				"The consumer must return a new state after suspending",
+				con.getConsumptionState(), state);
+		
+		state = con.getConsumptionState();
+		con.registerConsumption();
+		
+		ResourceConsumption con2 = new ResourceConsumption(
+				processingTasklen/2,
+				ResourceConsumption.unlimitedProcessing,
+				utilize,
+				offer,
+				new ConsumptionEventAdapter());
+		con2.registerConsumption();	
+	
+		restored = con.getConsumptionState().restore(false);
+		// Simulate until con2 finishes
+		Timed.simulateUntil(
+				Math.round(Timed.getFireCount() + processingTasklen/(2*permsProcessing)));
+		
+		Assert.assertEquals(
+				"The restored consumption should process the same amount of " +
+		        "resources in the same environment as the original consumption",
+		        con.getUnProcessed(), restored.getUnProcessed(), 1e-4);
+		
+		restored.cancel();
+		restored = restored.getConsumptionState().restore(false);
+		Assert.assertFalse(
+				"The restored consumption should not be registered if the original got canceled",
+		        restored.isRegistered());
+		Assert.assertFalse(
+				"The restored consumption should not be resumable if the original got canceled",
+				restored.isResumable());
+		
+		/* Check if we can get the valid state after processing started */
+		Timed.fire();	
+		restored = con.getConsumptionState().restore(false);
+		// Simulate until con finishes
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals(
+				"The restored state should be valid when accessed without explicitly " +
+				"executing the spreaders processing functions", 
+				con.getUnProcessed(), restored.getUnProcessed(), 1e-4);
+		
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		con = this.createAUnitConsumption(cae);
+		con.registerConsumption();
+		restored = con.getConsumptionState().restore(true);
+		con.suspend();
+		Timed.simulateUntil(Timed.getFireCount() + Math.round(processingTasklen/permsProcessing));
+		Assert.assertTrue(
+				"The restored consumption should fire the same event as the original one",
+				cae.isCompleted());
+	}
 }

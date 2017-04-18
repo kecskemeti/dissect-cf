@@ -134,6 +134,109 @@ public abstract class ResourceSpreader {
 	 * group's freq syncer object
 	 */
 	private boolean stillInDepGroup;
+		
+	/**
+	 * Represents the current state of the spreader or null if the current state has
+	 * not been accessed yet.
+	 */
+	protected SpreaderState state;
+	
+	/**
+	 * This class contains the necessary information to recreate a spreader that 
+	 * behaves exactly the same way as this spreader, together with its consumptions
+	 * and other spreaders in the dependency group.
+	 * 
+	 * Subclasses of ResourceSpreader should contain a state which extends this class
+	 * to store specific state information and to implement the instantiate method.
+	 * 
+	 * TODO: Currently restoring always creates a new object. Make restoring
+	 *       possible into already existing objects, too.
+	 */
+	public static abstract class SpreaderState {
+	
+		/**
+		 * perTickProcessingPower of the represented spreader
+		 */
+		protected double perTickProcessingPower;
+		
+		/**
+		 * A list of consumption states from which those consumptions can 
+		 * be restored that this spreader must process.
+		 */
+		protected ArrayList<ResourceConsumption.ConsumptionState> consumptions;
+		
+		/**
+		 * lastNotifTime of the represented spreader
+		 */
+		protected long lastNotifTime;
+		
+		/**
+		 * totalProcessed of the represented spreader
+		 */
+		protected double totalProcessed;
+
+		/**
+		 * this helper field is used when restoring the state, and will
+		 * contain the restored spreader
+		 */
+		protected ResourceSpreader spreader;
+
+		/**
+		 * Create the SpreaderState representing the given spreader
+		 * 
+		 * This constructior should only be called from the getSpreaderState
+		 * method of the ResourceSpreader instance. The reason is that that
+		 * method will fill the consumptions list of this class, to avoid
+		 * infinite recursion when getting the ResourceConsumption states.
+		 * 
+		 * @param spreader
+		 *            The spreader whose state we want to get
+		 */
+		protected SpreaderState(ResourceSpreader spreader) {
+			
+			perTickProcessingPower = spreader.perTickProcessingPower;
+			consumptions = new ArrayList<ResourceConsumption.ConsumptionState>();
+			lastNotifTime = spreader.lastNotifTime;
+			totalProcessed = spreader.totalProcessed;
+			
+		}
+		
+		/**
+		 * Restore this state into a ResourceSpreader instance
+		 * (and restore every other consumption and spreader in the 
+		 * dependency group) 
+		 * 
+		 * @param restoreEvent 
+		 *            set to true to use the same ConsumerEvent instance as
+		 *            the original consumption for every consumption in the
+		 *            dependency group (if those instances still exist)
+		 * 
+		 * @return the new ResourceSpreader instance which will behave the same
+		 *         way as the original one
+		 */
+		public ResourceSpreader restore(boolean restoreEvent) {
+			if (spreader != null) {
+				return spreader;
+			}
+			spreader = instantiate();
+			spreader.totalProcessed = totalProcessed;
+			for (ResourceConsumption.ConsumptionState c : consumptions) {
+				c.restore(restoreEvent);
+			}
+			return spreader;
+		}	
+		
+		/**
+		 * This method should be implemented by subclasses to return a 
+		 * specific ResourceSpreader instance.
+		 * 
+		 * @return a ResourceSpreader object, usually, of the same class 
+		 *         as that of the original spreader 
+		 */
+		protected abstract ResourceSpreader instantiate();
+		
+	}
+	
 
 	/**
 	 * This class is the core part of the unified resource consumption model of
@@ -695,6 +798,7 @@ public abstract class ResourceSpreader {
 		if (mySyncer != null) {
 			mySyncer.nudge();
 		}
+		invalidateState();
 	}
 
 	/**
@@ -725,6 +829,9 @@ public abstract class ResourceSpreader {
 		if (con.isRegistered() || !(provider.isAcceptableConsumption(con) && consumer.isAcceptableConsumption(con))) {
 			return false;
 		}
+		
+		provider.invalidateState();
+		consumer.invalidateState();
 		// ResourceConsumption synchronization
 		ArrayHandler.removeAndReplaceWithLast(provider.underRemoval, con);
 		ArrayHandler.removeAndReplaceWithLast(consumer.underRemoval, con);
@@ -787,6 +894,8 @@ public abstract class ResourceSpreader {
 		ResourceConsumption[] sinlgeConsumption = new ResourceConsumption[] { con };
 		provider.removeTheseConsumptions(sinlgeConsumption, 1);
 		consumer.removeTheseConsumptions(sinlgeConsumption, 1);
+		provider.invalidateState();
+		consumer.invalidateState();
 	}
 
 	/**
@@ -830,6 +939,7 @@ public abstract class ResourceSpreader {
 			removeTheseConsumptions(toRemove, remIdx);
 		}
 		lastNotifTime = currentFireCount;
+		invalidateState();
 	}
 
 	/**
@@ -958,6 +1068,7 @@ public abstract class ResourceSpreader {
 		// }
 		this.perTickProcessingPower = perTickProcessingPower;
 		this.negligableProcessing = this.perTickProcessingPower / 1000000000;
+		invalidateState();
 	}
 
 	/**
@@ -989,6 +1100,81 @@ public abstract class ResourceSpreader {
 			currentPowerBehavior = newPowerBehavior;
 			powerBehaviorListenerManager.notifyListeners(Pair.of(this, newPowerBehavior));
 		}
+	}
+	
+	/**
+	 * Subclasses of ResourceSpreader should implement this class to return 
+	 * a SpreaderState instance which can restore instances of the same class
+	 * 
+	 * @return a subclass of ResourceSpreader.SpreaderState which can restore
+	 *         instances of the implementing class
+	 */
+	protected abstract ResourceSpreader.SpreaderState createSpreaderState();
+		
+	/**
+	 * This method must be called after changes to this spreader are made.
+	 * It will ensure that the state member never contains an object that 
+	 * does not represent the current state of the spreader.
+	 */
+	protected void invalidateState() {
+		if (state == null) {
+			return;
+		}
+		state = null;
+		
+		/* 
+		 * Also invalidate every SpreaderState and ConsumptionState in the 
+		 * dependency group
+		 */
+		for (ResourceConsumption c : toProcess) {
+			c.invalidateState();
+		}
+		for (ResourceConsumption c : underRemoval) {
+			c.invalidateState();
+		}
+		for (ResourceConsumption c : underAddition) {
+			c.invalidateState();
+		}
+	}
+	
+	/**
+	 * This method ensures that getSpreaderState will return a valid result
+	 * even when invoked after the resources were scheduled and the spreader
+	 * has processed some resources, and the next scheduling cycle did not 
+	 * happen yet.
+	 */
+	protected void updateState() {
+		if (Timed.getFireCount() - lastNotifTime > 1 && underProcessingLen != 0) {
+			invalidateState();
+			getTotalProcessed();
+		}
+	}
+	
+	/**
+	 * Returns the SpreaderState which represents this spreader at the current
+	 * time instance.
+	 * 
+	 * @throws IllegalStateException if called during the processing cycle
+	 * @return the state of this spreader
+	 */
+	public ResourceSpreader.SpreaderState getSpreaderState() {
+		updateState();
+		if (state == null) {
+			state = createSpreaderState();
+			
+			for (ResourceConsumption c : toProcess) {
+				state.consumptions.add(c.getConsumptionState());
+			}
+			
+			for (ResourceConsumption c : underAddition) {
+				state.consumptions.add(c.getConsumptionState());
+			}
+			
+			for (ResourceConsumption c : underRemoval) {
+				ArrayHandler.removeAndReplaceWithLast(state.consumptions, c.getConsumptionState());
+			}
+		}
+		return state;
 	}
 
 	/**

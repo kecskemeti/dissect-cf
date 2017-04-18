@@ -25,6 +25,8 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
+import java.util.List;
+
 /**
  * This class is part of the unified resource consumption model of DISSECT-CF.
  * 
@@ -46,6 +48,25 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 	 *            determines the amount of resources this producer could offer
 	 *            in a single tick
 	 */
+	
+	public static class SpreaderState extends ResourceSpreader.SpreaderState {
+
+		private SpreaderState(MaxMinProvider spreader) {
+			super(spreader);
+		}
+			
+		@Override
+		protected MaxMinProvider instantiate() {
+			return new MaxMinProvider(perTickProcessingPower);
+		}
+		
+	}
+	
+	@Override
+	protected ResourceSpreader.SpreaderState createSpreaderState() {
+		return new SpreaderState(this);
+	}
+
 	public MaxMinProvider(final double initialProcessing) {
 		super(initialProcessing);
 	}
@@ -111,4 +132,6 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 	public String toString() {
 		return "MaxMinProvider(Hash-" + hashCode() + " " + super.toString() + ")";
 	}
+
+
 }
