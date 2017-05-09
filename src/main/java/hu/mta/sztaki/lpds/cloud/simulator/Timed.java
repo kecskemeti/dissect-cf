@@ -258,9 +258,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	@Override
 	public int compareTo(final Timed o) {
-		final int unalteredResult = nextEvent < o.nextEvent ? -1 : nextEvent == o.nextEvent ? 0 : 1;
-		return unalteredResult == 0 ? (backPreference ^ o.backPreference ? (backPreference ? 1 : -1) : 0)
-				: unalteredResult;
+		return nextEvent < o.nextEvent ? -1
+				: nextEvent == o.nextEvent ? ((backPreference ^ o.backPreference) ? (backPreference ? 1 : -1) : 0) : 1;
 	}
 
 	/**
