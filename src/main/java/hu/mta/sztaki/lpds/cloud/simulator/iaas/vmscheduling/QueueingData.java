@@ -25,20 +25,21 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
-import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
-
 import java.util.Collections;
 import java.util.Map;
+
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 
 /**
  * The data stored about a single queued VM request.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2012"
  */
 public class QueueingData {
 	/**
@@ -91,7 +92,7 @@ public class QueueingData {
 		queuedRepo = vaSource;
 		AlterableResourceConstraints cRC = new AlterableResourceConstraints(rc);
 		cRC.multiply(queuedVMs.length);
-		cumulativeRC = new UnalterableConstraintsPropagator(cRC);
+		cumulativeRC = new ConstantConstraints(cRC);
 		receivedTime = received;
 		this.schedulingConstraints = schedulingConstraints == null ? null
 				: Collections.unmodifiableMap(schedulingConstraints);
