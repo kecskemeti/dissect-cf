@@ -25,7 +25,7 @@ public class Optimizer extends VMConsolidation_base {
 		
 	
 	//das splitten muss noch geklärt werden
-	//FirstFitConsolidation ffc = new FirstFitConsolidation(bins);
+	FirstFitConsolidation ffc = new FirstFitConsolidation(bins);
 	
 	
 	/**
@@ -42,7 +42,9 @@ public class Optimizer extends VMConsolidation_base {
 	public void optimize() {
 		migrationAlgorithm();
 		createGraph(actions);
-		shutEmptyPMsDown(super.checkLoad());
+		
+		//erst muss die pm klasse fertig werden
+		//ffc.shutEmptyPMsDown(super.checkLoad());
 	}
 	
 	/**
@@ -180,7 +182,7 @@ public class Optimizer extends VMConsolidation_base {
 	 * 			the balance array, gives necessary information which PMS have to get shut down
 	 */
 	
-	private void shutEmptyPMsDown(State [] arr) {
+/*	private void shutEmptyPMsDown(State [] arr) {
 		
 		for(int i = 0; i < arr.length; i++) {
 			if(arr[i] == State.empty) {
@@ -194,7 +196,7 @@ public class Optimizer extends VMConsolidation_base {
 				}
 			}
 		}
-	}
+	} */
 	
 	
 	
