@@ -3,7 +3,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -11,15 +10,49 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
+	/**
+	 * @author Rene
+	 *
+	 * This class is used to do the consolidation with first fit. It can be easy used in the consolidator by simply creating
+	 * an instance of it.
+	 */
+
+
 public class FirstFitConsolidation {
 	
 	
-	public FirstFitConsolidation(ArrayList <PhysicalMachine> bins) {
+	public FirstFitConsolidation(ArrayList <PhysicalMachine> bins, ArrayList <Node> actions, int i) {
 		
 		this.bins = bins;
+		this.actions = actions;
+		count = i;
 	}
 
 	ArrayList <PhysicalMachine> bins = new ArrayList <PhysicalMachine>();
+	ArrayList <Node> actions;
+	int count;
+	
+	
+	/**
+	 * Getter for every important and needed variable and list.
+	 * @return
+	 * 			bins, actions and count
+	 */
+	
+	ArrayList <PhysicalMachine> getBins() {
+		
+		return bins;
+	}
+	
+	ArrayList <Node> getActions() {
+		
+		return actions;
+	}
+	
+	int getCount() {
+		
+		return count;
+	}
 	
 	
 	
@@ -31,9 +64,9 @@ public class FirstFitConsolidation {
 	 * ruft Methode zum Start einer weiteren PM auf, wenn auf aktuell laufenden nicht genügend Kapazitäten frei sind
 	 */
 	
-	private void migrationAlgorithm() {
+	void migrationAlgorithm() {
 		
-		State [] arr = super.checkLoad();
+		State [] arr = checkLoad();
 		for(int i = 0; i < arr.length; i++) {
 			if(arr[i] == State.normal) {
 				
@@ -61,7 +94,7 @@ public class FirstFitConsolidation {
 							e.printStackTrace();
 						}
 					}
-					arr = super.checkLoad();
+					arr = checkLoad();
 				}
 			}
 		}
@@ -173,4 +206,68 @@ public class FirstFitConsolidation {
 			}
 		}
 	}
+	
+	/**
+	 * In this method the status of each PM in the simulation is considered.
+	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
+	 * check if the used resources are more or less than the defined threshold for
+	 * overloaded / underloaded. 
+	 * At the end an State array is returned which has the status 'overloaded', 
+	 * 'underloaded' and 'normal' at the position of the PMs in the bins-array, so
+	 * the two arrays are matching.
+	 *  @return a list with the status for every PM
+	 */
+	
+	protected State[] checkLoad() {
+		State checklist [] = new State[bins.size()];
+		for(int i = 0; i < bins.size(); i++) {
+			if(this.underloaded(bins.get(i)))  {
+				checklist[i] = State.underloaded;
+			}
+			else {
+				if(this.overloaded(bins.get(i))) {
+					checklist[i] = State.overloaded;
+				}
+				else
+					checklist[i] = State.normal;
+			}
+		}
+		return checklist;
+	}
+	
+	/**
+	 * Method for checking if the actual PM is overloaded.
+	 * @param pm
+	 * 			The PhysicalMachine which shall be checked.
+	 * @return true if overloaded, false otherwise
+	 */
+	
+	private boolean overloaded(PhysicalMachine pm) {
+		ResourceConstraints all = pm.getCapacities();
+		ResourceConstraints available = pm.availableCapacities;
+		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() >= all.getTotalProcessingPower() * 0.75) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Method for checking if the actual PM is underloaded.
+	 * @param pm
+	 * 			The PhysicalMachine which shall be checked.
+	 * @return true if underloaded, false otherwise	  
+	 */
+	
+	private boolean underloaded(PhysicalMachine pm) {
+		ResourceConstraints all = pm.getCapacities();
+		ResourceConstraints available = pm.availableCapacities;
+		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() <= all.getTotalProcessingPower() * 0.25) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	
 }

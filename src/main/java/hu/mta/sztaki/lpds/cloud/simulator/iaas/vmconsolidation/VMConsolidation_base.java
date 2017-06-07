@@ -9,7 +9,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 
 	/**
@@ -48,27 +47,6 @@ public class VMConsolidation_base extends Scheduler{
 		bins = getPMs();
 	}
 
-	public static enum State {
-		/**
-		 * There are actually no VMs running on this PM
-		 */
-		empty,
-		
-		/**
-		 * load balance is lower than 25 %
-		 */
-		underloaded,
-		
-		/**
-		 * load balance is higher than 75 %
-		 */
-		overloaded,
-		
-		/**
-		 * load balance is between 25 % and 75 %
-		 */
-		normal
-	};
 
 	
 //	ArrayList <VirtualMachine> items = new ArrayList <VirtualMachine>();
@@ -124,68 +102,6 @@ public class VMConsolidation_base extends Scheduler{
 	 * This is used to create different migration algorithms and integrate them.
 	 */
 	void optimize() {
-	}
-	
-	/**
-	 * In this method the status of each PM in the simulation is considered.
-	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
-	 * check if the used resources are more or less than the defined threshold for
-	 * overloaded / underloaded. 
-	 * At the end an State array is returned which has the status 'overloaded', 
-	 * 'underloaded' and 'normal' at the position of the PMs in the bins-array, so
-	 * the two arrays are matching.
-	 *  @return a list with the status for every PM
-	 */
-	
-	protected State[] checkLoad() {
-		State checklist [] = new State[bins.size()];
-		for(int i = 0; i < bins.size(); i++) {
-			if(this.underloaded(bins.get(i)))  {
-				checklist[i] = State.underloaded;
-			}
-			else {
-				if(this.overloaded(bins.get(i))) {
-					checklist[i] = State.overloaded;
-				}
-				else
-					checklist[i] = State.normal;
-			}
-		}
-		return checklist;
-	}
-	
-	/**
-	 * Method for checking if the actual PM is overloaded.
-	 * @param pm
-	 * 			The PhysicalMachine which shall be checked.
-	 * @return true if overloaded, false otherwise
-	 */
-	
-	private boolean overloaded(PhysicalMachine pm) {
-		ResourceConstraints all = pm.getCapacities();
-		ResourceConstraints available = pm.availableCapacities;
-		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() >= all.getTotalProcessingPower() * 0.75) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Method for checking if the actual PM is underloaded.
-	 * @param pm
-	 * 			The PhysicalMachine which shall be checked.
-	 * @return true if underloaded, false otherwise	  
-	 */
-	
-	private boolean underloaded(PhysicalMachine pm) {
-		ResourceConstraints all = pm.getCapacities();
-		ResourceConstraints available = pm.availableCapacities;
-		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() <= all.getTotalProcessingPower() * 0.25) {
-			return true;
-		}
-		else
-			return false;
 	}
 	
 	/**
