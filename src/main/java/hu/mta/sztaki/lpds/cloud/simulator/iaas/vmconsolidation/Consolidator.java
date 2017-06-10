@@ -17,9 +17,7 @@ public class Consolidator extends VMConsolidation_base {
 		super(parent);
 	}
 		
-	
-	//das splitten muss noch geklärt werden
-	FirstFitConsolidation ffc = new FirstFitConsolidation(bins, actions, count);
+	FirstFitConsolidation ffc = new FirstFitConsolidation(bins, actions);
 	
 	
 	/**
@@ -35,7 +33,7 @@ public class Consolidator extends VMConsolidation_base {
 
 	public void optimize() {
 		ffc.migrationAlgorithm();
-		createGraph(actions);
+		createGraph(ffc.actions);
 		
 		//erst muss die pm klasse fertig werden
 		//ffc.shutEmptyPMsDown(super.checkLoad());
@@ -46,10 +44,60 @@ public class Consolidator extends VMConsolidation_base {
 	 * The graph which does the changes.
 	 */
 
+	@SuppressWarnings("unchecked")
 	public void createGraph(ArrayList<Node> actions) {
+		ArrayList<Node> actionsneu = new ArrayList<>();
 		for(int i = 0; i < actions.size(); i++) {
-			
+			Node akt = null;
+			if(actions.get(i) instanceof StartNode){
+				akt = actions.get(i);
+				actionsneu.add(akt);
+				actions.remove(akt);
+				for(int k = 0; k < actions.size(); k++) {
+					if(actions.get(k) instanceof MigrateVMNode && (((MigrateVMNode) actions.get(k)).getTarget().equals(((StartNode) akt).getPM())
+							||(((MigrateVMNode) actions.get(k)).getTarget().equals(((MigrateVMNode) akt).getTarget())))){
+						actions.get(k).addVorgaenger(akt);
+						actionsneu.add(actions.get(k));
+						akt = actions.get(k);
+						actions.remove(k);
+					}
+				}
+			}
 		}
+		for(int i = 0; i < actions.size(); i++) {
+			Node akt = null;
+			if(actions.get(i) instanceof MigrateVMNode){
+				akt = actions.get(i);
+				actionsneu.add(akt);
+				actions.remove(akt);
+				for(int k = 0; k < actions.size(); k++) {
+					if(actions.get(k) instanceof MigrateVMNode && ((MigrateVMNode) actions.get(k)).getTarget().equals(((MigrateVMNode)akt).getTarget())){
+						actions.get(k).addVorgaenger(akt);
+						actionsneu.add(actions.get(k));
+						akt = actions.get(k);
+						actions.remove(k);
+					}
+				}
+			}
+		}
+		
+		for(int i = 0; i < actions.size(); i++) {
+			Node akt = null;
+			if(actions.get(i) instanceof ShutDownNode){
+				akt = actions.get(i);
+				actionsneu.add(akt);
+				actions.remove(akt);
+				for(int k = 0; k < actions.size(); k++) {
+					if(actions.get(k) instanceof MigrateVMNode && ((MigrateVMNode) actions.get(k)).getSource().equals(((ShutDownNode) akt).getPM())){
+						actions.get(k).addVorgaenger(akt);
+						actionsneu.add(actions.get(k));
+						akt = actions.get(k);
+						actions.remove(k);
+					}
+				}
+			}
+		}
+		actions.addAll(actionsneu);
 	}
 }
 

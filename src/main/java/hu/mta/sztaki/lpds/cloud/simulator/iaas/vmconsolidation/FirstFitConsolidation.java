@@ -1,100 +1,87 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import java.util.Collection;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 	/**
 	 * @author Rene
 	 *
 	 * This class is used to do the consolidation with first fit. It can be easy used in the consolidator by simply creating
-	 * an instance of it.
+	 * an instance of it. The migration, PM-selection for migration and every other method according to this 
+	 * is implemented as first fit.
 	 */
 
 
 public class FirstFitConsolidation {
 	
+	ArrayList <Bin_PhysicalMachine> bins = new ArrayList <Bin_PhysicalMachine>();
+	ArrayList <Node> actions;
+	// Zähler für die Aktionen
+	int count = 1;
 	
-	public FirstFitConsolidation(ArrayList <PhysicalMachine> bins, ArrayList <Node> actions, int i) {
+	/**
+	 * The constructor for the First-Fit-Consolidator.
+	 * 
+	 * @param bins
+	 * 			The ArrayList which contains the PMs.
+	 * @param actions
+	 * 			The ArrayList for the graph.
+	 */
+	
+	public FirstFitConsolidation(ArrayList <Bin_PhysicalMachine> bins, ArrayList <Node> actions) {
 		
 		this.bins = bins;
 		this.actions = actions;
-		count = i;
-	}
-
-	ArrayList <PhysicalMachine> bins = new ArrayList <PhysicalMachine>();
-	ArrayList <Node> actions;
-	int count;
-	
+	}	
 	
 	/**
-	 * Getter for every important and needed variable and list.
-	 * @return
-	 * 			bins, actions and count
+	 * Getter for bins-list.
+	 * @return bins
 	 */
 	
-	ArrayList <PhysicalMachine> getBins() {
-		
+	public ArrayList <Bin_PhysicalMachine> getBins() {
 		return bins;
 	}
 	
-	ArrayList <Node> getActions() {
-		
+	/**
+	 * Getter for the action-list.
+	 * @return actions
+	 */
+	
+	public ArrayList <Node> getActions() {
 		return actions;
-	}
-	
-	int getCount() {
-		
-		return count;
-	}
-	
-	
+	}	
 	
 	/**
 	 * This is the algorithm for migration, which uses the First-Fit-Algorithm to place VMs on other PMs
-	 * if the status is an other than 'normal'.
-	 * @param arr
-	 * 			The loadbalance array to check the status of the PMs.
-	 * ruft Methode zum Start einer weiteren PM auf, wenn auf aktuell laufenden nicht genügend Kapazitäten frei sind
+	 * if the status is an other than 'normal'. Another method is called if no PM on the actually 
+	 * running PMs fulfills the constraints. 
+	 * 
+	 * Braucht ein rework, nicht aktuell
 	 */
 	
 	void migrationAlgorithm() {
 		
-		State [] arr = checkLoad();
-		for(int i = 0; i < arr.length; i++) {
-			if(arr[i] == State.normal) {
+		for(int i = 0; i <bins.size(); i++) {
+			if(bins.get(i).getState() == State.NORMAL_RUNNING) {
 				
 			}
 			else {
-				while(arr[i] == State.underloaded || arr[i] ==  State.overloaded) {
+				
+				while(bins.get(i).getState() == State.UNDERLOADED_RUNNING || bins.get(i).getState() ==  State.OVERLOADED_RUNNING) {
 					
 					if(bins.get(i).isHostingVMs() != true) {
-						arr[i] = State.empty;
+						bins.get(i).changeState(State.EMPTY_RUNNING);
 					}
+					
 					else {
-						PhysicalMachine actual = bins.get(i);
-						VirtualMachine x = this.getbiggestVM(i);
-						PhysicalMachine y = this.getMigPm(x, arr);
-						if(y == null){
-							y = startPMs(x.getPerTickProcessingPower());						 
-						}
-						
-						try {
+						Bin_PhysicalMachine actual = bins.get(i);
+						Item_VirtualMachine x = this.getFirstVM(actual);
+						Bin_PhysicalMachine y = this.getMigPm(x);
 							actual.migrateVM(x, y);
-							actions.add(new MigrateVMNode(count++, actual, y, x));
-						} catch (VMManagementException e) {
-							e.printStackTrace();
-						} catch (NetworkException e) {
-							e.printStackTrace();
-						}
+							actions.add(new MigrateVMNode(count++, actual, y, x)); 
 					}
-					arr = checkLoad();
 				}
 			}
 		}
@@ -104,54 +91,65 @@ public class FirstFitConsolidation {
 	 * This method is written to get a PM where a given VM can be migrated without changing the
 	 * status of the PM to 'overloaded'. This is done by first fit.
 	 * 
-	 * Method not finished! HashMap has to be used.
 	 * @param VM
 	 * 			The VM which shall be migrated.
-	 * @param arr
-	 * 			The loadbalance array to check the status of the PMs.
 	 * @return A PM where the given VM can be migrated
-	 * gibt null zurück, wenn keine aktive PM mit ausreichend Kapazitäten bereit steht
+	 * 		   starts a new PM if there is no one with needed resources.
 	 */
 	
-	private PhysicalMachine getMigPm(VirtualMachine VM, State[] arr) {
+	private Bin_PhysicalMachine getMigPm(Item_VirtualMachine VM) {
 		
-		VirtualMachine toMig = VM;
+		Item_VirtualMachine toMig = VM;
 		
 		//These are the constraints of the VM
-		ResourceConstraints toMigCons = toMig.getResourceAllocation().allocated;
-		double toMigCons_reqCPU = toMigCons.getRequiredCPUs();
-		double toMigCons_reqPP = toMigCons.getRequiredProcessingPower();
-		double toMigCons_reqMem = toMigCons.getRequiredMemory();
+		double toMigCons_reqCPU = toMig.getRequiredCPUs();
+		double toMigCons_reqPP = toMig.getRequiredProcessingPower();
+		double toMigCons_reqMem = toMig.getRequiredMemory();
 		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {
 			
-			PhysicalMachine actualPM = this.bins.get(i);
+			Bin_PhysicalMachine actualPM = this.bins.get(i);
 			
 			//These are the constraints of the actual PM
-			ResourceConstraints actualPMcons = actualPM.getCapacities();
-			double PMcons_reqCPU = actualPMcons.getRequiredCPUs();
-			double PMcons_reqPP = actualPMcons.getRequiredProcessingPower();
-			double PMcons_reqMem = actualPMcons.getRequiredMemory();
+			double PMcons_reqCPU = actualPM.getRequiredCPUs();
+			double PMcons_reqPP = actualPM.getRequiredProcessingPower();
+			double PMcons_reqMem = actualPM.getRequiredMemory();
 			
 			if(PMcons_reqCPU > toMigCons_reqCPU && PMcons_reqPP > toMigCons_reqPP && PMcons_reqMem > toMigCons_reqMem) {
+				//the PM which first fits to the criteria
 				return actualPM;
 			}
 		}	
-		return startPMs(toMigCons.getTotalProcessingPower());	//get new PM
+		return startPMs(toMig.getRequiredCPUs(), toMig.getRequiredProcessingPower(), toMig.getRequiredMemory());	//get new PM
 	}
 	
 	
 	
-	/*
-	 * startet eine zuvor ausgeschaltet PM neu. Dabei wird anhand des übergebenen Parameters geprüft, ob die
-	 * zu startende PM ausreichend Kapazitäten bietet
+	/**
+	 * Starts a PM which contains the necassary resources for hosting the previous VM.
+	 * This is done by first-fit.
+	 * 
+	 * @param cores
+	 * 			The needed cores.
+	 * @param power
+	 * 			The needed processing power.
+	 * @param mem
+	 * 			The needed memory.
+	 * 
+	 * @return A PM with the needed resources.
 	 */
-	private PhysicalMachine startPMs(double d){
-		PhysicalMachine start = null;
+	
+	private Bin_PhysicalMachine startPMs(double cores, double power, long mem){
+		Bin_PhysicalMachine start = null;
 		for(int i = 0; i < bins.size(); i++){
-			if(!bins.get(i).isRunning() && bins.get(i).getCapacities().getTotalProcessingPower() < d){
-				bins.get(i).turnon();
+			
+			if(start != null)
+				return start;
+			
+			if(bins.get(i).getState().equals(State.EMPTY_OFF) && bins.get(i).getRequiredCPUs()
+					>= cores && bins.get(i).getRequiredProcessingPower() >= power && bins.get(i).getRequiredMemory() >= mem){
+				bins.get(i).switchOn();
 				start = bins.get(i);
 				actions.add(new StartNode(count++, bins.get(i)));
 			}
@@ -167,42 +165,25 @@ public class FirstFitConsolidation {
 	 * @return VM with the biggest consumption
 	 */
 	
-	private VirtualMachine getbiggestVM(int x) {
-		PhysicalMachine pm = bins.get(x);
-		Collection <VirtualMachine> vms = pm.listVMs();		
-		ArrayList <VirtualMachine> list = new ArrayList<VirtualMachine>(vms);
-		VirtualMachine biggest = list.get(0);
-		
-		for(int i = 0; i < vms.size(); i++) {
-			
-			VirtualMachine bigVM = list.get(i);
-			if(bigVM.getPerTickProcessingPower() > biggest.getPerTickProcessingPower()) {
-				biggest = bigVM;
-			}
-		}
-		return biggest;
+	private Item_VirtualMachine getFirstVM(Bin_PhysicalMachine x) {
+		return x.getVMs().get(0);
 	}
 	
 	/**
 	 * This method has to be called after all migrations were done. The given array
 	 * contains all information about which PMs have to be shut down and here
 	 * this will be done.
+	 * 
 	 * @param arr
 	 * 			the balance array, gives necessary information which PMS have to get shut down
 	 */
 	
-	public void shutEmptyPMsDown(State [] arr) {
+	public void shutEmptyPMsDown() {
 		
-		for(int i = 0; i < arr.length; i++) {
-			if(arr[i] == State.empty) {
-				PhysicalMachine pm = bins.get(i);
-				try {
-					pm.switchoff(bins.get(0));
-				} catch (VMManagementException e) {
-					e.printStackTrace();
-				} catch (NetworkException e) {
-					e.printStackTrace();
-				}
+		for(int i = 0; i < bins.size(); i++) {
+			if(bins.get(i).equals(State.EMPTY_RUNNING) ) {
+				bins.get(i).switchOff();
+				actions.add(new ShutDownNode(count++, bins.get(i)));
 			}
 		}
 	}
@@ -212,27 +193,29 @@ public class FirstFitConsolidation {
 	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
 	 * check if the used resources are more or less than the defined threshold for
 	 * overloaded / underloaded. 
-	 * At the end an State array is returned which has the status 'overloaded', 
-	 * 'underloaded' and 'normal' at the position of the PMs in the bins-array, so
-	 * the two arrays are matching.
-	 *  @return a list with the status for every PM
+	 * At the end every PM has a status which fits to the load.
 	 */
 	
-	protected State[] checkLoad() {
-		State checklist [] = new State[bins.size()];
+	protected void checkLoad() {
 		for(int i = 0; i < bins.size(); i++) {
-			if(this.underloaded(bins.get(i)))  {
-				checklist[i] = State.underloaded;
+			
+			if(bins.get(i).isHostingVMs() == false) {
+				bins.get(i).changeState(State.EMPTY_RUNNING);
 			}
 			else {
-				if(this.overloaded(bins.get(i))) {
-					checklist[i] = State.overloaded;
+			
+				if(underloaded(bins.get(i)))  {
+					bins.get(i).changeState(State.UNDERLOADED_RUNNING);
 				}
-				else
-					checklist[i] = State.normal;
+				else {
+					if(overloaded(bins.get(i))) {
+						bins.get(i).changeState(State.OVERLOADED_RUNNING);
+					}
+					else
+						bins.get(i).changeState(State.NORMAL_RUNNING);
+				}	
 			}
 		}
-		return checklist;
 	}
 	
 	/**
@@ -242,10 +225,10 @@ public class FirstFitConsolidation {
 	 * @return true if overloaded, false otherwise
 	 */
 	
-	private boolean overloaded(PhysicalMachine pm) {
-		ResourceConstraints all = pm.getCapacities();
-		ResourceConstraints available = pm.availableCapacities;
-		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() >= all.getTotalProcessingPower() * 0.75) {
+	private boolean overloaded(Bin_PhysicalMachine pm) {
+		
+		if(pm.getRequiredCPUs()-pm.getAvailableCPUs() >= 0.75 || pm.getRequiredMemory()-pm.getAvailableMemory() >= 0.75 
+				|| pm.getRequiredProcessingPower()-pm.getAvailableProcessingPower() >= 0.75) {
 			return true;
 		}
 		else
@@ -259,15 +242,114 @@ public class FirstFitConsolidation {
 	 * @return true if underloaded, false otherwise	  
 	 */
 	
-	private boolean underloaded(PhysicalMachine pm) {
-		ResourceConstraints all = pm.getCapacities();
-		ResourceConstraints available = pm.availableCapacities;
-		if(all.getTotalProcessingPower() - available.getTotalProcessingPower() <= all.getTotalProcessingPower() * 0.25) {
+	private boolean underloaded(Bin_PhysicalMachine pm) {
+		
+		if(pm.getRequiredCPUs()-pm.getAvailableCPUs() <= 0.25 || pm.getRequiredMemory()-pm.getAvailableMemory() <= 0.25 
+				|| pm.getRequiredProcessingPower()-pm.getAvailableProcessingPower() <= 0.25) {
 			return true;
 		}
 		else
 			return false;
 	}
 	
+	
+	/**
+	 * Method for migrating underloaded PMs.
+	 * Instead of doing every migration if there are no more target PMs, the migrations will not be done and the PM
+	 * will be left in underloaded.
+	 * 
+	 * @return
+	 * 		The ArrayList with all necassary migrations.
+	 */
+	
+	public ArrayList<Item_VirtualMachine> migratePM(Bin_PhysicalMachine source) {
+		
+		ArrayList <Item_VirtualMachine> migrations = new ArrayList <Item_VirtualMachine>();
+		
+		double avCores = source.getAvailableCPUs();
+		double avPCP = source.getAvailableProcessingPower();
+		long avMem = source.getAvailableMemory();
+		
+		while(avCores < source.getRequiredCPUs() * 0.75 || avPCP < source.getRequiredProcessingPower() * 0.75 
+				|| avMem < source.getRequiredMemory() * 0.75) {
+			
+			//jetzt immer eine vm mit ff raus nehmen und auf die ff pm migrieren.
+			Item_VirtualMachine actual = getFirstVM(source);
+			migrations.add(actual);
+			
+			avCores = avCores - actual.getRequiredCPUs();
+			avPCP = avPCP - actual.getRequiredProcessingPower();
+			avMem = avMem - actual.getRequiredMemory();
+			
+			//dabei immer prüfen, ob der status normal erreicht worden ist
+			
+			if(source.getState().equals(State.NORMAL_RUNNING)) {
+				return migrations;
+			}
+		}
+		return migrations;
+	}
+	
+	/**
+	 * The idea here is to check if the whole list can be migrated anywhere. If that is the case,
+	 * the migrations will be done. If not, it will be checked if the source PM was/is overloaded
+	 * or underloaded.
+	 * 
+	 * In the first Case, all migrations which can be done will be done.
+	 * In the second Case, no migration occurs and nothing will be changed.
+	 * 
+	 * @param vms
+	 * 			The ArrayList out of migratePM().
+	 */
+
+	public void migrateMoreVMs(ArrayList <Item_VirtualMachine> vms) {
+		
+		Bin_PhysicalMachine host = vms.get(0).gethostPM();
+		
+		
+	}
+	
+	
+	
+	/**
+	 * Method for migrating overloaded PMs.
+	 * A list gets created for doing the migrations. If the PM is still overloaded after there can be
+	 * done no more migrations, every element out of the list will be migrated nontheless. 
+	 * 
+	 * noch nicht fertig
+	 * 
+	 * @return
+	 */
+	
+	/*public ArrayList<Item_VirtualMachine> migrateOverloadedPM(Bin_PhysicalMachine source) {
+		
+		ArrayList <Item_VirtualMachine> migrations = new ArrayList <Item_VirtualMachine>();
+		
+		double avCores = source.getAvailableCPUs();
+		double avPCP = source.getAvailableProcessingPower();
+		long avMem = source.getAvailableMemory();
+		
+		while(avCores < source.getRequiredCPUs() * 0.25 || avPCP < source.getRequiredProcessingPower() * 0.25 
+				|| avMem < source.getRequiredMemory() * 0.25) {
+			
+			//jetzt immer eine vm mit ff raus nehmen und auf die ff pm migrieren.
+			
+			Item_VirtualMachine actual = getFirstVM(source);
+			migrations.add(actual);
+			
+			avCores = avCores - actual.getRequiredCPUs();
+			avPCP = avPCP - actual.getRequiredProcessingPower();
+			avMem = avMem - actual.getRequiredMemory();
+			
+			//dabei immer prüfen, ob der status normal erreicht worden ist
+			
+			if(source.getState().equals(State.NORMAL_RUNNING)) {
+				return migrations;
+			}
+		}
+		
+		return migrations;
+	}
+	*/
 	
 }

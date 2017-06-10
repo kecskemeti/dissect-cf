@@ -1,6 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 
 /**
  * Saves the PMs which need to be shut down.
@@ -8,11 +7,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 
 public class ShutDownNode extends Node {
 	
-	PhysicalMachine pm;
+	Bin_PhysicalMachine pm;
 
-	public ShutDownNode(int id, PhysicalMachine pm) {
+	public ShutDownNode(int id, Bin_PhysicalMachine pm) {
 		super(id);
 		this.pm = pm;
 	}
-
+	public Bin_PhysicalMachine getPM(){
+		return pm;
+	}
 }

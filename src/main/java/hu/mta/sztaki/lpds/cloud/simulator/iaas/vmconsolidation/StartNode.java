@@ -1,18 +1,18 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-
 /**
  * Saves the PMs which need to get started.
  */
 
 public class StartNode extends Node{
 	
-	PhysicalMachine pm; 
+	Bin_PhysicalMachine pm; 
 	
-	public StartNode(int id, PhysicalMachine pm){
+	public StartNode(int id, Bin_PhysicalMachine bin_PhysicalMachine){
 		super(id);
-		this.pm = pm;
+		this.pm = bin_PhysicalMachine;
 	}
-
+	public Bin_PhysicalMachine getPM(){
+		return pm;
+	}
 }

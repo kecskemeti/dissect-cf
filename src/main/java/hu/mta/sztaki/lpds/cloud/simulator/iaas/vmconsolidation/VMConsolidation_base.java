@@ -1,15 +1,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+
 import java.util.ArrayList;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 
 	/**
 	 * @author Julian, René
@@ -31,31 +26,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 	 * do the changes in the real simulation.
 	 */
 
-public class VMConsolidation_base extends Scheduler{
+public class VMConsolidation_base {
 	
-	//Kopie des übergebenen Service
-	IaaSService basicModel;
-	ArrayList <PhysicalMachine> bins = new ArrayList <PhysicalMachine>();
+	IaaSService basic;
+	ArrayList <Bin_PhysicalMachine> bins = new ArrayList <Bin_PhysicalMachine>();
 	//ArrayList zum Speichern der Aktionen im Modell, die auf den übergebenen Service angewandt werden sollen
 	ArrayList <Node> actions = new ArrayList<Node>();
-	// Zähler für die Aktionen
-	int count = 1;
 	
 	public VMConsolidation_base(IaaSService parent) throws Exception {
-		super(parent);
-		basicModel = (IaaSService) deepCopy(parent);
+		this.basic = parent;
 		bins = getPMs();
-	}
-
-
-	
-//	ArrayList <VirtualMachine> items = new ArrayList <VirtualMachine>();
-//	Map <PhysicalMachine, ArrayList <VirtualMachine>> binsitems = new HashMap <PhysicalMachine, ArrayList <VirtualMachine>>();
-	
+	}	
 	
 	/*
 	 * erstellt eine tiefe Kopie von dem übergebenen IaaSService, auf der die Änderungen durchgeführt werden können
-	 */
+	 
 	public static Object deepCopy( Object o ) throws Exception{
 	ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	new ObjectOutputStream( baos ).writeObject( o );
@@ -63,38 +48,30 @@ public class VMConsolidation_base extends Scheduler{
 	ByteArrayInputStream bais = new ByteArrayInputStream( baos.toByteArray() );
 
 	return new ObjectInputStream(bais).readObject();
-	}
+	}*/
 	
 	/**
 	 * In this part all PMs and VMs will be put inside this abstract model.
 	 
-	
-	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
-			reqond = 2 * (int) 1, reqoffd = (int) 1;
-	
-	Map <PhysicalMachine, ArrayList <VirtualMachine>> getPM() {
-		for (PhysicalMachine pm : parent.machines) {
+	*/
+
+	ArrayList <Bin_PhysicalMachine> getPMs() {
+		ArrayList <Bin_PhysicalMachine> pmList = new ArrayList<Bin_PhysicalMachine>();
+		for (PhysicalMachine pm : basic.machines) {
+			ArrayList <Item_VirtualMachine> vmList = new ArrayList <Item_VirtualMachine>();
 			ArrayList <VirtualMachine> items = new ArrayList <VirtualMachine>();
 			items.addAll(pm.listVMs());
-			ArrayList <VirtualMachine> itemsM = new ArrayList <VirtualMachine>();
+			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory());
+			//if(!pm.isRunning()){
+			//	act.changeState(act.state.off);
+			//}	
 			for(int i = 0; i < items.size(); i++){
-				VirtualAppliance vaM = new VirtualAppliance(items.get(i).getVa().id, items.get(i).getVa().getStartupProcessing(), items.get(i).getVa().getBgNetworkLoad(), false, items.get(i).getVa().size);
-				VirtualMachine vmM = new VirtualMachine(vaM);
-				itemsM.add(vmM);
+				vmList.add(new Item_VirtualMachine(items.get(i), act, items.get(i).getResourceAllocation().allocated.getRequiredCPUs(), items.get(i).getResourceAllocation().allocated.getRequiredProcessingPower(), items.get(i).getResourceAllocation().allocated.getRequiredMemory()));
 			}
-			PhysicalMachine pmM = new PhysicalMachine(pm.getCapacities().getRequiredCPUs(), pm.getCapacities().getRequiredProcessingPower(), pm.getCapacities().getRequiredMemory(), pm.localDisk,
-					reqond, reqoffd, null);
-			binsitems.put(pmM, items);
-			bins.add(pmM);
+			act.setVMs(vmList);
+			pmList.add(act);
 		}
-		return binsitems;
-	}*/
-	
-	public ArrayList<PhysicalMachine> getPMs() {
-		for (PhysicalMachine pm : basicModel.machines) {
-			bins.add(pm);
-		}
-	return bins;
+		return pmList;
 	}
 	
 	/**
@@ -107,13 +84,7 @@ public class VMConsolidation_base extends Scheduler{
 	/**
 	 * The method to create the graph out of the created lists in 'optimize()'.
 	 */
-	void createGraph(ArrayList <PhysicalMachine> list1, ArrayList <VirtualMachine> migrations, 
-			ArrayList <PhysicalMachine> targets, ArrayList <PhysicalMachine> list3) {
+	void createGraph(ArrayList <Bin_PhysicalMachine> list1, ArrayList <Item_VirtualMachine> migrations, 
+			ArrayList <Bin_PhysicalMachine> targets, ArrayList <Bin_PhysicalMachine> list3) {
 	}
-	@Override
-	protected ConstantConstraints scheduleQueued() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 }
