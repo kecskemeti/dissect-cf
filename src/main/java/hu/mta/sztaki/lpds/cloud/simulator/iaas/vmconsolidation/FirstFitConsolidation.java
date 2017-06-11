@@ -188,75 +188,13 @@ public class FirstFitConsolidation {
 		}
 	}
 	
-	/**
-	 * In this method the status of each PM in the simulation is considered.
-	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
-	 * check if the used resources are more or less than the defined threshold for
-	 * overloaded / underloaded. 
-	 * At the end every PM has a status which fits to the load.
-	 */
 	
-	protected void checkLoad() {
-		for(int i = 0; i < bins.size(); i++) {
-			
-			if(bins.get(i).isHostingVMs() == false) {
-				bins.get(i).changeState(State.EMPTY_RUNNING);
-			}
-			else {
-			
-				if(underloaded(bins.get(i)))  {
-					bins.get(i).changeState(State.UNDERLOADED_RUNNING);
-				}
-				else {
-					if(overloaded(bins.get(i))) {
-						bins.get(i).changeState(State.OVERLOADED_RUNNING);
-					}
-					else
-						bins.get(i).changeState(State.NORMAL_RUNNING);
-				}	
-			}
-		}
-	}
-	
-	/**
-	 * Method for checking if the actual PM is overloaded.
-	 * @param pm
-	 * 			The PhysicalMachine which shall be checked.
-	 * @return true if overloaded, false otherwise
-	 */
-	
-	private boolean overloaded(Bin_PhysicalMachine pm) {
-		
-		if(pm.getRequiredCPUs()-pm.getAvailableCPUs() >= 0.75 || pm.getRequiredMemory()-pm.getAvailableMemory() >= 0.75 
-				|| pm.getRequiredProcessingPower()-pm.getAvailableProcessingPower() >= 0.75) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Method for checking if the actual PM is underloaded.
-	 * @param pm
-	 * 			The PhysicalMachine which shall be checked.
-	 * @return true if underloaded, false otherwise	  
-	 */
-	
-	private boolean underloaded(Bin_PhysicalMachine pm) {
-		
-		if(pm.getRequiredCPUs()-pm.getAvailableCPUs() <= 0.25 || pm.getRequiredMemory()-pm.getAvailableMemory() <= 0.25 
-				|| pm.getRequiredProcessingPower()-pm.getAvailableProcessingPower() <= 0.25) {
-			return true;
-		}
-		else
-			return false;
-	}
 	
 	
 	/**
-	 * Method for migrating underloaded PMs.
-	 * Instead of doing every migration if there are no more target PMs, the migrations will not be done and the PM
-	 * will be left in underloaded.
+	 * Method for migrating PMs.
+	 * 
+	 * in arbeit
 	 * 
 	 * @return
 	 * 		The ArrayList with all necassary migrations.
@@ -270,22 +208,38 @@ public class FirstFitConsolidation {
 		double avPCP = source.getAvailableProcessingPower();
 		long avMem = source.getAvailableMemory();
 		
-		while(avCores < source.getRequiredCPUs() * 0.75 || avPCP < source.getRequiredProcessingPower() * 0.75 
-				|| avMem < source.getRequiredMemory() * 0.75) {
+		int i = 0;
+		
+		
+		while(source.getState().equals(State.OVERLOADED_RUNNING) || source.getState().equals(State.UNDERLOADED_RUNNING)) {
 			
 			//jetzt immer eine vm mit ff raus nehmen und auf die ff pm migrieren.
-			Item_VirtualMachine actual = getFirstVM(source);
-			migrations.add(actual);
+
+			Item_VirtualMachine actual = source.getVM(i);
+			Bin_PhysicalMachine pm = getMigPm(actual);
 			
-			avCores = avCores - actual.getRequiredCPUs();
-			avPCP = avPCP - actual.getRequiredProcessingPower();
-			avMem = avMem - actual.getRequiredMemory();
+			if(pm == null) {
+				return migrations;
+			}
+			else {
+				
+				migrations.add(actual);
+				
+				
+				
+				avCores = avCores - actual.getRequiredCPUs();
+				avPCP = avPCP - actual.getRequiredProcessingPower();
+				avMem = avMem - actual.getRequiredMemory();
+				
+			}
 			
 			//dabei immer prüfen, ob der status normal erreicht worden ist
 			
 			if(source.getState().equals(State.NORMAL_RUNNING)) {
 				return migrations;
 			}
+			
+			i++;
 		}
 		return migrations;
 	}
@@ -305,8 +259,10 @@ public class FirstFitConsolidation {
 	public void migrateMoreVMs(ArrayList <Item_VirtualMachine> vms) {
 		
 		Bin_PhysicalMachine host = vms.get(0).gethostPM();
-		
-		
+		for(int i = 0; i < vms.size(); i++) {
+			
+			host.migrateVM(vms.get(i), this.getMigPm(vms.get(i)));
+		}		
 	}
 	
 	

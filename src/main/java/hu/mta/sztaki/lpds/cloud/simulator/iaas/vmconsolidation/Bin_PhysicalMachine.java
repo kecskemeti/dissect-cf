@@ -3,7 +3,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-
 /**
  * @author Julian, René
  *
@@ -66,13 +65,14 @@ public class Bin_PhysicalMachine {
 					getVMs().get(i).getRequiredProcessingPower(), getVMs().get(i).getRequiredMemory());
 		}
 		
+		checkLoad();
+		
 	}
 	
 	
 	/**
 	 * A String which contains all resources of this PM.
-	 * @return
-	 * 			cores, perCoreProcessing and memory of the PM in a single String.
+	 * @return cores, perCoreProcessing and memory of the PM in a single String.
 	 */
 	
 	public String Resources() {
@@ -83,8 +83,7 @@ public class Bin_PhysicalMachine {
 	
 	/**
 	 * Getter
-	 * @return
-	 * 			cores of the PM.
+	 * @return cores of the PM.
 	 */
 	public double getRequiredCPUs() {
 		return cores;
@@ -92,8 +91,7 @@ public class Bin_PhysicalMachine {
 	
 	/**
 	 * Getter
-	 * @return
-	 * 			perCoreProcessing of the PM.
+	 * @return perCoreProcessing of the PM.
 	 */
 	
 	public double getRequiredProcessingPower() {
@@ -102,8 +100,7 @@ public class Bin_PhysicalMachine {
 	
 	/**
 	 * Getter
-	 * @return
-	 * 			memory of the PM.
+	 * @return memory of the PM.
 	 */
 	
 	public long getRequiredMemory() {
@@ -157,15 +154,95 @@ public class Bin_PhysicalMachine {
 	
 	
 	
+	
+	/**
+	 * In this method the status of each PM in the simulation is considered.
+	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
+	 * check if the used resources are more or less than the defined threshold for
+	 * overloaded / underloaded. 
+	 * At the end every PM has a status which fits to the load.
+	 */
+	
+	protected void checkLoad() {
+		if(isHostingVMs() == false) {
+			changeState(State.EMPTY_RUNNING);
+		}
+		else {
+			if(underloaded())  {
+				changeState(State.UNDERLOADED_RUNNING);
+			}
+			else {
+				if(overloaded()) {
+						changeState(State.OVERLOADED_RUNNING);
+				}
+				else
+					changeState(State.NORMAL_RUNNING);
+				}	
+			}
+		}
+	
+	/**
+	 * Method for checking if the actual PM is overloaded.
+	 * 
+	 * @return true if overloaded, false otherwise
+	 */
+	
+	private boolean overloaded() {
+		
+		if(this.getRequiredCPUs() - this.getAvailableCPUs() >= 0.75 || this.getRequiredMemory() - this.getAvailableMemory() >= 0.75 
+				|| this.getRequiredProcessingPower() - this.getAvailableProcessingPower() >= 0.75) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Method for checking if the actual PM is underloaded.
+	 * 
+	 * @return true if underloaded, false otherwise	  
+	 */
+	
+	private boolean underloaded() {
+		
+		if(this.getRequiredCPUs() - this.getAvailableCPUs() <= 0.25 || this.getRequiredMemory() - this.getAvailableMemory() <= 0.25 
+				|| this.getRequiredProcessingPower() - this.getAvailableProcessingPower() <= 0.25) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	
+	
+	/**
+	 * Getter for a specific VM.
+	 * @param position
+	 * 			The desired position where the VM is.
+	 * @return
+	 * 			The desired VM.
+	 */
+	
+	public Item_VirtualMachine getVM(int position) {
+		return getVMs().get(position);
+	}
+	
+	
+	
+	
+	
 	/**
 	 * Standard Migration for one VM.
+	 * 
+	 * in arbeit
+	 * 
 	 * @param vm
 	 * 			The VM which is going to be migrated.
 	 * @param target
 	 * 			The target PM where to migrate.
 	 */
 	
-	public void migrateVM(Item_VirtualMachine vm, Bin_PhysicalMachine target) /*throws NullPointerException*/ {
+	public void migrateVM(Item_VirtualMachine vm, Bin_PhysicalMachine target) {
 		
 		while(this.getState() == State.OVERLOADED_RUNNING || this.getState() == State.UNDERLOADED_RUNNING) {
 			
@@ -230,9 +307,32 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	public void consumeResources(double cores, double corePower, long mem) {
-		this.setAvCPUs(cores);
-		this.setAvPCP(corePower);
-		this.setAvMem(mem);
+		setAvCPUs(cores);
+		setAvPCP(corePower);
+		setAvMem(mem);
+	}
+	
+	
+	
+	
+	/**
+	 * This method is for the migration of an ArrayList. If the migration cannot fulfill
+	 * its full size (in case one or more VMs cannot be migrated), the migration will be 
+	 * get undone. 
+	 * @param x
+	 * 			The Item_VirtualMachine which is going to be demigrated. 
+	 */
+	
+	public void deconsumeRes(Item_VirtualMachine x) {
+		
+		double vmCores = x.getRequiredCPUs();
+		double vmPCP = x.getRequiredProcessingPower();
+		long vmMem = x.getRequiredMemory();
+		
+		availableCores = getAvailableCPUs() + vmCores;
+		availablePerCoreProcessing = getAvailableProcessingPower() + vmPCP;
+		availableMemory = getAvailableMemory() + vmMem;
+		
 	}
 
 
