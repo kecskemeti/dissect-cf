@@ -27,7 +27,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -44,6 +43,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceCons
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.helpers.PMComparators;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
@@ -132,17 +132,6 @@ public abstract class Scheduler {
 	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints.getNoResources();
 
 	/**
-	 * A PM comparator that offers inverse ordering of PMs if used during sort
-	 */
-	public final static Comparator<PhysicalMachine> pmComparator = new Comparator<PhysicalMachine>() {
-		@Override
-		public int compare(final PhysicalMachine o1, final PhysicalMachine o2) {
-			// Ensures inverse order based on capacities
-			return -o1.getCapacities().compareTo(o2.getCapacities());
-		}
-	};
-
-	/**
 	 * This is the action that takes place when one of the PMs at the IaaS
 	 * changes its state. If this listener is called because a new PM has turned
 	 * on then the scheduler is again given a chance to allocate some VMs.
@@ -209,7 +198,7 @@ public abstract class Scheduler {
 				if (newRegistration) {
 					// Increased pm count
 					orderedPMcache.addAll(alteredPMs);
-					Collections.sort(orderedPMcache, pmComparator);
+					Collections.sort(orderedPMcache, PMComparators.highestToLowestTotalCapacity);
 					pmCacheLen += pmNum;
 					for (int i = 0; i < pmNum; i++) {
 						final PhysicalMachine pm = alteredPMs.get(i);
@@ -252,7 +241,7 @@ public abstract class Scheduler {
 	 */
 	public final void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
 			final Repository vaSource, final HashMap<String, Object> schedulingConstraints)
-					throws VMManagementException {
+			throws VMManagementException {
 		final long currentTime = Timed.getFireCount();
 		final QueueingData qd = new QueueingData(vms, rc, vaSource, schedulingConstraints, currentTime);
 
