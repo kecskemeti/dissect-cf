@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -92,6 +93,16 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		return names;
 	}
 
+    public static PhysicalMachine dummyPMcreator(final int corecount, final long memory) {
+    	return new PhysicalMachine(corecount, 1, memory, new Repository(
+			vaSize * 200, generateName("M", 1), 1, 1, 1, globalLatencyMap),
+			1, 1, defaultTransitions);
+    }
+
+	public static PhysicalMachine dummyPMcreatorWithMemory(long memory) {
+		return dummyPMcreator(dummyPMCoreCount,memory);
+	}
+    
 	public static PhysicalMachine dummyPMcreator(final int corecount) {
 		return dummyPMsCreator(1, corecount)[0];
 	}

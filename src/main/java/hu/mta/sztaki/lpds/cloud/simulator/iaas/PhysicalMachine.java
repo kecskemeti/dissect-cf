@@ -19,6 +19,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2016, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -67,6 +69,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  * 
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
  *         Moores University, (c) 2016"
+ * @author "Vincenzo De Maio, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2015"
  * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
  *         of Innsbruck (c) 2013"
  * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
@@ -1025,6 +1029,14 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	}
 
+	public void migrateVMLive(final VirtualMachine vm, final PhysicalMachine target)
+			throws VMManagementException, NetworkNode.NetworkException {
+		if (vms.contains(vm)) {
+			vm.migrateLive(target.allocateResources(vm.getResourceAllocation().allocated, true, migrationAllocLen));
+		}
+
+	}
+	
 	/**
 	 * Not implemented, would allow VMs to receive more resources in the future
 	 */
