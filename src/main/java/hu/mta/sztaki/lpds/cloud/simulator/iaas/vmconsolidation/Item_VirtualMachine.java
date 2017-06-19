@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
+
 /**
  * @author Julian, René
  * 
@@ -12,13 +13,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 public class Item_VirtualMachine {
 	
-	
 	VirtualMachine vm;
 	Bin_PhysicalMachine hostPM;
+	ResourceVector neededResources;
+
 	
-	double neededCores;
-	double neededPerCorePocessing;
-	long neededMemory;
 	
 	/**
 	 * This represents a Virtual Machine of the simulator. It is abstract and inherits only the methods and properties
@@ -40,66 +39,60 @@ public class Item_VirtualMachine {
 		
 		this.vm = vm;
 		hostPM = pm;
+		neededResources = new ResourceVector(cores, pCP, mem);
 		
-		neededCores = cores;
-		neededPerCorePocessing = pCP;
-		neededMemory = mem;
 	}
 	
 	
-	/**
-	 * A String which contains all resources of this VM.
-	 * @return
-	 * 			cores, perCoreProcessing and memory of the VM in a single String.
+	/** Getter
+	 * @return the ResourceVector
 	 */
-	
-	public String Resources() {
-		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:" + getRequiredProcessingPower() + " M:"
-				+ getRequiredMemory() + ")";
+	public ResourceVector getResources() {
+		return neededResources;
 	}
 	
-	
-	/**
-	 * Getter
+	/** Getter
 	 * @return cores of the VM.
 	 */
 	public double getRequiredCPUs() {
-		return neededCores;
+		return neededResources.getCPUs();
 	}
 	
-	/**
-	 * Getter
+	/** Getter
 	 * @return perCoreProcessing of the VM.
 	 */
 	
 	public double getRequiredProcessingPower() {
-		return neededPerCorePocessing;
+		return neededResources.getProcessingPower();
 	}
 	
-	/**
-	 * Getter
+	/** Getter
 	 * @return memory of the VM.
 	 */
-	
 	public long getRequiredMemory() {
-		return neededMemory;
+		return neededResources.getMemory();
 	}
 	
-	/**
-	 * Getter
-	 * @return The matching VM out of the real Simulator.
-	 */
-	
+	/** Getter
+	 * @return The matching VM out of the real Simulator.	
+	 *  */
 	public VirtualMachine getVM() {
 		return vm;
 	}
 	
+	/** Getter
+	 * @return The actual host of this VM.	 
+	 * */
 	public Bin_PhysicalMachine gethostPM() {
 		return  hostPM;
 	}
 	
+	/**
+	 * Setter for the hostPM
+	 * @param bin
+	 * 			The new host.
+	 */
 	public void sethostPM(Bin_PhysicalMachine bin) {
 		this.hostPM = bin;
 	}
-	
 }

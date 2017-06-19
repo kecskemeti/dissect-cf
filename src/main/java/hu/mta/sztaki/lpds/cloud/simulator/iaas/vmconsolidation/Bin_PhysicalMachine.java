@@ -12,22 +12,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 
 public class Bin_PhysicalMachine {
 	
-	PhysicalMachine pm; // Verweis auf die pm, die hier repräsentiert werden soll. wird für das Speichern der Aktion benötigt
+	private PhysicalMachine pm; 
 	ArrayList <Item_VirtualMachine> vmList;
-	double cores;
-	double perCoreProcessing;
-	long memory;
+	
+	ResourceVector totalResources;
+	ResourceVector availableResources;
 	
 	State state;
-	
-	double availableCores;
-	double availablePerCoreProcessing;
-	long availableMemory;
-	
 	
 	/**
 	 * This represents a Phsyical Machine of the simulator. It is abstract and inherits only the methods and properties
 	 * which are necassary to do the consolidation inside this model.
+	 * The defined treshold is between 25 % and 75 % of the total resources. If its greater than 75 % or less than 25 %,
+	 * the state of the PM switches to OVERLOADED or UNDERLOADED.
 	 * 
 	 * @param pm
 	 * 			The real Physical Machine in the Simulator.
@@ -43,11 +40,12 @@ public class Bin_PhysicalMachine {
 	
 	public Bin_PhysicalMachine(PhysicalMachine pm, ArrayList <Item_VirtualMachine> vm, double cores, double pCP, long mem) {
 		
-		this.pm = pm;  
+		this.setPM(pm);  
 		setVMs(vm);
-		this.cores = cores;
-		this.perCoreProcessing = pCP;
-		this.memory = mem;
+		
+		totalResources = new ResourceVector(cores, pCP, mem);
+		availableResources = new ResourceVector(cores, pCP, mem);
+		
 		
 		//this.state = state;
 		
@@ -61,23 +59,54 @@ public class Bin_PhysicalMachine {
 		}
 		
 		for(int i = 0; i < getVMs().size(); i++) {
-			consumeResources(getVMs().get(i).getRequiredCPUs(), 
-					getVMs().get(i).getRequiredProcessingPower(), getVMs().get(i).getRequiredMemory());
+			consumeResources(getVMs().get(i));
 		}
 		
 		checkLoad();
 		
 	}
 	
+	/**
+	 * @return the real pm
+	 */
+	public PhysicalMachine getPM() {
+		return pm;
+	}
+
+	/**
+	 * @param pm 
+	 * 			the pm to be set
+	 */
+	public void setPM(PhysicalMachine pm) {
+		this.pm = pm;
+	}
+
+	/**
+	 * Checks if there are any VMs on this PM.
+	 * @return true if VMs are running in this PM.
+	 */
+	
+	public boolean isHostingVMs() {
+		return !getVMs().isEmpty();
+	}
+	
+	
+	/**
+	 * A String which contains all available resources of this PM.
+	 * @return cores, perCoreProcessing and memory of the PM in a single String.
+	 */
+	
+	public ResourceVector getAvailableResources() {
+		return this.availableResources;
+	}	
 	
 	/**
 	 * A String which contains all resources of this PM.
 	 * @return cores, perCoreProcessing and memory of the PM in a single String.
 	 */
 	
-	public String Resources() {
-		return "ResourceConstraints(C:" + getRequiredCPUs() + " P:" + getRequiredProcessingPower() + " M:"
-				+ getRequiredMemory() + ")";
+	public ResourceVector getTotalResources() {
+		return this.totalResources;
 	}
 	
 	
@@ -86,7 +115,7 @@ public class Bin_PhysicalMachine {
 	 * @return cores of the PM.
 	 */
 	public double getRequiredCPUs() {
-		return cores;
+		return totalResources.getCPUs();
 	}
 	
 	/**
@@ -95,7 +124,7 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	public double getRequiredProcessingPower() {
-		return perCoreProcessing;
+		return totalResources.getProcessingPower();
 	}
 	
 	/**
@@ -104,9 +133,55 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	public long getRequiredMemory() {
-		return memory;
+		return totalResources.getMemory();
 	}
-
+	
+	/**
+	 * Getter and Setter
+	 * @return available cores of the PM.
+	 */
+	public double getAvailableCPUs() {
+		return availableResources.getCPUs();
+	}
+	public void setAvCPUs(double d) {
+		availableResources.setCPUs(d);
+	}
+	
+	/**
+	 * Getter and Setter
+	 * @return available perCoreProcessing of the PM.
+	 */
+	
+	public double getAvailableProcessingPower() {
+		return availableResources.getProcessingPower();
+	}
+	public void setAvPCP(double d) {
+		availableResources.setPCP(d);
+	}
+	
+	/**
+	 * Getter and Setter
+	 * @return available memory of the PM.
+	 */
+	
+	public long getAvailableMemory() {
+		return availableResources.getMemory();
+	}
+	public void setAvMem(long d) {
+		availableResources.setMem(d);
+	}
+	
+	/**
+	 * Getter and Setter for VMlist
+	 * @return vmList
+	 */
+	
+	public ArrayList <Item_VirtualMachine> getVMs() {
+		return vmList;
+	}
+	public void setVMs(ArrayList <Item_VirtualMachine> vms) {
+		this.vmList = vms;
+	}
 
 	/**
 	 * The possible States for a PM in this abstract modell.
@@ -146,126 +221,13 @@ public class Bin_PhysicalMachine {
 	};
 	
 	/**
-	 * Now all needed methods are going to be created for working with the PM inside the abstract model.
-	 * To be exact, we need methods for switching off, switching on, migrating, get the VMs, change the States,
-	 * consume resources.
+	 * Getter for the State.
+	 * @return actual State.
 	 */
 	
-	
-	
-	
-	
-	/**
-	 * In this method the status of each PM in the simulation is considered.
-	 * To do so, the methods 'underloaded' and 'overloaded' are used, which 
-	 * check if the used resources are more or less than the defined threshold for
-	 * overloaded / underloaded. 
-	 * At the end every PM has a status which fits to the load.
-	 */
-	
-	protected void checkLoad() {
-		if(isHostingVMs() == false) {
-			changeState(State.EMPTY_RUNNING);
-		}
-		else {
-			if(underloaded())  {
-				changeState(State.UNDERLOADED_RUNNING);
-			}
-			else {
-				if(overloaded()) {
-						changeState(State.OVERLOADED_RUNNING);
-				}
-				else
-					changeState(State.NORMAL_RUNNING);
-				}	
-			}
-		}
-	
-	/**
-	 * Method for checking if the actual PM is overloaded.
-	 * 
-	 * @return true if overloaded, false otherwise
-	 */
-	
-	private boolean overloaded() {
-		
-		if(this.getRequiredCPUs() - this.getAvailableCPUs() >= 0.75 || this.getRequiredMemory() - this.getAvailableMemory() >= 0.75 
-				|| this.getRequiredProcessingPower() - this.getAvailableProcessingPower() >= 0.75) {
-			return true;
-		}
-		else
-			return false;
+	public State getState() {
+		return this.state;
 	}
-	
-	/**
-	 * Method for checking if the actual PM is underloaded.
-	 * 
-	 * @return true if underloaded, false otherwise	  
-	 */
-	
-	private boolean underloaded() {
-		
-		if(this.getRequiredCPUs() - this.getAvailableCPUs() <= 0.25 || this.getRequiredMemory() - this.getAvailableMemory() <= 0.25 
-				|| this.getRequiredProcessingPower() - this.getAvailableProcessingPower() <= 0.25) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	
-	
-	/**
-	 * Getter for a specific VM.
-	 * @param position
-	 * 			The desired position where the VM is.
-	 * @return
-	 * 			The desired VM.
-	 */
-	
-	public Item_VirtualMachine getVM(int position) {
-		return getVMs().get(position);
-	}
-	
-	
-	
-	
-	
-	/**
-	 * Standard Migration for one VM.
-	 * 
-	 * in arbeit
-	 * 
-	 * @param vm
-	 * 			The VM which is going to be migrated.
-	 * @param target
-	 * 			The target PM where to migrate.
-	 */
-	
-	public void migrateVM(Item_VirtualMachine vm, Bin_PhysicalMachine target) {
-		
-		while(this.getState() == State.OVERLOADED_RUNNING || this.getState() == State.UNDERLOADED_RUNNING) {
-			
-			if(target.getAvailableCPUs() >= vm.getRequiredCPUs() && target.getAvailableMemory() >= vm.getRequiredMemory()
-					&& target.getAvailableProcessingPower() >= vm.getRequiredProcessingPower())	{
-				
-				try{
-					target.vmList.add(vm);
-				}
-				catch (NullPointerException ex){
-					return; //no PM found to migrate
-				}
-				
-				
-				this.vmList.remove(vm);
-				vm.sethostPM(target);
-			}
-			else {
-				return; //no migration needed anymore
-			}
-		}
-	}
-	
 	
 	/**
 	 * changes the state of the PM so the graph can give the switch off information
@@ -296,6 +258,95 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
+	 * In this method the status of each PM in the simulation is considered.
+	 * For that, the methods underloaded() and overloaded() are written.
+	 */
+	
+	protected void checkLoad() {
+		if(isHostingVMs() == false) {
+			changeState(State.EMPTY_RUNNING);
+		}
+		else {
+			if(underloaded())  {
+				changeState(State.UNDERLOADED_RUNNING);
+			}
+			else {
+				if(overloaded()) {
+						changeState(State.OVERLOADED_RUNNING);
+				}
+				else
+					changeState(State.NORMAL_RUNNING);
+				}	
+			}
+		}
+	
+	/**
+	 * Method for checking if the actual PM is overloaded.
+	 * @return true if overloaded, false otherwise
+	 */
+	
+	private boolean overloaded() {
+		
+		if(totalResources.compareToOverloaded(availableResources)) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Method for checking if the actual PM is underloaded.
+	 * @return true if underloaded, false otherwise	  
+	 */
+	
+	private boolean underloaded() {
+		
+		if(totalResources.compareToUnderloaded(availableResources)) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Getter for a specific VM.
+	 * @param position
+	 * 			The desired position where the VM is.
+	 * @return
+	 * 			The desired VM.
+	 */
+	
+	public Item_VirtualMachine getVM(int position) {
+		return getVMs().get(position);
+	}
+	
+	/**
+	 * Standard Migration for one VM.
+	 * 
+	 * @param vm
+	 * 			The VM which is going to be migrated.
+	 * @param target
+	 * 			The target PM where to migrate.
+	 */
+	
+	public void migrateVM(Item_VirtualMachine vm, Bin_PhysicalMachine target) {
+		
+		target.getVMs().add(vm);
+		target.consumeResources(vm);
+		this.deconsumeResources(vm);
+		vm.sethostPM(target);
+		
+		//löschen der VM aus dieser vmlist
+		for(int i = 0; i < getVMs().size(); i++) {
+			Item_VirtualMachine x = getVM(i);
+			
+			if(x.equals(vm)) {
+				this.getVMs().remove(i);
+			}
+		}
+	}
+	
+	/**
 	 *  This method handles the consupmtion of resources of the PM by hosting VMs.
 	 * 
 	 * @param cores
@@ -305,124 +356,23 @@ public class Bin_PhysicalMachine {
 	 * @param mem
 	 * 			The memory which is going to get unavailable.
 	 */
-	
-	public void consumeResources(double cores, double corePower, long mem) {
-		setAvCPUs(cores);
-		setAvPCP(corePower);
-		setAvMem(mem);
+
+	public void consumeResources(Item_VirtualMachine x) {
+		ResourceVector second = new ResourceVector(x.getRequiredCPUs(), x.getRequiredProcessingPower(), x.getRequiredMemory());
+		availableResources.subtract(second);
 	}
 	
-	
-	
-	
 	/**
-	 * This method is for the migration of an ArrayList. If the migration cannot fulfill
-	 * its full size (in case one or more VMs cannot be migrated), the migration will be 
-	 * get undone. 
+	 * This method is for the migration of an ArrayList. If a VM is moved, the consumed
+	 * resources need to be restored to the available resources.
+	 * 
 	 * @param x
 	 * 			The Item_VirtualMachine which is going to be demigrated. 
 	 */
 	
-	public void deconsumeRes(Item_VirtualMachine x) {
+	public void deconsumeResources(Item_VirtualMachine x) {
 		
-		double vmCores = x.getRequiredCPUs();
-		double vmPCP = x.getRequiredProcessingPower();
-		long vmMem = x.getRequiredMemory();
-		
-		availableCores = getAvailableCPUs() + vmCores;
-		availablePerCoreProcessing = getAvailableProcessingPower() + vmPCP;
-		availableMemory = getAvailableMemory() + vmMem;
-		
+		ResourceVector second = new ResourceVector(x.getRequiredCPUs(), x.getRequiredProcessingPower(), x.getRequiredMemory());
+		availableResources.add(second);
 	}
-
-
-	/**
-	 * Additional methods.
-	 */
-	
-	/**
-	 * A String which contains all available resources of this PM.
-	 * @return
-	 * 			cores, perCoreProcessing and memory of the PM in a single String.
-	 */
-	
-	public String availableResources() {
-		return "ResourceConstraints(C:" + getAvailableCPUs() + " P:" + getAvailableProcessingPower() + " M:"
-				+ getAvailableMemory() + ")";
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return
-	 * 			available cores of the PM.
-	 */
-	public double getAvailableCPUs() {
-		return availableCores;
-	}
-	
-	public void setAvCPUs(double d) {
-		availableCores = availableCores - d;
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return
-	 * 			available perCoreProcessing of the PM.
-	 */
-	
-	public double getAvailableProcessingPower() {
-		return availablePerCoreProcessing;
-	}
-	
-	public void setAvPCP(double d) {
-		availablePerCoreProcessing = availablePerCoreProcessing - d;
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return
-	 * 			available memory of the PM.
-	 */
-	
-	public long getAvailableMemory() {
-		return availableMemory;
-	}
-
-	public void setAvMem(long d) {
-		availableMemory = availableMemory - d;
-	}
-	
-	
-	
-	/**
-	 * Getter for VMlist
-	 * @return vmList
-	 */
-	
-	public ArrayList <Item_VirtualMachine> getVMs() {
-		return vmList;
-	}
-	
-	/**
-	 * Setter for VMlist
-	 */
-	
-	public void setVMs(ArrayList <Item_VirtualMachine> vms) {
-		this.vmList = vms;
-	}
-	
-	/**
-	 * Checks if there are any VMs on this PM.
-	 * 
-	 * @return true if VMs are running in this PM.
-	 */
-	
-	public boolean isHostingVMs() {
-		return !getVMs().isEmpty();
-	}
-	
-	public State getState() {
-		return this.state;
-	}
-
 }
