@@ -18,7 +18,8 @@
  *  
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
- *  
+ *
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -55,7 +56,8 @@ public class VMTest extends IaaSRelatedFoundation {
 	VirtualAppliance va, vaWithBG;
 	VirtualMachine centralVM, centralVMwithBG;
 	Repository repo;
-
+	final static long defaultMemory = 1000;
+	
 	@Before
 	public void initializeObject() throws Exception {
 		pm = dummyPMcreator();
@@ -405,6 +407,34 @@ public class VMTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 		}
 	}
+	
+	private void doLiveMigration(PhysicalMachine from, PhysicalMachine to, VirtualMachine vm, boolean sim)
+			throws VMManagementException, NetworkException {
+		from.migrateVMLive(vm, to);
+		if (sim) {
+			Timed.simulateUntilLastEvent();
+		}
+	}
+
+	private PhysicalMachine simpleLiveMigrate(final VirtualMachine toUse)
+			throws VMManagementException, NetworkException {
+		final PhysicalMachine pmtarget = createAndExecutePM();
+		Assert.assertTrue("The target PM should not have anything in its storage",
+				pmtarget.localDisk.getMaxStorageCapacity() == pmtarget.localDisk.getFreeStorageCapacity());
+		switchOnVMwithMaxCapacity(toUse, true);
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		final double ctLen = 100 * aSecond;
+		toUse.newComputeTask(ctLen, 1, cae, 1.0, centralVM.getTotalMemoryPages());
+		Timed.simulateUntil(Timed.getFireCount() + aSecond);
+		doLiveMigration(pm, pmtarget, toUse, true);
+		// Assert.assertTrue("Rounds number:
+		// "+toUse.getRounds(),toUse.getRounds()==VirtualMachine.numRound);
+		Assert.assertTrue("VM is not on its new host", pmtarget.publicVms.contains(toUse));
+		Assert.assertFalse("VM is still on its old host", pm.publicVms.contains(toUse));
+		Assert.assertEquals("VM is not properly resumed", VirtualMachine.State.RUNNING, toUse.getState());
+		Assert.assertTrue("Source VM should have minority of the consumption", pm.getTotalProcessed()<pmtarget.getTotalProcessed());
+		return pmtarget;
+	}
 
 	private PhysicalMachine simpleMigrate(final VirtualMachine toUse) throws VMManagementException, NetworkException {
 		final PhysicalMachine pmtarget = createAndExecutePM();
@@ -431,6 +461,16 @@ public class VMTest extends IaaSRelatedFoundation {
 	public void simpleMigration() throws VMManagementException, NetworkException {
 		final long beforeSize = pm.localDisk.getFreeStorageCapacity();
 		PhysicalMachine pmtarget = simpleMigrate(centralVM);
+		Assert.assertEquals("The source of the migration should not have any storage occupied by the VM's remainders",
+				beforeSize, pm.localDisk.getFreeStorageCapacity());
+		Assert.assertEquals("The target of the migration should only have the disk of the VM",
+				pmtarget.localDisk.getMaxStorageCapacity() - va.size, pmtarget.localDisk.getFreeStorageCapacity());
+	}
+
+	@Test(timeout = 100)
+	public void simpleLiveMigration() throws VMManagementException, NetworkException {
+		final long beforeSize = pm.localDisk.getFreeStorageCapacity();
+		PhysicalMachine pmtarget = simpleLiveMigrate(centralVM);
 		Assert.assertEquals("The source of the migration should not have any storage occupied by the VM's remainders",
 				beforeSize, pm.localDisk.getFreeStorageCapacity());
 		Assert.assertEquals("The target of the migration should only have the disk of the VM",
@@ -641,5 +681,19 @@ public class VMTest extends IaaSRelatedFoundation {
 			Assert.assertNull("Should not have any resource allocations starting from state " + st,
 					centralVM.getResourceAllocation());
 		}
+	}
+
+	@Test(timeout = 100)
+	public void testGetTotalDR() throws StateChangeException, NetworkException, VMManagementException {
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 0.5,
+				centralVM.getTotalMemoryPages() / 2);
+		Timed.fire();
+		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.25);
+		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 1.0,
+				centralVM.getTotalMemoryPages() / 2);
+		Timed.fire();
+		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.75);
 	}
 }

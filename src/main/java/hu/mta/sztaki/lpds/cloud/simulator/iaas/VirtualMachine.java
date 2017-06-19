@@ -20,6 +20,7 @@
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
  *  (C) Copyright 2016, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -28,6 +29,8 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -35,6 +38,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications.VMStateChangeNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -81,12 +85,37 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  * 
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
  *         Moores University, (c) 2016"
+ * @author "Vincenzo De Maio, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2015"
  * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
  *         of Innsbruck (c) 2013"
  * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
  *         MTA SZTAKI (c) 2012,2014-15"
  */
 public class VirtualMachine extends MaxMinConsumer {
+	/**
+	 * needed for live migration: pageSize: memory page size in Mbytes
+	 */
+	public final static long pageSize = 4;
+	public final static long numRound = 1;
+	private final static long WWS_MAX_SIZE = 262144;
+	private int rounds = 0;
+	private boolean underLiveMigrate = false;
+
+	public int getRounds() {
+		return rounds;
+	}
+
+	public long getPageSize() {
+		return pageSize;
+	}
+
+	private StorageObject identifyWWS(final String id) {
+		return new StorageObject(id,
+				underLiveMigrate ? (long) ((getTotalMemoryPages() * pageSize) * getTotalDirtyingRate())
+						: ra.allocated.getRequiredMemory(),
+				false);
+	}
 
 	/**
 	 * This class is defined to ensure one can differentiate errors that were
@@ -209,6 +238,55 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 		}
 	};
+
+	public static class ResourceMemoryConsumption extends ResourceConsumption {
+
+		/**
+		 * This class models the resource consumption of a memory-intensive
+		 * task.
+		 *
+		 * @param memDirtyingRate
+		 *            percentage of pages dirtied every second
+		 * @param pageNum
+		 *            total number of pages associated to this consumption
+		 */
+		/**
+		 * @see ResourceConsumption
+		 *
+		 */
+		public ResourceMemoryConsumption(final double total, final double limit, final ResourceSpreader consumer,
+				final ResourceSpreader provider, final ConsumptionEvent e) {
+			super(total, limit, consumer, provider, e);
+			setMemDirtyingRate(0.0);
+			this.memSizeInBytes = 0;
+		}
+
+		/**
+		 *
+		 * @see ResourceConsumption
+		 * @param pageNum
+		 * @param memDirtyingRate
+		 */
+		public ResourceMemoryConsumption(final double total, final double limit, final ResourceSpreader consumer,
+				final ResourceSpreader provider, final ConsumptionEvent e, final double pageNum,
+				final double memDirtyingRate) {
+			super(total, limit, consumer, provider, e);
+			this.pageNum = pageNum;
+			setMemDirtyingRate(memDirtyingRate);
+			this.memSizeInBytes = pageNum * pageSize;
+		}
+
+		public void suspend() {
+			super.suspend();
+			this.currentMemDirtyingRate = 0.0;
+		}
+
+		public boolean registerConsumption() {
+			this.currentMemDirtyingRate = memDirtyingRate;
+			return super.registerConsumption();
+		}
+
+	}
 
 	/**
 	 * The operations to do on shutdown
@@ -735,6 +813,102 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
+	 * Moves all data necessary for the VMs execution from its current physical
+	 * machine to another.
+	 *
+	 * WARNING: in cases when the migration cannot complete, the VM will be left
+	 * in a special suspended state: the SUSPENDED_MIG. This allows users to
+	 * recover VMs and initiate the migration procedure to someplace else.
+	 *
+	 *
+	 * @param target
+	 *            the new resource allocation on which the resume operation
+	 *            should take place
+	 * @throws StateChangeException
+	 *             if the VM is not in running state currently
+	 * @throws VMManagementException
+	 *             if the system have had troubles during the suspend operation.
+	 * @throws NetworkException
+	 *             if target host is not reachable
+	 */
+
+	public void migrateLive(final PhysicalMachine.ResourceAllocation target)
+			throws VMManagementException, NetworkNode.NetworkException {
+		if (suspendedStates.contains(currState)) {
+			throw new VMManagementException("Live migration is not allowed from suspended states");
+		}
+		underLiveMigrate = true;
+		// Cross cloud migration needs an update on the vastorage also,
+		// otherwise the VM will use a long distance repository for its
+		// background network load!
+
+		final boolean[] cancelMigration = new boolean[1];
+
+		if (va.getBgNetworkLoad() <= 0 && ra != null) {
+			NetworkNode.checkConnectivity(ra.getHost().localDisk, target.getHost().localDisk);
+		}
+
+		// Initial transfer
+		final String memid = "VM-Memory-State-of-" + hashCode();
+		final String tmemid = "Temp-" + memid;
+		final Repository pmdisk = ra.getHost().localDisk;
+		savedmemory = new StorageObject(tmemid, ra.allocated.getRequiredMemory(), false);
+		if (!pmdisk.registerObject(savedmemory)) {
+			throw new VMManagementException(
+					"Not enough space on localDisk for the suspend operation of " + savedmemory);
+		}
+		final Repository to = target.getHost().localDisk;
+		class EndRoundEvent extends ConsumptionEventAdapter {
+
+			@Override
+			public void conComplete() {
+				if (!cancelMigration[0]) {
+					rounds++;
+				}
+				to.deregisterObject(savedmemory.id);
+				pmdisk.deregisterObject(savedmemory.id);
+
+				if (savedmemory.size > WWS_MAX_SIZE && rounds < numRound) {
+					String tmemid = "VM-Memory-State-of-" + hashCode();
+					savedmemory = identifyWWS(tmemid);
+					try {
+						pmdisk.registerObject(savedmemory);
+						vatarget.requestContentDelivery(tmemid, to, new EndRoundEvent());
+					} catch (Exception e) {
+
+					}
+				} else {
+					try {
+						suspend(new EventSetup(State.MIGRATING) {
+							@Override
+							public void changeEvents(VirtualMachine onMe) {
+								super.changeEvents(onMe);
+								try {
+									actualMigration(target);
+								} catch (NetworkException e) {
+									// Ignore. This should never happen we have
+									// checked for
+									// the connection beforehand.
+								}
+							}
+						});
+					} catch (VMManagementException ex) {
+						Logger.getLogger(VirtualMachine.class.getName()).log(Level.SEVERE, null, ex);
+					} catch (NetworkException ex) {
+						Logger.getLogger(VirtualMachine.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+			}
+
+		}
+		EndRoundEvent endround = new EndRoundEvent();
+
+		// Initial memory transfer
+		vatarget.requestContentDelivery(tmemid, to, endround);
+
+	}
+
+	/**
 	 * Destroys the VM, and cleans up all repositories that could contain disk
 	 * or memory states.
 	 * 
@@ -835,7 +1009,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 		final String memid = "VM-Memory-State-of-" + hashCode();
 		final Repository pmdisk = ra.getHost().localDisk;
-		savedmemory = new StorageObject(memid, ra.allocated.getRequiredMemory(), false);
+		savedmemory = identifyWWS(memid);
 		setState(State.SUSPEND_TR);
 		class SuspendComplete extends ConsumptionEventAdapter {
 			@Override
@@ -879,6 +1053,7 @@ public class VirtualMachine extends MaxMinConsumer {
 					}
 					suspendedTasks = null;
 				}
+				underLiveMigrate = false;
 			}
 		}
 		if (!pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())) {
@@ -945,6 +1120,10 @@ public class VirtualMachine extends MaxMinConsumer {
 		return consumingStates.contains(currState) ? super.isAcceptableConsumption(con) : false;
 	}
 
+	private static interface RCFactoryForTask {
+		ResourceConsumption create();
+	}
+
 	/**
 	 * This is the function that users are expected to use to create computing
 	 * tasks on the VMs (not using resourceconsumptions directly). The computing
@@ -977,10 +1156,19 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public ResourceConsumption newComputeTask(final double total, final double limit,
 			final ResourceConsumption.ConsumptionEvent e) throws NetworkException {
+		return finalizeTaskCreation(new RCFactoryForTask() {
+			@Override
+			public ResourceConsumption create() {
+				return new ResourceConsumption(total, limit, VirtualMachine.this, ra.getHost(), e);
+			}
+		});
+	}
+
+	private ResourceConsumption finalizeTaskCreation(RCFactoryForTask factory) throws NetworkException {
 		if (ra == null) {
 			return null;
 		}
-		ResourceConsumption cons = new ResourceConsumption(total, limit, this, ra.getHost(), e);
+		ResourceConsumption cons = factory.create();
 		if (cons.registerConsumption()) {
 			final long bgnwload = va.getBgNetworkLoad();
 			if (bgnwload > 0) {
@@ -993,6 +1181,18 @@ public class VirtualMachine extends MaxMinConsumer {
 		} else {
 			return null;
 		}
+	}
+
+	public ResourceConsumption newComputeTask(final double total, final double limit,
+			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final double pageNumber)
+			throws StateChangeException, NetworkException {
+		return finalizeTaskCreation(new RCFactoryForTask() {
+			@Override
+			public ResourceConsumption create() {
+				return new ResourceMemoryConsumption(total, limit, VirtualMachine.this, ra.getHost(), e, pageNumber,
+						dirtyingRate);
+			}
+		});
 	}
 
 	/**
@@ -1039,6 +1239,26 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public void setNonservable() {
 		setState(State.NONSERVABLE);
+	}
+
+	/**
+	 *
+	 * @return the total dirtying rate on the VM
+	 */
+	public double getTotalDirtyingRate() {
+		double dirtyBytes = 0.0;
+		for (ResourceConsumption r : this.underProcessing) {
+			dirtyBytes += (r.getMemDirtyingRate() * r.getMemSizeInBytes());
+		}
+		return dirtyBytes / getMemSize();
+	}
+
+	public double getTotalMemoryPages() {
+		return (double) (getMemSize() / pageSize);
+	}
+
+	public long getMemSize() {
+		return this.ra.allocated.getRequiredMemory();
 	}
 
 	/**

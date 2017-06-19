@@ -45,7 +45,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 	public static final double permsProcessing = processingTasklen / aSecond;
 	MaxMinProvider offer;
 	MaxMinConsumer utilize;
-	ResourceConsumption con;
+	protected ResourceConsumption con;
 
 	public ResourceConsumption createAUnitConsumption(final ConsumptionEvent ce) {
 		return new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, offer,
@@ -115,14 +115,14 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		Assert.assertFalse("Consumption should not be cancelled before registration", ce.isCancelled());
 	}
 
-	private double preSuspendPhase() {
+	protected double preSuspendPhase() {
 		Assert.assertTrue("Should be able to register an unprocessed consumption", con.registerConsumption());
 		double before = con.getUnProcessed();
 		Timed.simulateUntil(Timed.getFireCount() + 500);
 		return before;
 	}
 
-	private void pastSuspendChecks(double before) {
+	protected void pastSuspendChecks(double before) {
 		double after = con.getUnProcessed();
 		Assert.assertTrue("Should already have some consumption recorded", after != before);
 		Assert.assertTrue("Consumption should be incomplete", after != 0);

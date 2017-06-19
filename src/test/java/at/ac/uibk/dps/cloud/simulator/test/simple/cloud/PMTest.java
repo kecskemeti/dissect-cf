@@ -53,7 +53,7 @@ import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 
 public class PMTest extends IaaSRelatedFoundation {
-	final static int reqcores = 2, reqProcessing = 3, reqmem = 4,
+	final static int reqcores = 2, reqProcessing = 3, reqmem = 1000,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
 	final static ResourceConstraints smallConstraints = new ConstantConstraints(
 			reqcores / 2, reqProcessing, reqmem / 2);

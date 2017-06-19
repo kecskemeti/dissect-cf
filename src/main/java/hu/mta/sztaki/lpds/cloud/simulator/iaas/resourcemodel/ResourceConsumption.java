@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -45,7 +46,10 @@ import java.util.Comparator;
  * VirtualMachine.newComputeTask(), NetworkNode.initTransfer() and similar
  * functions.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Vincenzo De Maio, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2015"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
  * 
  */
 public class ResourceConsumption {
@@ -185,6 +189,16 @@ public class ResourceConsumption {
 	 */
 	boolean inassginmentprocess;
 
+	/**
+	 * Added for live migration memDirtyingRate: percentage of pages dirtied
+	 * pageNum: total number of pages associated to this consumption
+	 */
+	protected double currentMemDirtyingRate = 0.0;
+	protected double pageNum = 0;
+	protected double memDirtyingRate = 0.0;
+	protected double memSizeInBytes = 0;
+
+	
 	/**
 	 * The event to be fired when there is nothing left to process in this
 	 * consumption.
@@ -593,6 +607,28 @@ public class ResourceConsumption {
 			calcCompletionDistance();
 		}
 		return realLimit;
+	}
+	
+	public double getMemDirtyingRate() {
+		return currentMemDirtyingRate;
+	}
+
+	public void setMemDirtyingRate(double memDirtyingRate) {
+		if (memDirtyingRate < 0.0 || memDirtyingRate > 1.0)
+			throw new IllegalArgumentException("Dirtying rate must be between 0.0 and 1.0");
+		this.memDirtyingRate = memDirtyingRate;
+	}
+
+	public double getPageNum() {
+		return pageNum;
+	}
+
+	public void setPageNum(int pageNum) {
+		this.pageNum = pageNum;
+	}
+
+	public double getMemSizeInBytes() {
+		return memSizeInBytes;
 	}
 
 	/**
