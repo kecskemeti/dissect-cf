@@ -1,16 +1,14 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 
 /*
- * Abstrakte Klasse zum Speichern der Aktionen
+ * abstract class for saving the actions done
  */
 public class Action{
 	
 	int id;
-	ArrayList<Action> Vorgaenger = new ArrayList<Action>();
+	ArrayList<Action> previous = new ArrayList<Action>();
 	
 	Bin_PhysicalMachine source;
 	Bin_PhysicalMachine target;
@@ -27,12 +25,12 @@ public class Action{
 		this.shutdownpm = shutdownpm;
 	}
 	
-	public void addVorgaenger(Action v){
-		this.Vorgaenger.add(v);
+	public void addPrevious(Action v){
+		this.previous.add(v);
 	}
 	
-	public ArrayList<Action> getVorgaenger(){
-		return Vorgaenger;
+	public ArrayList<Action> getPrevious(){
+		return previous;
 	}
 	
 	public Bin_PhysicalMachine getTarget(){

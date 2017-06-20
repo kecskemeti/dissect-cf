@@ -7,6 +7,14 @@ public class ResourceVector{
 	double perCoreProcessing;
 	long memory;
 	
+	/**
+	 * The constructor for a ResourceVector. This class represents the cores, perCoreProcessingPower
+	 * and the memory for either a PM or a VM.
+	 * 
+	 * @param cores
+	 * @param perCoreProcessing
+	 * @param memory
+	 */
 	
 	public ResourceVector(double cores, double perCoreProcessing, long memory) {
 		
@@ -77,9 +85,9 @@ public class ResourceVector{
 		return erg;
 	}
 	
-	public boolean compareToOverloaded(ResourceVector second) {
-		if(this.getCPUs() - second.getCPUs() >= 0.75 || this.getMemory() - second.getMemory() >= 0.75 
-				|| this.getProcessingPower() - this.getProcessingPower() >= 0.75){
+	public boolean compareToOverloaded(ResourceVector available) {
+		if(this.getCPUs() - available.getCPUs() >= 0.8 || this.getMemory() - available.getMemory() >= 0.8 
+				|| this.getProcessingPower() - available.getProcessingPower() >= 0.8){
 			return true;
 		}
 		else {
@@ -87,9 +95,9 @@ public class ResourceVector{
 		}
 	}
 	
-	public boolean compareToUnderloaded(ResourceVector second) {
-		if(this.getCPUs() - second.getCPUs() <= 0.25 && this.getMemory() - second.getMemory() <= 0.25 
-				&& this.getProcessingPower() - this.getProcessingPower() <= 0.25){
+	public boolean compareToUnderloaded(ResourceVector available) {
+		if(this.getCPUs() - available.getCPUs() <= 0.2 && this.getMemory() - available.getMemory() <= 0.2 
+				&& this.getProcessingPower() - available.getProcessingPower() <= 0.2){
 			return true;
 		}
 		else {

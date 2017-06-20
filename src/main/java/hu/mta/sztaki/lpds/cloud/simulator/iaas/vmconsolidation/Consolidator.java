@@ -14,18 +14,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 	 * This class gives the necessary variables and methods for VM consolidation.
 	 * The main idea is to make an abstract model out of the given PMs and its VMs with the original
 	 * properties and let an algorithm (optimize) do the new placement of the VMs in order
-	 * to save power by shutting down unused PMs.
+	 * to save power by shutting down unused PMs. Therefore a threshold is made to set
+	 * the states where migrations are needed of the PMs.
 	 * 
-	 * After this process one (or more) lists shall be created with the following information:
+	 * After this process one graph shall be created with the following information:
 	 * 		1. Which PMs shall start?
 	 * 		2. Which VMs on which PMs shall be migrated to target PMs?
 	 * 		3. Which PMs shall be shut down?
 	 * The order plays an important role, because it could be necessary to do Steps 1 and 2
 	 * Simultaneously. 
 	 * 
-	 * At last the given list(s) have to be given to another method, which implements a graph out of
-	 * the items in the list. This graph can be implemented as an EventListener with constraints to
-	 * do the changes in the real simulation.
+	 * At last the created graph out of the changes needs to get worked with. This graph 
+	 * has all changes saved in nodes (actions) which are going to be done inside the simulator
+	 * when there is nothing to be done before doing the action on the actual node.
 	 */
 
 
@@ -34,7 +35,7 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 	
 	IaaSService basic;
 	ArrayList <Bin_PhysicalMachine> bins = new ArrayList <Bin_PhysicalMachine>();
-	//ArrayList zum Speichern der Aktionen im Modell, die auf den übergebenen Service angewandt werden sollen
+	//ArrayList for saving the actions which have to be performed inside the simulator
 	ArrayList <Action> actions = new ArrayList<Action>();
 	
 	public Consolidator(IaaSService parent) throws Exception {
@@ -50,16 +51,20 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 	ArrayList <Bin_PhysicalMachine> instantiate() {
 		ArrayList <Bin_PhysicalMachine> pmList = new ArrayList<Bin_PhysicalMachine>();
 		for (PhysicalMachine pm : basic.machines) {
+			
 			ArrayList <Item_VirtualMachine> vmList = new ArrayList <Item_VirtualMachine>();
 			ArrayList <VirtualMachine> items = new ArrayList <VirtualMachine>();
 			items.addAll(pm.listVMs());
-			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory());
-			//if(!pm.isRunning()){
-			//	act.changeState(act.state.off);
-			//}	
-			for(int i = 0; i < items.size(); i++){
-				vmList.add(new Item_VirtualMachine(items.get(i), act, items.get(i).getResourceAllocation().allocated.getRequiredCPUs(), items.get(i).getResourceAllocation().allocated.getRequiredProcessingPower(), items.get(i).getResourceAllocation().allocated.getRequiredMemory()));
+			
+			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), 
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory());
+			
+			for(int i = 0; i < pm.listVMs().size(); i ++) {
+				vmList.add(new Item_VirtualMachine(items.get(i), act, items.get(i).getResourceAllocation().allocated.getRequiredCPUs(), 
+						items.get(i).getResourceAllocation().allocated.getRequiredProcessingPower(), 
+						items.get(i).getResourceAllocation().allocated.getRequiredMemory()));
 			}
+			
 			act.setVMs(vmList);
 			pmList.add(act);
 		}
@@ -91,31 +96,31 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 	public void createGraph(ArrayList<Action> actions) {
 		
 		for(int i = 0; i < actions.size(); i++) {
-			//aktuelle Aktion stellt eine Migration dar
+			//actual action is a migration
 			if(actions.get(i).getTarget() != null){
 				Action act = actions.get(i);
 				act.getItemVM().getVM().subscribeStateChange(this);
-				//Suche nach Aktionen, bei denen eine PM gestartet wird, die die aktuelle Migration zum Ziel hat
+				//looking for actions where a PM gets started, that is the target of this migration
 				for(int j = 0; j < actions.size(); i++) {
 					if(actions.get(j).getstartpm().equals(act.getTarget())){
-						act.addVorgaenger(actions.get(j));
+						act.addPrevious(actions.get(j));
 					}
 				}			
 			}
-			//aktuelle Aktion soll eine PM herunterfahren
+			//actual action shall shut down a PM
 			if(actions.get(i).getshutdownpm() != null){
 				Action act = actions.get(i);
 				act.getshutdownpm().getPM().subscribeStateChangeEvents(this);
-				//Suche nach Migrationen, die von der PM ausgehen, die heruntergefahren werden soll
+				//looking for migrations with this PM as source, which needs to get shut down
 				for(int j = 0; j < actions.size(); i++) {
 					if(actions.get(j).getSource().equals(act.getshutdownpm())){
-						act.addVorgaenger(actions.get(j));
+						act.addPrevious(actions.get(j));
 					}
 				}
 				
 			}
-			//aktuelle Aktion soll eine PM starten, 
-			//eine solche Aktion kann sofort  ausgefürt werden, hat keine Vorgänger
+			//actual action is starting a PM
+			//this can be done instantly, there can be no previous actions
 			if(actions.get(i).getstartpm() != null){
 				Action act = actions.get(i);
 				act.getstartpm().getPM().subscribeStateChangeEvents(this);
@@ -123,36 +128,39 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 		}
 	}
 	
+	//here the necessary actions are performed
+	//do the migration, shut a PM down, start a PM
 	public void performActions() throws VMManagementException, NetworkException{
 		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getTarget() != null && actions.get(i).getVorgaenger().isEmpty()){
+			if(actions.get(i).getTarget() != null && actions.get(i).getPrevious().isEmpty()){
 				PhysicalMachine source = actions.get(i).getSource().getPM();
 				PhysicalMachine target = actions.get(i).getTarget().getPM();
 				VirtualMachine vm = actions.get(i).getItemVM().getVM();
 				source.migrateVM(vm, target);
 			}
-			if(actions.get(i).getshutdownpm() != null && actions.get(i).getVorgaenger().isEmpty()){
+			if(actions.get(i).getshutdownpm() != null && actions.get(i).getPrevious().isEmpty()){
 				PhysicalMachine pm = actions.get(i).getshutdownpm().getPM();
 				pm.switchoff(null);
 			}
 			
-			if(actions.get(i).getstartpm() != null && actions.get(i).getVorgaenger().isEmpty()){
+			if(actions.get(i).getstartpm() != null && actions.get(i).getPrevious().isEmpty()){
 				PhysicalMachine pm = actions.get(i).getstartpm().getPM();
 				pm.turnon();
 			}
 		}
 	}
 	
-	//wenn eine Migration abgeschlossen ist, wird diese Aktion von den Vorgängerlisten der übrigen Knoten entfernt
+	//if a migration is succesful, this action gets removed of every other node which
+	//has this one as the previous element
 		@Override
 		public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
 				hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State newState) {
 			if(oldState.equals(VirtualMachine.State.MIGRATING) && newState.equals(VirtualMachine.State.RUNNING)){
 				for(int i = 0; i < actions.size(); i++){
-					if(!actions.get(i).getVorgaenger().isEmpty()){
-						for(int j = 0; j < actions.get(i).getVorgaenger().size(); j++){
-							if(actions.get(i).getVorgaenger().get(j).getItemVM().getVM().equals(vm)){
-								actions.get(i).getVorgaenger().remove(actions.get(i).getVorgaenger().get(j));
+					if(!actions.get(i).getPrevious().isEmpty()){
+						for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
+							if(actions.get(i).getPrevious().get(j).getItemVM().getVM().equals(vm)){
+								actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
 							}
 						}
 					}
@@ -172,16 +180,17 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 			}
 		}
 		
-		//wenn eine PM gestartet ist, wird diese Aktion von den Vorgängerlisten der übrigen Knoten entfernt
+		//if starting a PM is succesful, this action gets removed of every other node which
+		//has this one as the previous element
 		@Override
 		public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
 				hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
 			if(oldState.equals(PhysicalMachine.State.SWITCHINGON) && newState.equals(PhysicalMachine.State.RUNNING)){
 				for(int i = 0; i < actions.size(); i++){
-					if(!actions.get(i).getVorgaenger().isEmpty()){
-						for(int j = 0; j < actions.get(i).getVorgaenger().size(); j++){
-							if(actions.get(i).getVorgaenger().get(j).getstartpm().getPM().equals(pm)){
-								actions.get(i).getVorgaenger().remove(actions.get(i).getVorgaenger().get(j));
+					if(!actions.get(i).getPrevious().isEmpty()){
+						for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
+							if(actions.get(i).getPrevious().get(j).getstartpm().getPM().equals(pm)){
+								actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
 							}
 						}
 					}

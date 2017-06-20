@@ -40,14 +40,25 @@ public class Bin_PhysicalMachine {
 	
 	public Bin_PhysicalMachine(PhysicalMachine pm, ArrayList <Item_VirtualMachine> vm, double cores, double pCP, long mem) {
 		
-		this.setPM(pm);  
-		setVMs(vm);
+		this.pm = pm; 
+		this.vmList = vm;
 		
 		totalResources = new ResourceVector(cores, pCP, mem);
 		availableResources = new ResourceVector(cores, pCP, mem);
 		
-		
-		//this.state = state;
+		//the state is set if the vmlist is set
+	}
+	
+	/**
+	 * Getter and Setter for VMlist
+	 * @return vmList
+	 */
+	
+	public ArrayList <Item_VirtualMachine> getVMs() {
+		return vmList;
+	}
+	public void setVMs(ArrayList <Item_VirtualMachine> vms) {
+		this.vmList = vms;
 		
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			changeState(State.EMPTY_OFF);
@@ -58,12 +69,11 @@ public class Bin_PhysicalMachine {
 			}
 		}
 		
-		for(int i = 0; i < getVMs().size(); i++) {
-			consumeResources(getVMs().get(i));
+		for(int i = 0; i < vms.size(); i++) {
+			consumeResources(vms.get(i));
 		}
 		
 		checkLoad();
-		
 	}
 	
 	/**
@@ -71,14 +81,6 @@ public class Bin_PhysicalMachine {
 	 */
 	public PhysicalMachine getPM() {
 		return pm;
-	}
-
-	/**
-	 * @param pm 
-	 * 			the pm to be set
-	 */
-	public void setPM(PhysicalMachine pm) {
-		this.pm = pm;
 	}
 
 	/**
@@ -171,17 +173,7 @@ public class Bin_PhysicalMachine {
 		availableResources.setMem(d);
 	}
 	
-	/**
-	 * Getter and Setter for VMlist
-	 * @return vmList
-	 */
 	
-	public ArrayList <Item_VirtualMachine> getVMs() {
-		return vmList;
-	}
-	public void setVMs(ArrayList <Item_VirtualMachine> vms) {
-		this.vmList = vms;
-	}
 
 	/**
 	 * The possible States for a PM in this abstract modell.
@@ -205,17 +197,17 @@ public class Bin_PhysicalMachine {
 		EMPTY_RUNNING,
 		
 		/**
-		 * load balance is lower than 25 %, PM is Running
+		 * load is lower than 20 %, PM is Running
 		 */
 		UNDERLOADED_RUNNING,
 		
 		/**
-		 * load balance is higher than 75 %, PM is Running
+		 * load is higher than 80 %, PM is Running
 		 */
 		OVERLOADED_RUNNING,
 		
 		/**
-		 * load balance is between 25 % and 75 %, PM is Running
+		 * load is between 20 % and 80 %, PM is Running
 		 */
 		NORMAL_RUNNING
 	};
@@ -336,7 +328,7 @@ public class Bin_PhysicalMachine {
 		this.deconsumeResources(vm);
 		vm.sethostPM(target);
 		
-		//löschen der VM aus dieser vmlist
+		//deleting the VM out of the vmlist
 		for(int i = 0; i < getVMs().size(); i++) {
 			Item_VirtualMachine x = getVM(i);
 			
@@ -347,19 +339,14 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
-	 *  This method handles the consupmtion of resources of the PM by hosting VMs.
-	 * 
-	 * @param cores
-	 * 			The cores which are going to get unavailable.
-	 * @param corePower
-	 * 			The Power of the cores which is going to get unavailable.
-	 * @param mem
-	 * 			The memory which is going to get unavailable.
+	 *  This method handles the consumption of resources of the PM by hosting VMs.
+	 *  
+	 *  @param x
+	 * 			The Item_VirtualMachine which is going to be put on this PM. 
 	 */
 
 	public void consumeResources(Item_VirtualMachine x) {
-		ResourceVector second = new ResourceVector(x.getRequiredCPUs(), x.getRequiredProcessingPower(), x.getRequiredMemory());
-		availableResources.subtract(second);
+		availableResources.subtract(x.getResources());
 	}
 	
 	/**
@@ -371,8 +358,6 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	public void deconsumeResources(Item_VirtualMachine x) {
-		
-		ResourceVector second = new ResourceVector(x.getRequiredCPUs(), x.getRequiredProcessingPower(), x.getRequiredMemory());
-		availableResources.add(second);
+		availableResources.add(x.getResources());
 	}
 }

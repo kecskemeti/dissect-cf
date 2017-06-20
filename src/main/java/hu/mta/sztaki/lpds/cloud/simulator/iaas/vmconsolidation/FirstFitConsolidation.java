@@ -32,6 +32,8 @@ public class FirstFitConsolidation extends Consolidator {
 	
 	public FirstFitConsolidation(IaaSService parent) throws Exception {
 		super(parent);
+		this.basic = parent;
+		bins = instantiate();
 	}	
 	
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -118,9 +120,7 @@ public class FirstFitConsolidation extends Consolidator {
 		Item_VirtualMachine toMig = VM;
 		
 		//These are the constraints of the VM
-		double toMigCons_reqCPU = toMig.getRequiredCPUs();
-		double toMigCons_reqPP = toMig.getRequiredProcessingPower();
-		double toMigCons_reqMem = toMig.getRequiredMemory();
+		ResourceVector vmRes = toMig.getResources();
 		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {
@@ -128,13 +128,19 @@ public class FirstFitConsolidation extends Consolidator {
 			Bin_PhysicalMachine actualPM = this.bins.get(i);
 			
 			//These are the constraints of the actual PM
-			double PMcons_reqCPU = actualPM.getRequiredCPUs();
-			double PMcons_reqPP = actualPM.getRequiredProcessingPower();
-			double PMcons_reqMem = actualPM.getRequiredMemory();
+			ResourceVector pmRes = actualPM.getAvailableResources();
 			
-			if(PMcons_reqCPU > toMigCons_reqCPU && PMcons_reqPP > toMigCons_reqPP && PMcons_reqMem > toMigCons_reqMem) {
-				//the PM which first fits to the criteria
-				return actualPM;
+			if(pmRes.isGreater(vmRes)) {
+				
+				actualPM.consumeResources(toMig);
+				actualPM.checkLoad();
+				if(actualPM.getState().equals(State.OVERLOADED_RUNNING)) {
+					actualPM.deconsumeResources(toMig);
+				}
+				else {
+					//the PM which first fits to the criteria
+					return actualPM;
+				}
 			}
 		}	
 		return startPMs(toMig.getResources());	//get new PM
@@ -169,15 +175,15 @@ public class FirstFitConsolidation extends Consolidator {
 				actions.add(new Action(count++, bins.get(i), null, null, null, null));
 			}
 		}
-		return start;	 //keine PM kann gestartet werden
+		return start;	 //no PM can be started
 	}
 	
 	
 	/**
-	 * This method is created to find the VM with the biggest consumption on a PM. 
+	 * This method is created to get the first VM on a PM. 
 	 * @param x
 	 * 			The Variable which shows, which PM has to be used.
-	 * @return VM with the biggest consumption
+	 * @return first VM on a PM
 	 */
 	
 	private Item_VirtualMachine getFirstVM(Bin_PhysicalMachine x) {
@@ -188,9 +194,6 @@ public class FirstFitConsolidation extends Consolidator {
 	 * This method has to be called after all migrations were done. The given array
 	 * contains all information about which PMs have to be shut down and here
 	 * this will be done.
-	 * 
-	 * @param arr
-	 * 			the balance array, gives necessary information which PMS have to get shut down
 	 */
 	
 	public void shutEmptyPMsDown() {
@@ -204,28 +207,28 @@ public class FirstFitConsolidation extends Consolidator {
 	}
 	
 	/** Method for migrating overloaded PMs.
-	 * @return The ArrayList with all necassary migrations.
+	 * @return The ArrayList with all necessary migrations.
 	 */
 	
 	public void migrateOverloadedPM(Bin_PhysicalMachine source) {
 		
 		while(source.getState().equals(State.OVERLOADED_RUNNING)) {
 			
-			//jetzt immer eine vm mit ff raus nehmen und auf die ff pm migrieren.
+			//now taking the first VM on this PM and try to migrate it to a target
 
 			Item_VirtualMachine actual = getFirstVM(source);
 			Bin_PhysicalMachine pm = getMigPm(actual);
 			
 			
 			if(pm == null) {
-				return; // keine Migration mehr möglich
+				return; // no migration possible anymore
 			}
 			else {
 				actual.gethostPM().migrateVM(actual, pm);
 				actions.add(new Action(count++, null, source, pm, actual, null)); 
 			}
 			
-			//dabei immer prüfen, ob der status normal erreicht worden ist
+			//check if the state has changed
 			
 			source.checkLoad();
 			
@@ -243,14 +246,14 @@ public class FirstFitConsolidation extends Consolidator {
 		while(source.getState().equals(State.UNDERLOADED_RUNNING)) {
 			ArrayList <Item_VirtualMachine> migVMs = new ArrayList <Item_VirtualMachine>();
 			
-			//jetzt immer eine vm mit ff raus nehmen und auf die ff pm migrieren.
+			//now taking the first VM on this PM and try to migrate it to a target
 
 			Item_VirtualMachine actual = getFirstVM(source);
 			Bin_PhysicalMachine pm = getMigPm(actual); 
 			if(pm == null) {
 				
 				if(migVMs.isEmpty()) {
-					return; // keine Migration möglich, es wurde außerdem auch noch keine durchgeführt
+					return; // no migration possible and on one has been done previously
 				}
 				else {
 					for(int x = i ; x > 0; x--) {
@@ -268,7 +271,7 @@ public class FirstFitConsolidation extends Consolidator {
 				actions.add(new Action(count++, null, source, pm, actual, null)); 
 			}
 			
-			//dabei immer prüfen, ob der status normal erreicht worden ist
+			//check if the state has changed
 			
 			source.checkLoad();
 		}
