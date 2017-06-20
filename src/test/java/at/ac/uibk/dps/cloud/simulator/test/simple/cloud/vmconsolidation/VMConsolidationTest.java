@@ -16,6 +16,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Item_VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
@@ -56,8 +57,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	IaaSService basic;
 	FirstFitConsolidation ffc;
 	
-	final static int reqcores = 8, reqProcessing = 3, reqmem = 16,
-			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
+	
 	
 	
 	PhysicalMachine testOverPM1;
@@ -77,14 +77,16 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	Repository reqDisk = new Repository(123, "test1", 200, 200, 200, latmap);
 	
+	final static int reqcores = 8, reqProcessing = 3, reqmem = 16,
+			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
+	
 	//The different ResourceConstraints to get an other load for each PM
 	
-	final ResourceConstraints smallConstraints = new ConstantConstraints(
-			reqcores / 8, reqProcessing / 8, reqmem / 8);
+	final ResourceConstraints smallConstraints = new ConstantConstraints(1,1,4);
 	
-	final ResourceConstraints mediumConstraints = new ConstantConstraints(reqcores / 3, reqProcessing / 3, reqmem / 3);
+	final ResourceConstraints mediumConstraints = new ConstantConstraints(4, 1, 6);
 	
-	final ResourceConstraints bigConstraints = new ConstantConstraints(reqcores / 2, reqProcessing / 2, reqmem / 2);
+	final ResourceConstraints bigConstraints = new ConstantConstraints(4 , 2, 8);
 	
 	/**
 	 * Now three PMs and four VMs are going to be instantiated.
@@ -196,8 +198,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	//This test verifies, that it is possible to start and deploy all VMs
 	
-	//Edit: Jetzt starten alle, aber sind noch im start up und nicht im running
-	
 	@Test(timeout = 100)
 	public void simpleVMStartup() throws VMManagementException, NetworkException {
 		
@@ -279,9 +279,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				abstractVM1.gethostPM());
 		Assert.assertEquals("The 2. VM is not matching with the abstract version of it", ffc.getBins().get(0),
 				abstractVM2.gethostPM());
-		Assert.assertEquals("The 3. VM is not matching with the abstract version of it", ffc.getBins().get(0),
+		Assert.assertEquals("The 3. VM is not matching with the abstract version of it", ffc.getBins().get(1),
 				abstractVM3.gethostPM());
-		Assert.assertEquals("The 4. VM is not matching with the abstract version of it", ffc.getBins().get(1),
+		Assert.assertEquals("The 4. VM is not matching with the abstract version of it", ffc.getBins().get(2),
 				abstractVM4.gethostPM());
 	}
 	
@@ -301,31 +301,31 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);
 		
 		
-		Assert.assertSame("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredCPUs(),
-				VM1.getResourceAllocation().allocated.getRequiredCPUs());
-		Assert.assertSame("The perCoreProcessingPower of the first abstract VM does not match with the real version of it",
-				abstractVM1.getRequiredProcessingPower(), VM1.getResourceAllocation().allocated.getRequiredProcessingPower());
+		Assert.assertEquals("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredCPUs(),
+				VM1.getResourceAllocation().allocated.getRequiredCPUs(), 0.1);
+		Assert.assertEquals("The perCoreProcessingPower of the first abstract VM does not match with the real version of it",
+				abstractVM1.getRequiredProcessingPower(), VM1.getResourceAllocation().allocated.getRequiredProcessingPower(), 0.1);
 		Assert.assertEquals("The memory of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredMemory(),
 				VM1.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertSame("The cores of the second abstract VM does not match with the real version of it", abstractVM2.getRequiredCPUs(),
-				VM2.getResourceAllocation().allocated.getRequiredCPUs());
-		Assert.assertSame("The perCoreProcessingPower of the second abstract VM does not match with the real version of it", 
-				abstractVM2.getRequiredProcessingPower(), VM2.getResourceAllocation().allocated.getRequiredProcessingPower());
+		Assert.assertEquals("The cores of the second abstract VM does not match with the real version of it", abstractVM2.getRequiredCPUs(),
+				VM2.getResourceAllocation().allocated.getRequiredCPUs(), 0.1);
+		Assert.assertEquals("The perCoreProcessingPower of the second abstract VM does not match with the real version of it", 
+				abstractVM2.getRequiredProcessingPower(), VM2.getResourceAllocation().allocated.getRequiredProcessingPower(), 0.1);
 		Assert.assertEquals("The memory of the second abstract VM does not match with the real version of it", abstractVM2.getRequiredMemory(),
 				VM2.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertSame("The cores of the third abstract VM does not match with the real version of it", abstractVM3.getRequiredCPUs(),
-				VM3.getResourceAllocation().allocated.getRequiredCPUs());
-		Assert.assertSame("The perCoreProcessingPower of the third abstract VM does not match with the real version of it", 
-				abstractVM3.getRequiredProcessingPower(), VM3.getResourceAllocation().allocated.getRequiredProcessingPower());
+		Assert.assertEquals("The cores of the third abstract VM does not match with the real version of it", abstractVM3.getRequiredCPUs(),
+				VM3.getResourceAllocation().allocated.getRequiredCPUs(), 0.1);
+		Assert.assertEquals("The perCoreProcessingPower of the third abstract VM does not match with the real version of it", 
+				abstractVM3.getRequiredProcessingPower(), VM3.getResourceAllocation().allocated.getRequiredProcessingPower(), 0.1);
 		Assert.assertEquals("The memory of the third abstract VM does not match with the real version of it", abstractVM3.getRequiredMemory(),
 				VM3.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertSame("The cores of the fourth abstract VM does not match with the real version of it", abstractVM4.getRequiredCPUs(),
-				VM4.getResourceAllocation().allocated.getRequiredCPUs());
-		Assert.assertSame("The perCoreProcessingPower of the fourth abstract VM does not match with the real version of it", 
-				abstractVM4.getRequiredProcessingPower(), VM4.getResourceAllocation().allocated.getRequiredProcessingPower());
+		Assert.assertEquals("The cores of the fourth abstract VM does not match with the real version of it", abstractVM4.getRequiredCPUs(),
+				VM4.getResourceAllocation().allocated.getRequiredCPUs(), 0.1);
+		Assert.assertEquals("The perCoreProcessingPower of the fourth abstract VM does not match with the real version of it", 
+				abstractVM4.getRequiredProcessingPower(), VM4.getResourceAllocation().allocated.getRequiredProcessingPower(), 0.1);
 		Assert.assertEquals("The memory of the fourth abstract VM does not match with the real version of it", abstractVM4.getRequiredMemory(),
 				VM4.getResourceAllocation().allocated.getRequiredMemory());
 	}
@@ -341,6 +341,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// first PM: overloaded second PM: underloaded third PM: normal
 	// This test verifies the correct setting of the load of each PM
 	
+	//Error: PMs werden als empty running eingestuft
+	
 	@Test(timeout = 100)
 	public void checkAbstractPMLoad() throws Exception {
 		
@@ -352,6 +354,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Bin_PhysicalMachine second = ffc.getBins().get(1);
 		Bin_PhysicalMachine third= ffc.getBins().get(2);
 		
+		Timed.simulateUntilLastEvent();
+		
 		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, first.getState());
 		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, second.getState());
 		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());
@@ -361,22 +365,85 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies the functionality of the getMigPM()-method
 	
 	@Test(timeout = 100)
-	public void verifyMigPM() {
+	public void verifyMigPM() throws Exception {
 		
+		Timed.simulateUntilLastEvent();
+		
+		createAbstractModel();
+		
+		Bin_PhysicalMachine first = ffc.getBins().get(0);
+		Bin_PhysicalMachine second = ffc.getBins().get(1);
+		Bin_PhysicalMachine third= ffc.getBins().get(2);
+		
+		Item_VirtualMachine firstVM = first.getVM(0);
+		
+		ffc.migrateOverloadedPM(first);
+		
+		Assert.assertEquals("The first PM has not the right State after migration", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
+		Assert.assertEquals("The first VM has not the right host", 
+				second ,firstVM.gethostPM());
 	}
 	
 	// This test verifies the functionality of the optimize()-method
 	
 	@Test(timeout = 100)
-	public void verifyFFAlgorithm() {
+	public void verifyFFAlgorithm() throws Exception {
+		
+		Timed.simulateUntilLastEvent();
+		
+		createAbstractModel();
+		
+		Bin_PhysicalMachine first = ffc.getBins().get(0);
+		Bin_PhysicalMachine second = ffc.getBins().get(1);
+		Bin_PhysicalMachine third= ffc.getBins().get(2);
+		
+		Item_VirtualMachine firstVM = first.getVM(0);
+		Item_VirtualMachine secondVM = first.getVM(1);
+		Item_VirtualMachine thirdVM = second.getVM(0);
+		Item_VirtualMachine fourthVM = third.getVM(0);
+		
+		ffc.optimize();
+		
+		Assert.assertEquals("The first PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
+		Assert.assertEquals("The second PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, second.getState());
+		Assert.assertEquals("The first PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());
+		
+		Assert.assertEquals("The first VM has not the right host PM after optimization", 
+				second, firstVM.gethostPM());
+		Assert.assertEquals("The second VM has not the right host PM after optimization", 
+				first, secondVM.gethostPM());
+		Assert.assertEquals("The third VM has not the right host PM after optimization", 
+				second, thirdVM.gethostPM());
+		Assert.assertEquals("The fourth VM has not the right host PM after optimization", 
+				third, fourthVM.gethostPM());
 		
 	}
 	
 	// This test verifies the shut down of empty PMs
 	
 	@Test(timeout = 100)
-	public void checkShutdowns() {
+	public void checkShutdowns() throws Exception {
 		
+		
+		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				reqond, reqoffd, defaultTransitions);
+		
+		basic.registerHost(emptyPM);
+
+		
+		Timed.simulateUntilLastEvent();
+		
+		createAbstractModel();
+		
+		Bin_PhysicalMachine empty= ffc.getBins().get(3);
+		
+		ffc.optimize();
+		
+		Assert.assertTrue("The empty PM is shut down after optimization", empty.getState().equals(State.EMPTY_OFF));
 	}
 	 
 	 
