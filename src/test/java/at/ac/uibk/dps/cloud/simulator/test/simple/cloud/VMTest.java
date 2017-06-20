@@ -27,6 +27,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 
 import org.junit.Assert;
@@ -43,6 +44,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChangeException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -57,7 +59,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	VirtualMachine centralVM, centralVMwithBG;
 	Repository repo;
 	final static long defaultMemory = 1000;
-	
+
 	@Before
 	public void initializeObject() throws Exception {
 		pm = dummyPMcreator();
@@ -268,7 +270,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		};
 		centralVM.subscribeStateChange(sc);
 		centralVM.destroy(false);
-		centralVM.unsubscribeStateChange(sc);;
+		centralVM.unsubscribeStateChange(sc);
 		Assert.assertArrayEquals("Did not receive the necessary state changes",
 				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN, VirtualMachine.State.DESTROYED },
 				receivedStates.toArray(new VirtualMachine.State[receivedStates.size()]));
@@ -407,7 +409,7 @@ public class VMTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 		}
 	}
-	
+
 	private void doLiveMigration(PhysicalMachine from, PhysicalMachine to, VirtualMachine vm, boolean sim)
 			throws VMManagementException, NetworkException {
 		from.migrateVMLive(vm, to);
@@ -432,7 +434,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertTrue("VM is not on its new host", pmtarget.publicVms.contains(toUse));
 		Assert.assertFalse("VM is still on its old host", pm.publicVms.contains(toUse));
 		Assert.assertEquals("VM is not properly resumed", VirtualMachine.State.RUNNING, toUse.getState());
-		Assert.assertTrue("Source VM should have minority of the consumption", pm.getTotalProcessed()<pmtarget.getTotalProcessed());
+		Assert.assertTrue("Source VM should have minority of the consumption",
+				pm.getTotalProcessed() < pmtarget.getTotalProcessed());
 		return pmtarget;
 	}
 
@@ -695,5 +698,25 @@ public class VMTest extends IaaSRelatedFoundation {
 				centralVM.getTotalMemoryPages() / 2);
 		Timed.fire();
 		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.75);
+	}
+
+	@Test(timeout = 100)
+	public void ensureVMKeepsItsAllocationDuringInitialMigration() throws VMManagementException, NetworkException {
+		final EnumSet<VirtualMachine.State> needsAllocationOnSource = EnumSet.of(VirtualMachine.State.MIGRATING,
+				VirtualMachine.State.SUSPEND_TR);
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		final ConstantConstraints needToKeepThisCapacity = new ConstantConstraints(pm.freeCapacities);
+		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
+			@Override
+			public void stateChanged(VirtualMachine vm, State oldState, State newState) {
+				if (needsAllocationOnSource.contains(newState)) {
+					Assert.assertTrue("Allocation for source disappeared prematurely, current VM state is " + newState,
+							needToKeepThisCapacity.compareTo(pm.freeCapacities) == 0);
+				}
+			}
+		});
+		pm.migrateVM(centralVM, target);
+		Timed.simulateUntilLastEvent();
 	}
 }

@@ -239,6 +239,34 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	};
 
+	/**
+	 * Once the suspend procedure has completed, this class releases the
+	 * resources allocated for the VM
+	 * 
+	 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+	 *         Moores University, (c) 2017"
+	 * 
+	 */
+	private static class SuspendComplete extends EventSetup {
+		/**
+		 * initiates the class and remarks that the modeled state should be
+		 * suspended
+		 */
+		public SuspendComplete() {
+			super(State.SUSPENDED);
+		}
+
+		/**
+		 * Once the suspended state is reached, the VM's resources are released.
+		 */
+		@Override
+		public void changeEvents(final VirtualMachine onMe) {
+			super.changeEvents(onMe);
+			onMe.ra.release();
+			onMe.ra = null;
+		}
+	};
+
 	public static class ResourceMemoryConsumption extends ResourceConsumption {
 
 		/**
@@ -295,7 +323,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * The operations to do on suspend
 	 */
-	private static final EventSetup susEvent = new EventSetup(State.SUSPENDED);
+	private static final EventSetup susEvent = new SuspendComplete();
 	/**
 	 * The operations to do on switchon
 	 */
@@ -708,6 +736,10 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *            should take place
 	 */
 	private void actualMigration(final PhysicalMachine.ResourceAllocation target) throws NetworkNode.NetworkException {
+		if (ra != null) {
+			ra.release();
+			ra = null;
+		}
 		final boolean[] cancelMigration = new boolean[1];
 		cancelMigration[0] = false;
 		final Repository to = target.getHost().localDisk;
@@ -1011,15 +1043,12 @@ public class VirtualMachine extends MaxMinConsumer {
 		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = identifyWWS(memid);
 		setState(State.SUSPEND_TR);
-		class SuspendComplete extends ConsumptionEventAdapter {
+		if (!pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
 			@Override
 			public void conComplete() {
-				ra.release();
-				ra = null;
 				ev.changeEvents(VirtualMachine.this);
 			}
-		}
-		if (!pmdisk.storeInMemoryObject(savedmemory, new SuspendComplete())) {
+		})) {
 			// Set back the status so it is possible to try again
 			setState(State.RUNNING);
 			pmdisk.deregisterObject(savedmemory.id);

@@ -187,7 +187,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *         University of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory
 	 *         of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
 	 */
-	public class ResourceAllocation extends DeferredEvent implements VirtualMachine.StateChange {
+	public class ResourceAllocation extends DeferredEvent {
 		/**
 		 * The resource set that is virtually offered to the VM that uses this
 		 * allocation.
@@ -325,23 +325,10 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				user = vm;
 				internalAvailableCaps.subtract(realAllocated);
 				vms.add(vm);
-				vm.subscribeStateChange(this);
 				decreasingFreeCapacityListenerManager.notifyListeners(Collections.singletonList(realAllocated));
 				cancel();
 			} else {
 				throw new VMManagementException("Tried to use a resource allocation more than once!");
-			}
-		}
-
-		/**
-		 * This function is called by the user VM if it is switching states. The
-		 * function actually ensures that not running VMs are not having access
-		 * to resources.
-		 */
-		@Override
-		public void stateChanged(VirtualMachine vm, VirtualMachine.State oldState, VirtualMachine.State newState) {
-			if (oldState.equals(VirtualMachine.State.RUNNING)) {
-				release();
 			}
 		}
 
@@ -353,7 +340,6 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		void release() {
 			if (user != null) {
 				vms.remove(user);
-				user.unsubscribeStateChange(this);
 				completedVMs++;
 				internalAvailableCaps.singleAdd(realAllocated);
 				internalReallyFreeCaps.singleAdd(realAllocated);
