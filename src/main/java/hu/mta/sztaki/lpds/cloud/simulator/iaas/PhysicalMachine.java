@@ -929,17 +929,21 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			new Timed() {
 				@Override
 				public void tick(final long fires) {
-					ResourceSpreader.FreqSyncer syncer = getSyncer();
-					// Ensures that the switching off activities are only
-					// started once all runtime activities complete for the
-					// directConsumer
-					if (syncer != null && syncer.isSubscribed()
-							&& (underProcessing.size() + toBeAdded.size() - toBeRemoved.size() > 0)) {
-						updateFrequency(syncer.getNextEvent() - fires + 1);
-					} else {
-						unsubscribe();
-						new PowerStateDelayer(offTransition, State.OFF);
+					if (State.SWITCHINGOFF.equals(currentState)) {
+						ResourceSpreader.FreqSyncer syncer = getSyncer();
+						// Ensures that the switching off activities are only
+						// started once all runtime activities complete for the
+						// directConsumer
+						if (syncer != null && syncer.isSubscribed()
+								&& (underProcessing.size() + toBeAdded.size() - toBeRemoved.size() > 0)) {
+							updateFrequency(syncer.getNextEvent() - fires + 1);
+						} else {
+							unsubscribe();
+							new PowerStateDelayer(offTransition, State.OFF);
+						}
 					}
+					// else: Another transition dropped the switchoff task. do
+					// nothing
 				}
 			}.tick(Timed.getFireCount());
 			break;
@@ -1022,7 +1026,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 	}
-	
+
 	/**
 	 * Not implemented, would allow VMs to receive more resources in the future
 	 */
