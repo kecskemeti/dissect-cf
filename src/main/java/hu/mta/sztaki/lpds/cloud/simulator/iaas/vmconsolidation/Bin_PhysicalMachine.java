@@ -12,8 +12,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 
 public class Bin_PhysicalMachine {
 	
+	private static final String LINE_SEPARATOR = System.getProperty("line.separator");	//for the toString()-method
+	
 	private PhysicalMachine pm; 
 	ArrayList <Item_VirtualMachine> vmList;
+	int number;
 	
 	ResourceVector totalResources;
 	ResourceVector availableResources;
@@ -23,7 +26,7 @@ public class Bin_PhysicalMachine {
 	/**
 	 * This represents a Phsyical Machine of the simulator. It is abstract and inherits only the methods and properties
 	 * which are necassary to do the consolidation inside this model.
-	 * The defined treshold is between 25 % and 75 % of the total resources. If its greater than 75 % or less than 25 %,
+	 * The defined treshold is between 20 % and 80 % of the total resources. If its greater than 80 % or less than 20 %,
 	 * the state of the PM switches to OVERLOADED or UNDERLOADED.
 	 * 
 	 * @param pm
@@ -38,15 +41,25 @@ public class Bin_PhysicalMachine {
 	 * 			The memory of this PM.
 	 */
 	
-	public Bin_PhysicalMachine(PhysicalMachine pm, ArrayList <Item_VirtualMachine> vm, double cores, double pCP, long mem) {
+	public Bin_PhysicalMachine(PhysicalMachine pm, ArrayList <Item_VirtualMachine> vm, double cores, double pCP, long mem, int number) {
 		
 		this.pm = pm; 
 		this.vmList = vm;
+		this.number = number;
 		
 		totalResources = new ResourceVector(cores, pCP, mem);
 		availableResources = new ResourceVector(cores, pCP, mem);
 		
 		//the state is set if the vmlist is set
+	}
+	
+	public String toString() {
+		String erg = "PM: " + number + LINE_SEPARATOR + " VMs:" + LINE_SEPARATOR;
+		for(int i = 0; i < getVMs().size(); i++) {
+			
+			erg = erg + getVM(i).toString() + LINE_SEPARATOR;
+		}
+		return erg ;
 	}
 	
 	/**
@@ -346,7 +359,7 @@ public class Bin_PhysicalMachine {
 	 */
 
 	public void consumeResources(Item_VirtualMachine x) {
-		availableResources.subtract(x.getResources());
+		availableResources = availableResources.subtract(x.getResources());
 	}
 	
 	/**
@@ -358,6 +371,6 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	public void deconsumeResources(Item_VirtualMachine x) {
-		availableResources.add(x.getResources());
+		availableResources = availableResources.add(x.getResources());
 	}
 }

@@ -76,33 +76,58 @@ public class FirstFitConsolidation extends Consolidator {
 	
 	public void optimize() throws VMManagementException, NetworkException {
 		
-		bins = super.instantiate();
 		
-		for(int i = 0; i < bins.size(); i++) {
-			
-			if(bins.get(i).getState() == State.NORMAL_RUNNING) {
+		while(isOverloaded() || isUnderloaded()) {
+			for(Bin_PhysicalMachine pm : this.getBins()) {
 				
-			}
-			else {
-				
-				while(bins.get(i).getState() == State.UNDERLOADED_RUNNING) {
+				if(pm.getState() == State.NORMAL_RUNNING) {
 					
-					if(bins.get(i).isHostingVMs() != true) {
-						bins.get(i).changeState(State.EMPTY_RUNNING);
-					}
-					else {
-						migrateUnderloadedPM(bins.get(i));
-					}
 				}
-				
-				while(bins.get(i).getState() ==  State.OVERLOADED_RUNNING) {
-					migrateOverloadedPM(bins.get(i));
+				else {
+					
+					if(pm.getState() == State.UNDERLOADED_RUNNING) {
+						
+						if(pm.isHostingVMs() != true) {
+							pm.changeState(State.EMPTY_RUNNING);
+						}
+						else {
+							migrateUnderloadedPM(pm);
+						}
+					}
+					
+					if(pm.getState() ==  State.OVERLOADED_RUNNING) {
+						migrateOverloadedPM(pm);
+					}
 				}
 			}
 		}
 		
-		super.createGraph(getActions());
-		super.performActions();
+		//super.createGraph(getActions());		//creates the graph with all previously done actions
+		//super.performActions();				//do the changes inside the simulator
+	}
+	
+	private boolean isOverloaded() {
+		
+		boolean x = false;
+		for(int i = 0; i < getBins().size(); i++) {
+			if(getBins().get(i).getState().equals(State.OVERLOADED_RUNNING)) {
+				x = true;
+				return true;
+			}
+		}
+		return x;
+	}
+	
+	private boolean isUnderloaded() {
+		
+		boolean x = false;
+		for(int i = 0; i < getBins().size(); i++) {
+			if(getBins().get(i).getState().equals(State.UNDERLOADED_RUNNING)) {
+				x = true;
+				return true;
+			}
+		}
+		return x;
 	}
 
 	/**
@@ -115,9 +140,9 @@ public class FirstFitConsolidation extends Consolidator {
 	 * 		   starts a new PM if there is no one with needed resources.
 	 */
 	
-	private Bin_PhysicalMachine getMigPm(Item_VirtualMachine VM) {
+	private Bin_PhysicalMachine getMigPm(Item_VirtualMachine vm) {
 		
-		Item_VirtualMachine toMig = VM;
+		Item_VirtualMachine toMig = vm;
 		
 		//These are the constraints of the VM
 		ResourceVector vmRes = toMig.getResources();
@@ -125,21 +150,26 @@ public class FirstFitConsolidation extends Consolidator {
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {
 			
-			Bin_PhysicalMachine actualPM = this.bins.get(i);
-			
-			//These are the constraints of the actual PM
-			ResourceVector pmRes = actualPM.getAvailableResources();
-			
-			if(pmRes.isGreater(vmRes)) {
+			if(bins.get(i) == vm.gethostPM()) {
 				
-				actualPM.consumeResources(toMig);
-				actualPM.checkLoad();
-				if(actualPM.getState().equals(State.OVERLOADED_RUNNING)) {
-					actualPM.deconsumeResources(toMig);
-				}
-				else {
-					//the PM which first fits to the criteria
-					return actualPM;
+			}
+			else {
+				Bin_PhysicalMachine actualPM = this.bins.get(i);
+				
+				//These are the constraints of the actual PM
+				ResourceVector pmRes = actualPM.getAvailableResources();
+				
+				if(pmRes.isGreater(vmRes)) {
+					
+					actualPM.consumeResources(toMig);
+					actualPM.checkLoad();
+					if(actualPM.getState().equals(State.OVERLOADED_RUNNING)) {
+						actualPM.deconsumeResources(toMig);
+					}
+					else {
+						//the PM which first fits to the criteria
+						return actualPM;
+					}
 				}
 			}
 		}	
@@ -172,7 +202,7 @@ public class FirstFitConsolidation extends Consolidator {
 			if(bins.get(i).getState().equals(State.EMPTY_OFF) && bins.get(i).getTotalResources().isGreater(second)){
 				bins.get(i).switchOn();
 				start = bins.get(i);
-				actions.add(new Action(count++, bins.get(i), null, null, null, null));
+				//actions.add(new Action(count++, bins.get(i), null, null, null, null));	//give the information to the graph
 			}
 		}
 		return start;	 //no PM can be started
@@ -191,17 +221,17 @@ public class FirstFitConsolidation extends Consolidator {
 	}
 	
 	/**
-	 * This method has to be called after all migrations were done. The given array
-	 * contains all information about which PMs have to be shut down and here
-	 * this will be done.
+	 * This method has to be called after all migrations were done. It is checked which
+	 * PMs do not have any VMs hosted and then this method shut them down. A node is created
+	 * to add this information to the graph.
 	 */
 	
 	public void shutEmptyPMsDown() {
 		
 		for(int i = 0; i < bins.size(); i++) {
-			if(bins.get(i).equals(State.EMPTY_RUNNING) ) {
+			if(bins.get(i).isHostingVMs()== false && bins.get(i).getState() != State.EMPTY_OFF) {
 				bins.get(i).switchOff();
-				actions.add(new Action(count++, null, null, null, null, bins.get(i)));
+				//actions.add(new Action(count++, null, null, null, null, bins.get(i)));	//give the information to the graph
 			}
 		}
 	}
@@ -219,13 +249,12 @@ public class FirstFitConsolidation extends Consolidator {
 			Item_VirtualMachine actual = getFirstVM(source);
 			Bin_PhysicalMachine pm = getMigPm(actual);
 			
-			
 			if(pm == null) {
 				return; // no migration possible anymore
 			}
 			else {
 				actual.gethostPM().migrateVM(actual, pm);
-				actions.add(new Action(count++, null, source, pm, actual, null)); 
+				//actions.add(new Action(count++, null, source, pm, actual, null)); 	//give the information to the graph
 			}
 			
 			//check if the state has changed
@@ -253,7 +282,7 @@ public class FirstFitConsolidation extends Consolidator {
 			if(pm == null) {
 				
 				if(migVMs.isEmpty()) {
-					return; // no migration possible and on one has been done previously
+					return; // no migration possible and no has been done previously
 				}
 				else {
 					for(int x = i ; x > 0; x--) {
@@ -268,7 +297,7 @@ public class FirstFitConsolidation extends Consolidator {
 				migVMs.add(actual);
 				i++;
 				actual.gethostPM().migrateVM(actual, pm);
-				actions.add(new Action(count++, null, source, pm, actual, null)); 
+				//actions.add(new Action(count++, null, source, pm, actual, null)); 	//give the information to the graph
 			}
 			
 			//check if the state has changed

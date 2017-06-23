@@ -86,8 +86,9 @@ public class ResourceVector{
 	}
 	
 	public boolean compareToOverloaded(ResourceVector available) {
-		if(this.getCPUs() - available.getCPUs() >= 0.8 || this.getMemory() - available.getMemory() >= 0.8 
-				|| this.getProcessingPower() - available.getProcessingPower() >= 0.8){
+		
+		if(available.getCPUs() <= this.getCPUs() * 0.2 || available.getProcessingPower() <= this.getProcessingPower() * 0.2 
+				|| available.getMemory() <= this.getMemory() * 0.2) {
 			return true;
 		}
 		else {
@@ -96,8 +97,9 @@ public class ResourceVector{
 	}
 	
 	public boolean compareToUnderloaded(ResourceVector available) {
-		if(this.getCPUs() - available.getCPUs() <= 0.2 && this.getMemory() - available.getMemory() <= 0.2 
-				&& this.getProcessingPower() - available.getProcessingPower() <= 0.2){
+		
+		if(available.getCPUs() >= this.getCPUs() * 0.8 && available.getProcessingPower() >= this.getProcessingPower() * 0.8 
+				&& available.getMemory() >= this.getMemory() * 0.8) {
 			return true;
 		}
 		else {

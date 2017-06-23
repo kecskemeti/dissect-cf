@@ -13,9 +13,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 public class Item_VirtualMachine {
 	
+	private static final String LINE_SEPARATOR = System.getProperty("line.separator");	//for the toString()-method
+	
 	VirtualMachine vm;
 	Bin_PhysicalMachine hostPM;
 	ResourceVector neededResources;
+	String id;
 
 	
 	
@@ -35,12 +38,17 @@ public class Item_VirtualMachine {
 	 * 			The memory of this PM.
 	 */
 	
-	public Item_VirtualMachine(VirtualMachine vm, Bin_PhysicalMachine pm, double cores, double pCP, long mem) {
+	public Item_VirtualMachine(VirtualMachine vm, Bin_PhysicalMachine pm, double cores, double pCP, long mem, String id) {
 		
 		this.vm = vm;
 		hostPM = pm;
+		this.id = id;
 		neededResources = new ResourceVector(cores, pCP, mem);
 		
+	}
+	
+	public String toString() {
+		return id;
 	}
 	
 	

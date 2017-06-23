@@ -50,19 +50,21 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 
 	ArrayList <Bin_PhysicalMachine> instantiate() {
 		ArrayList <Bin_PhysicalMachine> pmList = new ArrayList<Bin_PhysicalMachine>();
-		for (PhysicalMachine pm : basic.machines) {
+		for (int i = 0; i < basic.machines.size(); i++) {
 			
+			PhysicalMachine pm = basic.machines.get(i);
 			ArrayList <Item_VirtualMachine> vmList = new ArrayList <Item_VirtualMachine>();
 			ArrayList <VirtualMachine> items = new ArrayList <VirtualMachine>();
 			items.addAll(pm.listVMs());
 			
 			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), 
-					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory());
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i);
 			
-			for(int i = 0; i < pm.listVMs().size(); i ++) {
-				vmList.add(new Item_VirtualMachine(items.get(i), act, items.get(i).getResourceAllocation().allocated.getRequiredCPUs(), 
-						items.get(i).getResourceAllocation().allocated.getRequiredProcessingPower(), 
-						items.get(i).getResourceAllocation().allocated.getRequiredMemory()));
+			for(int j = 0; j < pm.listVMs().size(); j ++) {
+				vmList.add(new Item_VirtualMachine(items.get(j), act, 
+						items.get(j).getResourceAllocation().allocated.getRequiredCPUs(), 
+						items.get(j).getResourceAllocation().allocated.getRequiredProcessingPower(), 
+						items.get(j).getResourceAllocation().allocated.getRequiredMemory(), items.get(j).getVa().id));
 			}
 			
 			act.setVMs(vmList);
