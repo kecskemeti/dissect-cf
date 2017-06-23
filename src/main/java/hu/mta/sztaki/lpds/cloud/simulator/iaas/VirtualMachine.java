@@ -631,16 +631,17 @@ public class VirtualMachine extends MaxMinConsumer {
 		final boolean noerror;
 		if (bgnwload > 0) {
 			// Remote scenario
-			noerror = vasource.duplicateContent(va.id, diskid, new InitialTransferEvent(vasource, es, diskid));
+			noerror = vasource.duplicateContent(va.id, diskid, new InitialTransferEvent(vasource, es, diskid)) != null;
 		} else {
 			if (vasource == null) {
 				// Entirely local scenario
 				noerror = vatarget == null ? false
-						: vatarget.duplicateContent(va.id, diskid, new InitialTransferEvent(vatarget, es, diskid));
+						: vatarget.duplicateContent(va.id, diskid,
+								new InitialTransferEvent(vatarget, es, diskid)) != null;
 			} else {
 				// Mixed scenario
 				noerror = vasource.requestContentDelivery(va.id, diskid, vatarget,
-						new InitialTransferEvent(vatarget, es, diskid));
+						new InitialTransferEvent(vatarget, es, diskid)) != null;
 			}
 		}
 		if (!noerror) {
@@ -783,14 +784,14 @@ public class VirtualMachine extends MaxMinConsumer {
 		final MigrationEvent mp = new MigrationEvent();
 		// inefficiency: the memory is moved twice to the
 		// target pm because of the way resume works currently
-		if (vatarget.requestContentDelivery(savedmemory.id, to, mp)) {
+		if (vatarget.requestContentDelivery(savedmemory.id, to, mp) != null) {
 			if (va.getBgNetworkLoad() > 0) {
 				// Remote scenario
 				return;
 			} else {
 				// Local&Mixed scenario
 				mp.eventcounter++;
-				if (vatarget.requestContentDelivery(disk.id, to, mp)) {
+				if (vatarget.requestContentDelivery(disk.id, to, mp) != null) {
 					return;
 				}
 				// The disk could not be transferred:
@@ -1043,12 +1044,12 @@ public class VirtualMachine extends MaxMinConsumer {
 		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = identifyWWS(memid);
 		setState(State.SUSPEND_TR);
-		if (!pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
+		if (pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
 			@Override
 			public void conComplete() {
 				ev.changeEvents(VirtualMachine.this);
 			}
-		})) {
+		}) == null) {
 			// Set back the status so it is possible to try again
 			setState(State.RUNNING);
 			pmdisk.deregisterObject(savedmemory.id);
@@ -1085,7 +1086,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				underLiveMigrate = false;
 			}
 		}
-		if (!pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())) {
+		if (pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())==null) {
 			// Set back the status so it is possible to try again
 			setState(priorState);
 			throw new VMManagementException("Failed to fetch the stored memory " + savedmemory + " from PM "

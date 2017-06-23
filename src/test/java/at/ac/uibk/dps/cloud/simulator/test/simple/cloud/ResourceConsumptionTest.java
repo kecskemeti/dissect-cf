@@ -155,6 +155,14 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		Assert.assertTrue("There should be no events after cancellation",
 				cae.getArrivedAt() + 1 >= Timed.getFireCount());
 	}
+	
+	@Test(timeout = 100)
+	public void cancelUnregistered() {
+		ConsumptionEventAssert cae=new ConsumptionEventAssert();
+		con = createAUnitConsumption(cae);
+		con.cancel();
+		Assert.assertTrue("Should receive cancellation even if not registered", cae.isCancelled());
+	}
 
 	@Ignore
 	@Test(timeout = 100)

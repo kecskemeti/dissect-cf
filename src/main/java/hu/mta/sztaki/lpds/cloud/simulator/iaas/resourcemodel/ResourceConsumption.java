@@ -81,7 +81,8 @@ public class ResourceConsumption {
 	 * interfaces depending on the outcome of the resouece consumption's
 	 * execution.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013"
 	 * 
 	 */
 	public interface ConsumptionEvent {
@@ -198,7 +199,6 @@ public class ResourceConsumption {
 	protected double memDirtyingRate = 0.0;
 	protected double memSizeInBytes = 0;
 
-	
 	/**
 	 * The event to be fired when there is nothing left to process in this
 	 * consumption.
@@ -272,7 +272,7 @@ public class ResourceConsumption {
 		this.provider = provider;
 		if (e == null) {
 			throw new IllegalStateException("Cannot create a consumption without an event to be fired");
-		} else if(total<0||limit<0) {
+		} else if (total < 0 || limit < 0) {
 			throw new IllegalArgumentException("Cannot create negative consumptions");
 		}
 		ev = e;
@@ -312,7 +312,7 @@ public class ResourceConsumption {
 	 * consumption
 	 * 
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li><i>true</i> if the registration was successful
 	 *         <li><i>false</i> otherwise. For example: if the provider/consumer
 	 *         is not yet set, if the consumption cannot be registered between
@@ -351,8 +351,12 @@ public class ResourceConsumption {
 	 * pair and ensures that it can no longer be registered
 	 */
 	public void cancel() {
+		boolean wasRegistered = registered;
 		suspend();
 		resumable = false;
+		if (!wasRegistered) {
+			ev.conCancelled(this);
+		}
 	}
 
 	/**
@@ -608,7 +612,7 @@ public class ResourceConsumption {
 		}
 		return realLimit;
 	}
-	
+
 	public double getMemDirtyingRate() {
 		return currentMemDirtyingRate;
 	}
