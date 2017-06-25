@@ -57,10 +57,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	IaaSService basic;
 	FirstFitConsolidation ffc;
-	
-	
-	
-	
 	PhysicalMachine testOverPM1;
 	PhysicalMachine testUnderPM2;
 	PhysicalMachine testNormalPM3;
@@ -74,8 +70,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	VirtualAppliance VA2;
 	VirtualAppliance VA3;	
 	VirtualAppliance VA4;
-	HashMap<String, Integer> latmap = new HashMap<String, Integer>();
 	
+	HashMap<String, Integer> latmap = new HashMap<String, Integer>();	
 	Repository reqDisk = new Repository(123, "test1", 200, 200, 200, latmap);
 	
 	final static int reqcores = 8, reqProcessing = 5, reqmem = 16,
@@ -92,8 +88,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	/**
 	 * Now three PMs and four VMs are going to be instantiated.
 	 * At first the PMs are created, after that the VMs are created and each of them deployed to one PM. 
-	 */
-	
+	 */	
 	@Before
 	public void testSim() throws Exception {
 		basic = new IaaSService(NonQueueingScheduler.class,
@@ -111,35 +106,27 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				reqond, reqoffd, defaultTransitions);
 		
 		//save the PMs inside the register
-
 		basic.registerRepository(reqDisk);
 		basic.registerHost(testOverPM1);
 		basic.registerHost(testUnderPM2);
 		basic.registerHost(testNormalPM3);
-		
-		
-		 // The four VMs set the Load of PM1 to overloaded, PM2 to underloaded and PM3 to normal.
-		
-		
-		VA1 = new VirtualAppliance("VA1", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
-		VA2 = new VirtualAppliance("VA2", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
-		VA3 = new VirtualAppliance("VA3", 1000, 0, false, testUnderPM2.localDisk.getMaxStorageCapacity() / 20);
-		VA4 = new VirtualAppliance("VA4", 1000, 0, false, testNormalPM3.localDisk.getMaxStorageCapacity() / 20);
-		
-		
+				
+		// The four VMs set the Load of PM1 to overloaded, PM2 to underloaded and PM3 to normal.				
+		VA1 = new VirtualAppliance("VM 1", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
+		VA2 = new VirtualAppliance("VM 2", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
+		VA3 = new VirtualAppliance("VM 3", 1000, 0, false, testUnderPM2.localDisk.getMaxStorageCapacity() / 20);
+		VA4 = new VirtualAppliance("VM 4", 1000, 0, false, testNormalPM3.localDisk.getMaxStorageCapacity() / 20);
+				
 		VM1 = new VirtualMachine(VA1);
 		VM2 = new VirtualMachine(VA2);
 		VM3 = new VirtualMachine(VA3);
 		VM4 = new VirtualMachine(VA4);
-		
-		
+				
 		//save the VAs inside the register and the PMs
-		
 		reqDisk.registerObject(VA1);
 		reqDisk.registerObject(VA2);
 		reqDisk.registerObject(VA3);
-		reqDisk.registerObject(VA4);
-		
+		reqDisk.registerObject(VA4);		
 		
 		testOverPM1.localDisk.registerObject(VA1);
 		testOverPM1.localDisk.registerObject(VA2);
@@ -154,9 +141,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 			 			creating overloaded and underloaded PMs
 	 */
 	
-	
-	//This test verifies that all PMs are shut down before simulating
-	
+	//This test verifies that all PMs are shut down before simulating	
 	@Test(timeout = 100)
 	public void turnonTest() {
 		Assert.assertEquals(
@@ -167,8 +152,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				basic.machines.size(), basic.runningMachines.size());
 	}
 	
-	//This test verifies that the creation and destruction of a VM is possible
-	
+	//This test verifies that the creation and destruction of a VM is possible	
 	@Test(timeout = 100)
 	public void vmCreationTest() throws VMManagementException, NetworkException {
 		Timed.simulateUntilLastEvent();
@@ -187,8 +171,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				basic.machines.size(), basic.runningMachines.size());
 	}
 	
-	//This method deploys one VM to a target PM
-	
+	//This method deploys one VM to a target PM	
 	private void switchOnVM(VirtualMachine vm, ResourceConstraints cons, PhysicalMachine pm, boolean simulate) throws VMManagementException, NetworkException {
 		
 		vm.switchOn(pm.allocateResources(cons, true, 1000), reqDisk);
@@ -197,8 +180,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		}
 	}
 	
-	//This test verifies, that it is possible to start and deploy all VMs
-	
+	//This test verifies, that it is possible to start and deploy all VMs	
 	@Test(timeout = 100)
 	public void simpleVMStartup() throws VMManagementException, NetworkException {
 		
@@ -218,8 +200,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Regular VM not in the excpected state after switchon", VirtualMachine.State.RUNNING,
 				VM4.getState());
 	}
-	
-	
+		
 	/** 				
 	 * selection out    	do the abstract version of the PMs fit with the real ones?
 	 * of the simulator:	do the deployment of the VMs fit with the deployment inside the simulator?
@@ -227,8 +208,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 
 	 */
 	
-	//Method to create the abstract working model
-	
+	//Method to create the abstract working model	
 	public void createAbstractModel() throws Exception {
 		
 		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
@@ -241,8 +221,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 	
-	// This test verifies that all three abstract PMs were created and fit with the real ones
-	
+	// This test verifies that all three abstract PMs were created and fit with the real ones	
 	@Test(timeout = 100)
 	public void checkAbstractPMs() throws Exception {
 		
@@ -262,8 +241,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				abstractPM3.getPM());
 	}
 	
-	// This test verifies that all four abstract VMs were created and deployed to the fitting PM inside the real simulator
-	
+	// This test verifies that all four abstract VMs were created and deployed to the fitting PM inside the real simulator	
 	@Test(timeout = 100)
 	public void checkAbstractVMs() throws Exception {
 
@@ -287,8 +265,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	// This test verifies that all resources of each VM are correct
-
-
 	@Test(timeout = 100)
 	public void checkVMresources() throws Exception {
 		
@@ -299,8 +275,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Item_VirtualMachine abstractVM1 = ffc.getBins().get(0).getVM(0);
 		Item_VirtualMachine abstractVM2 = ffc.getBins().get(0).getVM(1);
 		Item_VirtualMachine abstractVM3 = ffc.getBins().get(1).getVM(0);
-		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);
-		
+		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);		
 		
 		Assert.assertEquals("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredCPUs(),
 				VM1.getResourceAllocation().allocated.getRequiredCPUs(), 0);
@@ -337,13 +312,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 *       				Is the algorithm for migration correct and the right one used (load-dependant)?
 	 *       				Is the shut down method working?
 	 *      				Can a not running PM get started if necessary?
-	 */
+	 */	
 	
-	
-	// first PM: overloaded second PM: underloaded third PM: normal
-	
-	// This test verifies the correct setting of the load of each PM
-	
+	// first PM: overloaded second PM: underloaded third PM: normal	
+	// This test verifies the correct setting of the load of each PM	
 	@Test(timeout = 100)
 	public void checkAbstractPMLoad() throws Exception {
 		
@@ -359,12 +331,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, first.getState());
 		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, second.getState());
-		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());
-		
+		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());		
 	}
 	
-	// This test verifies the functionality of the getMigPM()-method
-	
+	// This test verifies the functionality of the getMigPM()-method	
 	@Test(timeout = 100)
 	public void verifyMigPM() throws Exception {
 		
@@ -385,8 +355,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				second ,firstVM.gethostPM());
 	}
 	
-	// This test verifies the functionality of the optimize()-method
-	
+	// This test verifies the functionality of the optimize()-method	
 	@Test(timeout = 100)
 	public void verifyFFAlgorithmEasy() throws Exception {
 		
@@ -419,48 +388,38 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The third VM has not the right host PM after optimization", 
 				second, thirdVM.gethostPM());
 		Assert.assertEquals("The fourth VM has not the right host PM after optimization", 
-				third, fourthVM.gethostPM());
-		
-	}
-	
+				third, fourthVM.gethostPM());		
+	}	
 
-	//Method to create the abstract working model
-	
-	public void createComplexAbstractModel() throws Exception {
-		
+	//Method to create another more complex abstract working model	
+	public void createComplexAbstractModel() throws Exception {		
 
 		PhysicalMachine testOverPM4 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-		
+				reqond, reqoffd, defaultTransitions);		
 		PhysicalMachine testUnderPM5 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-		
+				reqond, reqoffd, defaultTransitions);		
 		PhysicalMachine testNormalPM6 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-		
+				reqond, reqoffd, defaultTransitions);		
 		PhysicalMachine testUnderPM7 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-		
+				reqond, reqoffd, defaultTransitions);		
 		PhysicalMachine testUnderPM8 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
 				reqond, reqoffd, defaultTransitions);
 		
-		//save the PMs inside the register
-		
+		//save the PMs inside the register		
 		basic.registerHost(testOverPM4);
 		basic.registerHost(testUnderPM5);
 		basic.registerHost(testNormalPM6);
 		basic.registerHost(testUnderPM7);
 		basic.registerHost(testUnderPM8);
 		
-		 // The four VMs set the Load of PM1 to overloaded, PM2 to underloaded and PM3 to normal.
-		
-		
-		VirtualAppliance VA5 = new VirtualAppliance("VA5", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
-		VirtualAppliance VA6 = new VirtualAppliance("VA6", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
-		VirtualAppliance VA7 = new VirtualAppliance("VA7", 1000, 0, false, testUnderPM5.localDisk.getMaxStorageCapacity() / 20);
-		VirtualAppliance VA8 = new VirtualAppliance("VA8", 1000, 0, false, testNormalPM6.localDisk.getMaxStorageCapacity() / 20);
-		VirtualAppliance VA9 = new VirtualAppliance("VA9", 1000, 0, false, testUnderPM7.localDisk.getMaxStorageCapacity() / 20);
-		VirtualAppliance VA10 = new VirtualAppliance("VA10", 1000, 0, false, testUnderPM8.localDisk.getMaxStorageCapacity() / 20);
+		// The six additional VMs set the Load of PM4 to overloaded, PM5 to underloaded, PM6 to normal,
+		// PM7 to underloaded and PM8 to underloaded. 
+		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
+		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
+		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1000, 0, false, testUnderPM5.localDisk.getMaxStorageCapacity() / 20);
+		VirtualAppliance VA8 = new VirtualAppliance("VM 8", 1000, 0, false, testNormalPM6.localDisk.getMaxStorageCapacity() / 20);
+		VirtualAppliance VA9 = new VirtualAppliance("VM 9", 1000, 0, false, testUnderPM7.localDisk.getMaxStorageCapacity() / 20);
+		VirtualAppliance VA10 = new VirtualAppliance("VM 10", 1000, 0, false, testUnderPM8.localDisk.getMaxStorageCapacity() / 20);
 		
 		VirtualMachine VM5 = new VirtualMachine(VA5);
 		VirtualMachine VM6 = new VirtualMachine(VA6);
@@ -469,8 +428,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		VirtualMachine VM9 = new VirtualMachine(VA9);
 		VirtualMachine VM10 = new VirtualMachine(VA10);
 		
-		//save the VAs inside the register and the PMs
-		
+		//save the VAs inside the register and the PMs		
 		reqDisk.registerObject(VA5);
 		reqDisk.registerObject(VA6);
 		reqDisk.registerObject(VA7);
@@ -505,10 +463,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 	
-	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously
-	
-	//undone
-	
+	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously	
+	//undone	
 	@Test(timeout = 100)
 	public void verifyFFAlgorithm() throws Exception {
 		
@@ -534,8 +490,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Item_VirtualMachine seventhVM = fifthUnderloaded.getVM(0);
 		Item_VirtualMachine eighthVM = sixthNormal.getVM(0);
 		Item_VirtualMachine ninthVM = seventhUnderloaded.getVM(0);
-		Item_VirtualMachine tenthVM = eighthUnderloaded.getVM(0);
-		
+		Item_VirtualMachine tenthVM = eighthUnderloaded.getVM(0);		
 		
 		ffc.optimize();
 		
@@ -599,19 +554,16 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				eighthUnderloaded, ninthVM.gethostPM());
 		Assert.assertEquals("The tenth VM has not the right host PM after optimization", 
 				eighthUnderloaded, tenthVM.gethostPM());
-				
-		
 	}
-	
-	
+		
 	// This test verifies the shut down of empty PMs
 	@Test(timeout = 100)
 	public void checkShutdowns() throws Exception {
 		
-		
 		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
 				reqond, reqoffd, defaultTransitions);
 		basic.registerHost(emptyPM);
+		
 		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
@@ -623,15 +575,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The empty PM is not shut down", State.EMPTY_OFF, empty.getState());
 	}
 	
-	// This test verifies the starting of a shut down PM if a migration is not possible on the running PMs
-	
+	// This test verifies the starting of a shut down PM if a migration is not possible on the running PMs	
 	//undone and not possible
 	@Test(timeout = 100)
 	public void checkStartingShutDownPM() throws Exception {
 		
 		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-		
+				reqond, reqoffd, defaultTransitions);		
 		basic.registerHost(emptyPM);
 		
 		Timed.simulateUntilLastEvent();
@@ -644,10 +594,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Bin_PhysicalMachine first = ffc.getBins().get(0);
 		Bin_PhysicalMachine second = ffc.getBins().get(1);
 		Bin_PhysicalMachine third= ffc.getBins().get(2);
-		Bin_PhysicalMachine empty= ffc.getBins().get(3);
-		
-	}
-	 
+		Bin_PhysicalMachine empty= ffc.getBins().get(3);		
+	}	 
 	 
 	/**  				
 	 * graph: 				Do actions exist?
@@ -656,37 +604,32 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 		  				Are the changes done inside the simulator?
 	 */
 	
-	// This test verifies, that every node can be constructed
-	
+	// This test verifies, that every node can be constructed	
 	@Test(timeout = 100)
 	public void checkNodes() {
 		
 	}
 	
-	// This test verifies the observance of a given order 
-	
+	// This test verifies the observance of a given order 	
 	@Test(timeout = 100)
 	public void verfiyOrder() {
 		
 	}
 	
-	// This test verifies the correct creation of the graph out of the FirstFitConsolidation
-	
+	// This test verifies the correct creation of the graph out of the FirstFitConsolidation	
 	@Test(timeout = 100)
 	public void verifyGraphCreation() {
 		
 	}
 	
-	// This test verfies the functionality of the graph-functions
-	
+	// This test verfies the functionality of the graph-functions	
 	@Test(timeout = 100)
 	public void checkGraphFunctions() {
 		
 	}
 	
 	// This test verifies everything together, which means, that out of a given situation every previous step is taken and
-	// at the end the necassary changes are made inside the simulator
-	
+	// at the end the necassary changes are made inside the simulator	
 	@Test(timeout = 100)
 	public void verifyFullFunctionality() {
 		
