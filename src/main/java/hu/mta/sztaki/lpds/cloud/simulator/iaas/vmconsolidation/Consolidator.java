@@ -67,7 +67,7 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 						items.get(j).getResourceAllocation().allocated.getRequiredMemory(), items.get(j).getVa().id));
 			}
 			
-			act.setVMs(vmList);
+			act.initializePM(vmList);
 			pmList.add(act);
 		}
 		return pmList;
@@ -99,33 +99,18 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 		
 		for(int i = 0; i < actions.size(); i++) {
 			//actual action is a migration
-			if(actions.get(i).getTarget() != null){
-				Action act = actions.get(i);
-				act.getItemVM().getVM().subscribeStateChange(this);
-				//looking for actions where a PM gets started, that is the target of this migration
-				for(int j = 0; j < actions.size(); i++) {
-					if(actions.get(j).getstartpm().equals(act.getTarget())){
-						act.addPrevious(actions.get(j));
-					}
-				}			
+			actions.get(i).createGraph(actions);
+			if(actions.get(i).getType().equals(Action.Type.MIGRATION)){
+				((MigrationAction)actions.get(i)).getItemVM().getVM().subscribeStateChange(this);		
 			}
 			//actual action shall shut down a PM
-			if(actions.get(i).getshutdownpm() != null){
-				Action act = actions.get(i);
-				act.getshutdownpm().getPM().subscribeStateChangeEvents(this);
-				//looking for migrations with this PM as source, which needs to get shut down
-				for(int j = 0; j < actions.size(); i++) {
-					if(actions.get(j).getSource().equals(act.getshutdownpm())){
-						act.addPrevious(actions.get(j));
-					}
-				}
-				
+			if(actions.get(i).getType().equals(Action.Type.SHUTDOWN)){
+				((ShutDownAction)actions.get(i)).getshutdownpm().getPM().subscribeStateChangeEvents(this);		
 			}
 			//actual action is starting a PM
 			//this can be done instantly, there can be no previous actions
-			if(actions.get(i).getstartpm() != null){
-				Action act = actions.get(i);
-				act.getstartpm().getPM().subscribeStateChangeEvents(this);
+			if(actions.get(i).equals(Action.Type.START)){
+				((StartAction)actions.get(i)).getstartpm().getPM().subscribeStateChangeEvents(this);
 			}
 		}
 	}
@@ -134,19 +119,19 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 	//do the migration, shut a PM down, start a PM
 	public void performActions() throws VMManagementException, NetworkException{
 		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getTarget() != null && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine source = actions.get(i).getSource().getPM();
-				PhysicalMachine target = actions.get(i).getTarget().getPM();
-				VirtualMachine vm = actions.get(i).getItemVM().getVM();
+			if(actions.get(i).getType().equals(Action.Type.MIGRATION) && actions.get(i).getPrevious().isEmpty()){
+				PhysicalMachine source = ((MigrationAction)actions.get(i)).getSource().getPM();
+				PhysicalMachine target = ((MigrationAction)actions.get(i)).getTarget().getPM();
+				VirtualMachine vm = ((MigrationAction)actions.get(i)).getItemVM().getVM();
 				source.migrateVM(vm, target);
 			}
-			if(actions.get(i).getshutdownpm() != null && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = actions.get(i).getshutdownpm().getPM();
+			if(actions.get(i).equals(Action.Type.SHUTDOWN) && actions.get(i).getPrevious().isEmpty()){
+				PhysicalMachine pm = ((ShutDownAction)actions.get(i)).getshutdownpm().getPM();
 				pm.switchoff(null);
 			}
 			
-			if(actions.get(i).getstartpm() != null && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = actions.get(i).getstartpm().getPM();
+			if(actions.get(i).equals(Action.Type.START) && actions.get(i).getPrevious().isEmpty()){
+				PhysicalMachine pm = ((StartAction)actions.get(i)).getstartpm().getPM();
 				pm.turnon();
 			}
 		}
@@ -161,12 +146,12 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 				for(int i = 0; i < actions.size(); i++){
 					if(!actions.get(i).getPrevious().isEmpty()){
 						for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
-							if(actions.get(i).getPrevious().get(j).getItemVM().getVM().equals(vm)){
+							if(((MigrationAction) actions.get(i).getPrevious().get(j)).getItemVM().getVM().equals(vm)){
 								actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
 							}
 						}
 					}
-					if(actions.get(i).getItemVM().getVM().equals(vm)){
+					if(((MigrationAction)actions.get(i)).getItemVM().getVM().equals(vm)){
 						actions.remove(actions.get(i));
 					}
 				}
@@ -191,12 +176,12 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 				for(int i = 0; i < actions.size(); i++){
 					if(!actions.get(i).getPrevious().isEmpty()){
 						for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
-							if(actions.get(i).getPrevious().get(j).getstartpm().getPM().equals(pm)){
+							if(((StartAction) actions.get(i).getPrevious().get(j)).getstartpm().getPM().equals(pm)){
 								actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
 							}
 						}
 					}
-					if(actions.get(i).getstartpm().getPM().equals(pm)){
+					if(((StartAction)actions.get(i)).getstartpm().getPM().equals(pm)){
 						actions.remove(actions.get(i));
 					}
 				}

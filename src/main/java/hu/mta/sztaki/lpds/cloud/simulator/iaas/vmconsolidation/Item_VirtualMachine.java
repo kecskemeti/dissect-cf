@@ -6,7 +6,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 /**
  * @author Julian, René
  * 
- * This class represents a VM in our abstract model. It has only the necassary things for consolidation.
+ * This class represents a VM in this abstract model. It has only the necassary things for consolidation which
+ * means the hosting PM, its needed resources and the id of the original VM.
  * The energy consumption happens inside the Bin_PhysicalMachine class.
  */
 
@@ -19,8 +20,6 @@ public class Item_VirtualMachine {
 	Bin_PhysicalMachine hostPM;
 	ResourceVector neededResources;
 	String id;
-
-	
 	
 	/**
 	 * This represents a Virtual Machine of the simulator. It is abstract and inherits only the methods and properties
@@ -36,6 +35,8 @@ public class Item_VirtualMachine {
 	 * 			The Power of one core.
 	 * @param mem
 	 * 			The memory of this PM.
+	 * @param id
+	 * 			The ID of the original VM.
 	 */
 	
 	public Item_VirtualMachine(VirtualMachine vm, Bin_PhysicalMachine pm, double cores, double pCP, long mem, String id) {
@@ -47,8 +48,13 @@ public class Item_VirtualMachine {
 		
 	}
 	
+	/**
+	 * toString() is just for debugging and returns the ID, cores, perCoreProcessingPower and memory of this VM.
+	 */
+	
 	public String toString() {
-		return id;
+		return id + ", " + "Cores: " +getRequiredCPUs() + ", " + "ProcessingPower: " 
+				+ getRequiredProcessingPower() + ", " + "Memory: " + getRequiredMemory();
 	}
 	
 	

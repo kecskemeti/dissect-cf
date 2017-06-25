@@ -6,9 +6,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 /**
  * @author Julian, René
  *
- * This class represents a PhysicalMachine. It abstracts of it and uses only the necassary things for migration.
+ * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
+ * two ResourceVectors (one for the total resources and one for the available Resources) and the possible
+ * States. The States are not the same as inside the simulator, becouse for migrating it is useful to
+ * introduce some new States for the load of the given PM.
  */
-
 
 public class Bin_PhysicalMachine {
 	
@@ -26,7 +28,7 @@ public class Bin_PhysicalMachine {
 	/**
 	 * This represents a Phsyical Machine of the simulator. It is abstract and inherits only the methods and properties
 	 * which are necassary to do the consolidation inside this model.
-	 * The defined treshold is between 20 % and 80 % of the total resources. If its greater than 80 % or less than 20 %,
+	 * The defined treshold is between 20 % and 80 % of the total resources. If the load is greater than 80 % or less than 20 %,
 	 * the state of the PM switches to OVERLOADED or UNDERLOADED.
 	 * 
 	 * @param pm
@@ -39,8 +41,9 @@ public class Bin_PhysicalMachine {
 	 * 			The Power of one core.
 	 * @param mem
 	 * 			The memory of this PM.
+	 * @param number
+	 * 			The number of the PM in its IAAS, used for debugging.
 	 */
-	
 	public Bin_PhysicalMachine(PhysicalMachine pm, ArrayList <Item_VirtualMachine> vm, double cores, double pCP, long mem, int number) {
 		
 		this.pm = pm; 
@@ -53,8 +56,11 @@ public class Bin_PhysicalMachine {
 		//the state is set if the vmlist is set
 	}
 	
+	/**
+	 * toString() is used for debugging and contains the number of the PM in the IAAS and its actual VMs.
+	 */	
 	public String toString() {
-		String erg = "PM: " + number + LINE_SEPARATOR + " VMs:" + LINE_SEPARATOR;
+		String erg =  LINE_SEPARATOR + "PM: " + number + " VMs:   " + LINE_SEPARATOR;
 		for(int i = 0; i < getVMs().size(); i++) {
 			
 			erg = erg + getVM(i).toString() + LINE_SEPARATOR;
@@ -63,22 +69,30 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
-	 * Getter and Setter for VMlist
+	 * Get the ArrayList which contains all actual running VMs on this PM.
 	 * @return vmList
 	 */
-	
 	public ArrayList <Item_VirtualMachine> getVMs() {
-		return vmList;
+		return vmList;		
 	}
-	public void setVMs(ArrayList <Item_VirtualMachine> vms) {
+	
+	/**
+	 * Initialize the VMs, the State and the consumption of resources of this PM.
+	 * @param vms
+	 * 			The ArrayList to overwrite the actual one.
+	 */
+	public void initializePM(ArrayList <Item_VirtualMachine> vms) {
 		this.vmList = vms;
 		
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			changeState(State.EMPTY_OFF);
 		}
 		else {
-			if(pm.getState() == PhysicalMachine.State.SWITCHINGON || pm.getState() == PhysicalMachine.State.RUNNING) {
+			if(pm.getState() == PhysicalMachine.State.RUNNING) {
 				changeState(State.NORMAL_RUNNING);
+			}
+			else if(pm.getState() == PhysicalMachine.State.SWITCHINGON) {
+				changeState(State.EMPTY_RUNNING);
 			}
 		}
 		
@@ -90,7 +104,7 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
-	 * @return the real pm
+	 * @return The matching PM inside the simulator.
 	 */
 	public PhysicalMachine getPM() {
 		return pm;
@@ -98,17 +112,16 @@ public class Bin_PhysicalMachine {
 
 	/**
 	 * Checks if there are any VMs on this PM.
-	 * @return true if VMs are running in this PM.
+	 * @return true if VMs are running on this PM.
 	 */
-	
 	public boolean isHostingVMs() {
 		return !getVMs().isEmpty();
 	}
 	
 	
 	/**
-	 * A String which contains all available resources of this PM.
-	 * @return cores, perCoreProcessing and memory of the PM in a single String.
+	 * This class represents all properties of the PM regarding to the avialable resources.
+	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */
 	
 	public ResourceVector getAvailableResources() {
@@ -116,91 +129,36 @@ public class Bin_PhysicalMachine {
 	}	
 	
 	/**
-	 * A String which contains all resources of this PM.
-	 * @return cores, perCoreProcessing and memory of the PM in a single String.
+	 * This class represents all properties of the PM regarding to the total resources.
+	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */
 	
 	public ResourceVector getTotalResources() {
 		return this.totalResources;
 	}
 	
-	
-	/**
-	 * Getter
-	 * @return cores of the PM.
-	 */
-	public double getRequiredCPUs() {
-		return totalResources.getCPUs();
-	}
-	
-	/**
-	 * Getter
-	 * @return perCoreProcessing of the PM.
-	 */
-	
-	public double getRequiredProcessingPower() {
-		return totalResources.getProcessingPower();
-	}
-	
-	/**
-	 * Getter
-	 * @return memory of the PM.
-	 */
-	
-	public long getRequiredMemory() {
-		return totalResources.getMemory();
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return available cores of the PM.
-	 */
-	public double getAvailableCPUs() {
-		return availableResources.getCPUs();
-	}
-	public void setAvCPUs(double d) {
-		availableResources.setCPUs(d);
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return available perCoreProcessing of the PM.
-	 */
-	
-	public double getAvailableProcessingPower() {
-		return availableResources.getProcessingPower();
-	}
-	public void setAvPCP(double d) {
-		availableResources.setPCP(d);
-	}
-	
-	/**
-	 * Getter and Setter
-	 * @return available memory of the PM.
-	 */
-	
-	public long getAvailableMemory() {
-		return availableResources.getMemory();
-	}
-	public void setAvMem(long d) {
-		availableResources.setMem(d);
-	}
-	
-	
-
 	/**
 	 * The possible States for a PM in this abstract modell.
-	 * For understanding, we need the 'double'-states becouse of the graph.
-	 * If we shut down a PM and have to restart it again it would be an unnecassary 
-	 * action, so we mark them as for example EMPTY_RUNNING or EMPTY_OFF.
-	 * For the load we only have the x_RUNNING State becouse the check of the load
-	 * can only occur if the PM is running, otherwise it would be empty.
-	 */
-	
+	 * 
+	 * For understanding, we need the 'double'-states becouse of the graph. If we shut down 
+	 * a PM and have to restart it again it would be an unnecassary action, so we mark them 
+	 * as for example EMPTY_RUNNING or EMPTY_OFF. For the load we only have the x_RUNNING 
+	 * State becouse the check of the load can only occur if the PM is running, otherwise it 
+	 * would be empty.
+	 * 
+	 * Additionally we have two other States for OVERLOADED_RUNNING and UNDERLOADED_RUNNING,
+	 * STILL_OVERLOADED / UNCHANGEABLE_OVERLOADED and STILL_UNDERLOADED and UNCHANGEABLE_UNDERLOADED.
+	 * This is important becouse of the possibility to determine how often it has been tried
+	 * to migrate this PM or VMs of this PM without success. So the State STILL_x shows that
+	 * it was not possible to migrate VMs of this PM once and the UNCHANGEABLE_x stands for
+	 * two failures in a row, which symbolizes that it will not be possible to get a succesful
+	 * migration in the future. In that case the UNCHANGEABLE_x PM will be skipped inside the
+	 * algorithm for now. 
+	 */	
 	public static enum State {
 		
 		/**
-		 * There are actually no VMs running on this PM, PM is not running
+		 * There are actually no VMs on this PM, PM is not running
 		 */
 		EMPTY_OFF,
 		
@@ -208,6 +166,11 @@ public class Bin_PhysicalMachine {
 		 * PM is running and empty
 		 */
 		EMPTY_RUNNING,
+		
+		/**
+		 * load is between 20 % and 80 %, PM is Running
+		 */
+		NORMAL_RUNNING,
 		
 		/**
 		 * load is lower than 20 %, PM is Running
@@ -220,9 +183,28 @@ public class Bin_PhysicalMachine {
 		OVERLOADED_RUNNING,
 		
 		/**
-		 * load is between 20 % and 80 %, PM is Running
+		 * at the moment nothing can be done to handle the overload,
+		 * but there will be another try for it
 		 */
-		NORMAL_RUNNING
+		STILL_OVERLOADED,
+		
+		/**
+		 * at the moment nothing can be done to handle the underload,
+		 * but there will be another try for it
+		 */
+		STILL_UNDERLOADED,
+		
+		/**
+		 * after a second time STILL_OVERLOADED. This means, the load
+		 * cannot be changed n any way and no migrations are possible anymore.
+		 */
+		UNCHANGEABLE_OVERLOADED,
+		
+		/**
+		 * after a second time STILL_UNDERLOADED. This means, the load
+		 * cannot be changed in any way and no migrations are possible anymore.
+		 */
+		UNCHANGEABLE_UNDERLOADED
 	};
 	
 	/**
@@ -239,7 +221,7 @@ public class Bin_PhysicalMachine {
 	 * later to the real simulation
 	 */
 	
-	public void switchOff() {
+	protected void switchOff() {
 		this.changeState(State.EMPTY_OFF);
 	}
 	
@@ -248,7 +230,7 @@ public class Bin_PhysicalMachine {
 	 * later to the real simulation
 	 */
 	
-	public void switchOn() {
+	protected void switchOn() {
 		this.changeState(State.EMPTY_RUNNING);
 	}
 	
@@ -258,32 +240,42 @@ public class Bin_PhysicalMachine {
 	 * 			the wanted state
 	 */
 	
-	public void changeState(State state) {
+	protected void changeState(State state) {
 		this.state = state;
 	}
 	
 	/**
-	 * In this method the status of each PM in the simulation is considered.
-	 * For that, the methods underloaded() and overloaded() are written.
+	 * In this method the status of this PM is considered. For that, the methods
+	 * underloaded() and overloaded() are written. It is recognized if the last
+	 * migration on this PM was not succesful and in case of that the state remains
+	 * unchanged.
 	 */
 	
 	protected void checkLoad() {
 		if(isHostingVMs() == false) {
 			changeState(State.EMPTY_RUNNING);
 		}
+		if((underloaded() && getState().equals(State.STILL_UNDERLOADED)) || (underloaded() && getState().equals(State.UNCHANGEABLE_UNDERLOADED)) ) {
+			
+		}
 		else {
-			if(underloaded())  {
-				changeState(State.UNDERLOADED_RUNNING);
+			if((overloaded() && getState().equals(State.STILL_OVERLOADED)) || (overloaded() && getState().equals(State.UNCHANGEABLE_OVERLOADED)) ) {
+				
 			}
 			else {
-				if(overloaded()) {
-						changeState(State.OVERLOADED_RUNNING);
+				if(underloaded())  {
+					changeState(State.UNDERLOADED_RUNNING);
 				}
-				else
-					changeState(State.NORMAL_RUNNING);
-				}	
-			}
+				else {
+					if(overloaded()) {
+							changeState(State.OVERLOADED_RUNNING);
+					}
+					else
+						changeState(State.NORMAL_RUNNING);
+					}	
+				}
 		}
+	}
 	
 	/**
 	 * Method for checking if the actual PM is overloaded.
@@ -317,8 +309,7 @@ public class Bin_PhysicalMachine {
 	 * Getter for a specific VM.
 	 * @param position
 	 * 			The desired position where the VM is.
-	 * @return
-	 * 			The desired VM.
+	 * @return The VM on this position.
 	 */
 	
 	public Item_VirtualMachine getVM(int position) {
@@ -327,7 +318,6 @@ public class Bin_PhysicalMachine {
 	
 	/**
 	 * Standard Migration for one VM.
-	 * 
 	 * @param vm
 	 * 			The VM which is going to be migrated.
 	 * @param target
@@ -358,7 +348,7 @@ public class Bin_PhysicalMachine {
 	 * 			The Item_VirtualMachine which is going to be put on this PM. 
 	 */
 
-	public void consumeResources(Item_VirtualMachine x) {
+	protected void consumeResources(Item_VirtualMachine x) {
 		availableResources = availableResources.subtract(x.getResources());
 	}
 	
@@ -370,7 +360,7 @@ public class Bin_PhysicalMachine {
 	 * 			The Item_VirtualMachine which is going to be demigrated. 
 	 */
 	
-	public void deconsumeResources(Item_VirtualMachine x) {
+	protected void deconsumeResources(Item_VirtualMachine x) {
 		availableResources = availableResources.add(x.getResources());
 	}
 }
