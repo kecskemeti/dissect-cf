@@ -81,9 +81,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	final ResourceConstraints smallConstraints = new ConstantConstraints(1, 1, 2);
 	
-	final ResourceConstraints mediumConstraints = new ConstantConstraints(4, 1, 6);
+	final ResourceConstraints mediumConstraints = new ConstantConstraints(3, 1, 6);
 	
-	final ResourceConstraints bigConstraints = new ConstantConstraints(4, 2, 8);
+	final ResourceConstraints bigConstraints = new ConstantConstraints(5, 1, 8);
 	
 	/**
 	 * Now three PMs and four VMs are going to be instantiated.
@@ -367,10 +367,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Bin_PhysicalMachine second = ffc.getBins().get(1);
 		Bin_PhysicalMachine third= ffc.getBins().get(2);
 		
-		Item_VirtualMachine firstVM = first.getVM(0);
-		Item_VirtualMachine secondVM = first.getVM(1);
-		Item_VirtualMachine thirdVM = second.getVM(0);
-		Item_VirtualMachine fourthVM = third.getVM(0);
+		Item_VirtualMachine firstVMbig = first.getVM(0);
+		Item_VirtualMachine secondVMmedium = first.getVM(1);
+		Item_VirtualMachine thirdVMsmall = second.getVM(0);
+		Item_VirtualMachine fourthVMbig = third.getVM(0);
 		
 		ffc.optimize();
 		
@@ -382,13 +382,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());
 		
 		Assert.assertEquals("The first VM has not the right host PM after optimization", 
-				second, firstVM.gethostPM());
+				second, firstVMbig.gethostPM());
 		Assert.assertEquals("The second VM has not the right host PM after optimization", 
-				first, secondVM.gethostPM());
+				first, secondVMmedium.gethostPM());
 		Assert.assertEquals("The third VM has not the right host PM after optimization", 
-				second, thirdVM.gethostPM());
+				second, thirdVMsmall.gethostPM());
 		Assert.assertEquals("The fourth VM has not the right host PM after optimization", 
-				third, fourthVM.gethostPM());		
+				third, fourthVMbig.gethostPM());		
 	}	
 
 	//Method to create another more complex abstract working model	
@@ -464,7 +464,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously	
-	//undone	
+	// left problem: the load change has to be done before trying to migrate a underloaded / overloaded PM
 	@Test(timeout = 100)
 	public void verifyFFAlgorithm() throws Exception {
 		
@@ -480,7 +480,16 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Bin_PhysicalMachine sixthNormal = ffc.getBins().get(5);
 		Bin_PhysicalMachine seventhUnderloaded = ffc.getBins().get(6);
 		Bin_PhysicalMachine eighthUnderloaded = ffc.getBins().get(7);
-				
+		
+		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, firstOverloaded.getState());
+		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, secondUnderloaded.getState());
+		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
+		Assert.assertEquals("The fourth PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, fourthOverloaded.getState());
+		Assert.assertEquals("The fifth PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, fifthUnderloaded.getState());
+		Assert.assertEquals("The sixth PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
+		Assert.assertEquals("The seventh PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, seventhUnderloaded.getState());
+		Assert.assertEquals("The eighth PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, eighthUnderloaded.getState());
+		
 		Item_VirtualMachine firstVM = firstOverloaded.getVM(0);
 		Item_VirtualMachine secondVM = firstOverloaded.getVM(1);
 		Item_VirtualMachine thirdVM = secondUnderloaded.getVM(0);
@@ -494,45 +503,31 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		ffc.optimize();
 		
-		Assert.assertNotEquals("The first PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, firstOverloaded.getState());
-		Assert.assertNotEquals("The first PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, firstOverloaded.getState());
+		Assert.assertEquals("The first PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, firstOverloaded.getState());
 		
-		Assert.assertNotEquals("The second PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, secondUnderloaded.getState());
-		Assert.assertNotEquals("The second PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, secondUnderloaded.getState());
+		Assert.assertEquals("The second PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, secondUnderloaded.getState());
 		
-		Assert.assertNotEquals("The third PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, thirdNormal.getState());
-		Assert.assertNotEquals("The third PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, thirdNormal.getState());
+		Assert.assertEquals("The third PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
 		
-		Assert.assertNotEquals("The fourth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, fourthOverloaded.getState());
-		Assert.assertNotEquals("The fourth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, fourthOverloaded.getState());
+		Assert.assertEquals("The fourth PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, fourthOverloaded.getState());
 		
-		Assert.assertNotEquals("The fifth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, fifthUnderloaded.getState());
-		Assert.assertNotEquals("The fifth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, fifthUnderloaded.getState());
+		Assert.assertEquals("The fifth PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, fifthUnderloaded.getState());
 		
-		Assert.assertNotEquals("The sixth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, sixthNormal.getState());
-		Assert.assertNotEquals("The sixth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, sixthNormal.getState());
+		Assert.assertEquals("The sixth PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
 		
-		Assert.assertNotEquals("The seventh PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, seventhUnderloaded.getState());
-		Assert.assertNotEquals("The seventh PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, seventhUnderloaded.getState());
+		Assert.assertEquals("The seventh PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.EMPTY_OFF, seventhUnderloaded.getState());
 		
-		Assert.assertNotEquals("The eighth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.OVERLOADED_RUNNING, eighthUnderloaded.getState());
-		Assert.assertNotEquals("The eighth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, eighthUnderloaded.getState());
+		Assert.assertEquals("The eighth PM has not the right State after optimization", 
+				Bin_PhysicalMachine.State.EMPTY_OFF, eighthUnderloaded.getState());
+		
+		
 		
 		Assert.assertEquals("The first VM has not the right host PM after optimization", 
 				secondUnderloaded, firstVM.gethostPM());
@@ -551,9 +546,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The eighth VM has not the right host PM after optimization", 
 				sixthNormal, eighthVM.gethostPM());
 		Assert.assertEquals("The ninth VM has not the right host PM after optimization", 
-				eighthUnderloaded, ninthVM.gethostPM());
+				firstOverloaded, ninthVM.gethostPM());
 		Assert.assertEquals("The tenth VM has not the right host PM after optimization", 
-				eighthUnderloaded, tenthVM.gethostPM());
+				firstOverloaded, tenthVM.gethostPM());
 	}
 		
 	// This test verifies the shut down of empty PMs
