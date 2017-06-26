@@ -449,9 +449,9 @@ public abstract class ResourceSpreader {
 							}
 							if (isConsumer) {
 								if (con.getUnProcessed() == 0) {
-									con.ev.conComplete();
+									con.fireCompleteEvent();
 								} else if (!con.isResumable()) {
-									con.ev.conCancelled(con);
+									con.fireCancelEvent();
 								}
 							}
 						}
@@ -686,7 +686,9 @@ public abstract class ResourceSpreader {
 	 */
 	protected final void removeTheseConsumptions(final ResourceConsumption[] conList, final int len) {
 		for (int i = 0; i < len; i++) {
-			underRemoval.add(conList[i]);
+			if(!underRemoval.contains(conList[i])) {
+				underRemoval.add(conList[i]);
+			}
 			ArrayHandler.removeAndReplaceWithLast(underAddition, conList[i]);
 		}
 		if (mySyncer != null) {

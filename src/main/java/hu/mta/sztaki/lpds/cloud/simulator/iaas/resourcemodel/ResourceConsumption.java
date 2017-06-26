@@ -203,7 +203,7 @@ public class ResourceConsumption {
 	 * The event to be fired when there is nothing left to process in this
 	 * consumption.
 	 */
-	final ConsumptionEvent ev;
+	private final ConsumptionEvent ev;
 
 	/**
 	 * The consumer which receives the resources of this consumption.
@@ -235,6 +235,10 @@ public class ResourceConsumption {
 	 * sharing machanism.
 	 */
 	private boolean registered = false;
+	/**
+	 * shows if the consumption event was already sent out to the listener
+	 */
+	private boolean eventNotFired = true;
 
 	/**
 	 * This constructor describes the basic properties of an individual resource
@@ -323,7 +327,7 @@ public class ResourceConsumption {
 	public boolean registerConsumption() {
 		if (!registered) {
 			if (getUnProcessed() == 0) {
-				ev.conComplete();
+				fireCompleteEvent();
 				return true;
 			} else if (resumable && provider != null && consumer != null) {
 				updateHardLimit();
@@ -355,7 +359,7 @@ public class ResourceConsumption {
 		suspend();
 		resumable = false;
 		if (!wasRegistered) {
-			ev.conCancelled(this);
+			fireCancelEvent();
 		}
 	}
 
@@ -675,5 +679,33 @@ public class ResourceConsumption {
 	 */
 	public double getHardLimit() {
 		return hardLimit;
+	}
+
+	/**
+	 * Sends out the completion event to the listener
+	 * 
+	 * @return false if the event was not sent
+	 */
+	boolean fireCompleteEvent() {
+		if (eventNotFired && getUnProcessed() == 0) {
+			eventNotFired = false;
+			ev.conComplete();
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Sends out the cancellation event to the listener
+	 * 
+	 * @return false if the event was not sent
+	 */
+	boolean fireCancelEvent() {
+		if (eventNotFired) {
+			eventNotFired = false;
+			ev.conCancelled(this);
+			return true;
+		}
+		return false;
 	}
 }
