@@ -28,7 +28,7 @@ public class Bin_PhysicalMachine {
 	/**
 	 * This represents a Phsyical Machine of the simulator. It is abstract and inherits only the methods and properties
 	 * which are necassary to do the consolidation inside this model.
-	 * The defined treshold is between 20 % and 80 % of the total resources. If the load is greater than 80 % or less than 20 %,
+	 * The defined treshold is between 25 % and 75 % of the total resources. If the load is greater than 75 % or less than 25 %,
 	 * the state of the PM switches to OVERLOADED or UNDERLOADED.
 	 * 
 	 * @param pm
@@ -168,17 +168,17 @@ public class Bin_PhysicalMachine {
 		EMPTY_RUNNING,
 		
 		/**
-		 * load is between 20 % and 80 %, PM is Running
+		 * load is between 25 % and 75 %, PM is Running
 		 */
 		NORMAL_RUNNING,
 		
 		/**
-		 * load is lower than 20 %, PM is Running
+		 * load is lower than 25 %, PM is Running
 		 */
 		UNDERLOADED_RUNNING,
 		
 		/**
-		 * load is higher than 80 %, PM is Running
+		 * load is higher than 75 %, PM is Running
 		 */
 		OVERLOADED_RUNNING,
 		

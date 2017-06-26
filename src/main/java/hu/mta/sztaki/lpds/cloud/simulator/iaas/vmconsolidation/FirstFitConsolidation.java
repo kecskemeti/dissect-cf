@@ -101,7 +101,7 @@ public class FirstFitConsolidation extends Consolidator {
 		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down
 		
 		super.createGraph(getActions());		//creates the graph with all previously done actions
-		super.performActions();				//do the changes inside the simulator
+		//super.performActions();				//do the changes inside the simulator
 	}
 	
 	/**
@@ -153,14 +153,41 @@ public class FirstFitConsolidation extends Consolidator {
 		ResourceVector vmRes = toMig.getResources();
 		
 		//now we have to search for a fitting pm
-		for(int i = 0; i < bins.size(); i++) {
-			
-			if(bins.get(i) == vm.gethostPM()) {
+		for(int i = 0; i < bins.size(); i++) {		
+			Bin_PhysicalMachine actualPM = getBins().get(i);
+			if(actualPM == vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
+					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERLOADED_RUNNING) 
+					|| actualPM.getState().equals(State.STILL_OVERLOADED) || actualPM.getState().equals(State.UNCHANGEABLE_OVERLOADED)) {
 				
 			}
 			else {
-				Bin_PhysicalMachine actualPM = this.bins.get(i);
 				
+				//These are the constraints of the actual PM
+				ResourceVector pmRes = actualPM.getAvailableResources();
+				
+				if(pmRes.isGreater(vmRes)) {
+					
+					actualPM.consumeResources(toMig);
+					actualPM.checkLoad();
+					if(actualPM.getState().equals(State.OVERLOADED_RUNNING)) {
+						actualPM.deconsumeResources(toMig);
+						actualPM.checkLoad();
+					}					
+					else {
+						actualPM.deconsumeResources(toMig);
+						actualPM.checkLoad();
+						//the PM which first fits to the criteria
+						return actualPM;
+					}
+				}
+			}
+		}
+		
+		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM
+		for(int j = 0; j < bins.size(); j++) {
+			Bin_PhysicalMachine actualPM = getBins().get(j);
+			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
+					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
 				//These are the constraints of the actual PM
 				ResourceVector pmRes = actualPM.getAvailableResources();
 				
@@ -172,12 +199,17 @@ public class FirstFitConsolidation extends Consolidator {
 						actualPM.deconsumeResources(toMig);
 					}
 					else {
+						actualPM.deconsumeResources(toMig);
 						//the PM which first fits to the criteria
 						return actualPM;
 					}
 				}
 			}
-		}	
+			else {
+				
+			}	
+		}
+		
 		return startPMs(toMig.getResources());	//get new PM
 	}
 	
@@ -241,6 +273,7 @@ public class FirstFitConsolidation extends Consolidator {
 	 */
 	public void migrateOverloadedPM(Bin_PhysicalMachine source) {
 		
+		source.checkLoad();	// check if something has changed before migrating
 		State state = source.getState();
 		
 		while(state.equals(State.OVERLOADED_RUNNING) || state.equals(State.STILL_OVERLOADED)) {
@@ -279,6 +312,7 @@ public class FirstFitConsolidation extends Consolidator {
 	public void migrateUnderloadedPM(Bin_PhysicalMachine source) {
 		
 		int i = 1;
+		source.checkLoad();	// check if something has changed before migrating
 		State state = source.getState();
 		
 		while(state.equals(State.UNDERLOADED_RUNNING) || state.equals(State.STILL_UNDERLOADED)) {
