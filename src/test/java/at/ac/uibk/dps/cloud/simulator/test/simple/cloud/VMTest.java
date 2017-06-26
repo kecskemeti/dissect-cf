@@ -335,12 +335,6 @@ public class VMTest extends IaaSRelatedFoundation {
 		long memless = pm.localDisk.getFreeStorageCapacity();
 		long memsize = ra.allocated.getRequiredMemory();
 		vmToUse.suspend();
-		try {
-			vmToUse.destroy(false);
-			Assert.fail("A VM in transferring phase should not be destroyable!");
-		} catch (VMManagementException ex) {
-			// expected operation
-		}
 		Assert.assertEquals("Not in expected state", VirtualMachine.State.SUSPEND_TR, vmToUse.getState());
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("PM's local storage should decrease with memory size", memless - memsize,
@@ -718,5 +712,37 @@ public class VMTest extends IaaSRelatedFoundation {
 		});
 		pm.migrateVM(centralVM, target);
 		Timed.simulateUntilLastEvent();
+	}
+
+	@Test(timeout = 100)
+	public void allowDestroyDuringInitialTransfer() throws VMManagementException, NetworkException {
+		switchOnVMwithMaxCapacity(centralVM, false);
+		new DeferredEvent(1) {
+			@Override
+			protected void eventAction() {
+				try {
+					centralVM.destroy(false);
+				} catch (VMManagementException e) {
+					throw new RuntimeException(e);
+				}
+			};
+		};
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should get to destroyed", VirtualMachine.State.DESTROYED, centralVM.getState());
+		switchOnVMwithMaxCapacity(centralVM, true);
+		Assert.assertEquals("Cancel should not ruin the chance to get to running", VirtualMachine.State.RUNNING,
+				centralVM.getState());
+	}
+
+	@Test(timeout = 100)
+	public void allowDestroyWhileMigrating() throws VMManagementException, NetworkException {
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		pm.migrateVM(centralVM, target);
+		Assert.assertEquals("The VM should already be in SUSTR phase", VirtualMachine.State.SUSPEND_TR,
+				centralVM.getState());
+		centralVM.destroy(false);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("The VM should be destroyed by now", VirtualMachine.State.DESTROYED, centralVM.getState());
 	}
 }

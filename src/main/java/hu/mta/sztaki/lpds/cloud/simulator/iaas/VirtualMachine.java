@@ -29,11 +29,13 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.tuple.Triple;
 
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
@@ -473,6 +475,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	private ArrayList<ResourceConsumption> suspendedTasks;
 
 	/**
+	 * represents operations required for handling the virtual machine monitor
+	 */
+	private HashMap<String, ResourceConsumption> currentVMMOperations = new HashMap<String, ResourceConsumption>();
+
+	/**
 	 * Instantiates a VM object
 	 * 
 	 * @param va
@@ -590,8 +597,26 @@ public class VirtualMachine extends MaxMinConsumer {
 		 */
 		@Override
 		public void conComplete() {
+			currentVMMOperations.clear();
 			disk = target.lookup(diskid);
 			esetup.changeEvents(VirtualMachine.this);
+		}
+
+		@Override
+		public void conCancelled(ResourceConsumption problematic) {
+			currentVMMOperations.clear();
+			if (ra != null) {
+				ra.release();
+				ra = null;
+			}
+			setState(State.DESTROYED);
+		}
+
+	}
+
+	private void ensureEmptyVMMOperationList() throws VMManagementException {
+		if (!currentVMMOperations.isEmpty()) {
+			throw new VMManagementException("Other VMM related background operation is in progress!");
 		}
 	}
 
@@ -624,29 +649,38 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (bgnwload > 0 && vasource == vatarget) {
 			throw new VMManagementException("Cannot initiate a transfer for remotely running VM on the remote site!");
 		}
+		ensureEmptyVMMOperationList();
 		setState(State.INITIAL_TR);
-		this.vasource = vasource;
-		this.vatarget = vatarget;
-		final String diskid = "VMDisk-of-" + Integer.toString(hashCode());
-		final boolean noerror;
-		if (bgnwload > 0) {
-			// Remote scenario
-			noerror = vasource.duplicateContent(va.id, diskid, new InitialTransferEvent(vasource, es, diskid)) != null;
-		} else {
-			if (vasource == null) {
-				// Entirely local scenario
-				noerror = vatarget == null ? false
-						: vatarget.duplicateContent(va.id, diskid,
-								new InitialTransferEvent(vatarget, es, diskid)) != null;
+		// Allows the immediate cancellation of the transfer i.e., in reaction
+		// to the INITIAL_TR change
+		if (State.INITIAL_TR.equals(currState)) {
+			this.vasource = vasource;
+			this.vatarget = vatarget;
+			final String diskid = "VMDisk-of-" + Integer.toString(hashCode());
+			ResourceConsumption currentVMMOperation = null;
+			if (bgnwload > 0) {
+				// Remote scenario
+				currentVMMOperation = vasource.duplicateContent(va.id, diskid,
+						new InitialTransferEvent(vasource, es, diskid));
 			} else {
-				// Mixed scenario
-				noerror = vasource.requestContentDelivery(va.id, diskid, vatarget,
-						new InitialTransferEvent(vatarget, es, diskid)) != null;
+				if (vasource == null) {
+					// Entirely local scenario
+					if (vatarget != null) {
+						currentVMMOperation = vatarget.duplicateContent(va.id, diskid,
+								new InitialTransferEvent(vatarget, es, diskid));
+					}
+				} else {
+					// Mixed scenario
+					currentVMMOperation = vasource.requestContentDelivery(va.id, diskid, vatarget,
+							new InitialTransferEvent(vatarget, es, diskid));
+				}
 			}
-		}
-		if (!noerror) {
-			setState(oldState);
-			throw new VMManagementException("Initial transfer failed");
+			if (currentVMMOperation != null) {
+				currentVMMOperations.put(currState.toString(), currentVMMOperation);
+			} else {
+				setState(oldState);
+				throw new VMManagementException("Initial transfer failed");
+			}
 		}
 	}
 
@@ -735,12 +769,17 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * @param target
 	 *            the new resource allocation on which the resume operation
 	 *            should take place
+	 * @throws VMManagementException
+	 *             if the migration is initiated with already running VMM
+	 *             related activities
 	 */
-	private void actualMigration(final PhysicalMachine.ResourceAllocation target) throws NetworkNode.NetworkException {
+	private void actualMigration(final PhysicalMachine.ResourceAllocation target)
+			throws NetworkNode.NetworkException, VMManagementException {
 		if (ra != null) {
 			ra.release();
 			ra = null;
 		}
+		ensureEmptyVMMOperationList();
 		final boolean[] cancelMigration = new boolean[1];
 		cancelMigration[0] = false;
 		final Repository to = target.getHost().localDisk;
@@ -760,9 +799,11 @@ public class VirtualMachine extends MaxMinConsumer {
 				if (cancelMigration[0]) {
 					// Cleanup after faulty transfer
 					to.deregisterObject(savedmemory.id);
+					currentVMMOperations.clear();
 				} else {
 					eventcounter--;
 					if (eventcounter == 0) {
+						currentVMMOperations.clear();
 						// Both the disk and memory state has completed its
 						// transfer.
 						try {
@@ -772,6 +813,11 @@ public class VirtualMachine extends MaxMinConsumer {
 						}
 					}
 				}
+			}
+
+			@Override
+			public void conCancelled(ResourceConsumption problematic) {
+				currentVMMOperations.clear();
 			}
 		}
 
@@ -784,14 +830,17 @@ public class VirtualMachine extends MaxMinConsumer {
 		final MigrationEvent mp = new MigrationEvent();
 		// inefficiency: the memory is moved twice to the
 		// target pm because of the way resume works currently
-		if (vatarget.requestContentDelivery(savedmemory.id, to, mp) != null) {
+		ResourceConsumption currentVMMOperation;
+		if ((currentVMMOperation = vatarget.requestContentDelivery(savedmemory.id, to, mp)) != null) {
+			currentVMMOperations.put(currState.toString() + savedmemory.id, currentVMMOperation);
 			if (va.getBgNetworkLoad() > 0) {
 				// Remote scenario
 				return;
 			} else {
 				// Local&Mixed scenario
 				mp.eventcounter++;
-				if (vatarget.requestContentDelivery(disk.id, to, mp) != null) {
+				if ((currentVMMOperation = vatarget.requestContentDelivery(disk.id, to, mp)) != null) {
+					currentVMMOperations.put(currState.toString() + disk.id, currentVMMOperation);
 					return;
 				}
 				// The disk could not be transferred:
@@ -839,6 +888,10 @@ public class VirtualMachine extends MaxMinConsumer {
 					} catch (NetworkException e) {
 						// Ignore. This should never happen we have checked for
 						// the connection beforehand.
+					} catch (VMManagementException e) {
+						// This is an illegal situation, stop the simulation
+						// allow debugging
+						throw new RuntimeException(e);
 					}
 				}
 			});
@@ -870,12 +923,11 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (suspendedStates.contains(currState)) {
 			throw new VMManagementException("Live migration is not allowed from suspended states");
 		}
+		ensureEmptyVMMOperationList();
 		underLiveMigrate = true;
 		// Cross cloud migration needs an update on the vastorage also,
 		// otherwise the VM will use a long distance repository for its
 		// background network load!
-
-		final boolean[] cancelMigration = new boolean[1];
 
 		if (va.getBgNetworkLoad() <= 0 && ra != null) {
 			NetworkNode.checkConnectivity(ra.getHost().localDisk, target.getHost().localDisk);
@@ -895,18 +947,18 @@ public class VirtualMachine extends MaxMinConsumer {
 
 			@Override
 			public void conComplete() {
-				if (!cancelMigration[0]) {
-					rounds++;
-				}
+				rounds++;
 				to.deregisterObject(savedmemory.id);
 				pmdisk.deregisterObject(savedmemory.id);
+				currentVMMOperations.clear();
 
 				if (savedmemory.size > WWS_MAX_SIZE && rounds < numRound) {
 					String tmemid = "VM-Memory-State-of-" + hashCode();
 					savedmemory = identifyWWS(tmemid);
 					try {
 						pmdisk.registerObject(savedmemory);
-						vatarget.requestContentDelivery(tmemid, to, new EndRoundEvent());
+						currentVMMOperations.put(currState.toString() + tmemid,
+								vatarget.requestContentDelivery(tmemid, to, new EndRoundEvent()));
 					} catch (Exception e) {
 
 					}
@@ -922,6 +974,10 @@ public class VirtualMachine extends MaxMinConsumer {
 									// Ignore. This should never happen we have
 									// checked for
 									// the connection beforehand.
+								} catch (VMManagementException e) {
+									// Not expected behavior, terminate
+									// simulation
+									throw new RuntimeException(e);
 								}
 							}
 						});
@@ -937,8 +993,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		EndRoundEvent endround = new EndRoundEvent();
 
 		// Initial memory transfer
-		vatarget.requestContentDelivery(tmemid, to, endround);
-
+		currentVMMOperations.put(currState.toString() + tmemid, vatarget.requestContentDelivery(tmemid, to, endround));
 	}
 
 	/**
@@ -950,10 +1005,33 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *             determined what to clean up.
 	 */
 	public void destroy(final boolean killTasks) throws VMManagementException {
-		if (transferringStates.contains(currState)) {
-			throw new StateChangeException(
-					"Parts of the VM are under transfer." + "This transfer should be finished before destruction.");
+		if (!currentVMMOperations.isEmpty()) {
+			ResourceConsumption[] rcList = currentVMMOperations.values()
+					.toArray(new ResourceConsumption[currentVMMOperations.size()]);
+			for (ResourceConsumption currentVMMOperation : rcList) {
+				boolean wasRegistered = currentVMMOperation.isRegistered();
+				currentVMMOperation.cancel();
+				if (wasRegistered) {
+					// Wait until the cancel takes effect - registration cleanup
+					new DeferredEvent(1) {
+						@Override
+						protected void eventAction() {
+							try {
+								finalizeDestroy(killTasks);
+							} catch (VMManagementException e) {
+								// TODO: allow more graceful exception handling
+								throw new RuntimeException(e);
+							}
+						}
+					};
+					return;
+				}
+			}
 		}
+		finalizeDestroy(killTasks);
+	}
+
+	private void finalizeDestroy(final boolean killTasks) throws VMManagementException {
 		if (ra != null) {
 			switchoff(killTasks);
 		}
@@ -966,7 +1044,9 @@ public class VirtualMachine extends MaxMinConsumer {
 			vatarget.deregisterObject(disk);
 			vatarget.deregisterObject(savedmemory);
 		}
-		setState(State.DESTROYED);
+		if (!State.DESTROYED.equals(currState)) {
+			setState(State.DESTROYED);
+		}
 	}
 
 	/**
@@ -1044,17 +1124,27 @@ public class VirtualMachine extends MaxMinConsumer {
 		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = identifyWWS(memid);
 		setState(State.SUSPEND_TR);
-		if (pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
+		ResourceConsumption currentVMMOperation=null;
+		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
 			@Override
 			public void conComplete() {
+				currentVMMOperations.clear();
 				ev.changeEvents(VirtualMachine.this);
 			}
-		}) == null) {
+
+			@Override
+			public void conCancelled(ResourceConsumption problematic) {
+				currentVMMOperations.clear();
+				setState(State.RUNNING);
+			}
+		})) == null) {
 			// Set back the status so it is possible to try again
 			setState(State.RUNNING);
 			pmdisk.deregisterObject(savedmemory.id);
 			savedmemory = null;
 			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + memid);
+		} else {
+			currentVMMOperations.put(currState.toString(),currentVMMOperation);
 		}
 	}
 
@@ -1066,15 +1156,22 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *             if the VM's memory cannot be recalled.
 	 */
 	private void realResume() throws VMManagementException {
-		State priorState = currState;
+		ensureEmptyVMMOperationList();
+		final State priorState = currState;
 		setState(State.RESUME_TR);
 		final Repository pmdisk = ra.getHost().localDisk;
 		class ResumeComplete extends ConsumptionEventAdapter {
+			private void cleanUpIntermediateData() {
+				savedmemory = null;
+				underLiveMigrate = false;
+				currentVMMOperations.clear();
+			}
+
 			@Override
 			public void conComplete() {
 				// Deregister saved memory
 				pmdisk.deregisterObject(savedmemory);
-				savedmemory = null;
+				cleanUpIntermediateData();
 				setState(State.RUNNING);
 				if (suspendedTasks != null) {
 					int size = suspendedTasks.size();
@@ -1083,14 +1180,22 @@ public class VirtualMachine extends MaxMinConsumer {
 					}
 					suspendedTasks = null;
 				}
-				underLiveMigrate = false;
+			}
+
+			@Override
+			public void conCancelled(ResourceConsumption problematic) {
+				cleanUpIntermediateData();
+				setState(priorState);
 			}
 		}
-		if (pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())==null) {
+		ResourceConsumption currentVMMOperation;
+		if ((currentVMMOperation = pmdisk.fetchObjectToMemory(savedmemory, new ResumeComplete())) == null) {
 			// Set back the status so it is possible to try again
 			setState(priorState);
 			throw new VMManagementException("Failed to fetch the stored memory " + savedmemory + " from PM "
 					+ pmdisk.getName() + " for the resume operation of VM " + hashCode());
+		} else {
+			currentVMMOperations.put(currState.toString(), currentVMMOperation);
 		}
 	}
 
