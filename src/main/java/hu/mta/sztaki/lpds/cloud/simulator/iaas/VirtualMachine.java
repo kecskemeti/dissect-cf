@@ -341,6 +341,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	private PhysicalMachine.ResourceAllocation ra = null;
 	/**
+	 * the secondary resource allocation of this VM (this is only not null when
+	 * the VM is in migration)
+	 */
+	private PhysicalMachine.ResourceAllocation migrationRa = null;
+	/**
 	 * the VM's disk that is stored on the vatarget. if the VM is not past its
 	 * initial transfer phase then the disk could be null.
 	 */
@@ -732,21 +737,18 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * causes of this failure please check the documentation of the resume
 	 * funciton.
 	 * 
-	 * @param target
-	 *            the new resource allocation on which the resume operation
-	 *            should take place
 	 * @throws VMManagementException
 	 *             in case some errors were reported during the resume operation
 	 *             at the new physical machine
 	 */
-	private void resumeAfterMigration(final PhysicalMachine.ResourceAllocation target)
-			throws NetworkNode.NetworkException {
+	private void resumeAfterMigration() throws NetworkNode.NetworkException {
 		try {
 			vatarget.deregisterObject(disk);
 			vatarget.deregisterObject(savedmemory);
 			setState(State.SUSPENDED);
-			setResourceAllocation(target);
-			vatarget = target.getHost().localDisk;
+			setResourceAllocation(migrationRa);
+			migrationRa = null;
+			vatarget = ra.getHost().localDisk;
 			realResume();
 		} catch (StateChangeException e) {
 			// Should not happen!
@@ -766,15 +768,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * target physical machine's repository) then this function leaves the VM in
 	 * SUSPENDED_MIG state.
 	 * 
-	 * @param target
-	 *            the new resource allocation on which the resume operation
-	 *            should take place
 	 * @throws VMManagementException
 	 *             if the migration is initiated with already running VMM
 	 *             related activities
 	 */
-	private void actualMigration(final PhysicalMachine.ResourceAllocation target)
-			throws NetworkNode.NetworkException, VMManagementException {
+	private void actualMigration() throws NetworkNode.NetworkException, VMManagementException {
 		if (ra != null) {
 			ra.release();
 			ra = null;
@@ -782,7 +780,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		ensureEmptyVMMOperationList();
 		final boolean[] cancelMigration = new boolean[1];
 		cancelMigration[0] = false;
-		final Repository to = target.getHost().localDisk;
+		final Repository to = migrationRa.getHost().localDisk;
 		/**
 		 * handles the case when the transfer of the state of the VM is complete
 		 * between the source and target physical machines
@@ -807,7 +805,7 @@ public class VirtualMachine extends MaxMinConsumer {
 						// Both the disk and memory state has completed its
 						// transfer.
 						try {
-							resumeAfterMigration(target);
+							resumeAfterMigration();
 						} catch (NetworkException e) {
 							e.printStackTrace();
 						}
@@ -818,12 +816,14 @@ public class VirtualMachine extends MaxMinConsumer {
 			@Override
 			public void conCancelled(ResourceConsumption problematic) {
 				currentVMMOperations.clear();
+				migrationRa.cancel();
+				migrationRa = null;
 			}
 		}
 
 		if (suspendedTasks != null) {
 			for (final ResourceConsumption con : suspendedTasks) {
-				con.setProvider(target.getHost());
+				con.setProvider(migrationRa.getHost());
 			}
 		}
 
@@ -872,19 +872,20 @@ public class VirtualMachine extends MaxMinConsumer {
 		// Cross cloud migration needs an update on the vastorage also,
 		// otherwise the VM will use a long distance repository for its
 		// background network load!
+		migrationRa = target;
 		if (suspendedStates.contains(currState)) {
 			setState(State.MIGRATING);
-			actualMigration(target);
+			actualMigration();
 		} else {
 			if (va.getBgNetworkLoad() <= 0 && ra != null) {
-				NetworkNode.checkConnectivity(ra.getHost().localDisk, target.getHost().localDisk);
+				NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
 			}
 			suspend(new EventSetup(State.MIGRATING) {
 				@Override
 				public void changeEvents(final VirtualMachine onMe) {
 					super.changeEvents(onMe);
 					try {
-						actualMigration(target);
+						actualMigration();
 					} catch (NetworkException e) {
 						// Ignore. This should never happen we have checked for
 						// the connection beforehand.
@@ -924,13 +925,14 @@ public class VirtualMachine extends MaxMinConsumer {
 			throw new VMManagementException("Live migration is not allowed from suspended states");
 		}
 		ensureEmptyVMMOperationList();
+		migrationRa = target;
 		underLiveMigrate = true;
 		// Cross cloud migration needs an update on the vastorage also,
 		// otherwise the VM will use a long distance repository for its
 		// background network load!
 
 		if (va.getBgNetworkLoad() <= 0 && ra != null) {
-			NetworkNode.checkConnectivity(ra.getHost().localDisk, target.getHost().localDisk);
+			NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
 		}
 
 		// Initial transfer
@@ -942,7 +944,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			throw new VMManagementException(
 					"Not enough space on localDisk for the suspend operation of " + savedmemory);
 		}
-		final Repository to = target.getHost().localDisk;
+		final Repository to = migrationRa.getHost().localDisk;
 		class EndRoundEvent extends ConsumptionEventAdapter {
 
 			@Override
@@ -969,7 +971,7 @@ public class VirtualMachine extends MaxMinConsumer {
 							public void changeEvents(VirtualMachine onMe) {
 								super.changeEvents(onMe);
 								try {
-									actualMigration(target);
+									actualMigration();
 								} catch (NetworkException e) {
 									// Ignore. This should never happen we have
 									// checked for
@@ -1124,7 +1126,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = identifyWWS(memid);
 		setState(State.SUSPEND_TR);
-		ResourceConsumption currentVMMOperation=null;
+		ResourceConsumption currentVMMOperation = null;
 		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
 			@Override
 			public void conComplete() {
@@ -1135,6 +1137,10 @@ public class VirtualMachine extends MaxMinConsumer {
 			@Override
 			public void conCancelled(ResourceConsumption problematic) {
 				currentVMMOperations.clear();
+				if(migrationRa!=null) {
+					migrationRa.cancel();
+					migrationRa=null;
+				}
 				setState(State.RUNNING);
 			}
 		})) == null) {
@@ -1144,7 +1150,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			savedmemory = null;
 			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + memid);
 		} else {
-			currentVMMOperations.put(currState.toString(),currentVMMOperation);
+			currentVMMOperations.put(currState.toString(), currentVMMOperation);
 		}
 	}
 

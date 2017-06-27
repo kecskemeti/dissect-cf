@@ -742,6 +742,9 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The VM should already be in SUSTR phase", VirtualMachine.State.SUSPEND_TR,
 				centralVM.getState());
 		centralVM.destroy(false);
+		Timed.simulateUntil(Timed.getFireCount()+aSecond);
+		Assert.assertEquals("There should be no allocation kept for the VM on the source", 0, pm.getCapacities().compareTo(pm.freeCapacities));
+		Assert.assertEquals("There should be no allocation kept for the VM on the target", 0, target.getCapacities().compareTo(target.freeCapacities));
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("The VM should be destroyed by now", VirtualMachine.State.DESTROYED, centralVM.getState());
 	}
