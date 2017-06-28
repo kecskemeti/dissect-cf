@@ -232,7 +232,7 @@ public class FirstFitConsolidation extends Consolidator {
 			if(start != null)
 				return start;
 			
-			if(bins.get(i).getState().equals(State.EMPTY_OFF) && bins.get(i).getTotalResources().isGreater(second)){
+			if(bins.get(i).getState().equals(State.EMPTY_OFF) && second.fitsIn(bins.get(i).getTotalResources())){
 				bins.get(i).switchOn();
 				start = bins.get(i);
 				actions.add(new StartAction(count++, bins.get(i)));	//give the information to the graph

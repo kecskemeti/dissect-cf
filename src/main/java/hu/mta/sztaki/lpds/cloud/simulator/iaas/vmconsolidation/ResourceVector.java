@@ -1,10 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-public class ResourceVector{
-	
-	double cores;
-	double perCoreProcessing;
-	long memory;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+
+public class ResourceVector extends AlterableResourceConstraints {
 	
 	/**
 	 * The constructor for a ResourceVector. This class represents the cores, perCoreProcessingPower
@@ -16,101 +15,20 @@ public class ResourceVector{
 	 */
 	
 	public ResourceVector(double cores, double perCoreProcessing, long memory) {
-		
-		this.cores = cores;
-		this.perCoreProcessing = perCoreProcessing;
-		this.memory = memory;
-	}	
-	
-	/**
-	 * Set the cores of this ResourceVector.
-	 * @param cores
-	 */
-	private void setCPUs(double cores) {
-		this.cores = cores;
-	}
-	
-	/**
-	 * Set the perCoreProcessingPower of this ResourceVector.
-	 * @param cores
-	 */
-	private void setPCP(double pcp) {
-		this.perCoreProcessing = pcp;
-	}
-	
-	/**
-	 * Set the memory of this ResourceVector.
-	 * @param cores
-	 */
-	private void setMem(long mem) {
-		this.memory = mem;
-	}	
-	
-	/**
-	 * @return cores of the PM.
-	 */
-	public double getCPUs() {
-		return cores;
-	}
-	
-	/**
-	 * @return perCoreProcessing of the PM.
-	 */
-	
-	public double getProcessingPower() {
-		return perCoreProcessing;
-	}
-	
-	/**
-	 * @return memory of the PM.
-	 */
-	
-	public long getMemory() {
-		return memory;
-	}
-	
-	/**
-	 * Subtracts a given ResourceVector to this one.
-	 * @param second
-	 * 			The second ResourceVector to susbtract to this one.
-	 * @return actual ResourceVector
-	 */
-	public ResourceVector subtract(ResourceVector second) {
-		ResourceVector erg = new ResourceVector(this.getCPUs(), this.getProcessingPower(), this.getMemory());
-		
-		erg.setCPUs(this.getCPUs() - second.getCPUs());
-		erg.setPCP(this.getProcessingPower() - second.getProcessingPower());
-		erg.setMem(this.getMemory() - second.getMemory());
-		
-		return erg;
-	}
-	
-	/**
-	 * Adds a given ResourceVector to this one.
-	 * @param second
-	 * 			The second ResourceVector to add to this one.
-	 * @return actual ResourceVector
-	 */
-	public ResourceVector add(ResourceVector second) {
-		ResourceVector erg = new ResourceVector(this.getCPUs(), this.getProcessingPower(), this.getMemory());
-		
-		erg.setCPUs(this.getCPUs() + second.getCPUs());
-		erg.setPCP(this.getProcessingPower() + second.getProcessingPower());
-		erg.setMem(this.getMemory() + second.getMemory());
-		
-		return erg;
+
+		super(cores, perCoreProcessing, memory);
 	}
 	
 	/**
 	 * Comparison for checking if the PM is overAllocated.
-	 * @param available
-	 * 			The second ResourceVector
+	 * @param total
+	 * 			The total resources
 	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverAllocated(ResourceVector available) {
+	public boolean compareToOverAllocated(ConstantConstraints total) {
 		
-		if(available.getCPUs() < this.getCPUs() * 0.25 || available.getProcessingPower() < this.getProcessingPower() * 0.25 
-				|| available.getMemory() < this.getMemory() * 0.25) {
+		if(total.getRequiredCPUs() * 0.25 > this.getRequiredCPUs() || total.getRequiredProcessingPower() * 0.25 > this.getRequiredProcessingPower() 
+				|| total.getRequiredMemory() * 0.25 < this.getRequiredMemory() ) {
 			return true;
 		}
 		else {
@@ -120,14 +38,30 @@ public class ResourceVector{
 	
 	/**
 	 * Comparison for checking if the PM is underAllocated.
-	 * @param available
-	 * 			The second ResourceVector
+	 * @param total
+	 * 			The total resources
 	 * @return true if the pm is underAllocated.
 	 */
-	public boolean compareToUnderAllocated(ResourceVector available) {
+	public boolean compareToUnderAllocated(ConstantConstraints total) {
 		
-		if(available.getCPUs() > this.getCPUs() * 0.75 && available.getProcessingPower() > this.getProcessingPower() * 0.75 
-				&& available.getMemory() > this.getMemory() * 0.75) {
+		if(total.getRequiredCPUs() * 0.75 < this.getRequiredCPUs() && total.getRequiredProcessingPower() * 0.75 < this.getRequiredProcessingPower() 
+				&& total.getRequiredMemory() * 0.75 < this.getRequiredMemory() ) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Comparison for checking if the values of the second ResourceVector are smaller than this one.
+	 * @param available
+	 * 			The second ResourceVector
+	 * @return true if all values are greater.
+	 */
+	public boolean fitsIn(ConstantConstraints second) {
+		
+		if(getRequiredCPUs() <= second.getRequiredCPUs() && getRequiredMemory() <= second.getRequiredMemory() && getRequiredProcessingPower() <= second.getRequiredProcessingPower()) {
 			return true;
 		}
 		else {
@@ -143,7 +77,7 @@ public class ResourceVector{
 	 */
 	public boolean isGreater(ResourceVector second) {
 		
-		if(getCPUs() >= second.getCPUs() && getMemory() >= second.getMemory() && getProcessingPower() >= second.getProcessingPower()) {
+		if(getRequiredCPUs() >= second.getRequiredCPUs() && getRequiredMemory() >= second.getRequiredMemory() && getRequiredProcessingPower() >= second.getRequiredProcessingPower()) {
 			return true;
 		}
 		else {

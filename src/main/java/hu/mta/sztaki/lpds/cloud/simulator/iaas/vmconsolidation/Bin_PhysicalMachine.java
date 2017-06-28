@@ -3,6 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 /**
  * @author Julian, René
  *
@@ -20,7 +21,7 @@ public class Bin_PhysicalMachine {
 	ArrayList <Item_VirtualMachine> vmList;
 	int number;
 	
-	ResourceVector totalResources;
+	ConstantConstraints totalResources;
 	ResourceVector availableResources;
 	
 	State state;
@@ -50,7 +51,7 @@ public class Bin_PhysicalMachine {
 		this.vmList = vm;
 		this.number = number;
 		
-		totalResources = new ResourceVector(cores, pCP, mem);
+		totalResources = new ConstantConstraints(cores, pCP, mem);
 		availableResources = new ResourceVector(cores, pCP, mem);
 		
 		//the state is set if the vmlist is set
@@ -133,7 +134,7 @@ public class Bin_PhysicalMachine {
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */
 	
-	public ResourceVector getTotalResources() {
+	public ConstantConstraints getTotalResources() {
 		return this.totalResources;
 	}
 	
@@ -284,11 +285,19 @@ public class Bin_PhysicalMachine {
 	
 	private boolean overAllocated() {
 		
-		if(totalResources.compareToOverAllocated(availableResources)) {
+		if(availableResources.compareToOverAllocated(totalResources)) {
 			return true;
 		}
 		else
 			return false;
+		
+		
+		/*
+		if(totalResources.compareToOverAllocated(availableResources)) {
+			return true;
+		}
+		else
+			return false;*/
 	}
 	
 	/**
@@ -298,11 +307,19 @@ public class Bin_PhysicalMachine {
 	
 	private boolean underAllocated() {
 		
-		if(totalResources.compareToUnderAllocated(availableResources)) {
+		if(availableResources.compareToUnderAllocated(totalResources)) {
 			return true;
 		}
 		else
 			return false;
+		
+		
+		/*
+		if(totalResources.compareToUnderAllocated(availableResources)) {
+			return true;
+		}
+		else
+			return false;*/
 	}
 	
 	/**
@@ -349,7 +366,7 @@ public class Bin_PhysicalMachine {
 	 */
 
 	protected void consumeResources(Item_VirtualMachine x) {
-		availableResources = availableResources.subtract(x.getResources());
+		availableResources.subtract(x.getResources());
 	}
 	
 	/**
@@ -361,6 +378,6 @@ public class Bin_PhysicalMachine {
 	 */
 	
 	protected void deconsumeResources(Item_VirtualMachine x) {
-		availableResources = availableResources.add(x.getResources());
+		availableResources.add(x.getResources());
 	}
 }

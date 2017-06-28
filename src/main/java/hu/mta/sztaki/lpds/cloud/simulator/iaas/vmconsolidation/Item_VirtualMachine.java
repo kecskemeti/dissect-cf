@@ -67,7 +67,7 @@ public class Item_VirtualMachine {
 	 * @return cores of the VM.
 	 */
 	public double getRequiredCPUs() {
-		return neededResources.getCPUs();
+		return neededResources.getRequiredCPUs();
 	}
 	
 	/** Getter
@@ -75,14 +75,14 @@ public class Item_VirtualMachine {
 	 */
 	
 	public double getRequiredProcessingPower() {
-		return neededResources.getProcessingPower();
+		return neededResources.getRequiredProcessingPower();
 	}
 	
 	/** Getter
 	 * @return memory of the VM.
 	 */
 	public long getRequiredMemory() {
-		return neededResources.getMemory();
+		return neededResources.getRequiredMemory();
 	}
 	
 	/** Getter
