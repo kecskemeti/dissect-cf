@@ -33,15 +33,15 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 
 	 * simulator:			creation of PMs and VMs inside the simulator and their deployment
 	 * 			 			deployment of resources to the VMs
-	 * 			 			creating overloaded and underloaded PMs
+	 * 			 			creating overAllocated and underAllocated PMs
 	 * 
 	 * selection out    	do the abstract version of the PMs fit with the real ones?
 	 * of the simulator:	do the deployment of the VMs fit with the deployment inside the simulator?
 	 * 						are the resources of the VMs correct?
 	 * 
-	 * algorithm:			Do the load of each abstract PM fit with the consumed resources?  
+	 * algorithm:			Do the allocation of each abstract PM fit with the consumed resources?  
 	 *       				Do the right MigPMs get chosen?
-	 *       				Is the algorithm for migration correct and the right one used (load-dependant)?
+	 *       				Is the algorithm for migration correct and the right one used (allocation-dependant)?
 	 *       				Is the shut down method working?
 	 *       				Can a not running PM get started if necessary?
 	 *       
@@ -77,7 +77,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	final static int reqcores = 8, reqProcessing = 5, reqmem = 16,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
 	
-	//The different ResourceConstraints to get an other load for each PM
+	//The different ResourceConstraints to get an other allocation for each PM
 	
 	final ResourceConstraints smallConstraints = new ConstantConstraints(1, 1, 2);
 	
@@ -111,7 +111,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		basic.registerHost(testUnderPM2);
 		basic.registerHost(testNormalPM3);
 				
-		// The four VMs set the Load of PM1 to overloaded, PM2 to underloaded and PM3 to normal.				
+		// The four VMs set the Load of PM1 to overAllocated, PM2 to underoverAllocated and PM3 to normal.				
 		VA1 = new VirtualAppliance("VM 1", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
 		VA2 = new VirtualAppliance("VM 2", 1000, 0, false, testOverPM1.localDisk.getMaxStorageCapacity() / 20);
 		VA3 = new VirtualAppliance("VM 3", 1000, 0, false, testUnderPM2.localDisk.getMaxStorageCapacity() / 20);
@@ -138,16 +138,15 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
     /** 				
 	 * 	simulator:			creation of PMs and VMs inside the simulator and their deployment
 	 * 			 			deployment of resources to the VMs
-	 * 			 			creating overloaded and underloaded PMs
+	 * 			 			creating overoverAllocated and underoverAllocated PMs
 	 */
 	
-	//This test verifies that all PMs are shut down before simulating	
+	//This test verifies that all PMs are started before simulating	
 	@Test(timeout = 100)
 	public void turnonTest() {
 		Assert.assertEquals(
 				"Machines should not running at the beginning of the simulation",
 				0, basic.runningMachines.size());
-		Timed.simulateUntilLastEvent();
 		testOverPM1.turnon();
 		testUnderPM2.turnon();
 		testNormalPM3.turnon();
@@ -159,7 +158,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	//This test verifies that all PMs are shut down before simulating	
 	@Test(timeout = 100)
 	public void switchOffTest() throws VMManagementException, NetworkException {
-		Timed.simulateUntilLastEvent();
 		testOverPM1.switchoff(null);
 		testUnderPM2.switchoff(null);
 		testNormalPM3.switchoff(null);
@@ -170,6 +168,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	//This test verifies that the creation and destruction of a VM is possible	
 	@Test(timeout = 100)
 	public void vmCreationTest() throws VMManagementException, NetworkException {
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
 		Timed.simulateUntilLastEvent();
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) reqDisk.contents()
 				.iterator().next(), basic.machines.get(0)
@@ -199,6 +200,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void simpleVMStartup() throws VMManagementException, NetworkException {
 		
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
 		Timed.simulateUntilLastEvent();
 		
 		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
@@ -226,6 +230,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	//Method to create the abstract working model	
 	public void createAbstractModel() throws Exception {
 		
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		
 		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
 		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
 		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
@@ -239,8 +248,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies that all three abstract PMs were created and fit with the real ones	
 	@Test(timeout = 100)
 	public void checkAbstractPMs() throws Exception {
-		
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -259,8 +266,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies that all four abstract VMs were created and deployed to the fitting PM inside the real simulator	
 	@Test(timeout = 100)
 	public void checkAbstractVMs() throws Exception {
-
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -282,8 +287,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies that all resources of each VM are correct
 	@Test(timeout = 100)
 	public void checkVMresources() throws Exception {
-		
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -322,19 +325,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	/** 				
-	 * algorithm:			Do the load of each abstract PM fit with the consumed resources?  
+	 * algorithm:			Do the allocation of each abstract PM fit with the consumed resources?  
 	 *       				Do the right MigPMs get chosen?
-	 *       				Is the algorithm for migration correct and the right one used (load-dependant)?
+	 *       				Is the algorithm for migration correct and the right one used (allocation-dependant)?
 	 *       				Is the shut down method working?
 	 *      				Can a not running PM get started if necessary?
 	 */	
 	
-	// first PM: overloaded second PM: underloaded third PM: normal	
+	// first PM: overAllocated second PM: underAllocated third PM: normal	
 	// This test verifies the correct setting of the load of each PM	
 	@Test(timeout = 100)
 	public void checkAbstractPMLoad() throws Exception {
-		
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -344,16 +345,14 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
-		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, first.getState());
-		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, second.getState());
+		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, first.getState());
+		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, second.getState());
 		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());		
 	}
 	
 	// This test verifies the functionality of the getMigPM()-method	
 	@Test(timeout = 100)
 	public void verifyMigPM() throws Exception {
-		
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -362,7 +361,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Item_VirtualMachine firstVM = first.getVM(0);
 		
-		ffc.migrateOverloadedPM(first);
+		ffc.migrateOverAllocatedPM(first);
 		
 		Assert.assertEquals("The first PM has not the right State after migration", 
 				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
@@ -373,8 +372,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies the functionality of the optimize()-method	
 	@Test(timeout = 100)
 	public void verifyFFAlgorithmEasy() throws Exception {
-		
-		Timed.simulateUntilLastEvent();
 		
 		createAbstractModel();
 		
@@ -427,8 +424,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		basic.registerHost(testUnderPM7);
 		basic.registerHost(testUnderPM8);
 		
-		// The six additional VMs set the Load of PM4 to overloaded, PM5 to underloaded, PM6 to normal,
-		// PM7 to underloaded and PM8 to underloaded. 
+		// The six additional VMs set the Load of PM4 to overAllocated, PM5 to underAllocated, PM6 to normal,
+		// PM7 to underAllocated and PM8 to underAllocated. 
 		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
 		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1000, 0, false, testOverPM4.localDisk.getMaxStorageCapacity() / 20);
 		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1000, 0, false, testUnderPM5.localDisk.getMaxStorageCapacity() / 20);
@@ -460,6 +457,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		testOverPM4.turnon();
+		testUnderPM5.turnon();
+		testNormalPM6.turnon();
+		testUnderPM7.turnon();
+		testUnderPM8.turnon();
+		
+		Timed.simulateUntilLastEvent();
+		
 		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
 		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
 		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
@@ -478,92 +486,89 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 	
-	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously	
-	// left problem: the load change has to be done before trying to migrate a underloaded / overloaded PM
+	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously
 	@Test(timeout = 100)
 	public void verifyFFAlgorithm() throws Exception {
 		
-		Timed.simulateUntilLastEvent();
-		
 		this.createComplexAbstractModel();
 		
-		Bin_PhysicalMachine firstOverloaded = ffc.getBins().get(0);
-		Bin_PhysicalMachine secondUnderloaded = ffc.getBins().get(1);
+		Bin_PhysicalMachine firstOverAllocated = ffc.getBins().get(0);
+		Bin_PhysicalMachine secondUnderAllocated = ffc.getBins().get(1);
 		Bin_PhysicalMachine thirdNormal = ffc.getBins().get(2);
-		Bin_PhysicalMachine fourthOverloaded = ffc.getBins().get(3);
-		Bin_PhysicalMachine fifthUnderloaded = ffc.getBins().get(4);
+		Bin_PhysicalMachine fourthOverAllocated = ffc.getBins().get(3);
+		Bin_PhysicalMachine fifthUnderAllocated = ffc.getBins().get(4);
 		Bin_PhysicalMachine sixthNormal = ffc.getBins().get(5);
-		Bin_PhysicalMachine seventhUnderloaded = ffc.getBins().get(6);
-		Bin_PhysicalMachine eighthUnderloaded = ffc.getBins().get(7);
+		Bin_PhysicalMachine seventhUnderAllocated = ffc.getBins().get(6);
+		Bin_PhysicalMachine eighthUnderAllocated = ffc.getBins().get(7);
 		
-		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, firstOverloaded.getState());
-		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, secondUnderloaded.getState());
+		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, firstOverAllocated.getState());
+		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, secondUnderAllocated.getState());
 		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
-		Assert.assertEquals("The fourth PM has not the right State", Bin_PhysicalMachine.State.OVERLOADED_RUNNING, fourthOverloaded.getState());
-		Assert.assertEquals("The fifth PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, fifthUnderloaded.getState());
+		Assert.assertEquals("The fourth PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, fourthOverAllocated.getState());
+		Assert.assertEquals("The fifth PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, fifthUnderAllocated.getState());
 		Assert.assertEquals("The sixth PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
-		Assert.assertEquals("The seventh PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, seventhUnderloaded.getState());
-		Assert.assertEquals("The eighth PM has not the right State", Bin_PhysicalMachine.State.UNDERLOADED_RUNNING, eighthUnderloaded.getState());
+		Assert.assertEquals("The seventh PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, seventhUnderAllocated.getState());
+		Assert.assertEquals("The eighth PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, eighthUnderAllocated.getState());
 		
-		Item_VirtualMachine firstVM = firstOverloaded.getVM(0);
-		Item_VirtualMachine secondVM = firstOverloaded.getVM(1);
-		Item_VirtualMachine thirdVM = secondUnderloaded.getVM(0);
+		Item_VirtualMachine firstVM = firstOverAllocated.getVM(0);
+		Item_VirtualMachine secondVM = firstOverAllocated.getVM(1);
+		Item_VirtualMachine thirdVM = secondUnderAllocated.getVM(0);
 		Item_VirtualMachine fourthVM = thirdNormal.getVM(0);
-		Item_VirtualMachine fifthVM = fourthOverloaded.getVM(0);
-		Item_VirtualMachine sixthVM = fourthOverloaded.getVM(1);
-		Item_VirtualMachine seventhVM = fifthUnderloaded.getVM(0);
+		Item_VirtualMachine fifthVM = fourthOverAllocated.getVM(0);
+		Item_VirtualMachine sixthVM = fourthOverAllocated.getVM(1);
+		Item_VirtualMachine seventhVM = fifthUnderAllocated.getVM(0);
 		Item_VirtualMachine eighthVM = sixthNormal.getVM(0);
-		Item_VirtualMachine ninthVM = seventhUnderloaded.getVM(0);
-		Item_VirtualMachine tenthVM = eighthUnderloaded.getVM(0);		
+		Item_VirtualMachine ninthVM = seventhUnderAllocated.getVM(0);
+		Item_VirtualMachine tenthVM = eighthUnderAllocated.getVM(0);		
 		
 		ffc.optimize();
 		
 		Assert.assertEquals("The first PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, firstOverloaded.getState());
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, firstOverAllocated.getState());
 		
 		Assert.assertEquals("The second PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, secondUnderloaded.getState());
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, secondUnderAllocated.getState());
 		
 		Assert.assertEquals("The third PM has not the right State after optimization", 
 				Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
 		
 		Assert.assertEquals("The fourth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, fourthOverloaded.getState());
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, fourthOverAllocated.getState());
 		
 		Assert.assertEquals("The fifth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, fifthUnderloaded.getState());
+				Bin_PhysicalMachine.State.NORMAL_RUNNING, fifthUnderAllocated.getState());
 		
 		Assert.assertEquals("The sixth PM has not the right State after optimization", 
 				Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
 		
 		Assert.assertEquals("The seventh PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.EMPTY_OFF, seventhUnderloaded.getState());
+				Bin_PhysicalMachine.State.EMPTY_OFF, seventhUnderAllocated.getState());
 		
 		Assert.assertEquals("The eighth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.EMPTY_OFF, eighthUnderloaded.getState());
+				Bin_PhysicalMachine.State.EMPTY_OFF, eighthUnderAllocated.getState());
 		
 		
 		
 		Assert.assertEquals("The first VM has not the right host PM after optimization", 
-				secondUnderloaded, firstVM.gethostPM());
+				secondUnderAllocated, firstVM.gethostPM());
 		Assert.assertEquals("The second VM has not the right host PM after optimization", 
-				firstOverloaded, secondVM.gethostPM());
+				firstOverAllocated, secondVM.gethostPM());
 		Assert.assertEquals("The third VM has not the right host PM after optimization", 
-				secondUnderloaded, thirdVM.gethostPM());
+				secondUnderAllocated, thirdVM.gethostPM());
 		Assert.assertEquals("The fourth VM has not the right host PM after optimization", 
 				thirdNormal, fourthVM.gethostPM());
 		Assert.assertEquals("The fifth VM has not the right host PM after optimization", 
-				fifthUnderloaded, fifthVM.gethostPM());
+				fifthUnderAllocated, fifthVM.gethostPM());
 		Assert.assertEquals("The sixth VM has not the right host PM after optimization", 
-				fourthOverloaded, sixthVM.gethostPM());
+				fourthOverAllocated, sixthVM.gethostPM());
 		Assert.assertEquals("The seventh VM has not the right host PM after optimization", 
-				fifthUnderloaded, seventhVM.gethostPM());
+				fifthUnderAllocated, seventhVM.gethostPM());
 		Assert.assertEquals("The eighth VM has not the right host PM after optimization", 
 				sixthNormal, eighthVM.gethostPM());
 		Assert.assertEquals("The ninth VM has not the right host PM after optimization", 
-				firstOverloaded, ninthVM.gethostPM());
+				firstOverAllocated, ninthVM.gethostPM());
 		Assert.assertEquals("The tenth VM has not the right host PM after optimization", 
-				firstOverloaded, tenthVM.gethostPM());
+				firstOverAllocated, tenthVM.gethostPM());
 	}
 		
 	// This test verifies the shut down of empty PMs
@@ -573,6 +578,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
 				reqond, reqoffd, defaultTransitions);
 		basic.registerHost(emptyPM);
+		
+		emptyPM.turnon();
 		
 		Timed.simulateUntilLastEvent();
 		
@@ -585,27 +592,47 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The empty PM is not shut down", State.EMPTY_OFF, empty.getState());
 	}
 	
+	public void createAbstractStartingShutDownModel() throws Exception {
+		
+		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				reqond, reqoffd, defaultTransitions);
+		basic.registerHost(emptyPM);
+		
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();		
+		emptyPM.turnon();
+
+		Timed.simulateUntilLastEvent();
+		
+		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
+		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
+		switchOnVM(VM3, this.bigConstraints, testUnderPM2, true);
+		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
+		
+		ffc = new FirstFitConsolidation(basic);
+		
+		Timed.simulateUntilLastEvent();
+	}
+	
 	// This test verifies the starting of a shut down PM if a migration is not possible on the running PMs	
-	//undone and not possible
 	@Test(timeout = 100)
 	public void checkStartingShutDownPM() throws Exception {
 		
-		PhysicalMachine emptyPM = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);		
-		basic.registerHost(emptyPM);
-		
-		Timed.simulateUntilLastEvent();
-		emptyPM.switchoff(testOverPM1);	//not possible on alwayson machines
-		//Assert.assertEquals("The empty PM is not shut down correctly", PhysicalMachine.State.OFF, emptyPM.getState());
-		Timed.simulateUntilLastEvent();
-		
-		createAbstractModel();
+		createAbstractStartingShutDownModel();
 		
 		Bin_PhysicalMachine first = ffc.getBins().get(0);
-		Bin_PhysicalMachine second = ffc.getBins().get(1);
-		Bin_PhysicalMachine third= ffc.getBins().get(2);
-		Bin_PhysicalMachine empty= ffc.getBins().get(3);		
-	}	 
+		Bin_PhysicalMachine empty = ffc.getBins().get(3);
+		
+		Item_VirtualMachine vm1 = first.getVM(0);
+		
+		ffc.optimize();
+		
+		Assert.assertEquals("The empty PM is still empty", true, empty.isHostingVMs());
+		Assert.assertEquals("The first VM is not placed on the empty PM after optimization", empty, vm1.gethostPM());
+	}
+	
+	//so far everything is running except the graph method "performActions()"
 	 
 	/**  				
 	 * graph: 				Do actions exist?
