@@ -58,7 +58,7 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 			items.addAll(pm.listVMs());
 			
 			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), 
-					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i);
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i +1);
 			
 			for(int j = 0; j < pm.listVMs().size(); j ++) {
 				vmList.add(new Item_VirtualMachine(items.get(j), act, 
@@ -77,9 +77,9 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 	/**
 	 * Functionality of this optimization:
 	 * 
-	 * Step 1: Check the threshold of all PMs. A PM is underloaded, if its used resources are lower than 25 %
-	 * 		   of the totalProcessingPower and it is overloaded, if its used resources are higher than 75 %
-	 * 		   of the totalProcessingPower.
+	 * Step 1: Check the threshold of all PMs. A PM is underAllocated, if its used resources are lower than 25 %
+	 * 		   of the cores, perCoreProcessingPower and the memory and it is overAllocated, if its used resources are higher than 75 %
+	 * 		   of the cores, perCoreProcessingPower or the memory.
 	 * Step 2: Call the migration algorithm and do the migrations. Concurrently the graph shall be created (Step 3), which contain 
 	 * 		   the changes made during this step in order to do the migration inside the real simulation, too.
 	 * Step 3: Create a graph and fill it with the changes that had been done.

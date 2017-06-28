@@ -100,7 +100,7 @@ public class Bin_PhysicalMachine {
 			consumeResources(vms.get(i));
 		}
 		
-		checkLoad();
+		checkAllocation();
 	}
 	
 	/**
@@ -142,12 +142,12 @@ public class Bin_PhysicalMachine {
 	 * 
 	 * For understanding, we need the 'double'-states becouse of the graph. If we shut down 
 	 * a PM and have to restart it again it would be an unnecassary action, so we mark them 
-	 * as for example EMPTY_RUNNING or EMPTY_OFF. For the load we only have the x_RUNNING 
-	 * State becouse the check of the load can only occur if the PM is running, otherwise it 
+	 * as for example EMPTY_RUNNING or EMPTY_OFF. For the allocation we only have the x_RUNNING 
+	 * State because the check of the allocation can only occur if the PM is running, otherwise it 
 	 * would be empty.
 	 * 
-	 * Additionally we have two other States for OVERLOADED_RUNNING and UNDERLOADED_RUNNING,
-	 * STILL_OVERLOADED / UNCHANGEABLE_OVERLOADED and STILL_UNDERLOADED and UNCHANGEABLE_UNDERLOADED.
+	 * Additionally we have two other States for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
+	 * STILL_OVERALLOCATED / UNCHANGEABLE_OVERALLOCATED and STILL_UNDERALLOCATED and UNCHANGEABLE_UNDERALLOCATED.
 	 * This is important becouse of the possibility to determine how often it has been tried
 	 * to migrate this PM or VMs of this PM without success. So the State STILL_x shows that
 	 * it was not possible to migrate VMs of this PM once and the UNCHANGEABLE_x stands for
@@ -168,43 +168,43 @@ public class Bin_PhysicalMachine {
 		EMPTY_RUNNING,
 		
 		/**
-		 * load is between 25 % and 75 %, PM is Running
+		 * allocation is between 25 % and 75 %, PM is Running
 		 */
 		NORMAL_RUNNING,
 		
 		/**
-		 * load is lower than 25 %, PM is Running
+		 * allocation is lower than 25 %, PM is Running
 		 */
-		UNDERLOADED_RUNNING,
+		UNDERALLOCATED_RUNNING,
 		
 		/**
-		 * load is higher than 75 %, PM is Running
+		 * allocation is higher than 75 %, PM is Running
 		 */
-		OVERLOADED_RUNNING,
+		OVERALLOCATED_RUNNING,
 		
 		/**
-		 * at the moment nothing can be done to handle the overload,
+		 * at the moment nothing can be done to handle the overallocation,
 		 * but there will be another try for it
 		 */
-		STILL_OVERLOADED,
+		STILL_OVERALLOCATED,
 		
 		/**
-		 * at the moment nothing can be done to handle the underload,
+		 * at the moment nothing can be done to handle the underallocation,
 		 * but there will be another try for it
 		 */
-		STILL_UNDERLOADED,
+		STILL_UNDERALLOCATED,
 		
 		/**
-		 * after a second time STILL_OVERLOADED. This means, the load
+		 * after a second time STILL_OVERALLOCATED. This means, the allocation
 		 * cannot be changed n any way and no migrations are possible anymore.
 		 */
-		UNCHANGEABLE_OVERLOADED,
+		UNCHANGEABLE_OVERALLOCATED,
 		
 		/**
-		 * after a second time STILL_UNDERLOADED. This means, the load
+		 * after a second time STILL_UNDERALLOCATED. This means, the allocation
 		 * cannot be changed in any way and no migrations are possible anymore.
 		 */
-		UNCHANGEABLE_UNDERLOADED
+		UNCHANGEABLE_UNDERALLOCATED
 	};
 	
 	/**
@@ -246,29 +246,29 @@ public class Bin_PhysicalMachine {
 	
 	/**
 	 * In this method the status of this PM is considered. For that, the methods
-	 * underloaded() and overloaded() are written. It is recognized if the last
+	 * underAllocated() and overAllocated() are written. It is recognized if the last
 	 * migration on this PM was not succesful and in case of that the state remains
 	 * unchanged.
 	 */
 	
-	protected void checkLoad() {
+	protected void checkAllocation() {
 		if(isHostingVMs() == false) {
 			changeState(State.EMPTY_RUNNING);
 		}
-		if((underloaded() && getState().equals(State.STILL_UNDERLOADED)) || (underloaded() && getState().equals(State.UNCHANGEABLE_UNDERLOADED)) ) {
+		if((underAllocated() && getState().equals(State.STILL_UNDERALLOCATED)) || (underAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) ) {
 			
 		}
 		else {
-			if((overloaded() && getState().equals(State.STILL_OVERLOADED)) || (overloaded() && getState().equals(State.UNCHANGEABLE_OVERLOADED)) ) {
+			if((overAllocated() && getState().equals(State.STILL_OVERALLOCATED)) || (overAllocated() && getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) ) {
 				
 			}
 			else {
-				if(underloaded())  {
-					changeState(State.UNDERLOADED_RUNNING);
+				if(underAllocated())  {
+					changeState(State.UNDERALLOCATED_RUNNING);
 				}
 				else {
-					if(overloaded()) {
-							changeState(State.OVERLOADED_RUNNING);
+					if(overAllocated()) {
+							changeState(State.OVERALLOCATED_RUNNING);
 					}
 					else
 						changeState(State.NORMAL_RUNNING);
@@ -278,13 +278,13 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
-	 * Method for checking if the actual PM is overloaded.
+	 * Method for checking if the actual PM is overAllocated.
 	 * @return true if overloaded, false otherwise
 	 */
 	
-	private boolean overloaded() {
+	private boolean overAllocated() {
 		
-		if(totalResources.compareToOverloaded(availableResources)) {
+		if(totalResources.compareToOverAllocated(availableResources)) {
 			return true;
 		}
 		else
@@ -292,13 +292,13 @@ public class Bin_PhysicalMachine {
 	}
 	
 	/**
-	 * Method for checking if the actual PM is underloaded.
+	 * Method for checking if the actual PM is underAllocated.
 	 * @return true if underloaded, false otherwise	  
 	 */
 	
-	private boolean underloaded() {
+	private boolean underAllocated() {
 		
-		if(totalResources.compareToUnderloaded(availableResources)) {
+		if(totalResources.compareToUnderAllocated(availableResources)) {
 			return true;
 		}
 		else

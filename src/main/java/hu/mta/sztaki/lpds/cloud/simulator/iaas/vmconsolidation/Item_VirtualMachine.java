@@ -14,8 +14,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 public class Item_VirtualMachine {
 	
-	private static final String LINE_SEPARATOR = System.getProperty("line.separator");	//for the toString()-method
-	
 	VirtualMachine vm;
 	Bin_PhysicalMachine hostPM;
 	ResourceVector neededResources;

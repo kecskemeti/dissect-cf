@@ -102,12 +102,12 @@ public class ResourceVector{
 	}
 	
 	/**
-	 * Comparison for checking if the PM is overloaded.
+	 * Comparison for checking if the PM is overAllocated.
 	 * @param available
 	 * 			The second ResourceVector
-	 * @return true if the pm is overloaded.
+	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverloaded(ResourceVector available) {
+	public boolean compareToOverAllocated(ResourceVector available) {
 		
 		if(available.getCPUs() < this.getCPUs() * 0.25 || available.getProcessingPower() < this.getProcessingPower() * 0.25 
 				|| available.getMemory() < this.getMemory() * 0.25) {
@@ -119,12 +119,12 @@ public class ResourceVector{
 	}
 	
 	/**
-	 * Comparison for checking if the PM is underloaded.
+	 * Comparison for checking if the PM is underAllocated.
 	 * @param available
 	 * 			The second ResourceVector
-	 * @return true if the pm is underloaded.
+	 * @return true if the pm is underAllocated.
 	 */
-	public boolean compareToUnderloaded(ResourceVector available) {
+	public boolean compareToUnderAllocated(ResourceVector available) {
 		
 		if(available.getCPUs() > this.getCPUs() * 0.75 && available.getProcessingPower() > this.getProcessingPower() * 0.75 
 				&& available.getMemory() > this.getMemory() * 0.75) {
