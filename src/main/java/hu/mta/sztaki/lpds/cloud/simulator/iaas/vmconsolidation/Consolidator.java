@@ -58,7 +58,7 @@ public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine
 			items.addAll(pm.listVMs());
 			
 			Bin_PhysicalMachine act = new Bin_PhysicalMachine(pm, vmList, pm.getCapacities().getRequiredCPUs(), 
-					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i +1);
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i);
 			
 			for(int j = 0; j < pm.listVMs().size(); j ++) {
 				vmList.add(new Item_VirtualMachine(items.get(j), act, 
