@@ -14,7 +14,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.EmptyScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidation;
@@ -92,7 +92,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Before
 	public void testSim() throws Exception {
 		basic = new IaaSService(NonQueueingScheduler.class,
-				AlwaysOnMachines.class);
+				EmptyScheduler.class);
 		
 		latmap.put("test1", 1);
 		
@@ -145,12 +145,27 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void turnonTest() {
 		Assert.assertEquals(
-				"Even alwayson should not have machines running at the beginning of the simulation",
+				"Machines should not running at the beginning of the simulation",
 				0, basic.runningMachines.size());
+		Timed.simulateUntilLastEvent();
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Did not switch on all machines as expected",
 				basic.machines.size(), basic.runningMachines.size());
 	}
+	
+	//This test verifies that all PMs are shut down before simulating	
+	@Test(timeout = 100)
+	public void switchOffTest() throws VMManagementException, NetworkException {
+		Timed.simulateUntilLastEvent();
+		testOverPM1.switchoff(null);
+		testUnderPM2.switchoff(null);
+		testNormalPM3.switchoff(null);
+		Assert.assertEquals("Did not switch off all machines as expected",
+				0, basic.runningMachines.size());
+	}	
 	
 	//This test verifies that the creation and destruction of a VM is possible	
 	@Test(timeout = 100)
