@@ -295,32 +295,32 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Item_VirtualMachine abstractVM3 = ffc.getBins().get(1).getVM(0);
 		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);		
 		
-		Assert.assertEquals("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredCPUs(),
+		Assert.assertEquals("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getResources().getRequiredCPUs(),
 				VM1.getResourceAllocation().allocated.getRequiredCPUs(), 0);
 		Assert.assertEquals("The perCoreProcessingPower of the first abstract VM does not match with the real version of it",
 				abstractVM1.getRequiredProcessingPower(), VM1.getResourceAllocation().allocated.getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The memory of the first abstract VM does not match with the real version of it", abstractVM1.getRequiredMemory(),
+		Assert.assertEquals("The memory of the first abstract VM does not match with the real version of it", abstractVM1.getResources().getRequiredMemory(),
 				VM1.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertEquals("The cores of the second abstract VM does not match with the real version of it", abstractVM2.getRequiredCPUs(),
+		Assert.assertEquals("The cores of the second abstract VM does not match with the real version of it", abstractVM2.getResources().getRequiredCPUs(),
 				VM2.getResourceAllocation().allocated.getRequiredCPUs(), 0);
 		Assert.assertEquals("The perCoreProcessingPower of the second abstract VM does not match with the real version of it", 
 				abstractVM2.getRequiredProcessingPower(), VM2.getResourceAllocation().allocated.getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The memory of the second abstract VM does not match with the real version of it", abstractVM2.getRequiredMemory(),
+		Assert.assertEquals("The memory of the second abstract VM does not match with the real version of it", abstractVM2.getResources().getRequiredMemory(),
 				VM2.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertEquals("The cores of the third abstract VM does not match with the real version of it", abstractVM3.getRequiredCPUs(),
+		Assert.assertEquals("The cores of the third abstract VM does not match with the real version of it", abstractVM3.getResources().getRequiredCPUs(),
 				VM3.getResourceAllocation().allocated.getRequiredCPUs(), 0);
 		Assert.assertEquals("The perCoreProcessingPower of the third abstract VM does not match with the real version of it", 
 				abstractVM3.getRequiredProcessingPower(), VM3.getResourceAllocation().allocated.getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The memory of the third abstract VM does not match with the real version of it", abstractVM3.getRequiredMemory(),
+		Assert.assertEquals("The memory of the third abstract VM does not match with the real version of it", abstractVM3.getResources().getRequiredMemory(),
 				VM3.getResourceAllocation().allocated.getRequiredMemory());
 		
-		Assert.assertEquals("The cores of the fourth abstract VM does not match with the real version of it", abstractVM4.getRequiredCPUs(),
+		Assert.assertEquals("The cores of the fourth abstract VM does not match with the real version of it", abstractVM4.getResources().getRequiredCPUs(),
 				VM4.getResourceAllocation().allocated.getRequiredCPUs(), 0);
 		Assert.assertEquals("The perCoreProcessingPower of the fourth abstract VM does not match with the real version of it", 
 				abstractVM4.getRequiredProcessingPower(), VM4.getResourceAllocation().allocated.getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The memory of the fourth abstract VM does not match with the real version of it", abstractVM4.getRequiredMemory(),
+		Assert.assertEquals("The memory of the fourth abstract VM does not match with the real version of it", abstractVM4.getResources().getRequiredMemory(),
 				VM4.getResourceAllocation().allocated.getRequiredMemory());
 	}
 	
@@ -362,6 +362,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Item_VirtualMachine firstVM = first.getVM(0);
 		
 		ffc.migrateOverAllocatedPM(first);
+		
+		
+		//testing the resources
+		Assert.assertEquals("The total CPUs of the first PM are not correct", 8, first.getTotalResources().getRequiredCPUs(), 0);
+		Assert.assertEquals("The total perCoreProcessingPower of the first PM is not correct", 5, first.getTotalResources().getRequiredProcessingPower(), 0);
+		Assert.assertEquals("The total memory of the first PM is not correct", 16, first.getTotalResources().getRequiredMemory());
+		
+		Assert.assertEquals("The available CPUs of the first PM are not correct", 0, first.getAvailableResources().getRequiredCPUs(), 0);
+		Assert.assertEquals("The available perCoreProcessingPower of the first PM is not correct", 3, first.getAvailableResources().getRequiredProcessingPower(), 0);
+		Assert.assertEquals("The available memory of the first PM is not correct", 2, first.getAvailableResources().getRequiredMemory());
+		
 		
 		Assert.assertEquals("The first PM has not the right State after migration", 
 				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
