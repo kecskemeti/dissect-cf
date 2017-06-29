@@ -47,15 +47,16 @@ public class ConsolidationTest extends IaaSRelatedFoundation {
 		Repository r = dummyRepoCreator(true);
 		iaas.registerRepository(r);
 		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
-		// Bigger PM to be shut down
-		PhysicalMachine big = dummyPMcreator(2);
 		// Smaller PM expected to be used
-		PhysicalMachine small = dummyPMcreator(1);
+		PhysicalMachine small = dummyPMcreator();
+		ResourceConstraints smallCaps = small.getCapacities();
+		final double sPcPP = smallCaps.getRequiredProcessingPower();
+		// Bigger PM to be shut down
+		PhysicalMachine big = dummyPMsCreator(1, 2, sPcPP, smallCaps.getRequiredMemory())[0];
 		iaas.registerHost(big);
 		iaas.registerHost(small);
 		// Half of the computing resources of small vm, memory is irrelevant
-		ResourceConstraints baseConstraints = new ConstantConstraints(small.getCapacities().getRequiredCPUs(),
-				small.getCapacities().getRequiredProcessingPower() / 2, 1);
+		ResourceConstraints baseConstraints = new ConstantConstraints(smallCaps.getRequiredCPUs(), sPcPP / 2, 1);
 		VirtualMachine[] vms = iaas.requestVM(va, baseConstraints, r, 6);
 		Timed.simulateUntilLastEvent();
 		// Setup by now: big PM 4 VMs, small PM 2 VMs.

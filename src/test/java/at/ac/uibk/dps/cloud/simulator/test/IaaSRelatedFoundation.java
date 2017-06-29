@@ -59,11 +59,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	public final static int dummyPMCoreCount = 1;
+	public final static double dummyPMPerCorePP = 1;
 	public final static int vaSize = 100;
-	private final static HashMap<String, Integer> globalLatencyMapInternal = new HashMap<String, Integer>(
-			10000);
-	public final static Map<String, Integer> globalLatencyMap = Collections
-			.unmodifiableMap(globalLatencyMapInternal);
+	public final static long dummyPMMemory = vaSize * 40;
+	private final static HashMap<String, Integer> globalLatencyMapInternal = new HashMap<String, Integer>(10000);
+	public final static Map<String, Integer> globalLatencyMap = Collections.unmodifiableMap(globalLatencyMapInternal);
 
 	@BeforeClass
 	public static void preloadIaaS() throws Exception {
@@ -79,120 +79,89 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		return generateNames(1, prefix, latency)[0];
 	}
 
-	public static String[] generateNames(final int count, final String prefix,
-			final int latency) {
+	public static String[] generateNames(final int count, final String prefix, final int latency) {
 		final byte[] seed = new byte[4 * count];
 		SeedSyncer.centralRnd.nextBytes(seed);
 		final String[] names = new String[count];
 		for (int i = 0; i < count; i++) {
 			final int mult = i * 4;
-			names[i] = prefix + seed[mult] + seed[mult + 1] + seed[mult + 2]
-					+ seed[mult + 3];
+			names[i] = prefix + seed[mult] + seed[mult + 1] + seed[mult + 2] + seed[mult + 3];
 			globalLatencyMapInternal.put(names[i], latency);
 		}
 		return names;
 	}
 
-    public static PhysicalMachine dummyPMcreator(final int corecount, final long memory) {
-    	return new PhysicalMachine(corecount, 1, memory, new Repository(
-			vaSize * 200, generateName("M", 1), 1, 1, 1, globalLatencyMap),
-			1, 1, defaultTransitions);
-    }
-
-	public static PhysicalMachine dummyPMcreatorWithMemory(long memory) {
-		return dummyPMcreator(dummyPMCoreCount,memory);
-	}
-    
-	public static PhysicalMachine dummyPMcreator(final int corecount) {
-		return dummyPMsCreator(1, corecount)[0];
-	}
-
-	public static PhysicalMachine[] dummyPMsCreator(final int machineCount,
-			final int corecount) {
+	public static PhysicalMachine[] dummyPMsCreator(final int machineCount, final int corecount, final double pcpp,
+			final long memory) {
 		final PhysicalMachine[] pms = new PhysicalMachine[machineCount];
 		final String[] names = generateNames(machineCount, "M", 1);
 		for (int i = 0; i < machineCount; i++) {
-			pms[i] = new PhysicalMachine(corecount, 1, vaSize * 40,
-					new Repository(vaSize * 200, names[i], 1, 1, 1,
-							globalLatencyMapInternal), 1, 1, defaultTransitions);
+			pms[i] = new PhysicalMachine(corecount, pcpp, memory,
+					new Repository(vaSize * 200, names[i], 1, 1, 1, globalLatencyMapInternal), 1, 1,
+					defaultTransitions);
 		}
 		return pms;
 
 	}
 
 	public static PhysicalMachine dummyPMcreator() {
-		return dummyPMcreator(dummyPMCoreCount);
+		return dummyPMsCreator(1, dummyPMCoreCount, dummyPMPerCorePP, dummyPMMemory)[0];
 	}
 
 	public static Repository dummyRepoCreator(boolean withVA) {
-		final Repository repo = new Repository(vaSize * 400, generateName("R",
-				3), 1, 1, 1, globalLatencyMapInternal);
+		final Repository repo = new Repository(vaSize * 400, generateName("R", 3), 1, 1, 1, globalLatencyMapInternal);
 		if (withVA) {
-			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0,
-					false, vaSize / 5);
-			Assert.assertTrue("Registration should succeed",
-					repo.registerObject(va));
+			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0, false, vaSize / 5);
+			Assert.assertTrue("Registration should succeed", repo.registerObject(va));
 		}
 		return repo;
 	}
 
 	public static IaaSService setupIaaS(Class<? extends Scheduler> vmsch,
-			Class<? extends PhysicalMachineController> pmsch,
-			final int hostCount, final int coreCount)
-			throws IllegalArgumentException, SecurityException,
-			InstantiationException, IllegalAccessException,
+			Class<? extends PhysicalMachineController> pmsch, final int hostCount, final int coreCount)
+			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException {
 		final IaaSService basic = new IaaSService(vmsch, pmsch);
-		basic.bulkHostRegistration(Arrays.asList(dummyPMsCreator(hostCount,
-				coreCount)));
+		basic.bulkHostRegistration(
+				Arrays.asList(dummyPMsCreator(hostCount, coreCount, dummyPMPerCorePP, dummyPMMemory)));
 		basic.registerRepository(dummyRepoCreator(true));
 		return basic;
 	}
 
-	public void fireVMat(final IaaSService iaas, long distance,
-			final double processing, final int corecount) {
+	public void fireVMat(final IaaSService iaas, long distance, final double processing, final int corecount) {
 		new DeferredEvent(distance) {
 			@Override
 			protected void eventAction() {
-				final ResourceConstraints pmsize = iaas.machines.get(0)
-						.getCapacities();
+				final ResourceConstraints pmsize = iaas.machines.get(0).getCapacities();
 				int instancecount = pmsize.getRequiredCPUs() >= corecount ? 1
 						: (corecount / ((int) pmsize.getRequiredCPUs()))
-								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0
-										: 1);
+								+ ((corecount % (int) pmsize.getRequiredCPUs()) == 0 ? 0 : 1);
 				double requestedprocs = ((double) corecount) / instancecount;
 				final ResourceConstraints vmsize = new UnalterableConstraintsPropagator(
-						new AlterableResourceConstraints(requestedprocs,
-								pmsize.getRequiredProcessingPower(), 512));
+						new AlterableResourceConstraints(requestedprocs, pmsize.getRequiredProcessingPower(), 512));
 				final Repository repo = iaas.repositories.get(0);
 
 				try {
-					VirtualMachine[] vms = iaas.requestVM(
-							(VirtualAppliance) repo.contents().iterator()
-									.next(), vmsize, repo, instancecount);
+					VirtualMachine[] vms = iaas.requestVM((VirtualAppliance) repo.contents().iterator().next(), vmsize,
+							repo, instancecount);
 					for (int i = 0; i < vms.length; i++) {
 						vms[i].subscribeStateChange(new VirtualMachine.StateChange() {
 							@Override
-							public void stateChanged(final VirtualMachine vm,
-									VirtualMachine.State oldState,
+							public void stateChanged(final VirtualMachine vm, VirtualMachine.State oldState,
 									VirtualMachine.State newState) {
-								if (VirtualMachine.State.RUNNING
-										.equals(newState)) {
+								if (VirtualMachine.State.RUNNING.equals(newState)) {
 									try {
 										vm.newComputeTask(
-												processing
-														* vm.getResourceAllocation().allocated
-																.getTotalProcessingPower(),
-												ResourceConsumption.unlimitedProcessing,
-												new ConsumptionEventAssert() {
+												processing * vm.getResourceAllocation().allocated
+														.getTotalProcessingPower(),
+												ResourceConsumption.unlimitedProcessing, new ConsumptionEventAssert() {
 													@Override
 													public void conComplete() {
 														super.conComplete();
 														try {
 															vm.destroy(false);
 														} catch (VMManagementException e) {
-															throw new IllegalStateException(
-																	e);
+															throw new IllegalStateException(e);
 														}
 													}
 												});
@@ -212,18 +181,12 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 
 	public ArrayList<IaaSService> getNewServiceArray() throws Exception {
 		ArrayList<IaaSService> serviceArray = new ArrayList<IaaSService>();
-		serviceArray.add(new IaaSService(FirstFitScheduler.class,
-				AlwaysOnMachines.class));
-		serviceArray.add(new IaaSService(FirstFitScheduler.class,
-				SchedulingDependentMachines.class));
-		serviceArray.add(new IaaSService(NonQueueingScheduler.class,
-				AlwaysOnMachines.class));
-		serviceArray.add(new IaaSService(NonQueueingScheduler.class,
-				SchedulingDependentMachines.class));
-		serviceArray.add(new IaaSService(SmallestFirstScheduler.class,
-				AlwaysOnMachines.class));
-		serviceArray.add(new IaaSService(SmallestFirstScheduler.class,
-				SchedulingDependentMachines.class));
+		serviceArray.add(new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class));
+		serviceArray.add(new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class));
+		serviceArray.add(new IaaSService(NonQueueingScheduler.class, AlwaysOnMachines.class));
+		serviceArray.add(new IaaSService(NonQueueingScheduler.class, SchedulingDependentMachines.class));
+		serviceArray.add(new IaaSService(SmallestFirstScheduler.class, AlwaysOnMachines.class));
+		serviceArray.add(new IaaSService(SmallestFirstScheduler.class, SchedulingDependentMachines.class));
 		return serviceArray;
 	}
 }
