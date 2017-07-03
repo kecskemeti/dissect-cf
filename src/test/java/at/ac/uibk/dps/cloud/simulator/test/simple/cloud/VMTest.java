@@ -681,20 +681,6 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void testGetTotalDR() throws StateChangeException, NetworkException, VMManagementException {
-		ConsumptionEventAssert cae = new ConsumptionEventAssert();
-		switchOnVMwithMaxCapacity(centralVM, true);
-		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 0.5,
-				centralVM.getMemSize() / 2);
-		Timed.fire();
-		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.25);
-		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 1.0,
-				centralVM.getMemSize() / 2);
-		Timed.fire();
-		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.75);
-	}
-
-	@Test(timeout = 100)
 	public void ensureVMKeepsItsAllocationDuringInitialMigration() throws VMManagementException, NetworkException {
 		final EnumSet<VirtualMachine.State> needsAllocationOnSource = EnumSet.of(VirtualMachine.State.MIGRATING,
 				VirtualMachine.State.SUSPEND_TR);
@@ -742,9 +728,11 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The VM should already be in SUSTR phase", VirtualMachine.State.SUSPEND_TR,
 				centralVM.getState());
 		centralVM.destroy(false);
-		Timed.simulateUntil(Timed.getFireCount()+aSecond);
-		Assert.assertEquals("There should be no allocation kept for the VM on the source", 0, pm.getCapacities().compareTo(pm.freeCapacities));
-		Assert.assertEquals("There should be no allocation kept for the VM on the target", 0, target.getCapacities().compareTo(target.freeCapacities));
+		Timed.simulateUntil(Timed.getFireCount() + aSecond);
+		Assert.assertEquals("There should be no allocation kept for the VM on the source", 0,
+				pm.getCapacities().compareTo(pm.freeCapacities));
+		Assert.assertEquals("There should be no allocation kept for the VM on the target", 0,
+				target.getCapacities().compareTo(target.freeCapacities));
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("The VM should be destroyed by now", VirtualMachine.State.DESTROYED, centralVM.getState());
 	}

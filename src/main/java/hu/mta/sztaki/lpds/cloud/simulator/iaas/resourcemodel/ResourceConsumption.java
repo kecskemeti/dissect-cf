@@ -196,7 +196,7 @@ public class ResourceConsumption {
 	 */
 	protected double currentMemDirtyingRate = 0.0;
 	protected double memDirtyingRate = 0.0;
-	protected double memSizeInBytes = 0;
+	protected long memSizeInBytes = 0;
 
 	/**
 	 * The event to be fired when there is nothing left to process in this
@@ -616,6 +616,11 @@ public class ResourceConsumption {
 		return realLimit;
 	}
 
+	/**
+	 * Determines the dirtying rate of this process in a single tick
+	 * 
+	 * @return the current dirtying rate
+	 */
 	public double getMemDirtyingRate() {
 		return currentMemDirtyingRate;
 	}
@@ -626,7 +631,7 @@ public class ResourceConsumption {
 		this.memDirtyingRate = memDirtyingRate;
 	}
 
-	public double getMemSizeInBytes() {
+	public long getMemSizeInBytes() {
 		return memSizeInBytes;
 	}
 

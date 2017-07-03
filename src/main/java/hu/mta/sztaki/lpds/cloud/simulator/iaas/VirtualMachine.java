@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 import org.apache.commons.lang3.tuple.Triple;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
@@ -96,18 +97,22 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  */
 public class VirtualMachine extends MaxMinConsumer {
 	public final static long maxRounds = 5;
-	private final static long WWS_MAX_SIZE = 262144;
+	/**
+	 * Smallest written working set size that still allows new memory copy
+	 * rounds
+	 */
+	private final static long WWS_TERMINAL_SIZE = 262144;
+	/**
+	 * When did the last memory transfer start for the current migration process
+	 */
+	private long lastMemorySnapshotCreatedAt = -1;
+	/**
+	 * Number of memory copy rounds done during the current migration process
+	 */
 	private int rounds = 0;
-	private boolean underLiveMigrate = false;
-
-	public int getRounds() {
-		return rounds;
-	}
 
 	private StorageObject identifyWWS(final String id) {
-		return new StorageObject(id,
-				underLiveMigrate ? (long) ((getMemSize()) * getTotalDirtyingRate()) : ra.allocated.getRequiredMemory(),
-				false);
+		return new StorageObject(id, getTotalDirtyMemory(), false);
 	}
 
 	/**
@@ -916,7 +921,6 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 		ensureEmptyVMMOperationList();
 		migrationRa = target;
-		underLiveMigrate = true;
 		// Cross cloud migration needs an update on the vastorage also,
 		// otherwise the VM will use a long distance repository for its
 		// background network load!
@@ -944,7 +948,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				pmdisk.deregisterObject(savedmemory.id);
 				currentVMMOperations.clear();
 
-				if (savedmemory.size > WWS_MAX_SIZE && rounds < maxRounds) {
+				if (savedmemory.size > WWS_TERMINAL_SIZE && rounds < maxRounds) {
 					String tmemid = "VM-Memory-State-of-" + hashCode();
 					savedmemory = identifyWWS(tmemid);
 					try {
@@ -1159,7 +1163,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		class ResumeComplete extends ConsumptionEventAdapter {
 			private void cleanUpIntermediateData() {
 				savedmemory = null;
-				underLiveMigrate = false;
+				lastMemorySnapshotCreatedAt = -1;
 				currentVMMOperations.clear();
 			}
 
@@ -1373,17 +1377,30 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 *
+	 * Determine the amount of memory dirtied since the last call
+	 * 
 	 * @return the total dirtying rate on the VM
 	 */
-	public double getTotalDirtyingRate() {
-		double dirtyBytes = 0.0;
-		for (ResourceConsumption r : this.underProcessing) {
-			dirtyBytes += (r.getMemDirtyingRate() * r.getMemSizeInBytes());
+	private long getTotalDirtyMemory() {
+		long previousSnapshot = lastMemorySnapshotCreatedAt;
+		lastMemorySnapshotCreatedAt = Timed.getFireCount();
+		if (previousSnapshot == -1) {
+			return getMemSize();
 		}
-		return dirtyBytes / getMemSize();
+		long duration = lastMemorySnapshotCreatedAt - previousSnapshot;
+		long dirtyBytes = 0;
+		for (ResourceConsumption r : this.underProcessing) {
+			dirtyBytes += (Math.min(1, duration * r.getMemDirtyingRate()) * r.getMemSizeInBytes());
+		}
+		return dirtyBytes;
 	}
 
+	/**
+	 * Helper function to get the total size of memory easier than through the
+	 * VM's allocation
+	 * 
+	 * @return the amount of memory used by the VM
+	 */
 	public long getMemSize() {
 		return this.ra.allocated.getRequiredMemory();
 	}
