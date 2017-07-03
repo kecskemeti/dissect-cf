@@ -195,7 +195,6 @@ public class ResourceConsumption {
 	 * pageNum: total number of pages associated to this consumption
 	 */
 	protected double currentMemDirtyingRate = 0.0;
-	protected double pageNum = 0;
 	protected double memDirtyingRate = 0.0;
 	protected double memSizeInBytes = 0;
 
@@ -625,14 +624,6 @@ public class ResourceConsumption {
 		if (memDirtyingRate < 0.0 || memDirtyingRate > 1.0)
 			throw new IllegalArgumentException("Dirtying rate must be between 0.0 and 1.0");
 		this.memDirtyingRate = memDirtyingRate;
-	}
-
-	public double getPageNum() {
-		return pageNum;
-	}
-
-	public void setPageNum(int pageNum) {
-		this.pageNum = pageNum;
 	}
 
 	public double getMemSizeInBytes() {

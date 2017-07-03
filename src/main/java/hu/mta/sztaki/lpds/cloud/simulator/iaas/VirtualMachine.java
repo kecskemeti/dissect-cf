@@ -95,11 +95,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  *         MTA SZTAKI (c) 2012,2014-15"
  */
 public class VirtualMachine extends MaxMinConsumer {
-	/**
-	 * needed for live migration: pageSize: memory page size in Mbytes
-	 */
-	public final static long pageSize = 4;
-	public final static long numRound = 1;
+	public final static long maxRounds = 5;
 	private final static long WWS_MAX_SIZE = 262144;
 	private int rounds = 0;
 	private boolean underLiveMigrate = false;
@@ -108,14 +104,9 @@ public class VirtualMachine extends MaxMinConsumer {
 		return rounds;
 	}
 
-	public long getPageSize() {
-		return pageSize;
-	}
-
 	private StorageObject identifyWWS(final String id) {
 		return new StorageObject(id,
-				underLiveMigrate ? (long) ((getTotalMemoryPages() * pageSize) * getTotalDirtyingRate())
-						: ra.allocated.getRequiredMemory(),
+				underLiveMigrate ? (long) ((getMemSize()) * getTotalDirtyingRate()) : ra.allocated.getRequiredMemory(),
 				false);
 	}
 
@@ -298,12 +289,11 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * @param memDirtyingRate
 		 */
 		public ResourceMemoryConsumption(final double total, final double limit, final ResourceSpreader consumer,
-				final ResourceSpreader provider, final ConsumptionEvent e, final double pageNum,
+				final ResourceSpreader provider, final ConsumptionEvent e, final long memSizeInBytes,
 				final double memDirtyingRate) {
 			super(total, limit, consumer, provider, e);
-			this.pageNum = pageNum;
 			setMemDirtyingRate(memDirtyingRate);
-			this.memSizeInBytes = pageNum * pageSize;
+			this.memSizeInBytes = memSizeInBytes;
 		}
 
 		public void suspend() {
@@ -954,7 +944,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				pmdisk.deregisterObject(savedmemory.id);
 				currentVMMOperations.clear();
 
-				if (savedmemory.size > WWS_MAX_SIZE && rounds < numRound) {
+				if (savedmemory.size > WWS_MAX_SIZE && rounds < maxRounds) {
 					String tmemid = "VM-Memory-State-of-" + hashCode();
 					savedmemory = identifyWWS(tmemid);
 					try {
@@ -1137,9 +1127,9 @@ public class VirtualMachine extends MaxMinConsumer {
 			@Override
 			public void conCancelled(ResourceConsumption problematic) {
 				currentVMMOperations.clear();
-				if(migrationRa!=null) {
+				if (migrationRa != null) {
 					migrationRa.cancel();
-					migrationRa=null;
+					migrationRa = null;
 				}
 				setState(State.RUNNING);
 			}
@@ -1325,12 +1315,12 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	public ResourceConsumption newComputeTask(final double total, final double limit,
-			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final double pageNumber)
+			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final long memSizeInBytes)
 			throws StateChangeException, NetworkException {
 		return finalizeTaskCreation(new RCFactoryForTask() {
 			@Override
 			public ResourceConsumption create() {
-				return new ResourceMemoryConsumption(total, limit, VirtualMachine.this, ra.getHost(), e, pageNumber,
+				return new ResourceMemoryConsumption(total, limit, VirtualMachine.this, ra.getHost(), e, memSizeInBytes,
 						dirtyingRate);
 			}
 		});
@@ -1392,10 +1382,6 @@ public class VirtualMachine extends MaxMinConsumer {
 			dirtyBytes += (r.getMemDirtyingRate() * r.getMemSizeInBytes());
 		}
 		return dirtyBytes / getMemSize();
-	}
-
-	public double getTotalMemoryPages() {
-		return (double) (getMemSize() / pageSize);
 	}
 
 	public long getMemSize() {

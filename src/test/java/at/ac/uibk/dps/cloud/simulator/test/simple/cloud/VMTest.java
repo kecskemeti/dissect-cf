@@ -420,7 +420,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		switchOnVMwithMaxCapacity(toUse, true);
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		final double ctLen = 100 * aSecond;
-		toUse.newComputeTask(ctLen, 1, cae, 1.0, centralVM.getTotalMemoryPages());
+		toUse.newComputeTask(ctLen, 1, cae, 1.0, centralVM.getMemSize());
 		Timed.simulateUntil(Timed.getFireCount() + aSecond);
 		doLiveMigration(pm, pmtarget, toUse, true);
 		// Assert.assertTrue("Rounds number:
@@ -685,11 +685,11 @@ public class VMTest extends IaaSRelatedFoundation {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		switchOnVMwithMaxCapacity(centralVM, true);
 		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 0.5,
-				centralVM.getTotalMemoryPages() / 2);
+				centralVM.getMemSize() / 2);
 		Timed.fire();
 		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.25);
 		centralVM.newComputeTask(100000, ResourceConsumption.unlimitedProcessing, cae, 1.0,
-				centralVM.getTotalMemoryPages() / 2);
+				centralVM.getMemSize() / 2);
 		Timed.fire();
 		Assert.assertTrue(centralVM.getTotalDirtyingRate() == 0.75);
 	}
