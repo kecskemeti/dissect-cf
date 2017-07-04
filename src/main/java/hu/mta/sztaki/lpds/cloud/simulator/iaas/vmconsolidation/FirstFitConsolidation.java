@@ -5,20 +5,21 @@ import java.util.ArrayList;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 	/**
-	 * @author Rene
+	 * @author René Ponto
 	 *
-	 * This class is used to do the consolidation with first fit. It can be easy used in the consolidator by simply creating
+	 * This class is used to do the consolidation with first fit. It can be easy used as a consolidator by simply creating
 	 * an instance of it. The migration, PM-selection for migration and every other method according to this 
 	 * is implemented as first fit.
 	 */
 
 
-public class FirstFitConsolidation extends Consolidator {
+public class FirstFitConsolidation extends ModelBasedConsolidator {
 	
 	int count = 1;	// Counter for the graph actions
 	
@@ -29,8 +30,8 @@ public class FirstFitConsolidation extends Consolidator {
 	 * 			The IaaSService of the superclass Consolidator.
 	 */
 	
-	public FirstFitConsolidation(IaaSService parent) throws Exception {
-		super(parent);
+	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold) throws Exception {
+		super(parent, upperThreshold, lowerThreshold);
 	}	
 	
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -43,19 +44,7 @@ public class FirstFitConsolidation extends Consolidator {
 		super.stateChanged(pm, oldState, newState);
 	}
 	
-	/** 
-	 * @return bins
-	 */
-	public ArrayList <Bin_PhysicalMachine> getBins() {
-		return bins;
-	}
 	
-	/** 
-	 * @return actions
-	 */
-	public ArrayList <Action> getActions() {
-		return actions;
-	}	
 	
 	/** 
 	 * Functionality of this optimization:
@@ -72,7 +61,7 @@ public class FirstFitConsolidation extends Consolidator {
 	public void optimize() throws VMManagementException, NetworkException {
 		
 		while(isOverAllocated() || isUnderAllocated()) {
-			for(Bin_PhysicalMachine pm : this.getBins()) {
+			for(ModelPM pm : this.getBins()) {
 				State state = pm.getState();
 				
 				if(state == State.NORMAL_RUNNING || state == State.UNCHANGEABLE_OVERALLOCATED || state == State.UNCHANGEABLE_UNDERALLOCATED) {
@@ -145,16 +134,16 @@ public class FirstFitConsolidation extends Consolidator {
 	 * @return A PM where the given VM can be migrated
 	 * 		   starts a new PM if there is no one with needed resources.
 	 */
-	private Bin_PhysicalMachine getMigPm(Item_VirtualMachine vm) {
+	private ModelPM getMigPm(ModelVM vm) {
 		
-		Item_VirtualMachine toMig = vm;
+		ModelVM toMig = vm;
 		
 		//These are the constraints of the VM
 		ResourceVector vmRes = toMig.getResources();
 		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {		
-			Bin_PhysicalMachine actualPM = getBins().get(i);
+			ModelPM actualPM = getBins().get(i);
 			if(actualPM == vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERALLOCATED_RUNNING) 
 					|| actualPM.getState().equals(State.STILL_OVERALLOCATED) || actualPM.getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) {
@@ -165,16 +154,16 @@ public class FirstFitConsolidation extends Consolidator {
 				//These are the constraints of the actual PM
 				ResourceVector pmRes = actualPM.getAvailableResources();
 				
-				if(pmRes.isGreater(vmRes)) {
+				if(pmRes.fitsIn(vmRes)) {
 					
-					actualPM.consumeResources(toMig);
+					actualPM.addVM(toMig);
 					actualPM.checkAllocation();
 					if(actualPM.getState().equals(State.OVERALLOCATED_RUNNING)) {
-						actualPM.deconsumeResources(toMig);
+						actualPM.removeVM(toMig);
 						actualPM.checkAllocation();
 					}					
 					else {
-						actualPM.deconsumeResources(toMig);
+						actualPM.removeVM(toMig);
 						actualPM.checkAllocation();
 						//the PM which first fits to the criteria
 						return actualPM;
@@ -185,21 +174,21 @@ public class FirstFitConsolidation extends Consolidator {
 		
 		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM
 		for(int j = 0; j < bins.size(); j++) {
-			Bin_PhysicalMachine actualPM = getBins().get(j);
+			ModelPM actualPM = getBins().get(j);
 			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
 				//These are the constraints of the actual PM
 				ResourceVector pmRes = actualPM.getAvailableResources();
 				
-				if(pmRes.isGreater(vmRes)) {
+				if(pmRes.fitsIn(vmRes) == false) {
 					
-					actualPM.consumeResources(toMig);
+					actualPM.addVM(toMig);
 					actualPM.checkAllocation();
 					if(actualPM.getState().equals(State.OVERALLOCATED_RUNNING)) {
-						actualPM.deconsumeResources(toMig);
+						actualPM.removeVM(toMig);
 					}
 					else {
-						actualPM.deconsumeResources(toMig);
+						actualPM.removeVM(toMig);
 						//the PM which first fits to the criteria
 						return actualPM;
 					}
@@ -225,14 +214,14 @@ public class FirstFitConsolidation extends Consolidator {
 	 * 
 	 * @return A PM with the needed resources.
 	 */
-	private Bin_PhysicalMachine startPMs(ResourceVector second){
-		Bin_PhysicalMachine start = null;
+	private ModelPM startPMs(ResourceConstraints VMConstraints){
+		ModelPM start = null;
 		for(int i = 0; i < bins.size(); i++){
 			
 			if(start != null)
 				return start;
 			
-			if(bins.get(i).getState().equals(State.EMPTY_OFF) && second.fitsIn(bins.get(i).getTotalResources())){
+			if(bins.get(i).getState().equals(State.EMPTY_OFF) && VMConstraints.compareTo(bins.get(i).getTotalResources()) <= 0){
 				bins.get(i).switchOn();
 				start = bins.get(i);
 				actions.add(new StartAction(count++, bins.get(i)));	//give the information to the graph
@@ -248,8 +237,13 @@ public class FirstFitConsolidation extends Consolidator {
 	 * 			The Variable which shows, which PM has to be used.
 	 * @return first VM on a PM
 	 */
-	private Item_VirtualMachine getFirstVM(Bin_PhysicalMachine x) {
-		return x.getVMs().get(0);
+	private ModelVM getFirstVM(ModelPM x) {
+		if(!x.isHostingVMs()) {
+			return x.getVMs().get(0);
+		}
+		else {
+			return null;
+		}
 	}
 	
 	/**
@@ -270,7 +264,7 @@ public class FirstFitConsolidation extends Consolidator {
 	/** 
 	 * Method for migrating overAllocated PMs.
 	 */
-	public void migrateOverAllocatedPM(Bin_PhysicalMachine source) {
+	public void migrateOverAllocatedPM(ModelPM source) {
 		
 		source.checkAllocation();	// check if something has changed before migrating
 		State state = source.getState();
@@ -281,8 +275,14 @@ public class FirstFitConsolidation extends Consolidator {
 				return;
 			}
 						
-			Item_VirtualMachine actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
-			Bin_PhysicalMachine pm = getMigPm(actual);
+			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
+			
+			if(actual == null) {
+				source.checkAllocation();
+				return;
+			}
+			
+			ModelPM pm = getMigPm(actual);
 			
 			if(pm == null) {
 				if(state.equals(State.OVERALLOCATED_RUNNING)) {					
@@ -308,7 +308,7 @@ public class FirstFitConsolidation extends Consolidator {
 	 * Method for migrating underAllocated PMs.
 	 */
 	
-	public void migrateUnderAllocatedPM(Bin_PhysicalMachine source) {
+	public void migrateUnderAllocatedPM(ModelPM source) {
 		
 		int i = 1;
 		source.checkAllocation();	// check if something has changed before migrating
@@ -319,9 +319,15 @@ public class FirstFitConsolidation extends Consolidator {
 				source.checkAllocation();
 				return;
 			}
-			ArrayList <Item_VirtualMachine> migVMs = new ArrayList <Item_VirtualMachine>();
-			Item_VirtualMachine actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
-			Bin_PhysicalMachine pm = getMigPm(actual); 
+			ArrayList <ModelVM> migVMs = new ArrayList <ModelVM>();
+			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
+			
+			if(actual == null) {
+				source.checkAllocation();
+				return;
+			}
+			
+			ModelPM pm = getMigPm(actual); 
 			
 			if(pm == null) {
 				
@@ -338,7 +344,7 @@ public class FirstFitConsolidation extends Consolidator {
 				else {
 					for(int x = i ; x > 0; x--) {
 						
-						Item_VirtualMachine demig = migVMs.get(x);
+						ModelVM demig = migVMs.get(x);
 						demig.gethostPM().migrateVM(demig, source);
 						
 						//ToDo : knoten vom migrieren entfernen
