@@ -30,8 +30,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -106,14 +104,6 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * When did the last memory transfer start for the current migration process
 	 */
 	private long lastMemorySnapshotCreatedAt = -1;
-	/**
-	 * Number of memory copy rounds done during the current migration process
-	 */
-	private int rounds = 0;
-
-	private StorageObject identifyWWS(final String id) {
-		return new StorageObject(id, getTotalDirtyMemory(), false);
-	}
 
 	/**
 	 * This class is defined to ensure one can differentiate errors that were
@@ -265,6 +255,12 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	};
 
+	/**
+	 * Represents activities that has relevant dirtying rate on a VM
+	 * 
+	 * @author "Vincenzo De Maio, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2015"
+	 */
 	public static class ResourceMemoryConsumption extends ResourceConsumption {
 
 		/**
@@ -723,136 +719,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * This function is called after the disk and memory images of the VM are
-	 * located on its new hosting repository. The new location allows the VMs to
-	 * be resumed on their new host machines.
-	 * 
-	 * WARNING: After executing this function the VM might remain in
-	 * SUSPENDED_MIG state if the resume on the new machine fails! For possible
-	 * causes of this failure please check the documentation of the resume
-	 * funciton.
-	 * 
-	 * @throws VMManagementException
-	 *             in case some errors were reported during the resume operation
-	 *             at the new physical machine
-	 */
-	private void resumeAfterMigration() throws NetworkNode.NetworkException {
-		try {
-			vatarget.deregisterObject(disk);
-			vatarget.deregisterObject(savedmemory);
-			setState(State.SUSPENDED);
-			setResourceAllocation(migrationRa);
-			migrationRa = null;
-			vatarget = ra.getHost().localDisk;
-			realResume();
-		} catch (StateChangeException e) {
-			// Should not happen!
-			System.err.println("IMPROPER STATE DURING MIGRATION!");
-		} catch (VMManagementException e) {
-			ra = null;
-			setState(State.SUSPENDED_MIG);
-		}
-	}
-
-	/**
-	 * This function is responsible for the actual transfer between the old
-	 * physical machine and the new one. This function ensures the transfer for
-	 * both the disk and memory states.
-	 * 
-	 * WARNING: in case an error occurs (e.g. there is not enough space on the
-	 * target physical machine's repository) then this function leaves the VM in
-	 * SUSPENDED_MIG state.
-	 * 
-	 * @throws VMManagementException
-	 *             if the migration is initiated with already running VMM
-	 *             related activities
-	 */
-	private void actualMigration() throws NetworkNode.NetworkException, VMManagementException {
-		if (ra != null) {
-			ra.release();
-			ra = null;
-		}
-		ensureEmptyVMMOperationList();
-		final boolean[] cancelMigration = new boolean[1];
-		cancelMigration[0] = false;
-		final Repository to = migrationRa.getHost().localDisk;
-		/**
-		 * handles the case when the transfer of the state of the VM is complete
-		 * between the source and target physical machines
-		 * 
-		 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-		 *         University of Innsbruck (c) 2013"
-		 * 
-		 */
-		class MigrationEvent extends ConsumptionEventAdapter {
-			int eventcounter = 1;
-
-			@Override
-			public void conComplete() {
-				if (cancelMigration[0]) {
-					// Cleanup after faulty transfer
-					to.deregisterObject(savedmemory.id);
-					currentVMMOperations.clear();
-				} else {
-					eventcounter--;
-					if (eventcounter == 0) {
-						currentVMMOperations.clear();
-						// Both the disk and memory state has completed its
-						// transfer.
-						try {
-							resumeAfterMigration();
-						} catch (NetworkException e) {
-							e.printStackTrace();
-						}
-					}
-				}
-			}
-
-			@Override
-			public void conCancelled(ResourceConsumption problematic) {
-				currentVMMOperations.clear();
-				migrationRa.cancel();
-				migrationRa = null;
-			}
-		}
-
-		if (suspendedTasks != null) {
-			for (final ResourceConsumption con : suspendedTasks) {
-				con.setProvider(migrationRa.getHost());
-			}
-		}
-
-		final MigrationEvent mp = new MigrationEvent();
-		// inefficiency: the memory is moved twice to the
-		// target pm because of the way resume works currently
-		ResourceConsumption currentVMMOperation;
-		if ((currentVMMOperation = vatarget.requestContentDelivery(savedmemory.id, to, mp)) != null) {
-			currentVMMOperations.put(currState.toString() + savedmemory.id, currentVMMOperation);
-			if (va.getBgNetworkLoad() > 0) {
-				// Remote scenario
-				return;
-			} else {
-				// Local&Mixed scenario
-				mp.eventcounter++;
-				if ((currentVMMOperation = vatarget.requestContentDelivery(disk.id, to, mp)) != null) {
-					currentVMMOperations.put(currState.toString() + disk.id, currentVMMOperation);
-					return;
-				}
-				// The disk could not be transferred:
-				cancelMigration[0] = true;
-			}
-		}
-		setState(State.SUSPENDED_MIG);
-	}
-
-	/**
-	 * Moves all data necessary for the VMs execution from its current physical
-	 * machine to another.
-	 * 
-	 * WARNING: in cases when the migration cannot complete, the VM will be left
-	 * in a special suspended state: the SUSPENDED_MIG. This allows users to
-	 * recover VMs and initiate the migration procedure to someplace else.
-	 * 
+	 * Forwards the migration call internally allowing both live/non-live
+	 * migrations
 	 * 
 	 * @param target
 	 *            the new resource allocation on which the resume operation
@@ -864,34 +732,183 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public void migrate(final PhysicalMachine.ResourceAllocation target)
 			throws VMManagementException, NetworkNode.NetworkException {
+		migrate(target, false);
+	}
+
+	/**
+	 * Moves all data necessary for the VMs execution from its current physical
+	 * machine to another. Supports migration from suspended state.
+	 * 
+	 * @param target
+	 *            the new resource allocation on which the resume operation
+	 *            should take place
+	 * @param onlyLiveMigration
+	 *            <ul>
+	 *            <li><i>true</i> live migration is explicitly requested (if not
+	 *            possible, a VMManagementException will be thrown)
+	 *            <li><i>false</i> if live migration is priorised but if not
+	 *            possible, non-live will be performed
+	 *            </ul>
+	 * @throws StateChangeException
+	 *             if the VM is not in running or suspended state currently
+	 * @throws VMManagementException
+	 *             if the system have had troubles during the migration
+	 *             operation (e.g., storage and connectivity issues).
+	 */
+	public void migrate(final PhysicalMachine.ResourceAllocation target, boolean onlyLiveMigration)
+			throws VMManagementException, NetworkNode.NetworkException {
 		// Cross cloud migration needs an update on the vastorage also,
 		// otherwise the VM will use a long distance repository for its
 		// background network load!
-		migrationRa = target;
-		if (suspendedStates.contains(currState)) {
-			setState(State.MIGRATING);
-			actualMigration();
-		} else {
-			if (va.getBgNetworkLoad() <= 0 && ra != null) {
-				NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
+		ensureEmptyVMMOperationList();
+
+		/**
+		 * handles the case when the transfer of the state of the VM is complete
+		 * between the source and target physical machines
+		 * 
+		 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool
+		 *         John Moores University, (c) 2017"
+		 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
+		 *         University of Innsbruck (c) 2013"
+		 * 
+		 */
+		class MigrationEvent extends ConsumptionEventAdapter {
+			private boolean liveMigration = true;
+			final State prevState = currState;
+			final Repository to = migrationRa == null ? null : migrationRa.getHost().localDisk;
+			int eventcounter = 1;
+			/**
+			 * Number of memory copy rounds done during the current migration
+			 * process
+			 */
+			int rounds = 0;
+
+			public void setNonLive() {
+				if (liveMigration) {
+					liveMigration = false;
+					suspendTasks();
+					setState(State.MIGRATING);
+				}
 			}
-			suspend(new EventSetup(State.MIGRATING) {
-				@Override
-				public void changeEvents(final VirtualMachine onMe) {
-					super.changeEvents(onMe);
+
+			@Override
+			public void conComplete() {
+				if (liveMigration) {
 					try {
-						actualMigration();
-					} catch (NetworkException e) {
-						// Ignore. This should never happen we have checked for
-						// the connection beforehand.
-					} catch (VMManagementException e) {
-						// This is an illegal situation, stop the simulation
-						// allow debugging
-						throw new RuntimeException(e);
+						final long memSizeRemaining = identifyWWS();
+						// Replace the old transfer with a new one
+						currentVMMOperations.put(currState.toString() + "Migrate Memory",
+								NetworkNode.initTransfer(memSizeRemaining, ResourceConsumption.unlimitedProcessing,
+										vatarget, target.getHost().localDisk, this));
+						if (rounds++ >= maxRounds || memSizeRemaining < WWS_TERMINAL_SIZE) {
+							// Switching to final, non-live phase
+							setNonLive();
+						}
+					} catch (NetworkException ne) {
+						// These exceptions should have occured while
+						// registering the first transfer
+						throw new RuntimeException(ne);
+					}
+				} else {
+					// In case we came here from suspend
+					if (savedmemory != null) {
+						vatarget.deregisterObject(savedmemory);
+						savedmemory = null;
+					}
+					eventcounter--;
+					// Only continue if we have done all required transfers
+					if (eventcounter == 0) {
+						finalizeMigration();
 					}
 				}
-			});
+			}
+
+			private void finalizeMigration() {
+				currentVMMOperations.clear();
+				// Both the disk and memory state has completed its
+				// transfer.
+				try {
+					if (suspendedTasks != null) {
+						for (final ResourceConsumption con : suspendedTasks) {
+							con.setProvider(migrationRa.getHost());
+						}
+					}
+					if (ra != null) {
+						ra.release();
+						ra = null;
+					}
+					setState(State.SUSPENDED_MIG);
+					setResourceAllocation(migrationRa);
+					migrationRa = null;
+					if (va.getBgNetworkLoad() <= 0) {
+						// Local&Mixed scenario, the disk was moved
+						vatarget.deregisterObject(disk);
+						vatarget = ra.getHost().localDisk;
+					}
+					lastMemorySnapshotCreatedAt = -1;
+					setState(State.RUNNING);
+					resumeTasks();
+				} catch (VMManagementException e) {
+					// Sudden exceptions that should not really happen
+					throw new RuntimeException(e);
+				}
+
+			}
+
+			@Override
+			public void conCancelled(ResourceConsumption problematic) {
+				currentVMMOperations.clear();
+				migrationRa.cancel();
+				migrationRa = null;
+				setState(prevState);
+			}
 		}
+		final MigrationEvent mp = new MigrationEvent();
+
+		if (!currState.equals(State.RUNNING) && (!suspendedStates.contains(currState)) || ra == null) {
+			throw new StateChangeException("Invalid starting state for a VM migration");
+		} else if (onlyLiveMigration) {
+			throw new StateChangeException("Live migration cannot be forced in this state!");
+		} else {
+			mp.setNonLive();
+		}
+
+		migrationRa = target;
+		if (va.getBgNetworkLoad() <= 0) {
+			NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
+			if (onlyLiveMigration) {
+				throw new VMManagementException("Live migration is only allowed if the VM runs from a remote disk");
+			}
+		}
+
+		ResourceConsumption currentVMMOperation;
+		// If the disk is local&mixed image storage
+		if (va.getBgNetworkLoad() <= 0) {
+			mp.setNonLive();
+			mp.eventcounter++;
+			if ((currentVMMOperation = vatarget.requestContentDelivery(disk.id, mp.to, mp)) != null) {
+				currentVMMOperations.put(currState.toString() + disk.id, currentVMMOperation);
+			} else {
+				setState(mp.prevState);
+				throw new VMManagementException("Cannot transfer the disk of the VM during non-live migration.");
+			}
+		}
+
+		// If we come from suspend, savedmemory is used.
+		long memSize = savedmemory == null ? identifyWWS() : savedmemory.size;
+		currentVMMOperation = NetworkNode.initTransfer(memSize, ResourceConsumption.unlimitedProcessing, vatarget,
+				target.getHost().localDisk, mp);
+		if (currentVMMOperation == null) {
+			if (currentVMMOperations.size() > 0) {
+				// There was a disk transfer to be cancelled
+				currentVMMOperations.get(0).cancel();
+			} else {
+				// Cleanup
+				mp.conCancelled(null);
+			}
+			throw new VMManagementException("Connectivity issues between source and target hosts");
+		}
+		currentVMMOperations.put(currState.toString() + "Migrate Memory", currentVMMOperation);
 	}
 
 	/**
@@ -916,80 +933,7 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	public void migrateLive(final PhysicalMachine.ResourceAllocation target)
 			throws VMManagementException, NetworkNode.NetworkException {
-		if (suspendedStates.contains(currState)) {
-			throw new VMManagementException("Live migration is not allowed from suspended states");
-		}
-		ensureEmptyVMMOperationList();
-		migrationRa = target;
-		// Cross cloud migration needs an update on the vastorage also,
-		// otherwise the VM will use a long distance repository for its
-		// background network load!
-
-		if (va.getBgNetworkLoad() <= 0 && ra != null) {
-			NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
-		}
-
-		// Initial transfer
-		final String memid = "VM-Memory-State-of-" + hashCode();
-		final String tmemid = "Temp-" + memid;
-		final Repository pmdisk = ra.getHost().localDisk;
-		savedmemory = new StorageObject(tmemid, ra.allocated.getRequiredMemory(), false);
-		if (!pmdisk.registerObject(savedmemory)) {
-			throw new VMManagementException(
-					"Not enough space on localDisk for the suspend operation of " + savedmemory);
-		}
-		final Repository to = migrationRa.getHost().localDisk;
-		class EndRoundEvent extends ConsumptionEventAdapter {
-
-			@Override
-			public void conComplete() {
-				rounds++;
-				to.deregisterObject(savedmemory.id);
-				pmdisk.deregisterObject(savedmemory.id);
-				currentVMMOperations.clear();
-
-				if (savedmemory.size > WWS_TERMINAL_SIZE && rounds < maxRounds) {
-					String tmemid = "VM-Memory-State-of-" + hashCode();
-					savedmemory = identifyWWS(tmemid);
-					try {
-						pmdisk.registerObject(savedmemory);
-						currentVMMOperations.put(currState.toString() + tmemid,
-								vatarget.requestContentDelivery(tmemid, to, new EndRoundEvent()));
-					} catch (Exception e) {
-
-					}
-				} else {
-					try {
-						suspend(new EventSetup(State.MIGRATING) {
-							@Override
-							public void changeEvents(VirtualMachine onMe) {
-								super.changeEvents(onMe);
-								try {
-									actualMigration();
-								} catch (NetworkException e) {
-									// Ignore. This should never happen we have
-									// checked for
-									// the connection beforehand.
-								} catch (VMManagementException e) {
-									// Not expected behavior, terminate
-									// simulation
-									throw new RuntimeException(e);
-								}
-							}
-						});
-					} catch (VMManagementException ex) {
-						Logger.getLogger(VirtualMachine.class.getName()).log(Level.SEVERE, null, ex);
-					} catch (NetworkException ex) {
-						Logger.getLogger(VirtualMachine.class.getName()).log(Level.SEVERE, null, ex);
-					}
-				}
-			}
-
-		}
-		EndRoundEvent endround = new EndRoundEvent();
-
-		// Initial memory transfer
-		currentVMMOperations.put(currState.toString() + tmemid, vatarget.requestContentDelivery(tmemid, to, endround));
+		migrate(target, true);
 	}
 
 	/**
@@ -1104,21 +1048,40 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (currState != State.RUNNING) {
 			throw new StateChangeException("Cannot suspend a not running machine");
 		}
-		if (suspendedTasks == null) {
-			suspendedTasks = new ArrayList<ResourceConsumption>(underProcessing);
-		} else {
-			suspendedTasks.addAll(underProcessing);
-		}
-		suspendedTasks.addAll(toBeAdded);
+		suspendTasks();
+		storeMemoryState(ev);
+	}
 
-		final int currlistsize = suspendedTasks.size();
-		for (int idx = 0; idx < currlistsize; idx++) {
-			final ResourceConsumption con = suspendedTasks.get(idx);
-			con.suspend();
+	private void suspendTasks() {
+		if (toBeAdded.size() + underProcessing.size() > 0) {
+			if (suspendedTasks == null) {
+				suspendedTasks = new ArrayList<ResourceConsumption>(underProcessing);
+			} else {
+				suspendedTasks.addAll(underProcessing);
+			}
+			suspendedTasks.addAll(toBeAdded);
+
+			final int currlistsize = suspendedTasks.size();
+			for (int idx = 0; idx < currlistsize; idx++) {
+				final ResourceConsumption con = suspendedTasks.get(idx);
+				con.suspend();
+			}
 		}
-		final String memid = "VM-Memory-State-of-" + hashCode();
+	}
+
+	private void resumeTasks() {
+		if (suspendedTasks != null) {
+			int size = suspendedTasks.size();
+			for (int i = 0; i < size; i++) {
+				suspendedTasks.get(i).registerConsumption();
+			}
+			suspendedTasks = null;
+		}
+	}
+
+	private void storeMemoryState(final EventSetup ev) throws NetworkException, VMManagementException {
 		final Repository pmdisk = ra.getHost().localDisk;
-		savedmemory = identifyWWS(memid);
+		savedmemory = getWWSObject();
 		setState(State.SUSPEND_TR);
 		ResourceConsumption currentVMMOperation = null;
 		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
@@ -1141,8 +1104,9 @@ public class VirtualMachine extends MaxMinConsumer {
 			// Set back the status so it is possible to try again
 			setState(State.RUNNING);
 			pmdisk.deregisterObject(savedmemory.id);
+			String sid = savedmemory.id;
 			savedmemory = null;
-			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + memid);
+			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + sid);
 		} else {
 			currentVMMOperations.put(currState.toString(), currentVMMOperation);
 		}
@@ -1173,13 +1137,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				pmdisk.deregisterObject(savedmemory);
 				cleanUpIntermediateData();
 				setState(State.RUNNING);
-				if (suspendedTasks != null) {
-					int size = suspendedTasks.size();
-					for (int i = 0; i < size; i++) {
-						suspendedTasks.get(i).registerConsumption();
-					}
-					suspendedTasks = null;
-				}
+				resumeTasks();
 			}
 
 			@Override
@@ -1378,10 +1336,15 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	/**
 	 * Determine the amount of memory dirtied since the last call
+	 * <p>
+	 * Done as per eq 17 from the paper "<i>De Maio, V., Kecskemeti, G., &
+	 * Prodan, R. (2016, December). An improved model for live migration in data
+	 * centre simulators. In Utility and Cloud Computing (UCC), 2016 IEEE/ACM
+	 * 9th International Conference on (pp. 108-117). IEEE.</i>"
 	 * 
 	 * @return the total dirtying rate on the VM
 	 */
-	private long getTotalDirtyMemory() {
+	private long identifyWWS() {
 		long previousSnapshot = lastMemorySnapshotCreatedAt;
 		lastMemorySnapshotCreatedAt = Timed.getFireCount();
 		if (previousSnapshot == -1) {
@@ -1393,6 +1356,10 @@ public class VirtualMachine extends MaxMinConsumer {
 			dirtyBytes += (Math.min(1, duration * r.getMemDirtyingRate()) * r.getMemSizeInBytes());
 		}
 		return dirtyBytes;
+	}
+
+	private StorageObject getWWSObject() {
+		return new StorageObject("VM-Memory-State-of-" + hashCode(), identifyWWS(), false);
 	}
 
 	/**
