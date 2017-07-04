@@ -858,24 +858,36 @@ public class VirtualMachine extends MaxMinConsumer {
 			@Override
 			public void conCancelled(ResourceConsumption problematic) {
 				currentVMMOperations.clear();
-				migrationRa.cancel();
-				migrationRa = null;
-				setState(prevState);
+				if (migrationRa != null) {
+					migrationRa.cancel();
+					migrationRa = null;
+				}
+				if (!currState.equals(prevState)) {
+					setState(prevState);
+				}
 			}
-		}
-		final MigrationEvent mp = new MigrationEvent();
-
-		if (!currState.equals(State.RUNNING) && (!suspendedStates.contains(currState)) || ra == null) {
-			throw new StateChangeException("Invalid starting state for a VM migration");
-		} else if (onlyLiveMigration) {
-			throw new StateChangeException("Live migration cannot be forced in this state!");
-		} else {
-			mp.setNonLive();
 		}
 
 		migrationRa = target;
+		final MigrationEvent mp = new MigrationEvent();
+
+		switch (currState) {
+		case SUSPENDED:
+		case SUSPENDED_MIG:
+			if (onlyLiveMigration) {
+				migrationRa = null;
+				throw new StateChangeException("Live migration cannot be forced in this state!");
+			}
+			mp.setNonLive();
+		case RUNNING:
+			break;
+		default:
+			migrationRa = null;
+			throw new StateChangeException("Invalid starting state for a VM migration");
+		}
+
 		if (va.getBgNetworkLoad() <= 0) {
-			NetworkNode.checkConnectivity(ra.getHost().localDisk, migrationRa.getHost().localDisk);
+			NetworkNode.checkConnectivity(vatarget, migrationRa.getHost().localDisk);
 			if (onlyLiveMigration) {
 				throw new VMManagementException("Live migration is only allowed if the VM runs from a remote disk");
 			}
