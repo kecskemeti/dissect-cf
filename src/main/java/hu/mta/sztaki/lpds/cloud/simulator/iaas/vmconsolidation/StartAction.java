@@ -4,14 +4,14 @@ import java.util.ArrayList;
 
 public class StartAction extends Action{
 
-	Bin_PhysicalMachine startpm;
+	ModelPM startpm;
 	
-	public StartAction(int id, Bin_PhysicalMachine startpm) {
+	public StartAction(int id, ModelPM startpm) {
 		super(id);
 		this.startpm = startpm;
 		// TODO Auto-generated constructor stub
 	}
-	public Bin_PhysicalMachine getstartpm(){
+	public ModelPM getstartpm(){
 		return startpm;
 	}
 	@Override

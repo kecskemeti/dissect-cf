@@ -4,26 +4,26 @@ import java.util.ArrayList;
 
 public class MigrationAction extends Action{
 
-	Bin_PhysicalMachine source;
-	Bin_PhysicalMachine target;
-	Item_VirtualMachine vm;
+	ModelPM source;
+	ModelPM target;
+	ModelVM vm;
 	
-	public MigrationAction(int id, Bin_PhysicalMachine source, Bin_PhysicalMachine target, Item_VirtualMachine vm) {
+	public MigrationAction(int id, ModelPM source, ModelPM target, ModelVM vm) {
 		super(id);
 		this.target = target;
 		this.source = source;
 		this.vm = vm;
 	}
 
-	public Bin_PhysicalMachine getTarget(){
+	public ModelPM getTarget(){
 		return target;
 	}
 	
-	public Bin_PhysicalMachine getSource(){
+	public ModelPM getSource(){
 		return source;
 	}
 	
-	public Item_VirtualMachine getItemVM(){
+	public ModelVM getItemVM(){
 		return vm;
 	}
 

@@ -4,14 +4,14 @@ import java.util.ArrayList;
 
 public class ShutDownAction extends Action{
 
-	Bin_PhysicalMachine shutdownpm; 
+	ModelPM shutdownpm; 
 	
-	public ShutDownAction(int id, Bin_PhysicalMachine shutdownpm) {
+	public ShutDownAction(int id, ModelPM shutdownpm) {
 		super(id);
 		this.shutdownpm = shutdownpm;
 	}
 
-	public Bin_PhysicalMachine getshutdownpm(){
+	public ModelPM getshutdownpm(){
 		return shutdownpm;
 	}
 
