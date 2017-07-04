@@ -15,10 +15,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.EmptyScheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Bin_PhysicalMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidation;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Item_VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelVM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
@@ -74,7 +74,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	HashMap<String, Integer> latmap = new HashMap<String, Integer>();	
 	Repository reqDisk = new Repository(123, "test1", 200, 200, 200, latmap);
 	
-	final static int reqcores = 8, reqProcessing = 5, reqmem = 16,
+	final static int reqcores = 8, reqProcessing = 3, reqmem = 16,
 			reqond = 2 * (int) aSecond, reqoffd = (int) aSecond;
 	
 	//The different ResourceConstraints to get an other allocation for each PM
@@ -158,6 +158,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	//This test verifies that all PMs are shut down before simulating	
 	@Test(timeout = 100)
 	public void switchOffTest() throws VMManagementException, NetworkException {
+		
+		Assert.assertEquals(
+				"Machines should not running at the beginning of the simulation",
+				0, basic.runningMachines.size());
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Did not switch on all machines as expected",
+				basic.machines.size(), basic.runningMachines.size());
+		
 		testOverPM1.switchoff(null);
 		testUnderPM2.switchoff(null);
 		testNormalPM3.switchoff(null);
@@ -240,7 +251,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -251,9 +262,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Bin_PhysicalMachine abstractPM1 = ffc.getBins().get(0);
-		Bin_PhysicalMachine abstractPM2 = ffc.getBins().get(1);
-		Bin_PhysicalMachine abstractPM3 = ffc.getBins().get(2);
+		ModelPM abstractPM1 = ffc.getBins().get(0);
+		ModelPM abstractPM2 = ffc.getBins().get(1);
+		ModelPM abstractPM3 = ffc.getBins().get(2);
 		
 		Assert.assertEquals("The first PM is not matching with the abstract version of it", testOverPM1,
 				abstractPM1.getPM());
@@ -269,10 +280,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Item_VirtualMachine abstractVM1 = ffc.getBins().get(0).getVM(0);
-		Item_VirtualMachine abstractVM2 = ffc.getBins().get(0).getVM(1);
-		Item_VirtualMachine abstractVM3 = ffc.getBins().get(1).getVM(0);
-		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);
+		ModelVM abstractVM1 = ffc.getBins().get(0).getVM(0);
+		ModelVM abstractVM2 = ffc.getBins().get(0).getVM(1);
+		ModelVM abstractVM3 = ffc.getBins().get(1).getVM(0);
+		ModelVM abstractVM4 = ffc.getBins().get(2).getVM(0);
 		
 		Assert.assertEquals("The 1. VM is not matching with the abstract version of it", ffc.getBins().get(0),
 				abstractVM1.gethostPM());
@@ -290,10 +301,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Item_VirtualMachine abstractVM1 = ffc.getBins().get(0).getVM(0);
-		Item_VirtualMachine abstractVM2 = ffc.getBins().get(0).getVM(1);
-		Item_VirtualMachine abstractVM3 = ffc.getBins().get(1).getVM(0);
-		Item_VirtualMachine abstractVM4 = ffc.getBins().get(2).getVM(0);		
+		ModelVM abstractVM1 = ffc.getBins().get(0).getVM(0);
+		ModelVM abstractVM2 = ffc.getBins().get(0).getVM(1);
+		ModelVM abstractVM3 = ffc.getBins().get(1).getVM(0);
+		ModelVM abstractVM4 = ffc.getBins().get(2).getVM(0);		
 		
 		Assert.assertEquals("The cores of the first abstract VM does not match with the real version of it", abstractVM1.getResources().getRequiredCPUs(),
 				VM1.getResourceAllocation().allocated.getRequiredCPUs(), 0);
@@ -332,22 +343,57 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 *      				Can a not running PM get started if necessary?
 	 */	
 	
-	// first PM: overAllocated second PM: underAllocated third PM: normal	
-	// This test verifies the correct setting of the load of each PM	
+	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16,	
+	// overAllocated at 19 totalProc, 13 mem
+	// --> available: <=5 totalProc, <=3 mem
+	// underAllocated at 5 totalProc, 3 mem
+	// --> available: >=19 totalProc, >=13 mem
+	// normal at 6 to 18 totalProc, 4 to 12 mem
+	// --> available: 18 to 6 totalProc, 12 to 4 mem
+	// first PM: overAllocated second PM: underAllocated third PM: normal
+	
+	// VM constraints: reqcores, reqProcessing, reqmem
+	// smallConstraints = new ConstantConstraints(1, 1, 2);	
+	// mediumConstraints = new ConstantConstraints(3, 1, 6);	
+	// bigConstraints = new ConstantConstraints(5, 1, 8);
+	
+	// VM, VM constraints, targetPM, simulate
+	//switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
+	//switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
+	//switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
+	//switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
+	
+	
+	// This test verifies the correct allocation of each PM	
 	@Test(timeout = 100)
-	public void checkAbstractPMLoad() throws Exception {
+	public void checkAbstractPMAllocation() throws Exception {
 		
 		createAbstractModel();
 		
-		Bin_PhysicalMachine first = ffc.getBins().get(0);
-		Bin_PhysicalMachine second = ffc.getBins().get(1);
-		Bin_PhysicalMachine third= ffc.getBins().get(2);
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM second = ffc.getBins().get(1);
+		ModelPM third= ffc.getBins().get(2);
 		
 		Timed.simulateUntilLastEvent();
 		
-		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, first.getState());
-		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, second.getState());
-		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());		
+		Assert.assertEquals("The first PM has not the right Resources, constotalproc", reqcores * reqProcessing, first.getTotalResources().getTotalProcessingPower(), 0);
+		Assert.assertEquals("The first PM has not the right Resources, consmem", reqmem, first.getTotalResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The first PM has not the right Resources, reqtotalproc", 16, first.getAvailableResources().getTotalProcessingPower(), 0);	// 8 totalProc used
+		Assert.assertEquals("The first PM has not the right Resources, mem", 2, first.getAvailableResources().getRequiredMemory(), 0);					// 14 mem used
+		
+		Assert.assertEquals("The second PM has not the right Resources, constotalproc", reqcores * reqProcessing, second.getTotalResources().getTotalProcessingPower(), 0);
+		Assert.assertEquals("The second PM has not the right Resources, consmem", reqmem, second.getTotalResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The second PM has not the right Resources, reqtotalproc", 23, second.getAvailableResources().getTotalProcessingPower(), 0);	// 1 totalProc used
+		Assert.assertEquals("The second PM has not the right Resources, mem", 14, second.getAvailableResources().getRequiredMemory(), 0);					// 2 mem used
+		
+		Assert.assertEquals("The third PM has not the right Resources, constotalproc", reqcores * reqProcessing, third.getTotalResources().getTotalProcessingPower(), 0);
+		Assert.assertEquals("The third PM has not the right Resources, consmem", reqmem, third.getTotalResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The third PM has not the right Resources, reqtotalproc", 19, third.getAvailableResources().getTotalProcessingPower(), 0);	// 5 totalProc used
+		Assert.assertEquals("The third PM has not the right Resources, mem", 8, third.getAvailableResources().getRequiredMemory(), 0);					// 8 mem used
+		
+		Assert.assertEquals("The first PM has not the right State", ModelPM.State.OVERALLOCATED_RUNNING, first.getState());
+		Assert.assertEquals("The second PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, second.getState());
+		Assert.assertEquals("The third PM has not the right State", ModelPM.State.NORMAL_RUNNING, third.getState());		
 	}
 	
 	// This test verifies the functionality of the getMigPM()-method	
@@ -356,26 +402,16 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Bin_PhysicalMachine first = ffc.getBins().get(0);
-		Bin_PhysicalMachine second = ffc.getBins().get(1);
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM second = ffc.getBins().get(1);
 		
-		Item_VirtualMachine firstVM = first.getVM(0);
+		ModelVM firstVM = first.getVM(0);
 		
 		ffc.migrateOverAllocatedPM(first);
 		
 		
-		//testing the resources
-		Assert.assertEquals("The total CPUs of the first PM are not correct", 8, first.getTotalResources().getRequiredCPUs(), 0);
-		Assert.assertEquals("The total perCoreProcessingPower of the first PM is not correct", 5, first.getTotalResources().getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The total memory of the first PM is not correct", 16, first.getTotalResources().getRequiredMemory());
-		
-		Assert.assertEquals("The available CPUs of the first PM are not correct", 0, first.getAvailableResources().getRequiredCPUs(), 0);
-		Assert.assertEquals("The available perCoreProcessingPower of the first PM is not correct", 3, first.getAvailableResources().getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The available memory of the first PM is not correct", 2, first.getAvailableResources().getRequiredMemory());
-		
-		
 		Assert.assertEquals("The first PM has not the right State after migration", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
+				ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The first VM has not the right host", 
 				second ,firstVM.gethostPM());
 	}
@@ -386,23 +422,23 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Bin_PhysicalMachine first = ffc.getBins().get(0);
-		Bin_PhysicalMachine second = ffc.getBins().get(1);
-		Bin_PhysicalMachine third= ffc.getBins().get(2);
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM second = ffc.getBins().get(1);
+		ModelPM third= ffc.getBins().get(2);
 		
-		Item_VirtualMachine firstVMbig = first.getVM(0);
-		Item_VirtualMachine secondVMmedium = first.getVM(1);
-		Item_VirtualMachine thirdVMsmall = second.getVM(0);
-		Item_VirtualMachine fourthVMbig = third.getVM(0);
+		ModelVM firstVMbig = first.getVM(0);
+		ModelVM secondVMmedium = first.getVM(1);
+		ModelVM thirdVMsmall = second.getVM(0);
+		ModelVM fourthVMbig = third.getVM(0);
 		
 		ffc.optimize();
 		
 		Assert.assertEquals("The first PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, first.getState());
+				ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The second PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, second.getState());
+				ModelPM.State.NORMAL_RUNNING, second.getState());
 		Assert.assertEquals("The third PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, third.getState());
+				ModelPM.State.NORMAL_RUNNING, third.getState());
 		
 		Assert.assertEquals("The first VM has not the right host PM after optimization", 
 				second, firstVMbig.gethostPM());
@@ -492,7 +528,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
-		ffc = new FirstFitConsolidation(basic);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -503,60 +539,60 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		this.createComplexAbstractModel();
 		
-		Bin_PhysicalMachine firstOverAllocated = ffc.getBins().get(0);
-		Bin_PhysicalMachine secondUnderAllocated = ffc.getBins().get(1);
-		Bin_PhysicalMachine thirdNormal = ffc.getBins().get(2);
-		Bin_PhysicalMachine fourthOverAllocated = ffc.getBins().get(3);
-		Bin_PhysicalMachine fifthUnderAllocated = ffc.getBins().get(4);
-		Bin_PhysicalMachine sixthNormal = ffc.getBins().get(5);
-		Bin_PhysicalMachine seventhUnderAllocated = ffc.getBins().get(6);
-		Bin_PhysicalMachine eighthUnderAllocated = ffc.getBins().get(7);
+		ModelPM firstOverAllocated = ffc.getBins().get(0);
+		ModelPM secondUnderAllocated = ffc.getBins().get(1);
+		ModelPM thirdNormal = ffc.getBins().get(2);
+		ModelPM fourthOverAllocated = ffc.getBins().get(3);
+		ModelPM fifthUnderAllocated = ffc.getBins().get(4);
+		ModelPM sixthNormal = ffc.getBins().get(5);
+		ModelPM seventhUnderAllocated = ffc.getBins().get(6);
+		ModelPM eighthUnderAllocated = ffc.getBins().get(7);
 		
-		Assert.assertEquals("The first PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, firstOverAllocated.getState());
-		Assert.assertEquals("The second PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, secondUnderAllocated.getState());
-		Assert.assertEquals("The third PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
-		Assert.assertEquals("The fourth PM has not the right State", Bin_PhysicalMachine.State.OVERALLOCATED_RUNNING, fourthOverAllocated.getState());
-		Assert.assertEquals("The fifth PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, fifthUnderAllocated.getState());
-		Assert.assertEquals("The sixth PM has not the right State", Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
-		Assert.assertEquals("The seventh PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, seventhUnderAllocated.getState());
-		Assert.assertEquals("The eighth PM has not the right State", Bin_PhysicalMachine.State.UNDERALLOCATED_RUNNING, eighthUnderAllocated.getState());
+		Assert.assertEquals("The first PM has not the right State", ModelPM.State.OVERALLOCATED_RUNNING, firstOverAllocated.getState());
+		Assert.assertEquals("The second PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, secondUnderAllocated.getState());
+		Assert.assertEquals("The third PM has not the right State", ModelPM.State.NORMAL_RUNNING, thirdNormal.getState());
+		Assert.assertEquals("The fourth PM has not the right State", ModelPM.State.OVERALLOCATED_RUNNING, fourthOverAllocated.getState());
+		Assert.assertEquals("The fifth PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, fifthUnderAllocated.getState());
+		Assert.assertEquals("The sixth PM has not the right State", ModelPM.State.NORMAL_RUNNING, sixthNormal.getState());
+		Assert.assertEquals("The seventh PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, seventhUnderAllocated.getState());
+		Assert.assertEquals("The eighth PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, eighthUnderAllocated.getState());
 		
-		Item_VirtualMachine firstVM = firstOverAllocated.getVM(0);
-		Item_VirtualMachine secondVM = firstOverAllocated.getVM(1);
-		Item_VirtualMachine thirdVM = secondUnderAllocated.getVM(0);
-		Item_VirtualMachine fourthVM = thirdNormal.getVM(0);
-		Item_VirtualMachine fifthVM = fourthOverAllocated.getVM(0);
-		Item_VirtualMachine sixthVM = fourthOverAllocated.getVM(1);
-		Item_VirtualMachine seventhVM = fifthUnderAllocated.getVM(0);
-		Item_VirtualMachine eighthVM = sixthNormal.getVM(0);
-		Item_VirtualMachine ninthVM = seventhUnderAllocated.getVM(0);
-		Item_VirtualMachine tenthVM = eighthUnderAllocated.getVM(0);		
+		ModelVM firstVM = firstOverAllocated.getVM(0);
+		ModelVM secondVM = firstOverAllocated.getVM(1);
+		ModelVM thirdVM = secondUnderAllocated.getVM(0);
+		ModelVM fourthVM = thirdNormal.getVM(0);
+		ModelVM fifthVM = fourthOverAllocated.getVM(0);
+		ModelVM sixthVM = fourthOverAllocated.getVM(1);
+		ModelVM seventhVM = fifthUnderAllocated.getVM(0);
+		ModelVM eighthVM = sixthNormal.getVM(0);
+		ModelVM ninthVM = seventhUnderAllocated.getVM(0);
+		ModelVM tenthVM = eighthUnderAllocated.getVM(0);		
 		
 		ffc.optimize();
 		
 		Assert.assertEquals("The first PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, firstOverAllocated.getState());
+				ModelPM.State.NORMAL_RUNNING, firstOverAllocated.getState());
 		
 		Assert.assertEquals("The second PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, secondUnderAllocated.getState());
+				ModelPM.State.NORMAL_RUNNING, secondUnderAllocated.getState());
 		
 		Assert.assertEquals("The third PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, thirdNormal.getState());
+				ModelPM.State.NORMAL_RUNNING, thirdNormal.getState());
 		
 		Assert.assertEquals("The fourth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, fourthOverAllocated.getState());
+				ModelPM.State.NORMAL_RUNNING, fourthOverAllocated.getState());
 		
 		Assert.assertEquals("The fifth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, fifthUnderAllocated.getState());
+				ModelPM.State.NORMAL_RUNNING, fifthUnderAllocated.getState());
 		
 		Assert.assertEquals("The sixth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.NORMAL_RUNNING, sixthNormal.getState());
+				ModelPM.State.NORMAL_RUNNING, sixthNormal.getState());
 		
 		Assert.assertEquals("The seventh PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.EMPTY_OFF, seventhUnderAllocated.getState());
+				ModelPM.State.EMPTY_OFF, seventhUnderAllocated.getState());
 		
 		Assert.assertEquals("The eighth PM has not the right State after optimization", 
-				Bin_PhysicalMachine.State.EMPTY_OFF, eighthUnderAllocated.getState());
+				ModelPM.State.EMPTY_OFF, eighthUnderAllocated.getState());
 		
 		
 		
@@ -596,7 +632,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractModel();
 		
-		Bin_PhysicalMachine empty= ffc.getBins().get(3);
+		ModelPM empty= ffc.getBins().get(3);
 		
 		ffc.shutEmptyPMsDown();
 		
@@ -621,7 +657,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.bigConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -632,10 +668,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		createAbstractStartingShutDownModel();
 		
-		Bin_PhysicalMachine first = ffc.getBins().get(0);
-		Bin_PhysicalMachine empty = ffc.getBins().get(3);
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM empty = ffc.getBins().get(3);
 		
-		Item_VirtualMachine vm1 = first.getVM(0);
+		ModelVM vm1 = first.getVM(0);
 		
 		ffc.optimize();
 		
@@ -644,6 +680,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	//so far everything is running except the graph method "performActions()"
+	//after migrating the resources out of the simulator there are problems with the perCoreProcessingPower, need to fix that but now not possible
 	 
 	/**  				
 	 * graph: 				Do actions exist?
