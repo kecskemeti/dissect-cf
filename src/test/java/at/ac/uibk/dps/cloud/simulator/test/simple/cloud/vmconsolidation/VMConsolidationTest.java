@@ -299,6 +299,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void checkVMresources() throws Exception {
 		
+		
+		
 		createAbstractModel();
 		
 		ModelVM abstractVM1 = ffc.getBins().get(0).getVM(0);
@@ -367,12 +369,20 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies the correct allocation of each PM	
 	@Test(timeout = 100)
 	public void checkAbstractPMAllocation() throws Exception {
+
+		PhysicalMachine testOverPM4;
+		testOverPM4 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
+				reqond, reqoffd, defaultTransitions);
+				
+		basic.registerHost(testOverPM4);
+		testOverPM4.turnon();
 		
 		createAbstractModel();
 		
 		ModelPM first = ffc.getBins().get(0);
 		ModelPM second = ffc.getBins().get(1);
-		ModelPM third= ffc.getBins().get(2);
+		ModelPM third = ffc.getBins().get(2);
+		ModelPM fourth = ffc.getBins().get(3);
 		
 		Timed.simulateUntilLastEvent();
 		
@@ -391,6 +401,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The third PM has not the right Resources, reqtotalproc", 19, third.getAvailableResources().getTotalProcessingPower(), 0);	// 5 totalProc used
 		Assert.assertEquals("The third PM has not the right Resources, mem", 8, third.getAvailableResources().getRequiredMemory(), 0);					// 8 mem used
 		
+		Assert.assertEquals("The fourth PM has not the right Resources, constotalproc", reqcores * reqProcessing, fourth.getTotalResources().getTotalProcessingPower(), 0);
+		Assert.assertEquals("The fourth PM has not the right Resources, consmem", reqmem, fourth.getTotalResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The fourth PM has not the right Resources, reqtotalproc", reqcores * reqProcessing, fourth.getAvailableResources().getTotalProcessingPower(), 0);	
+		Assert.assertEquals("The fourth PM has not the right Resources, mem", reqmem, fourth.getAvailableResources().getRequiredMemory(), 0);
+		
+		Assert.assertEquals("The first PM has not the right amount of VMs running", 2, first.getVMs().size());
+		Assert.assertEquals("The second PM has not the right amount of VMs running", 1, second.getVMs().size());
+		Assert.assertEquals("The third PM has not the right amount of VMs running", 1, third.getVMs().size());
+		Assert.assertEquals("The fourth PM has not the right amount of VMs running", 0, fourth.getVMs().size());
+		
+		Assert.assertEquals("The fourth PM has not the right State", ModelPM.State.EMPTY_RUNNING, fourth.getState());		
 		Assert.assertEquals("The first PM has not the right State", ModelPM.State.OVERALLOCATED_RUNNING, first.getState());
 		Assert.assertEquals("The second PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, second.getState());
 		Assert.assertEquals("The third PM has not the right State", ModelPM.State.NORMAL_RUNNING, third.getState());		
