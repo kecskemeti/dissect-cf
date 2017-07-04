@@ -152,7 +152,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			else {
 				
 				//These are the constraints of the actual PM
-				ResourceVector pmRes = actualPM.getAvailableResources();
+				ResourceVector pmRes = actualPM.getConsumedResources();
 				
 				if(pmRes.fitsIn(vmRes)) {
 					
@@ -178,7 +178,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
 				//These are the constraints of the actual PM
-				ResourceVector pmRes = actualPM.getAvailableResources();
+				ResourceVector pmRes = actualPM.getConsumedResources();
 				
 				if(pmRes.fitsIn(vmRes) == false) {
 					

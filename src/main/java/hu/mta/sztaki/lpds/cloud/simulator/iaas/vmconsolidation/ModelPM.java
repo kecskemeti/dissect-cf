@@ -20,7 +20,7 @@ public class ModelPM {
 	private int number;
 	
 	private ConstantConstraints totalResources;
-	private ResourceVector availableResources;
+	private ResourceVector consumedResources;
 	
 	private double upperThreshold;
 	private double lowerThreshold;
@@ -71,7 +71,7 @@ public class ModelPM {
 		lowerThreshold = low;
 		
 		totalResources = new ConstantConstraints(cores, pCP, mem);
-		availableResources = new ResourceVector(cores, pCP, mem);
+		consumedResources = new ResourceVector(0, 0, 0);
 	}
 	
 	/**
@@ -113,7 +113,7 @@ public class ModelPM {
 	 */
 	public void addVM(ModelVM vm) {
 		vmList.add(vm);
-		availableResources.subtract(vm.getResources());
+		consumedResources.add(vm.getResources());
 		
 		checkAllocation();
 	}
@@ -125,7 +125,7 @@ public class ModelPM {
 	 */
 	public void removeVM(ModelVM vm) {
 		vmList.remove(vm);
-		availableResources.add(vm.getResources());
+		consumedResources.subtract(vm.getResources());
 		
 		checkAllocation();
 	}
@@ -153,8 +153,8 @@ public class ModelPM {
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */
 	
-	public ResourceVector getAvailableResources() {
-		return this.availableResources;
+	public ResourceVector getConsumedResources() {
+		return this.consumedResources;
 	}	
 	
 	/**
@@ -306,7 +306,7 @@ public class ModelPM {
 	 */	
 	private boolean isOverAllocated() {
 		
-		if(availableResources.compareToOverAllocated(totalResources, upperThreshold)) {
+		if(consumedResources.compareToOverAllocated(totalResources, upperThreshold)) {
 			return true;
 		}
 		else
@@ -319,7 +319,7 @@ public class ModelPM {
 	 */	
 	private boolean isUnderAllocated() {
 		
-		if(availableResources.compareToUnderAllocated(totalResources, lowerThreshold)) {
+		if(consumedResources.compareToUnderAllocated(totalResources, lowerThreshold)) {
 			return true;
 		}
 		else

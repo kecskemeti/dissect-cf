@@ -36,8 +36,8 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The defined threshold
 	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverAllocated(ResourceConstraints total, double upperThreshold) {
-		
+	public boolean compareToOverAllocated(ResourceConstraints total, double upperThreshold) {		
+				
 		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * upperThreshold || this.getRequiredMemory() > total.getRequiredMemory() * upperThreshold) {
 			return true;
 		}
@@ -63,7 +63,7 @@ public class ResourceVector extends AlterableResourceConstraints {
 	}
 	
 	/**
-	 * Comparison for checking if the values of the second ResourceVector are smaller than this one.
+	 * Compares the allocation of two ResourceVectors to verfify that the allocation of the first on is smaller than the second one.
 	 * @param available
 	 * 			The second ResourceVector
 	 * @return true if all values are greater.
