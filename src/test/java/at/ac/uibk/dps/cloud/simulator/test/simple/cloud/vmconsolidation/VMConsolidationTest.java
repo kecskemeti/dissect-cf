@@ -347,11 +347,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16,	
 	// overAllocated at 19 totalProc, 13 mem
-	// --> available: <=5 totalProc, <=3 mem
 	// underAllocated at 5 totalProc, 3 mem
-	// --> available: >=19 totalProc, >=13 mem
 	// normal at 6 to 18 totalProc, 4 to 12 mem
-	// --> available: 18 to 6 totalProc, 12 to 4 mem
 	// first PM: overAllocated second PM: underAllocated third PM: normal
 	
 	// VM constraints: reqcores, reqProcessing, reqmem
@@ -369,49 +366,34 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies the correct allocation of each PM	
 	@Test(timeout = 100)
 	public void checkAbstractPMAllocation() throws Exception {
-
-		PhysicalMachine testOverPM4;
-		testOverPM4 = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk,
-				reqond, reqoffd, defaultTransitions);
-				
-		basic.registerHost(testOverPM4);
-		testOverPM4.turnon();
 		
 		createAbstractModel();
 		
 		ModelPM first = ffc.getBins().get(0);
 		ModelPM second = ffc.getBins().get(1);
 		ModelPM third = ffc.getBins().get(2);
-		ModelPM fourth = ffc.getBins().get(3);
 		
 		Timed.simulateUntilLastEvent();
 		
 		Assert.assertEquals("The first PM has not the right Resources, constotalproc", reqcores * reqProcessing, first.getTotalResources().getTotalProcessingPower(), 0);
 		Assert.assertEquals("The first PM has not the right Resources, consmem", reqmem, first.getTotalResources().getRequiredMemory(), 0);
-		Assert.assertEquals("The first PM has not the right Resources, reqtotalproc", 16, first.getAvailableResources().getTotalProcessingPower(), 0);	// 8 totalProc used
-		Assert.assertEquals("The first PM has not the right Resources, mem", 2, first.getAvailableResources().getRequiredMemory(), 0);					// 14 mem used
+		Assert.assertEquals("The first PM has not the right Resources, reqtotalproc", 8, first.getConsumedResources().getTotalProcessingPower(), 0);	// 8 totalProc used
+		Assert.assertEquals("The first PM has not the right Resources, mem", 14, first.getConsumedResources().getRequiredMemory(), 0);					// 14 mem used
 		
 		Assert.assertEquals("The second PM has not the right Resources, constotalproc", reqcores * reqProcessing, second.getTotalResources().getTotalProcessingPower(), 0);
 		Assert.assertEquals("The second PM has not the right Resources, consmem", reqmem, second.getTotalResources().getRequiredMemory(), 0);
-		Assert.assertEquals("The second PM has not the right Resources, reqtotalproc", 23, second.getAvailableResources().getTotalProcessingPower(), 0);	// 1 totalProc used
-		Assert.assertEquals("The second PM has not the right Resources, mem", 14, second.getAvailableResources().getRequiredMemory(), 0);					// 2 mem used
+		Assert.assertEquals("The second PM has not the right Resources, reqtotalproc", 1, second.getConsumedResources().getTotalProcessingPower(), 0);	// 1 totalProc used
+		Assert.assertEquals("The second PM has not the right Resources, mem", 2, second.getConsumedResources().getRequiredMemory(), 0);					// 2 mem used
 		
 		Assert.assertEquals("The third PM has not the right Resources, constotalproc", reqcores * reqProcessing, third.getTotalResources().getTotalProcessingPower(), 0);
 		Assert.assertEquals("The third PM has not the right Resources, consmem", reqmem, third.getTotalResources().getRequiredMemory(), 0);
-		Assert.assertEquals("The third PM has not the right Resources, reqtotalproc", 19, third.getAvailableResources().getTotalProcessingPower(), 0);	// 5 totalProc used
-		Assert.assertEquals("The third PM has not the right Resources, mem", 8, third.getAvailableResources().getRequiredMemory(), 0);					// 8 mem used
-		
-		Assert.assertEquals("The fourth PM has not the right Resources, constotalproc", reqcores * reqProcessing, fourth.getTotalResources().getTotalProcessingPower(), 0);
-		Assert.assertEquals("The fourth PM has not the right Resources, consmem", reqmem, fourth.getTotalResources().getRequiredMemory(), 0);
-		Assert.assertEquals("The fourth PM has not the right Resources, reqtotalproc", reqcores * reqProcessing, fourth.getAvailableResources().getTotalProcessingPower(), 0);	
-		Assert.assertEquals("The fourth PM has not the right Resources, mem", reqmem, fourth.getAvailableResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The third PM has not the right Resources, reqtotalproc", 5, third.getConsumedResources().getTotalProcessingPower(), 0);	// 5 totalProc used
+		Assert.assertEquals("The third PM has not the right Resources, mem", 8, third.getConsumedResources().getRequiredMemory(), 0);					// 8 mem used
 		
 		Assert.assertEquals("The first PM has not the right amount of VMs running", 2, first.getVMs().size());
 		Assert.assertEquals("The second PM has not the right amount of VMs running", 1, second.getVMs().size());
 		Assert.assertEquals("The third PM has not the right amount of VMs running", 1, third.getVMs().size());
-		Assert.assertEquals("The fourth PM has not the right amount of VMs running", 0, fourth.getVMs().size());
-		
-		Assert.assertEquals("The fourth PM has not the right State", ModelPM.State.EMPTY_RUNNING, fourth.getState());		
+			
 		Assert.assertEquals("The first PM has not the right State", ModelPM.State.OVERALLOCATED_RUNNING, first.getState());
 		Assert.assertEquals("The second PM has not the right State", ModelPM.State.UNDERALLOCATED_RUNNING, second.getState());
 		Assert.assertEquals("The third PM has not the right State", ModelPM.State.NORMAL_RUNNING, third.getState());		
