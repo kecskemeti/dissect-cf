@@ -15,8 +15,8 @@ public class ModelVM {
 	
 	VirtualMachine vm;
 	ModelPM hostPM;
-	ResourceVector neededResources;
 	String id;
+	ResourceVector neededResources;
 	
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
@@ -49,8 +49,8 @@ public class ModelVM {
 	 */
 	
 	public String toString() {
-		return id + ", " + "Cores: " +getRequiredCPUs() + ", " + "ProcessingPower: " 
-				+ getRequiredProcessingPower() + ", " + "Memory: " + getRequiredMemory();
+		return id + ", " + "Cores: " + getResources().getRequiredCPUs() + ", " + "ProcessingPower: " 
+				+ getResources().getRequiredProcessingPower() + ", " + "Memory: " + getResources().getRequiredMemory();
 	}
 	
 	
@@ -59,27 +59,6 @@ public class ModelVM {
 	 */
 	public ResourceVector getResources() {
 		return neededResources;
-	}
-	
-	/** Getter
-	 * @return cores of the VM.
-	 */
-	public double getRequiredCPUs() {
-		return neededResources.getRequiredCPUs();
-	}
-	
-	/** Getter
-	 * @return perCoreProcessing of the VM.
-	 */	
-	public double getRequiredProcessingPower() {
-		return neededResources.getRequiredProcessingPower();
-	}
-	
-	/** Getter
-	 * @return memory of the VM.
-	 */
-	public long getRequiredMemory() {
-		return neededResources.getRequiredMemory();
 	}
 	
 	/** Getter

@@ -12,7 +12,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  * ResourceVectors.
  */
 
-public class ResourceVector extends AlterableResourceConstraints {
+public class ResourceVector extends AlterableResourceConstraints {	
 	
 	/**
 	 * The constructor for a ResourceVector. This class represents the cores, perCoreProcessingPower
@@ -36,9 +36,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The defined threshold
 	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverAllocated(ResourceConstraints total, double upperThreshold) {		
-				
-		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * upperThreshold || this.getRequiredMemory() > total.getRequiredMemory() * upperThreshold) {
+	public boolean compareToOverAllocated(ResourceConstraints total, double upperThreshold) {	
+		
+		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 || this.getRequiredMemory() > total.getRequiredMemory() * 0.75) {
 			return true;
 		}
 		else
@@ -55,7 +55,7 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 */
 	public boolean compareToUnderAllocated(ResourceConstraints total, double lowerThreshold) {
 		
-		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * lowerThreshold && this.getRequiredMemory() < total.getRequiredMemory() * lowerThreshold) {
+		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 && this.getRequiredMemory() < total.getRequiredMemory() * 0.25) {
 			return true;
 		}
 		else

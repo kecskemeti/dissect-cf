@@ -31,7 +31,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 */
 	
 	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold) throws Exception {
-		super(parent, upperThreshold, lowerThreshold);
+		super(parent, upperThreshold, lowerThreshold);		
 	}	
 	
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -134,17 +134,15 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * @return A PM where the given VM can be migrated
 	 * 		   starts a new PM if there is no one with needed resources.
 	 */
-	private ModelPM getMigPm(ModelVM vm) {
+	public ModelPM getMigPm(ModelVM vm) {
 		
 		ModelVM toMig = vm;
 		
-		//These are the constraints of the VM
-		ResourceVector vmRes = toMig.getResources();
-		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {		
-			ModelPM actualPM = getBins().get(i);
-			if(actualPM == vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
+			ModelPM actualPM = this.getBins().get(i);
+			if(actualPM == toMig.gethostPM() 
+					|| actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERALLOCATED_RUNNING) 
 					|| actualPM.getState().equals(State.STILL_OVERALLOCATED) || actualPM.getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) {
 				
@@ -154,7 +152,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				//These are the constraints of the actual PM
 				ResourceVector pmRes = actualPM.getConsumedResources();
 				
-				if(pmRes.fitsIn(vmRes)) {
+				if(pmRes.fitsIn(toMig.getResources())) {
 					
 					actualPM.addVM(toMig);
 					actualPM.checkAllocation();
@@ -180,7 +178,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				//These are the constraints of the actual PM
 				ResourceVector pmRes = actualPM.getConsumedResources();
 				
-				if(pmRes.fitsIn(vmRes) == false) {
+				if(pmRes.fitsIn(toMig.getResources()) == false) {
 					
 					actualPM.addVM(toMig);
 					actualPM.checkAllocation();
@@ -238,12 +236,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * @return first VM on a PM
 	 */
 	private ModelVM getFirstVM(ModelPM x) {
-		if(!x.isHostingVMs()) {
-			return x.getVMs().get(0);
-		}
-		else {
-			return null;
-		}
+		return x.getVM(0);
 	}
 	
 	/**
@@ -275,13 +268,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				return;
 			}
 						
-			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
-			
-			if(actual == null) {
-				source.checkAllocation();
-				return;
-			}
-			
+			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target			
 			ModelPM pm = getMigPm(actual);
 			
 			if(pm == null) {
@@ -320,13 +307,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				return;
 			}
 			ArrayList <ModelVM> migVMs = new ArrayList <ModelVM>();
-			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target
-			
-			if(actual == null) {
-				source.checkAllocation();
-				return;
-			}
-			
+			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target			
 			ModelPM pm = getMigPm(actual); 
 			
 			if(pm == null) {

@@ -57,7 +57,7 @@ public class ModelBasedConsolidator implements VirtualMachine.StateChange, Physi
 	 */
 	public ModelBasedConsolidator(IaaSService parent, double upperThreshold, double lowerThreshold) throws Exception {
 		this.toConsolidate = parent;
-		this.instantiate(bins);
+		this.instantiate();
 		up = upperThreshold;
 		low = lowerThreshold;
 	}
@@ -79,7 +79,7 @@ public class ModelBasedConsolidator implements VirtualMachine.StateChange, Physi
 	/**
 	 * In this part all PMs and VMs will be put inside this abstract model.
 	*/
-	public void instantiate(ArrayList <ModelPM> pmList) {
+	public void instantiate() {
 		for (int i = 0; i < toConsolidate.machines.size(); i++) {
 			
 			PhysicalMachine pm = toConsolidate.machines.get(i);
@@ -98,7 +98,7 @@ public class ModelBasedConsolidator implements VirtualMachine.StateChange, Physi
 			}
 			
 			act.initializePM(items);
-			pmList.add(act);
+			bins.add(act);
 		}
 	}
 	
