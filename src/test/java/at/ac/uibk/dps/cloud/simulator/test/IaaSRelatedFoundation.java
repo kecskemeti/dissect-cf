@@ -51,6 +51,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentM
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.RandomScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.SmallestFirstScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -187,6 +188,8 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		serviceArray.add(new IaaSService(NonQueueingScheduler.class, SchedulingDependentMachines.class));
 		serviceArray.add(new IaaSService(SmallestFirstScheduler.class, AlwaysOnMachines.class));
 		serviceArray.add(new IaaSService(SmallestFirstScheduler.class, SchedulingDependentMachines.class));
+		serviceArray.add(new IaaSService(RandomScheduler.class, AlwaysOnMachines.class));
+		serviceArray.add(new IaaSService(RandomScheduler.class, SchedulingDependentMachines.class));
 		return serviceArray;
 	}
 }

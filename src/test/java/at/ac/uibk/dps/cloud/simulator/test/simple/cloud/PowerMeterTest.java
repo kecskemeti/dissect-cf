@@ -28,6 +28,7 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.EnergyMeter;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.MonitorConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.ConstantConsumptionModel;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.LinearConsumptionModel;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
@@ -205,10 +206,9 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.skipEventsTill(fireAt[0] - 1);
 		// FIXME: lower management frequencies should be also possible within
 		// the timeout
-		new MeterManager(iaas, 1200, 3600,
-				process.length + 3 /*
-									 * for the 80 core vms
-									 */, meters, 1138200000000l);
+		new MeterManager(iaas, 1200, 3600, process.length + 3 /*
+																 * for the 80 core vms
+																 */, meters, 1138200000000l);
 		Timed.simulateUntilLastEvent();
 	}
 
@@ -306,5 +306,29 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		}
 		Assert.assertEquals("The energy consumption should be increasing with the two new machine's consumption",
 				meteredResults[1] - meteredResults[0], meteredResults[2], 0.01);
+	}
+
+	@Test(timeout = 400)
+	public void simpleConsumptionMonitoring() {
+		PhysicalMachine pm = dummyPMcreator();
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		final MonitorConsumption mon = new MonitorConsumption(pm, aSecond);
+		Timed.simulateUntil(Timed.getFireCount() + 1000);
+		Assert.assertEquals("Should not report consumption yet", 0, mon.getSubDayProcessing(), 0.0001);
+		// The size of the consumption results in an over the day simulation
+		ResourceConsumption rc = new ResourceConsumption(100000000, ResourceConsumption.unlimitedProcessing,
+				pm.directConsumer, pm, new ConsumptionEventAssert() {
+					@Override
+					public void conComplete() {
+						super.conComplete();
+						mon.cancelMonitoring();
+					}
+				});
+		rc.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("Should report consumption with day>hour>sec",
+				mon.getSubDayProcessing() >= mon.getSubHourProcessing()
+						&& mon.getSubHourProcessing() >= mon.getSubSecondProcessing());
 	}
 }
