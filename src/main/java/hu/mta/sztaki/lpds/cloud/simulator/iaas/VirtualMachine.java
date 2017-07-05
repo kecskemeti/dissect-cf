@@ -39,7 +39,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications.VMStateChangeNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -94,32 +93,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  *         MTA SZTAKI (c) 2012,2014-15"
  */
 public class VirtualMachine extends MaxMinConsumer {
-	public final static long maxRounds = 5;
 	/**
-	 * Smallest written working set size that still allows new memory copy
-	 * rounds
-	 */
-	private final static long WWS_TERMINAL_SIZE = 262144;
-	/**
-	 * When did the last memory transfer start for the current migration process
-	 */
-	private long lastMemorySnapshotCreatedAt = -1;
-
-	/**
-	 * This class is defined to ensure one can differentiate errors that were
-	 * caused because the functions on the VM class are called in an improper
-	 * order. E.g. migration cannot be done if the VM is not running already.
+	 * This class is defined to ensure one can differentiate errors that were caused
+	 * because the functions on the VM class are called in an improper order. E.g.
+	 * migration cannot be done if the VM is not running already.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	public static class StateChangeException extends VMManagementException {
 		private static final long serialVersionUID = 2950595344006507672L;
 
 		/**
-		 * The constructor allows a textual message so users of this class can
-		 * see the reason of the exception more clearly without debugging.
+		 * The constructor allows a textual message so users of this class can see the
+		 * reason of the exception more clearly without debugging.
 		 * 
 		 * @param e
 		 *            the message to be sent for the users of the simulator
@@ -131,19 +119,19 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * This interface helps to receive events on status changes in virtual
-	 * machines. One can subscribe to these events by calling the
-	 * subscribeStateChange function. Afterwards whenever the VM changes its
-	 * state it will automatically notify the subscribed entities.
+	 * This interface helps to receive events on status changes in virtual machines.
+	 * One can subscribe to these events by calling the subscribeStateChange
+	 * function. Afterwards whenever the VM changes its state it will automatically
+	 * notify the subscribed entities.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	public interface StateChange {
 		/**
-		 * If the state of a VM is changed this function is called on all
-		 * subscribing implementations.
+		 * If the state of a VM is changed this function is called on all subscribing
+		 * implementations.
 		 * 
 		 * @param oldState
 		 *            the state before the change was issued
@@ -154,11 +142,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * This internal interface is used to customize internal state change
-	 * actions in the VM class.
+	 * This internal interface is used to customize internal state change actions in
+	 * the VM class.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	private static class EventSetup {
@@ -173,8 +161,8 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 
 		/**
-		 * Implementing this function allows the implementor to provide a custom
-		 * VM state change function
+		 * Implementing this function allows the implementor to provide a custom VM
+		 * state change function
 		 */
 		public void changeEvents(final VirtualMachine onMe) {
 			onMe.setState(expectedState);
@@ -182,27 +170,25 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Provides an implementation of the eventsetup class for the startup
-	 * procedure which is modelled with a single taks that utilizes a single
-	 * core of the VM for a specified amount of time (in ticks)
+	 * Provides an implementation of the eventsetup class for the startup procedure
+	 * which is modelled with a single taks that utilizes a single core of the VM
+	 * for a specified amount of time (in ticks)
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	private static class StartupProcedure extends EventSetup {
 		/**
-		 * initiates the class and remarks that the modeled state should be
-		 * startup
+		 * initiates the class and remarks that the modeled state should be startup
 		 */
 		public StartupProcedure() {
 			super(State.STARTUP);
 		}
 
 		/**
-		 * Once the startup state is reached, the VM's boot process is imitated
-		 * with a single core process which runs on the VM for a given amount of
-		 * ticks.
+		 * Once the startup state is reached, the VM's boot process is imitated with a
+		 * single core process which runs on the VM for a given amount of ticks.
 		 */
 		@Override
 		public void changeEvents(final VirtualMachine onMe) {
@@ -212,8 +198,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				onMe.newComputeTask(onMe.va.getStartupProcessing(), onMe.ra.allocated.getRequiredProcessingPower(),
 						new ConsumptionEventAdapter() {
 							/**
-							 * Once the startup process is complete we set the
-							 * VM's state to running
+							 * Once the startup process is complete we set the VM's state to running
 							 */
 							@Override
 							public void conComplete() {
@@ -228,95 +213,9 @@ public class VirtualMachine extends MaxMinConsumer {
 	};
 
 	/**
-	 * Once the suspend procedure has completed, this class releases the
-	 * resources allocated for the VM
-	 * 
-	 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
-	 *         Moores University, (c) 2017"
-	 * 
-	 */
-	private static class SuspendComplete extends EventSetup {
-		/**
-		 * initiates the class and remarks that the modeled state should be
-		 * suspended
-		 */
-		public SuspendComplete() {
-			super(State.SUSPENDED);
-		}
-
-		/**
-		 * Once the suspended state is reached, the VM's resources are released.
-		 */
-		@Override
-		public void changeEvents(final VirtualMachine onMe) {
-			super.changeEvents(onMe);
-			onMe.ra.release();
-			onMe.ra = null;
-		}
-	};
-
-	/**
-	 * Represents activities that has relevant dirtying rate on a VM
-	 * 
-	 * @author "Vincenzo De Maio, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2015"
-	 */
-	public static class ResourceMemoryConsumption extends ResourceConsumption {
-
-		/**
-		 * This class models the resource consumption of a memory-intensive
-		 * task.
-		 *
-		 * @param memDirtyingRate
-		 *            percentage of pages dirtied every second
-		 * @param pageNum
-		 *            total number of pages associated to this consumption
-		 */
-		/**
-		 * @see ResourceConsumption
-		 *
-		 */
-		public ResourceMemoryConsumption(final double total, final double limit, final ResourceSpreader consumer,
-				final ResourceSpreader provider, final ConsumptionEvent e) {
-			super(total, limit, consumer, provider, e);
-			setMemDirtyingRate(0.0);
-			this.memSizeInBytes = 0;
-		}
-
-		/**
-		 *
-		 * @see ResourceConsumption
-		 * @param pageNum
-		 * @param memDirtyingRate
-		 */
-		public ResourceMemoryConsumption(final double total, final double limit, final ResourceSpreader consumer,
-				final ResourceSpreader provider, final ConsumptionEvent e, final long memSizeInBytes,
-				final double memDirtyingRate) {
-			super(total, limit, consumer, provider, e);
-			setMemDirtyingRate(memDirtyingRate);
-			this.memSizeInBytes = memSizeInBytes;
-		}
-
-		public void suspend() {
-			super.suspend();
-			this.currentMemDirtyingRate = 0.0;
-		}
-
-		public boolean registerConsumption() {
-			this.currentMemDirtyingRate = memDirtyingRate;
-			return super.registerConsumption();
-		}
-
-	}
-
-	/**
 	 * The operations to do on shutdown
 	 */
 	private static final EventSetup sdEvent = new EventSetup(State.SHUTDOWN);
-	/**
-	 * The operations to do on suspend
-	 */
-	private static final EventSetup susEvent = new SuspendComplete();
 	/**
 	 * The operations to do on switchon
 	 */
@@ -331,11 +230,6 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * actually running on a pm, or about to run)
 	 */
 	private PhysicalMachine.ResourceAllocation ra = null;
-	/**
-	 * the secondary resource allocation of this VM (this is only not null when
-	 * the VM is in migration)
-	 */
-	private PhysicalMachine.ResourceAllocation migrationRa = null;
 	/**
 	 * the VM's disk that is stored on the vatarget. if the VM is not past its
 	 * initial transfer phase then the disk could be null.
@@ -359,73 +253,71 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * the possible states of a virtual machine in DISSECT-CF.
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2012"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2012"
 	 */
 	public static enum State {
 		/**
-		 * The VA of the machine is arranged to be usable for the execution. The
-		 * VM is not consuming energy. There is no used storage.
+		 * The VA of the machine is arranged to be usable for the execution. The VM is
+		 * not consuming energy. There is no used storage.
 		 */
 		INITIAL_TR,
 		/**
-		 * The VM is booting up, and already consumes energy although it does
-		 * not offer useful services for its user. The VM stores a clone of the
-		 * VA in a repository.
+		 * The VM is booting up, and already consumes energy although it does not offer
+		 * useful services for its user. The VM stores a clone of the VA in a
+		 * repository.
 		 */
 		STARTUP,
 		/**
-		 * The VM is operating according to the user's needs. The VM consumes
-		 * energy. The VM stores a clone of the VA in a repository.
+		 * The VM is operating according to the user's needs. The VM consumes energy.
+		 * The VM stores a clone of the VA in a repository.
 		 */
 		RUNNING,
 		/**
-		 * The VM is about to be suspended, and its memory is under
-		 * serialization. The VM does not consume energy anymore. The VM stores
-		 * a clone of the VA in a repository.
+		 * The VM is about to be suspended, and its memory is under serialization. The
+		 * VM does not consume energy anymore. The VM stores a clone of the VA in a
+		 * repository.
 		 */
 		SUSPEND_TR,
 		/**
-		 * The VM is awaiting to be resumed. It can be resumed fast and it can
-		 * skip the bootup procedure. The VM does not consume energy. The VM
-		 * stores a clone of the VA and its serialized memory in a repository.
+		 * The VM is awaiting to be resumed. It can be resumed fast and it can skip the
+		 * bootup procedure. The VM does not consume energy. The VM stores a clone of
+		 * the VA and its serialized memory in a repository.
 		 */
 		SUSPENDED,
 		/**
-		 * This state signs that there was a problem with a migration operation.
-		 * Otherwise it is equivalent to a regular suspended state.
+		 * This is a rapid transitional state, once the VM's state is transferred but
+		 * its tasks not yet resumed.
 		 */
 		SUSPENDED_MIG,
 		/**
-		 * The VM is about to be running. Its memory is transferred and
-		 * deserialized. The VM still stores a clone of the VA and its
-		 * serialized memory in a repository. The VM starts to consume energy
-		 * for the deserialization.
+		 * The VM is about to be running. Its memory is transferred and deserialized.
+		 * The VM still stores a clone of the VA and its serialized memory in a
+		 * repository. The VM starts to consume energy for the deserialization.
 		 */
 		RESUME_TR,
 		/**
-		 * The VM is on the move between two Phisical machines. During this
-		 * operation it could happen that the VM and its serialized memory
-		 * occupies disk space in two repositories. The VM starts to consume
-		 * energy during the deserialization of its memory on the target PM.
+		 * The VM is on the move between two Phisical machines. During this operation it
+		 * could happen that the VM and its serialized memory occupies disk space in two
+		 * repositories. The VM starts to consume energy during the deserialization of
+		 * its memory on the target PM.
 		 */
 		MIGRATING,
 		/**
-		 * The VM is not running. It's disk image (but not its memory state) can
-		 * be found in the repository. So it is possible to start the VM up
-		 * without the need for initial transfer. The VM is not consuming
-		 * energy.
+		 * The VM is not running. It's disk image (but not its memory state) can be
+		 * found in the repository. So it is possible to start the VM up without the
+		 * need for initial transfer. The VM is not consuming energy.
 		 */
 		SHUTDOWN,
 		/**
-		 * The VM is not running and it does not have any storage requirements
-		 * in any of the repositories. The VM is not consuming energy.
+		 * The VM is not running and it does not have any storage requirements in any of
+		 * the repositories. The VM is not consuming energy.
 		 */
 		DESTROYED,
 		/**
-		 * The VM is destroyed, and it is not possible to instantiate it in the
-		 * current cloud infrastructure (or the VM was terminated on user
-		 * request before it was possible to instantiate it in the cloud)
+		 * The VM is destroyed, and it is not possible to instantiate it in the current
+		 * cloud infrastructure (or the VM was terminated on user request before it was
+		 * possible to instantiate it in the cloud)
 		 */
 		NONSERVABLE
 	};
@@ -449,8 +341,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public final static EnumSet<State> preStartupStates = EnumSet.of(State.DESTROYED, State.SHUTDOWN);
 	/**
-	 * the set of states that show that a VM scheduler was not able to schedule
-	 * the VM (maybe just yet)
+	 * the set of states that show that a VM scheduler was not able to schedule the
+	 * VM (maybe just yet)
 	 */
 	public final static EnumSet<State> preScheduleState = EnumSet.of(State.DESTROYED, State.NONSERVABLE);
 
@@ -465,8 +357,8 @@ public class VirtualMachine extends MaxMinConsumer {
 			.getHandlerInstance();
 
 	/**
-	 * the list of resourceconsumptions (i.e. compute tasks) that were suspended
-	 * and need to be resumed after the VM itself is resumed.
+	 * the list of resourceconsumptions (i.e. compute tasks) that were suspended and
+	 * need to be resumed after the VM itself is resumed.
 	 */
 	private ArrayList<ResourceConsumption> suspendedTasks;
 
@@ -524,8 +416,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Prepares the VM so it can be started without the need to clone its VA
-	 * first. This function is useful in advanced scheduling situations.
+	 * Prepares the VM so it can be started without the need to clone its VA first.
+	 * This function is useful in advanced scheduling situations.
 	 * 
 	 * @param vatarget
 	 *            the disk that will host the VM.
@@ -549,8 +441,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * The event that will be received upon the completion of the VA's copy from
 	 * vasource to vatarget.
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2012"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2012"
 	 * 
 	 * 
 	 */
@@ -574,11 +466,10 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * @param t
 		 *            the repository to observe
 		 * @param event
-		 *            the event to fire after the transfer to the target repo
-		 *            happened
+		 *            the event to fire after the transfer to the target repo happened
 		 * @param did
-		 *            the disk id of the newly created storage object in the
-		 *            target repo for the new runnable VA.
+		 *            the disk id of the newly created storage object in the target repo
+		 *            for the new runnable VA.
 		 */
 		public InitialTransferEvent(final Repository t, final EventSetup event, final String did) {
 			target = t;
@@ -587,9 +478,9 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 
 		/**
-		 * stores the newly transferred storage object into the VM's disk field,
-		 * and then continues with the next step in the VM state management
-		 * (represented with the event setup)
+		 * stores the newly transferred storage object into the VM's disk field, and
+		 * then continues with the next step in the VM state management (represented
+		 * with the event setup)
 		 */
 		@Override
 		public void conComplete() {
@@ -601,11 +492,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		@Override
 		public void conCancelled(ResourceConsumption problematic) {
 			currentVMMOperations.clear();
-			if (ra != null) {
-				ra.release();
-				ra = null;
-			}
-			setState(State.DESTROYED);
+			releaseRa(State.DESTROYED);
 		}
 
 	}
@@ -617,21 +504,21 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Ensures the transfer of the VM to the appropriate location. The location
-	 * is determined based on the VM storage approach used. While transferring
-	 * it maintains the INITIAL_TR state. If there is a fault it falls back to
-	 * the state beforehand. If successful it allows the caller to change the
-	 * event on the way it sees fit.
+	 * Ensures the transfer of the VM to the appropriate location. The location is
+	 * determined based on the VM storage approach used. While transferring it
+	 * maintains the INITIAL_TR state. If there is a fault it falls back to the
+	 * state beforehand. If successful it allows the caller to change the event on
+	 * the way it sees fit.
 	 * 
 	 * @param vatarget
-	 *            the storage that will host the VM's working image (typically
-	 *            this is going to be the disk of the PM that will host the VM).
+	 *            the storage that will host the VM's working image (typically this
+	 *            is going to be the disk of the PM that will host the VM).
 	 * @param vasource
 	 *            the repository where the VA for this VM is found. If null, the
 	 *            function assumes it is found in the hosting PM's repository.
 	 * @param es
-	 *            The way the VM's state should be changed the function will
-	 *            fire an event on this channel if the VA is cloned properly
+	 *            The way the VM's state should be changed the function will fire an
+	 *            event on this channel if the VA is cloned properly
 	 * @throws VMManagementException
 	 *             if the VA transfer failed and the state change was reverted
 	 * @throws NetworkException
@@ -681,13 +568,12 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Initiates the startup procedure of a VM. If the VM is in destroyed state
-	 * then it ensures the disk image for the VM is ready to be used (i.e. first
-	 * it starts the inittransfer procedure).
+	 * Initiates the startup procedure of a VM. If the VM is in destroyed state then
+	 * it ensures the disk image for the VM is ready to be used (i.e. first it
+	 * starts the inittransfer procedure).
 	 * 
 	 * @param allocation
-	 *            the resource allocation which will be used to deploy the VM
-	 *            on.
+	 *            the resource allocation which will be used to deploy the VM on.
 	 * @param vasource
 	 *            the repository where the VA for this VM is found. If null, the
 	 *            function assumes it is found in the hosting PM's repository.
@@ -719,12 +605,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Forwards the migration call internally allowing both live/non-live
-	 * migrations
+	 * Forwards the migration call internally allowing both live/non-live migrations
 	 * 
 	 * @param target
-	 *            the new resource allocation on which the resume operation
-	 *            should take place
+	 *            the new resource allocation on which the resume operation should
+	 *            take place
 	 * @throws StateChangeException
 	 *             if the VM is not in running state currently
 	 * @throws VMManagementException
@@ -740,8 +625,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * machine to another. Supports migration from suspended state.
 	 * 
 	 * @param target
-	 *            the new resource allocation on which the resume operation
-	 *            should take place
+	 *            the new resource allocation on which the resume operation should
+	 *            take place
 	 * @param onlyLiveMigration
 	 *            <ul>
 	 *            <li><i>true</i> live migration is explicitly requested (if not
@@ -752,38 +637,101 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * @throws StateChangeException
 	 *             if the VM is not in running or suspended state currently
 	 * @throws VMManagementException
-	 *             if the system have had troubles during the migration
-	 *             operation (e.g., storage and connectivity issues).
+	 *             if the system have had troubles during the migration operation
+	 *             (e.g., storage and connectivity issues).
 	 */
 	public void migrate(final PhysicalMachine.ResourceAllocation target, boolean onlyLiveMigration)
 			throws VMManagementException, NetworkNode.NetworkException {
-		// Cross cloud migration needs an update on the vastorage also,
-		// otherwise the VM will use a long distance repository for its
-		// background network load!
-		ensureEmptyVMMOperationList();
-
 		/**
-		 * handles the case when the transfer of the state of the VM is complete
-		 * between the source and target physical machines
+		 * This class prepares and transitions a VM through the phases of migration
+		 * (both live and non live)
 		 * 
-		 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool
-		 *         John Moores University, (c) 2017"
-		 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-		 *         University of Innsbruck (c) 2013"
+		 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+		 *         Moores University, (c) 2017"
+		 * @author "Vincenzo De Maio, Distributed and Parallel Systems Group, University
+		 *         of Innsbruck (c) 2015"
+		 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+		 *         of Innsbruck (c) 2013"
 		 * 
 		 */
 		class MigrationEvent extends ConsumptionEventAdapter {
+			/**
+			 * When did the last memory transfer start for the current migration process
+			 */
+			private long lastMemorySnapshotCreatedAt = -1;
+			/**
+			 * Maximum number of memory transfers to be done before giving up and doing a
+			 * non-live final transfer
+			 */
+			public final static long maxRounds = 5;
+			/**
+			 * Smallest written working set size that still allows new memory copy rounds
+			 */
+			public final static long WWS_TERMINAL_SIZE = 262144;
+			/**
+			 * the secondary resource allocation of this VM (this is only not null when the
+			 * VM is in migration)
+			 */
+			private final PhysicalMachine.ResourceAllocation migrationRa;
+			/**
+			 * If we are doing live migration
+			 */
 			private boolean liveMigration = true;
+			/**
+			 * Pre migration state to return to in case of an error
+			 */
 			final State prevState = currState;
-			final Repository to = migrationRa == null ? null : migrationRa.getHost().localDisk;
+			/**
+			 * The local storage of the target host for this migration
+			 */
+			final Repository to;
+			/**
+			 * Non-live transfer count, 1=only memory, 2= disk and memory together
+			 */
 			int eventcounter = 1;
 			/**
-			 * Number of memory copy rounds done during the current migration
-			 * process
+			 * Number of memory copy rounds done during the current migration process
 			 */
 			int rounds = 0;
 
-			public void setNonLive() {
+			public MigrationEvent(PhysicalMachine.ResourceAllocation newRa, boolean onlyLiveMigration)
+					throws VMManagementException, NetworkNode.NetworkException {
+				ensureEmptyVMMOperationList();
+				switch (currState) {
+				case SUSPENDED:
+					if (onlyLiveMigration) {
+						throw new StateChangeException("Live migration cannot be forced in this state!");
+					}
+					setNonLive();
+				case RUNNING:
+					break;
+				default:
+					throw new StateChangeException("Invalid starting state for a VM migration");
+				}
+				migrationRa = newRa;
+				to = migrationRa.getHost().localDisk;
+				if (va.getBgNetworkLoad() <= 0) {
+					// If the disk is local&mixed image storage
+					if (onlyLiveMigration) {
+						throw new VMManagementException(
+								"Live migration is only allowed if the VM runs from a remote disk");
+					}
+					NetworkNode.checkConnectivity(vatarget, to);
+					setNonLive();
+					eventcounter++;
+					ResourceConsumption currentVMMOperation;
+					if ((currentVMMOperation = vatarget.requestContentDelivery(disk.id, to, this)) != null) {
+						currentVMMOperations.put(currState.toString() + disk.id, currentVMMOperation);
+					} else {
+						setState(prevState);
+						throw new VMManagementException(
+								"Cannot transfer the disk of the VM during non-live migration.");
+					}
+				}
+				newMemoryRound();
+			}
+
+			private void setNonLive() {
 				if (liveMigration) {
 					liveMigration = false;
 					suspendTasks();
@@ -791,15 +739,47 @@ public class VirtualMachine extends MaxMinConsumer {
 				}
 			}
 
+			private long newMemoryRound() throws NetworkException {
+				// If we come from suspend, savedmemory is used.
+				final long memSize = savedmemory == null ? identifyWWS() : savedmemory.size;
+				// This replaces any previous memory related transfers
+				currentVMMOperations.put(currState.toString() + "Migrate Memory",
+						NetworkNode.initTransfer(memSize, ResourceConsumption.unlimitedProcessing, vatarget, to, this));
+				return memSize;
+			}
+
+			/**
+			 * Determine the amount of memory dirtied since the last call
+			 * <p>
+			 * Done as per eq 17 from the paper "<i>De Maio, V., Kecskemeti, G., & Prodan,
+			 * R. (2016, December). An improved model for live migration in data centre
+			 * simulators. In Utility and Cloud Computing (UCC), 2016 IEEE/ACM 9th
+			 * International Conference on (pp. 108-117). IEEE.</i>"
+			 * 
+			 * @return the total dirtying rate on the VM
+			 */
+			private long identifyWWS() {
+				long previousSnapshot = lastMemorySnapshotCreatedAt;
+				lastMemorySnapshotCreatedAt = Timed.getFireCount();
+				if (previousSnapshot == -1) {
+					return getMemSize();
+				}
+				long duration = lastMemorySnapshotCreatedAt - previousSnapshot;
+				long dirtyBytes = 0;
+				for (ResourceConsumption r : underProcessing) {
+					dirtyBytes += (Math.min(1, duration * r.getMemDirtyingRate()) * r.getMemSize());
+				}
+				return dirtyBytes;
+			}
+
 			@Override
 			public void conComplete() {
+				// Cross cloud migration needs an update on the vastorage also,
+				// otherwise the VM will use a long distance repository for its
+				// background network load!
 				if (liveMigration) {
 					try {
-						final long memSizeRemaining = identifyWWS();
-						// Replace the old transfer with a new one
-						currentVMMOperations.put(currState.toString() + "Migrate Memory",
-								NetworkNode.initTransfer(memSizeRemaining, ResourceConsumption.unlimitedProcessing,
-										vatarget, target.getHost().localDisk, this));
+						long memSizeRemaining = newMemoryRound();
 						if (rounds++ >= maxRounds || memSizeRemaining < WWS_TERMINAL_SIZE) {
 							// Switching to final, non-live phase
 							setNonLive();
@@ -818,123 +798,61 @@ public class VirtualMachine extends MaxMinConsumer {
 					eventcounter--;
 					// Only continue if we have done all required transfers
 					if (eventcounter == 0) {
-						finalizeMigration();
-					}
-				}
-			}
-
-			private void finalizeMigration() {
-				currentVMMOperations.clear();
-				// Both the disk and memory state has completed its
-				// transfer.
-				try {
-					if (suspendedTasks != null) {
-						for (final ResourceConsumption con : suspendedTasks) {
-							con.setProvider(migrationRa.getHost());
+						currentVMMOperations.clear();
+						// Both the disk and memory state has completed its
+						// transfer.
+						try {
+							if (suspendedTasks != null) {
+								for (final ResourceConsumption con : suspendedTasks) {
+									con.setProvider(migrationRa.getHost());
+								}
+							}
+							releaseRa(State.SUSPENDED_MIG);
+							setResourceAllocation(migrationRa);
+							if (va.getBgNetworkLoad() <= 0) {
+								// Local&Mixed scenario, the disk was moved
+								vatarget.deregisterObject(disk);
+								vatarget = ra.getHost().localDisk;
+							}
+							lastMemorySnapshotCreatedAt = -1;
+							resumeTasks();
+						} catch (VMManagementException e) {
+							// Sudden exceptions that should not really happen
+							throw new RuntimeException(e);
 						}
 					}
-					if (ra != null) {
-						ra.release();
-						ra = null;
-					}
-					setState(State.SUSPENDED_MIG);
-					setResourceAllocation(migrationRa);
-					migrationRa = null;
-					if (va.getBgNetworkLoad() <= 0) {
-						// Local&Mixed scenario, the disk was moved
-						vatarget.deregisterObject(disk);
-						vatarget = ra.getHost().localDisk;
-					}
-					lastMemorySnapshotCreatedAt = -1;
-					setState(State.RUNNING);
-					resumeTasks();
-				} catch (VMManagementException e) {
-					// Sudden exceptions that should not really happen
-					throw new RuntimeException(e);
 				}
-
 			}
 
+			/**
+			 * migration related transfers cancelled, revert our actions
+			 */
 			@Override
 			public void conCancelled(ResourceConsumption problematic) {
+				lastMemorySnapshotCreatedAt = -1;
 				currentVMMOperations.clear();
-				if (migrationRa != null) {
-					migrationRa.cancel();
-					migrationRa = null;
-				}
+				migrationRa.cancel();
 				if (!currState.equals(prevState)) {
 					setState(prevState);
 				}
 			}
 		}
 
-		migrationRa = target;
-		final MigrationEvent mp = new MigrationEvent();
-
-		switch (currState) {
-		case SUSPENDED:
-		case SUSPENDED_MIG:
-			if (onlyLiveMigration) {
-				migrationRa = null;
-				throw new StateChangeException("Live migration cannot be forced in this state!");
-			}
-			mp.setNonLive();
-		case RUNNING:
-			break;
-		default:
-			migrationRa = null;
-			throw new StateChangeException("Invalid starting state for a VM migration");
-		}
-
-		if (va.getBgNetworkLoad() <= 0) {
-			NetworkNode.checkConnectivity(vatarget, migrationRa.getHost().localDisk);
-			if (onlyLiveMigration) {
-				throw new VMManagementException("Live migration is only allowed if the VM runs from a remote disk");
-			}
-		}
-
-		ResourceConsumption currentVMMOperation;
-		// If the disk is local&mixed image storage
-		if (va.getBgNetworkLoad() <= 0) {
-			mp.setNonLive();
-			mp.eventcounter++;
-			if ((currentVMMOperation = vatarget.requestContentDelivery(disk.id, mp.to, mp)) != null) {
-				currentVMMOperations.put(currState.toString() + disk.id, currentVMMOperation);
-			} else {
-				setState(mp.prevState);
-				throw new VMManagementException("Cannot transfer the disk of the VM during non-live migration.");
-			}
-		}
-
-		// If we come from suspend, savedmemory is used.
-		long memSize = savedmemory == null ? identifyWWS() : savedmemory.size;
-		currentVMMOperation = NetworkNode.initTransfer(memSize, ResourceConsumption.unlimitedProcessing, vatarget,
-				target.getHost().localDisk, mp);
-		if (currentVMMOperation == null) {
-			if (currentVMMOperations.size() > 0) {
-				// There was a disk transfer to be cancelled
-				currentVMMOperations.get(0).cancel();
-			} else {
-				// Cleanup
-				mp.conCancelled(null);
-			}
-			throw new VMManagementException("Connectivity issues between source and target hosts");
-		}
-		currentVMMOperations.put(currState.toString() + "Migrate Memory", currentVMMOperation);
+		new MigrationEvent(target, onlyLiveMigration);
 	}
 
 	/**
 	 * Moves all data necessary for the VMs execution from its current physical
 	 * machine to another.
 	 *
-	 * WARNING: in cases when the migration cannot complete, the VM will be left
-	 * in a special suspended state: the SUSPENDED_MIG. This allows users to
-	 * recover VMs and initiate the migration procedure to someplace else.
+	 * WARNING: in cases when the migration cannot complete, the VM will be left in
+	 * a special suspended state: the SUSPENDED_MIG. This allows users to recover
+	 * VMs and initiate the migration procedure to someplace else.
 	 *
 	 *
 	 * @param target
-	 *            the new resource allocation on which the resume operation
-	 *            should take place
+	 *            the new resource allocation on which the resume operation should
+	 *            take place
 	 * @throws StateChangeException
 	 *             if the VM is not in running state currently
 	 * @throws VMManagementException
@@ -949,8 +867,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Destroys the VM, and cleans up all repositories that could contain disk
-	 * or memory states.
+	 * Destroys the VM, and cleans up all repositories that could contain disk or
+	 * memory states.
 	 * 
 	 * @throws StateChangeException
 	 *             if some parts of the VM are under transfer so it cannot be
@@ -1002,8 +920,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * Switches off an already running machine. After the successful execution
-	 * of this function, the VM's state will be shutdown.
+	 * Switches off an already running machine. After the successful execution of
+	 * this function, the VM's state will be shutdown.
 	 * 
 	 * @throws StateChangeException
 	 *             if is not running currently
@@ -1021,18 +939,29 @@ public class VirtualMachine extends MaxMinConsumer {
 		} else if (!underProcessing.isEmpty()) {
 			throw new StateChangeException("Cannot switch off a running machine with running tasks");
 		}
-		ra.release();
-		ra = null;
-		setState(State.SHUTDOWN);
+		releaseRa(State.SHUTDOWN);
 	}
 
 	/**
-	 * Suspends an already running VM. During the suspend operation, the VM's
-	 * memory state is stored to enable the resume operation for fast VM
-	 * startup.
+	 * When the VM is about to decouple from a PM this function is called.
 	 * 
-	 * The VM's memory state is first created as a storage object on the PM's
-	 * local repository then transferred to its designated location.
+	 * @param newState
+	 *            the state the VM needs to be in after the decoupling is done
+	 */
+	private void releaseRa(State newState) {
+		if (ra != null) {
+			ra.release();
+			ra = null;
+		}
+		setState(newState);
+	}
+
+	/**
+	 * Suspends an already running VM. During the suspend operation, the VM's memory
+	 * state is stored to enable the resume operation for fast VM startup.
+	 * 
+	 * The VM's memory state is first created as a storage object on the PM's local
+	 * repository then transferred to its designated location.
 	 * 
 	 * @throws StateChangeException
 	 *             if the machine is not in running state
@@ -1042,28 +971,42 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *             scenario
 	 */
 	public void suspend() throws VMManagementException, NetworkNode.NetworkException {
-		suspend(susEvent);
-	}
-
-	/**
-	 * Just like regular suspend but allows eventsetup hooks.
-	 * 
-	 * @param ev
-	 *            the eventsetup hook to be used when the suspend operation is
-	 *            complete.
-	 * @throws StateChangeException
-	 *             see at regular suspend
-	 * @throws VMManagementException
-	 *             see at regular suspend
-	 */
-	private void suspend(final EventSetup ev) throws VMManagementException, NetworkNode.NetworkException {
 		if (currState != State.RUNNING) {
 			throw new StateChangeException("Cannot suspend a not running machine");
 		}
 		suspendTasks();
-		storeMemoryState(ev);
+		final Repository pmdisk = ra.getHost().localDisk;
+		savedmemory = new StorageObject("VM-Memory-State-of-" + hashCode(), getMemSize(), false);
+		setState(State.SUSPEND_TR);
+		ResourceConsumption currentVMMOperation = null;
+		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
+			@Override
+			public void conComplete() {
+				currentVMMOperations.clear();
+				releaseRa(State.SUSPENDED);
+			}
+
+			@Override
+			public void conCancelled(ResourceConsumption problematic) {
+				currentVMMOperations.clear();
+				setState(State.RUNNING);
+				savedmemory = null;
+			}
+		})) == null) {
+			// Set back the status so it is possible to try again
+			setState(State.RUNNING);
+			String sid = savedmemory.id;
+			savedmemory = null;
+			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + sid);
+		} else {
+			currentVMMOperations.put(currState.toString(), currentVMMOperation);
+		}
 	}
 
+	/**
+	 * Stops the computation of all tasks at this VM, it allows for their resumption
+	 * later on
+	 */
 	private void suspendTasks() {
 		if (toBeAdded.size() + underProcessing.size() > 0) {
 			if (suspendedTasks == null) {
@@ -1081,7 +1024,11 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	}
 
+	/**
+	 * Re-registers all previously suspended tasks and marks the VM running
+	 */
 	private void resumeTasks() {
+		setState(State.RUNNING);
 		if (suspendedTasks != null) {
 			int size = suspendedTasks.size();
 			for (int i = 0; i < size; i++) {
@@ -1091,47 +1038,24 @@ public class VirtualMachine extends MaxMinConsumer {
 		}
 	}
 
-	private void storeMemoryState(final EventSetup ev) throws NetworkException, VMManagementException {
-		final Repository pmdisk = ra.getHost().localDisk;
-		savedmemory = getWWSObject();
-		setState(State.SUSPEND_TR);
-		ResourceConsumption currentVMMOperation = null;
-		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
-			@Override
-			public void conComplete() {
-				currentVMMOperations.clear();
-				ev.changeEvents(VirtualMachine.this);
-			}
-
-			@Override
-			public void conCancelled(ResourceConsumption problematic) {
-				currentVMMOperations.clear();
-				if (migrationRa != null) {
-					migrationRa.cancel();
-					migrationRa = null;
-				}
-				setState(State.RUNNING);
-			}
-		})) == null) {
-			// Set back the status so it is possible to try again
-			setState(State.RUNNING);
-			pmdisk.deregisterObject(savedmemory.id);
-			String sid = savedmemory.id;
-			savedmemory = null;
-			throw new VMManagementException("Not enough space on localDisk for the suspend operation of " + sid);
-		} else {
-			currentVMMOperations.put(currState.toString(), currentVMMOperation);
-		}
-	}
-
 	/**
-	 * Actually manages the resume operation (could be invoked from migration as
-	 * well as from resume)
+	 * Resumes an already suspended VM. During the resume operation, the VM's memory
+	 * state is used for fast VM startup.
 	 * 
+	 * The VM's memory state is first transferred to the PM's repository (simulating
+	 * its loading to the VM's memory). Afterwards, this function cleans up the
+	 * memory states as after startup the VM already changes them.
+	 * 
+	 * @throws StateChangeException
+	 *             if the machine is not in suspended state
 	 * @throws VMManagementException
-	 *             if the VM's memory cannot be recalled.
+	 *             if there is not enough space to retreive the memory state to the
+	 *             PM's repository
 	 */
-	private void realResume() throws VMManagementException {
+	public void resume() throws VMManagementException, NetworkNode.NetworkException {
+		if (!currState.equals(State.SUSPENDED)) {
+			throw new StateChangeException("Cannot resume a not suspended machine");
+		}
 		ensureEmptyVMMOperationList();
 		final State priorState = currState;
 		setState(State.RESUME_TR);
@@ -1139,7 +1063,6 @@ public class VirtualMachine extends MaxMinConsumer {
 		class ResumeComplete extends ConsumptionEventAdapter {
 			private void cleanUpIntermediateData() {
 				savedmemory = null;
-				lastMemorySnapshotCreatedAt = -1;
 				currentVMMOperations.clear();
 			}
 
@@ -1148,7 +1071,6 @@ public class VirtualMachine extends MaxMinConsumer {
 				// Deregister saved memory
 				pmdisk.deregisterObject(savedmemory);
 				cleanUpIntermediateData();
-				setState(State.RUNNING);
 				resumeTasks();
 			}
 
@@ -1166,32 +1088,6 @@ public class VirtualMachine extends MaxMinConsumer {
 					+ pmdisk.getName() + " for the resume operation of VM " + hashCode());
 		} else {
 			currentVMMOperations.put(currState.toString(), currentVMMOperation);
-		}
-	}
-
-	/**
-	 * Resumes an already suspended VM. During the resume operation, the VM's
-	 * memory state is used for fast VM startup.
-	 * 
-	 * The VM's memory state is first transferred to the PM's repository
-	 * (simulating its loading to the VM's memory). Afterwards, this function
-	 * cleans up the memory states as after startup the VM already changes them.
-	 * 
-	 * @throws StateChangeException
-	 *             if the machine is not in suspended state
-	 * @throws VMManagementException
-	 *             if there is not enough space to retreive the memory state to
-	 *             the PM's repository
-	 */
-	public void resume() throws VMManagementException, NetworkNode.NetworkException {
-		switch (currState) {
-		case SUSPENDED:
-			realResume();
-			break;
-		case SUSPENDED_MIG:
-			throw new StateChangeException("One should use migrate to resume a VM from a SUSPENDED_MIG state");
-		default:
-			throw new StateChangeException("Cannot resume a not suspended machine");
 		}
 	}
 
@@ -1216,43 +1112,38 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	/**
-	 * determines if a resourceconsumption object can be registered. it is going
-	 * to be determined acceptable all the time if the VM is in one of its
-	 * consuming states.
+	 * determines if a resourceconsumption object can be registered. it is going to
+	 * be determined acceptable all the time if the VM is in one of its consuming
+	 * states.
 	 */
 	@Override
 	protected boolean isAcceptableConsumption(ResourceConsumption con) {
 		return consumingStates.contains(currState) ? super.isAcceptableConsumption(con) : false;
 	}
 
-	private static interface RCFactoryForTask {
-		ResourceConsumption create();
-	}
-
 	/**
-	 * This is the function that users are expected to use to create computing
-	 * tasks on the VMs (not using resourceconsumptions directly). The computing
-	 * tasks created with this function are going to utilize CPUs and if there
-	 * is a background load defined for the VM then during the processing of the
-	 * CPU related activities there will be constant network activities modelled
-	 * as well. The background network load represents cases when the VM's disk
-	 * is hosted on the network (and thus inherent disk activities that would
-	 * occur during CPU related activities can be modeled). Please note the
-	 * backgorund load is the property of the VA (i.e. the VA represents an
-	 * application and therefore one who creates the VA should know its disk
-	 * related activities when the application is executed)
+	 * This is the function that users are expected to use to create computing tasks
+	 * on the VMs (not using resourceconsumptions directly). The computing tasks
+	 * created with this function are going to utilize CPUs and if there is a
+	 * background load defined for the VM then during the processing of the CPU
+	 * related activities there will be constant network activities modelled as
+	 * well. The background network load represents cases when the VM's disk is
+	 * hosted on the network (and thus inherent disk activities that would occur
+	 * during CPU related activities can be modeled). Please note the backgorund
+	 * load is the property of the VA (i.e. the VA represents an application and
+	 * therefore one who creates the VA should know its disk related activities when
+	 * the application is executed)
 	 * 
 	 * @param total
-	 *            the amount of processing to be done (in number of
-	 *            instructions)
+	 *            the amount of processing to be done (in number of instructions)
 	 * @param limit
-	 *            the amount of processing this new compute task is allowed to
-	 *            do in a single tick (in instructions/tick). If there should be
-	 *            no limit for the processing then one can use the constant
-	 *            named ResourceConsumption.unlimitedProcessing.
+	 *            the amount of processing this new compute task is allowed to do in
+	 *            a single tick (in instructions/tick). If there should be no limit
+	 *            for the processing then one can use the constant named
+	 *            ResourceConsumption.unlimitedProcessing.
 	 * @param e
-	 *            the object to be notified about the completion of the
-	 *            computation ordered here
+	 *            the object to be notified about the completion of the computation
+	 *            ordered here
 	 * @return the resource consumption object that will represent the CPU
 	 *         consumption. Could return null if the consumption cannot be
 	 *         registered or when there is no resoruce for the VM
@@ -1261,19 +1152,10 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public ResourceConsumption newComputeTask(final double total, final double limit,
 			final ResourceConsumption.ConsumptionEvent e) throws NetworkException {
-		return finalizeTaskCreation(new RCFactoryForTask() {
-			@Override
-			public ResourceConsumption create() {
-				return new ResourceConsumption(total, limit, VirtualMachine.this, ra.getHost(), e);
-			}
-		});
-	}
-
-	private ResourceConsumption finalizeTaskCreation(RCFactoryForTask factory) throws NetworkException {
 		if (ra == null) {
 			return null;
 		}
-		ResourceConsumption cons = factory.create();
+		ResourceConsumption cons = new ResourceConsumption(total, limit, VirtualMachine.this, ra.getHost(), e);
 		if (cons.registerConsumption()) {
 			final long bgnwload = va.getBgNetworkLoad();
 			if (bgnwload > 0) {
@@ -1289,22 +1171,21 @@ public class VirtualMachine extends MaxMinConsumer {
 	}
 
 	public ResourceConsumption newComputeTask(final double total, final double limit,
-			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final long memSizeInBytes)
+			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final long memSize)
 			throws StateChangeException, NetworkException {
-		return finalizeTaskCreation(new RCFactoryForTask() {
-			@Override
-			public ResourceConsumption create() {
-				return new ResourceMemoryConsumption(total, limit, VirtualMachine.this, ra.getHost(), e, memSizeInBytes,
-						dirtyingRate);
-			}
-		});
+		ResourceConsumption rc = newComputeTask(total, limit, e);
+		if (rc != null) {
+			rc.setMemDirtyingRate(dirtyingRate);
+			rc.setMemSize(memSize);
+		}
+		return rc;
 	}
 
 	/**
 	 * Allows to set a new resource allocation for the VM
 	 * 
-	 * This function will notify the resource allocation about the acquiration
-	 * of the resources by utilizing the use function!
+	 * This function will notify the resource allocation about the acquiration of
+	 * the resources by utilizing the use function!
 	 * 
 	 * @param newRA
 	 *            the allocation to be used later on
@@ -1330,53 +1211,25 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * Determines what is the resource allocation currently used by the VM.
 	 * 
-	 * @return the resource set used by the VM, null if there is no resource
-	 *         used by the VM currently
+	 * @return the resource set used by the VM, null if there is no resource used by
+	 *         the VM currently
 	 */
 	public PhysicalMachine.ResourceAllocation getResourceAllocation() {
 		return ra;
 	}
 
 	/**
-	 * If there are not enough resources for the VM currently, to recover from
-	 * this state (and allow the VM to be rescheduled) just issue a destroy
-	 * command on the VM
+	 * If there are not enough resources for the VM currently, to recover from this
+	 * state (and allow the VM to be rescheduled) just issue a destroy command on
+	 * the VM
 	 */
 	public void setNonservable() {
 		setState(State.NONSERVABLE);
 	}
 
 	/**
-	 * Determine the amount of memory dirtied since the last call
-	 * <p>
-	 * Done as per eq 17 from the paper "<i>De Maio, V., Kecskemeti, G., &
-	 * Prodan, R. (2016, December). An improved model for live migration in data
-	 * centre simulators. In Utility and Cloud Computing (UCC), 2016 IEEE/ACM
-	 * 9th International Conference on (pp. 108-117). IEEE.</i>"
-	 * 
-	 * @return the total dirtying rate on the VM
-	 */
-	private long identifyWWS() {
-		long previousSnapshot = lastMemorySnapshotCreatedAt;
-		lastMemorySnapshotCreatedAt = Timed.getFireCount();
-		if (previousSnapshot == -1) {
-			return getMemSize();
-		}
-		long duration = lastMemorySnapshotCreatedAt - previousSnapshot;
-		long dirtyBytes = 0;
-		for (ResourceConsumption r : this.underProcessing) {
-			dirtyBytes += (Math.min(1, duration * r.getMemDirtyingRate()) * r.getMemSizeInBytes());
-		}
-		return dirtyBytes;
-	}
-
-	private StorageObject getWWSObject() {
-		return new StorageObject("VM-Memory-State-of-" + hashCode(), identifyWWS(), false);
-	}
-
-	/**
-	 * Helper function to get the total size of memory easier than through the
-	 * VM's allocation
+	 * Helper function to get the total size of memory easier than through the VM's
+	 * allocation
 	 * 
 	 * @return the amount of memory used by the VM
 	 */

@@ -79,8 +79,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
 public class PhysicalMachine extends MaxMinProvider implements VMManager<PhysicalMachine, ResourceConstraints> {
 
 	/**
-	 * This is the default length for how long a resource allocation will be
-	 * kept before it becomes invalid.
+	 * This is the default length for how long a resource allocation will be kept
+	 * before it becomes invalid.
 	 * 
 	 * It is specified in ticks.
 	 */
@@ -95,38 +95,36 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	public static final int migrationAllocLen = 1000000;
 	/**
 	 * Amount of processing to be done if the PM need to be underutilized. This
-	 * constant is used for calculating the emulation of on and off operations
-	 * if they are specified with single delays in the PM's constructor.
+	 * constant is used for calculating the emulation of on and off operations if
+	 * they are specified with single delays in the PM's constructor.
 	 */
 	public static final double smallUtilization = 0.001;
 
 	/**
-	 * Represents the possible states of the physical machines modeled in the
-	 * system
+	 * Represents the possible states of the physical machines modeled in the system
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	public static enum State {
 		/**
-		 * The machine is completely switched off, minimal consumption is
-		 * recorded.
+		 * The machine is completely switched off, minimal consumption is recorded.
 		 */
 		OFF,
 		/**
-		 * The machine is under preparation to serve VMs. Some consumption is
-		 * recorded already.
+		 * The machine is under preparation to serve VMs. Some consumption is recorded
+		 * already.
 		 */
 		SWITCHINGON,
 		/**
-		 * The machine is currently serving VMs. The machine and its VMs are
-		 * consuming energy.
+		 * The machine is currently serving VMs. The machine and its VMs are consuming
+		 * energy.
 		 */
 		RUNNING,
 		/**
-		 * The machine is about to be switched off. It no longer accepts VM
-		 * requests but it still consumes energy.
+		 * The machine is about to be switched off. It no longer accepts VM requests but
+		 * it still consumes energy.
 		 */
 		SWITCHINGOFF
 	};
@@ -149,17 +147,17 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	/**
 	 * Defines the minimal interface for listeners on PM state changes.
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2012"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2012"
 	 *
 	 */
 	public interface StateChangeListener {
 		/**
-		 * This function is called by the PM on subscribed objects when a PM's
-		 * state changes. To simplify the implementation of the receiver
-		 * objects, this state changed function actually propagates all state
-		 * infromation (pre and post) as well as the physical machine's
-		 * reference which just went through the state change.
+		 * This function is called by the PM on subscribed objects when a PM's state
+		 * changes. To simplify the implementation of the receiver objects, this state
+		 * changed function actually propagates all state infromation (pre and post) as
+		 * well as the physical machine's reference which just went through the state
+		 * change.
 		 * 
 		 * @param pm
 		 *            the physical machine that is involved in the state change
@@ -167,25 +165,24 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 *            the state the PM was in before this state change event was
 		 *            delivered
 		 * @param newState
-		 *            the new state the PM will be in after the event is
-		 *            complete
+		 *            the new state the PM will be in after the event is complete
 		 */
 		void stateChanged(PhysicalMachine pm, State oldState, State newState);
 	}
 
 	/**
-	 * This class is strongly connected with the physical machine's class, the
-	 * two are collaborating to allow a fluid and minimal hassle operation of
-	 * allocating resources on a PM. This allocation is then later on expected
-	 * to be used by virtual machines to use.
+	 * This class is strongly connected with the physical machine's class, the two
+	 * are collaborating to allow a fluid and minimal hassle operation of allocating
+	 * resources on a PM. This allocation is then later on expected to be used by
+	 * virtual machines to use.
 	 * 
-	 * Before resource allocations are used they are allocated for a fixed
-	 * amount of time. Thus if a user forgets about the allocation, the PMs
-	 * resources are not occupied forever.
+	 * Before resource allocations are used they are allocated for a fixed amount of
+	 * time. Thus if a user forgets about the allocation, the PMs resources are not
+	 * occupied forever.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory
-	 *         of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+	 *         Distributed Systems, MTA SZTAKI (c) 2012"
 	 */
 	public class ResourceAllocation extends DeferredEvent {
 		/**
@@ -195,8 +192,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		public final ResourceConstraints allocated;
 		/**
 		 * The resource set that is actually reserved on the PM. If
-		 * allocated>realAllocated, then the VM might get resources up to
-		 * allocated but only when the PM is not over-committed.
+		 * allocated>realAllocated, then the VM might get resources up to allocated but
+		 * only when the PM is not over-committed.
 		 */
 		private final ResourceConstraints realAllocated;
 		/**
@@ -204,30 +201,29 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 */
 		private VirtualMachine user = null;
 		/**
-		 * The index of this allocation in the allocation list located in the
-		 * PM. Allows rapid cleaning of the allocation list.
+		 * The index of this allocation in the allocation list located in the PM. Allows
+		 * rapid cleaning of the allocation list.
 		 */
 		private final int myPromisedIndex;
 		/**
-		 * If the resource allocation is not used before its expiry time then
-		 * this is going to be true!
+		 * If the resource allocation is not used before its expiry time then this is
+		 * going to be true!
 		 */
 		private boolean swept = false;
 
 		/**
-		 * The constructor of the resource allocation to be used by the physical
-		 * machine only!
+		 * The constructor of the resource allocation to be used by the physical machine
+		 * only!
 		 * 
 		 * @param realAlloc
-		 *            defines the actually reserved resources with the
-		 *            allocation
+		 *            defines the actually reserved resources with the allocation
 		 * @param alloc
 		 *            defines the promised resources for the user
 		 * @param until
-		 *            defines the duration in ticks for which the allocation
-		 *            will be kept for the user. This period is useful to allow
-		 *            advanced scheduling operations where some resources are
-		 *            occupied in advance in order to ensure rapid VM creation.
+		 *            defines the duration in ticks for which the allocation will be
+		 *            kept for the user. This period is useful to allow advanced
+		 *            scheduling operations where some resources are occupied in advance
+		 *            in order to ensure rapid VM creation.
 		 */
 		private ResourceAllocation(final ResourceConstraints realAlloc, final ResourceConstraints alloc,
 				final int until) {
@@ -254,14 +250,14 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * This function is called by deferred event when the allocation is
-		 * expired. The allocation expiry event is only happening if there are
-		 * no VMs that use the allocation by the time the expiry period is over.
+		 * This function is called by deferred event when the allocation is expired. The
+		 * allocation expiry event is only happening if there are no VMs that use the
+		 * allocation by the time the expiry period is over.
 		 * 
-		 * <i>REMARK:</i> As expiry is considered a problem in most systems,
-		 * this is actually printing out to standard error - as the error is not
-		 * critical and there would be no way to propagate the error to the
-		 * entity who issued the allocation.
+		 * <i>REMARK:</i> As expiry is considered a problem in most systems, this is
+		 * actually printing out to standard error - as the error is not critical and
+		 * there would be no way to propagate the error to the entity who issued the
+		 * allocation.
 		 */
 		@Override
 		protected void eventAction() {
@@ -287,35 +283,35 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * if a resource allocation is no longer needed (e.g. because another
-		 * allocation was used for the same VM), then this way one can not only
-		 * cancel the allocation but also ensure that the expiry event is not
-		 * fired.
+		 * if a resource allocation is no longer needed (e.g. because another allocation
+		 * was used for the same VM), then this way one can not only cancel the
+		 * allocation but also ensure that the expiry event is not fired.
 		 */
 		public void cancel() {
-			super.cancel();
-			promisedCapacityUpdater();
+			if (!isCancelled()) {
+				super.cancel();
+				promisedCapacityUpdater();
+			}
 		}
 
 		/**
-		 * To complete the allocation process the VM must be told to use a
-		 * particular allocation (e.g. in its migration or starup calls). The VM
-		 * then automatically tells this resource allocation object to finalize
-		 * the allocation process by calling this use function.
+		 * To complete the allocation process the VM must be told to use a particular
+		 * allocation (e.g. in its migration or starup calls). The VM then automatically
+		 * tells this resource allocation object to finalize the allocation process by
+		 * calling this use function.
 		 * 
-		 * This function subscribes to the VM's state change events in order to
-		 * ensure that VMs that are not running are not really using resources
-		 * from the PM.
+		 * This function subscribes to the VM's state change events in order to ensure
+		 * that VMs that are not running are not really using resources from the PM.
 		 * 
-		 * <i>WARNING:</i> this function is to be used by the VM only as the VM
-		 * knows for what operation it needs to use the allocation.
+		 * <i>WARNING:</i> this function is to be used by the VM only as the VM knows
+		 * for what operation it needs to use the allocation.
 		 * 
 		 * @param vm
-		 *            the virtual machine that will use the allocated resources
-		 *            in the future
+		 *            the virtual machine that will use the allocated resources in the
+		 *            future
 		 * @throws VMManagementException
-		 *             if the allocation passed to the VM is already expired or
-		 *             if the allocation is already used by some VM.
+		 *             if the allocation passed to the VM is already expired or if the
+		 *             allocation is already used by some VM.
 		 */
 		void use(final VirtualMachine vm) throws VMManagementException {
 			if (swept) {
@@ -333,9 +329,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * If a VM no longer needs the resources then this function must be
-		 * called. As a result, the PM ensures that the relesed resources are
-		 * again available to all interested parties.
+		 * If a VM no longer needs the resources then this function must be called. As a
+		 * result, the PM ensures that the relesed resources are again available to all
+		 * interested parties.
 		 */
 		void release() {
 			if (user != null) {
@@ -385,8 +381,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * Allows to determine the Physical Machine the particular allocation is
-		 * bound to.
+		 * Allows to determine the Physical Machine the particular allocation is bound
+		 * to.
 		 * 
 		 * @return the physical machine which offers this allocation.
 		 */
@@ -399,27 +395,26 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * This class handles the delays and activites during the power state change
 	 * procedures (e.g., switching off/turning on)
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
-	 *         University of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory
-	 *         of Parallel and Distributed Systems, MTA SZTAKI (c) 2014-"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+	 *         Distributed Systems, MTA SZTAKI (c) 2014-"
 	 */
 	public class PowerStateDelayer extends ConsumptionEventAdapter {
 		/**
-		 * The state that the delayer must switch to after the power state
-		 * change has finished its activites.
+		 * The state that the delayer must switch to after the power state change has
+		 * finished its activites.
 		 */
 		private State newState;
 		/**
-		 * The list of tasks to do for the particular power state change. These
-		 * tasks are expected to represent activities like the boot process.
+		 * The list of tasks to do for the particular power state change. These tasks
+		 * are expected to represent activities like the boot process.
 		 * 
-		 * IMPORTANT: For performance reasons, the list is handled from its
-		 * tailing:
+		 * IMPORTANT: For performance reasons, the list is handled from its tailing:
 		 * <ul>
-		 * <li>The last item is always the amount processing to be done in the
-		 * upcoming task of the power change
-		 * <li>the penultimate item is always the maximum amount of processing
-		 * to be done in a single tick for the above task.
+		 * <li>The last item is always the amount processing to be done in the upcoming
+		 * task of the power change
+		 * <li>the penultimate item is always the maximum amount of processing to be
+		 * done in a single tick for the above task.
 		 * </ul>
 		 */
 		final TDoubleLinkedList tasksDue;
@@ -428,31 +423,30 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 */
 		public final long transitionStart;
 		/**
-		 * What is the actual resource consumption (task) that is executed on
-		 * the PM's direct consumer (i.e. the pure machine)
+		 * What is the actual resource consumption (task) that is executed on the PM's
+		 * direct consumer (i.e. the pure machine)
 		 */
 		ResourceConsumption currentConsumption = null;
 
 		/**
-		 * The constructor of the delayer, it allows the specification of the
-		 * tasks (that represent the boot/shutdown or similar operations) to be
-		 * done before the power state can be achieved.
+		 * The constructor of the delayer, it allows the specification of the tasks
+		 * (that represent the boot/shutdown or similar operations) to be done before
+		 * the power state can be achieved.
 		 * 
 		 * @param tasklist
-		 *            the tasks to execute in a serial order before the the
-		 *            specific power state can be set.
+		 *            the tasks to execute in a serial order before the the specific
+		 *            power state can be set.
 		 * 
-		 *            IMPORTANT: For performance reasons, the list is handled
-		 *            from its tailing:
+		 *            IMPORTANT: For performance reasons, the list is handled from its
+		 *            tailing:
 		 *            <ul>
-		 *            <li>The last item is always the amount processing to be
-		 *            done in the upcoming task of the power change
+		 *            <li>The last item is always the amount processing to be done in
+		 *            the upcoming task of the power change
 		 *            <li>the penultimate item is always the maximum amount of
 		 *            processing to be done in a single tick for the above task.
 		 *            </ul>
 		 * @param newPowerState
-		 *            the power state to be set after completing all the above
-		 *            tasks.
+		 *            the power state to be set after completing all the above tasks.
 		 */
 		public PowerStateDelayer(final double[] tasklist, final State newPowerState) {
 			onOffEvent = this;
@@ -464,14 +458,13 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * this function picks the next item (i.e. always the very last members
-		 * of the list) from the tasklist and executes it, the function also
-		 * ensures that the powerstatedelayer object will receive a notification
-		 * once the task is completed.
+		 * this function picks the next item (i.e. always the very last members of the
+		 * list) from the tasklist and executes it, the function also ensures that the
+		 * powerstatedelayer object will receive a notification once the task is
+		 * completed.
 		 * 
-		 * if there are no further tasks to execute this function even sets the
-		 * new power state of the physical machine with the PM's corresponding
-		 * function.
+		 * if there are no further tasks to execute this function even sets the new
+		 * power state of the physical machine with the PM's corresponding function.
 		 */
 		private void sendTask() {
 			// Did we finish all the tasks for the state change?
@@ -504,9 +497,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * if we receive a cancelled event we consider it as an unexpected
-		 * behavior and throw an exception. When enabling faults in the system
-		 * this behavior might need to change.
+		 * if we receive a cancelled event we consider it as an unexpected behavior and
+		 * throw an exception. When enabling faults in the system this behavior might
+		 * need to change.
 		 * 
 		 * @param problematic
 		 *            the task that did not succeed
@@ -517,12 +510,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * if there seems to be further operations needed before the particular
-		 * power state can be achieved then this function should be called.
+		 * if there seems to be further operations needed before the particular power
+		 * state can be achieved then this function should be called.
 		 * 
-		 * This function is especially useful to model cases when one state
-		 * change has already started but then the user opts for another one
-		 * before the previous state change can complete
+		 * This function is especially useful to model cases when one state change has
+		 * already started but then the user opts for another one before the previous
+		 * state change can complete
 		 * 
 		 * @param tasklist
 		 *            the new tasks to be included
@@ -532,12 +525,11 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		}
 
 		/**
-		 * if after the list of tasks are completed we need to reach a different
-		 * power state than initially planned then this is the function to go
-		 * for.
+		 * if after the list of tasks are completed we need to reach a different power
+		 * state than initially planned then this is the function to go for.
 		 * 
-		 * This is an optional operation, you only need to call it if the PM
-		 * started to go for some other state beforehand that you don't like.
+		 * This is an optional operation, you only need to call it if the PM started to
+		 * go for some other state beforehand that you don't like.
 		 * 
 		 * @param newState
 		 *            the new power state to switch to after all tasks complete
@@ -558,37 +550,35 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	private final AlterableResourceConstraints internalAvailableCaps;
 	/**
-	 * This is the publicly disclosed set of those resources that are not having
-	 * a VM running on them. This field is <b>read only</b>!
+	 * This is the publicly disclosed set of those resources that are not having a
+	 * VM running on them. This field is <b>read only</b>!
 	 * 
-	 * This field can automatically update between two checks! If you need
-	 * unaltered data please make a copy (e.g., new
-	 * ConstantConstraints(pm.freeCapacities)).
+	 * This field can automatically update between two checks! If you need unaltered
+	 * data please make a copy (e.g., new ConstantConstraints(pm.freeCapacities)).
 	 */
 	public final UnalterableConstraintsPropagator availableCapacities;
 	/**
-	 * the amount of resources currently allocated but that have no VM assigned
-	 * to them
+	 * the amount of resources currently allocated but that have no VM assigned to
+	 * them
 	 */
 	private AlterableResourceConstraints promisedCapacities = AlterableResourceConstraints.getNoResources();
 	/**
-	 * the amount of resources that are not running a VM or not allocated by
-	 * some resource allocation
+	 * the amount of resources that are not running a VM or not allocated by some
+	 * resource allocation
 	 */
 	private final AlterableResourceConstraints internalReallyFreeCaps;
 	/**
 	 * This is the publicly disclosed set of those resources that are not even
 	 * having an allocation. This field is <b>read only</b>!
 	 * 
-	 * This field can automatically update between two checks! If you need
-	 * unaltered data please make a copy (e.g., new
-	 * ConstantConstraints(pm.freeCapacities)).
+	 * This field can automatically update between two checks! If you need unaltered
+	 * data please make a copy (e.g., new ConstantConstraints(pm.freeCapacities)).
 	 */
 	public final UnalterableConstraintsPropagator freeCapacities;
 	/**
 	 * the internal disk of the physical machine. this field is also used to
-	 * represent the PM's network connections as the disk is represented with
-	 * the repository interface.
+	 * represent the PM's network connections as the disk is represented with the
+	 * repository interface.
 	 */
 	public final Repository localDisk;
 	/**
@@ -609,8 +599,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	private State currentState = null;
 	/**
-	 * the tasks to do when turning the PM on. The format of the array is
-	 * documented in the powerstatedelayer class.
+	 * the tasks to do when turning the PM on. The format of the array is documented
+	 * in the powerstatedelayer class.
 	 */
 	private final double[] onTransition;
 	/**
@@ -630,17 +620,16 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	private final long offDelayEstimate;
 
 	/**
-	 * When defining powertransitions for the PM one has to label each
-	 * transiton's properties with a kind
+	 * When defining powertransitions for the PM one has to label each transiton's
+	 * properties with a kind
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2014"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2014"
 	 * 
 	 */
 	public static enum PowerStateKind {
 		/**
-		 * the powerstate definitions belong to the cpu and memory resources of
-		 * the PM
+		 * the powerstate definitions belong to the cpu and memory resources of the PM
 		 */
 		host,
 		/**
@@ -654,8 +643,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	};
 
 	/**
-	 * Mapping between the various PM states and its representative CPU/memory
-	 * power behaviors.
+	 * Mapping between the various PM states and its representative CPU/memory power
+	 * behaviors.
 	 */
 	private final EnumMap<State, PowerState> hostPowerBehavior;
 	/**
@@ -664,8 +653,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	private final EnumMap<State, PowerState> storagePowerBehavior;
 	/**
-	 * Mapping between the various PM states and its representative network
-	 * power behaviors.
+	 * Mapping between the various PM states and its representative network power
+	 * behaviors.
 	 */
 	private final EnumMap<State, PowerState> networkPowerBehavior;
 	/**
@@ -684,26 +673,26 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>(); // current
 	/**
-	 * the publicly available, read only set of currently running virtual
-	 * machines on this PM
+	 * the publicly available, read only set of currently running virtual machines
+	 * on this PM
 	 */
 	public final Set<VirtualMachine> publicVms = Collections.unmodifiableSet(vms);
 	/**
-	 * the number of VMs that were using resources from this PM at any time of
-	 * the PM's existence
+	 * the number of VMs that were using resources from this PM at any time of the
+	 * PM's existence
 	 */
 	private long completedVMs = 0; // Past
 	/**
-	 * The currently operating state change handler - this field actually shows
-	 * if a state change is on the way.
+	 * The currently operating state change handler - this field actually shows if a
+	 * state change is on the way.
 	 * 
 	 * in order to be really consistent, the field is directly managed by the
 	 * powerstatedelayer class.
 	 */
 	private PowerStateDelayer onOffEvent = null;
 	/**
-	 * this notification handler is used to send out events when some of the
-	 * PM's resources are getting available for others to use
+	 * this notification handler is used to send out events when some of the PM's
+	 * resources are getting available for others to use
 	 */
 	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> increasingFreeCapacityListenerManager = new StateDependentEventHandler<VMManager.CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>(
 			new SingleNotificationHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>() {
@@ -714,8 +703,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				}
 			});
 	/**
-	 * this notification handler is used to send out events when some of the
-	 * PM's resources are getting used
+	 * this notification handler is used to send out events when some of the PM's
+	 * resources are getting used
 	 */
 	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> decreasingFreeCapacityListenerManager = new StateDependentEventHandler<VMManager.CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>(
 			new SingleNotificationHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>() {
@@ -727,30 +716,28 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			});
 
 	/**
-	 * This consumer is added to the PM help simulate the pure (VM less)
-	 * operations on the PM. E.g., the VMM's operations can be
-	 * resourceconsumptions registered between this consumer and the PM.
+	 * This consumer is added to the PM help simulate the pure (VM less) operations
+	 * on the PM. E.g., the VMM's operations can be resourceconsumptions registered
+	 * between this consumer and the PM.
 	 */
 	public final MaxMinConsumer directConsumer;
 	/**
-	 * shows when the PM's direct consumer cannot be used as a consumer for
-	 * tasks (in general it is only usable for external users when the PM is
-	 * running)
+	 * shows when the PM's direct consumer cannot be used as a consumer for tasks
+	 * (in general it is only usable for external users when the PM is running)
 	 */
 	private boolean directConsumerUsageMoratory = true;
 
 	/**
-	 * Defines a new physical machine, ensures that there are no VMs running so
-	 * far
+	 * Defines a new physical machine, ensures that there are no VMs running so far
 	 * 
 	 * @param cores
 	 *            defines the number of CPU cores this machine has under control
 	 * @param perCorePocessing
-	 *            defines the processing capabilities of a single CPU core in
-	 *            this machine (in instructions/tick)
+	 *            defines the processing capabilities of a single CPU core in this
+	 *            machine (in instructions/tick)
 	 * @param memory
-	 *            defines the total physical memory this machine has under
-	 *            control (in bytes)
+	 *            defines the total physical memory this machine has under control
+	 *            (in bytes)
 	 * @param disk
 	 *            defines the local physical disk & networking this machine has
 	 *            under control
@@ -758,12 +745,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            defines the time delay between the machine's switch on and the
 	 *            first time it can serve VM requests
 	 * @param offD
-	 *            defines the time delay the machine needs to shut down all of
-	 *            its operations while it does not serve any more VMs
+	 *            defines the time delay the machine needs to shut down all of its
+	 *            operations while it does not serve any more VMs
 	 * @param powerTransitions
-	 *            determines the applied power state transitions while the
-	 *            physical machine state changes. This is the principal way to
-	 *            alter a PM's energy consumption behavior.
+	 *            determines the applied power state transitions while the physical
+	 *            machine state changes. This is the principal way to alter a PM's
+	 *            energy consumption behavior.
 	 */
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk, int onD, int offD,
 			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
@@ -774,8 +761,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Makes a copy of the given array to the correct target (on/offTransition),
-	 * and calculates the estimates for the on/offDelay
+	 * Makes a copy of the given array to the correct target (on/offTransition), and
+	 * calculates the estimates for the on/offDelay
 	 * 
 	 * @param on
 	 *            which taskset needs to be prepared
@@ -794,34 +781,33 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Defines a new physical machine, ensures that there are no VMs running so
-	 * far
+	 * Defines a new physical machine, ensures that there are no VMs running so far
 	 * 
 	 * @param cores
 	 *            defines the number of CPU cores this machine has under control
 	 * @param perCorePocessing
-	 *            defines the processing capabilities of a single CPU core in
-	 *            this machine (in instructions/tick)
+	 *            defines the processing capabilities of a single CPU core in this
+	 *            machine (in instructions/tick)
 	 * @param memory
-	 *            defines the total physical memory this machine has under
-	 *            control (in bytes)
+	 *            defines the total physical memory this machine has under control
+	 *            (in bytes)
 	 * @param disk
 	 *            defines the local physical disk & networking this machine has
 	 *            under control
 	 * @param turnonOperations
-	 *            defines the tasks to execute before the PM can be turned on -
-	 *            this can be considered as the simulation of the boot process.
-	 *            for the complete definition of this array have a look at the
+	 *            defines the tasks to execute before the PM can be turned on - this
+	 *            can be considered as the simulation of the boot process. for the
+	 *            complete definition of this array have a look at the
 	 *            powerstatedelayer class.
 	 * @param switchoffOperations
-	 *            defines the tasks to execute before the PM can be switched off
-	 *            - this can be considered as the simulation of the shutdown
-	 *            process. for the complete definition of this array have a look
-	 *            at the powerstatedelayer class.
+	 *            defines the tasks to execute before the PM can be switched off -
+	 *            this can be considered as the simulation of the shutdown process.
+	 *            for the complete definition of this array have a look at the
+	 *            powerstatedelayer class.
 	 * @param powerTransitions
-	 *            determines the applied power state transitions while the
-	 *            physical machine state changes. This is the principal way to
-	 *            alter a PM's energy consumption behavior.
+	 *            determines the applied power state transitions while the physical
+	 *            machine state changes. This is the principal way to alter a PM's
+	 *            energy consumption behavior.
 	 */
 
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk,
@@ -862,16 +848,15 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * @return
 	 *         <ul>
 	 *         <li><i>true</i> if the switch off procedure has started
-	 *         <li><i>false</i> if there are still VMs running and migration
-	 *         target was not specified thus the switch off is not possible
+	 *         <li><i>false</i> if there are still VMs running and migration target
+	 *         was not specified thus the switch off is not possible
 	 *         </ul>
 	 * @throws NetworkException
-	 *             if the migration would need to use network connections that
-	 *             are not set up correctly.
+	 *             if the migration would need to use network connections that are
+	 *             not set up correctly.
 	 * @throws VMManager.VMManagementException
-	 *             if the migration fails because the VM is not in correct state
-	 *             or the PM does not have enough storage for the memory/disk
-	 *             state
+	 *             if the migration fails because the VM is not in correct state or
+	 *             the PM does not have enough storage for the memory/disk state
 	 */
 	public boolean switchoff(final PhysicalMachine migrateHere) throws VMManagementException, NetworkException {
 		if (migrateHere != null) {
@@ -977,9 +962,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Turns on the physical machine so it allows energy and resource
-	 * consumption (i.e. compute tasks) and opens the possibility to receive VM
-	 * requests.
+	 * Turns on the physical machine so it allows energy and resource consumption
+	 * (i.e. compute tasks) and opens the possibility to receive VM requests.
 	 */
 	public void turnon() {
 		switch (currentState) {
@@ -1036,29 +1020,29 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Ensures the requested amount of resources are going to be available in
-	 * the foreseeable future on this physical machine.
+	 * Ensures the requested amount of resources are going to be available in the
+	 * foreseeable future on this physical machine.
 	 * 
 	 * @param requested
 	 *            The amount of resources needed by the caller
 	 * @param strict
-	 *            if the PM should not return an allocation if it cannot
-	 *            completely meet the request.
+	 *            if the PM should not return an allocation if it cannot completely
+	 *            meet the request.
 	 * @param allocationValidityLength
-	 *            for how long the PM should keep the allocation in place.
-	 *            Depending on the purpose of the allocation, it is recommended
-	 *            to use either the defaultAllocLen or the migrationAllocLen
-	 *            constants of the PM for this field.
+	 *            for how long the PM should keep the allocation in place. Depending
+	 *            on the purpose of the allocation, it is recommended to use either
+	 *            the defaultAllocLen or the migrationAllocLen constants of the PM
+	 *            for this field.
 	 * @return With a time limited offer on the requested resources. If the
-	 *         requested resourceconstraints cannot be met by the function then
-	 *         it returns with the maximum amount of resources it can serve. If
-	 *         there are no available resources it returns with <i>null</i>! If
-	 *         the requested resources can be exactly met then the original
-	 *         requested resourceconstraints object is stored in the returned
-	 *         resource allocation. If the resourceconstraints only specified a
-	 *         minimum resource limit, then a new resourceconstraints object is
-	 *         returned with details of the maximum possible resource
-	 *         constraints that can fit into the machine.
+	 *         requested resourceconstraints cannot be met by the function then it
+	 *         returns with the maximum amount of resources it can serve. If there
+	 *         are no available resources it returns with <i>null</i>! If the
+	 *         requested resources can be exactly met then the original requested
+	 *         resourceconstraints object is stored in the returned resource
+	 *         allocation. If the resourceconstraints only specified a minimum
+	 *         resource limit, then a new resourceconstraints object is returned
+	 *         with details of the maximum possible resource constraints that can
+	 *         fit into the machine.
 	 */
 	public ResourceAllocation allocateResources(final ResourceConstraints requested, final boolean strict,
 			final int allocationValidityLength) throws VMManagementException {
@@ -1093,9 +1077,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		final double allocCPU = vmCPU * requested.getRequiredProcessingPower() / allocPrPow;
 		if (0 <= internalReallyFreeCaps.getRequiredCPUs() - allocCPU) {
 			if (0 <= internalReallyFreeCaps.getRequiredMemory() - requested.getRequiredMemory()) {
-				return new ResourceAllocation(
-						new ConstantConstraints(allocCPU, allocPrPow, vmMem), requested.isRequiredProcessingIsMinimum()
-								? new ConstantConstraints(vmCPU, vmPrPow, true, vmMem) : requested,
+				return new ResourceAllocation(new ConstantConstraints(allocCPU, allocPrPow, vmMem),
+						requested.isRequiredProcessingIsMinimum() ? new ConstantConstraints(vmCPU, vmPrPow, true, vmMem)
+								: requested,
 						allocationValidityLength);
 			} else {
 				vmMem = internalReallyFreeCaps.getRequiredMemory();
@@ -1151,8 +1135,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * checks if at least in theory the requested resources could be hosted on
-	 * the PM (i.e., when there are no other VMs hosted on the PM).
+	 * checks if at least in theory the requested resources could be hosted on the
+	 * PM (i.e., when there are no other VMs hosted on the PM).
 	 * 
 	 * @param requested
 	 *            the resource set to be checked for hostability
@@ -1201,9 +1185,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Initiates a VM on this physical machine. If the physical machine cannot
-	 * host VMs for some reason an exception is thrown, if the machine cannot
-	 * host this particular VA then a null VM is returned.
+	 * Initiates a VM on this physical machine. If the physical machine cannot host
+	 * VMs for some reason an exception is thrown, if the machine cannot host this
+	 * particular VA then a null VM is returned.
 	 * 
 	 * @param va
 	 *            The appliance for the VM to be created.
@@ -1213,9 +1197,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            The storage where the VA resides.
 	 * @param count
 	 *            The number of VMs to be created with the above specification
-	 * @return The virtual machine(s) that will be instantiated on the PM. Null
-	 *         if the constraints specify VMs that cannot fit the available
-	 *         resources of the machine.
+	 * @return The virtual machine(s) that will be instantiated on the PM. Null if
+	 *         the constraints specify VMs that cannot fit the available resources
+	 *         of the machine.
 	 * 
 	 * @throws VMManagementException
 	 *             If the machine is not accepting requests currently.<br>
@@ -1246,8 +1230,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	/**
 	 * Requests a few VMs just as before. Scheduling constraints are ignored
-	 * currently! As this is too low level to handle them in the current state
-	 * of the simulator.
+	 * currently! As this is too low level to handle them in the current state of
+	 * the simulator.
 	 */
 	@Override
 	public VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc, Repository vaSource, int count,
@@ -1256,16 +1240,15 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Switches off the VM in question if the VM is hosted by this particular
-	 * PM.
+	 * Switches off the VM in question if the VM is hosted by this particular PM.
 	 * 
 	 * @param vm
 	 *            to be switched off
 	 * @param killTasks
-	 *            if the VM must be switched off without caring about its tasks
-	 *            then this should be true. if this is false, then the VM can
-	 *            only be instructed to be switched off if there are no tasks
-	 *            currently running on it.
+	 *            if the VM must be switched off without caring about its tasks then
+	 *            this should be true. if this is false, then the VM can only be
+	 *            instructed to be switched off if there are no tasks currently
+	 *            running on it.
 	 * @throws NoSuchVMException
 	 *             if the VM is not hosted on this PM
 	 * @throws VMManagementException
@@ -1300,22 +1283,23 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Determines if a resource consumption (i.e., a compute task utilizing the
-	 * CPU of the PM) can be registered on the PM for execution.
+	 * Determines if a resource consumption (i.e., a compute task utilizing the CPU
+	 * of the PM) can be registered on the PM for execution.
 	 * 
 	 * Registration is only allowed if (i.e. the return value is true only if):
 	 * <ul>
 	 * <li>the PM is running
-	 * <li>the consumer of the consumption is either a VM or the directconsumer
-	 * of the PM
+	 * <li>the consumer of the consumption is either a VM or the directconsumer of
+	 * the PM
 	 * <li>the consumption is coming from the powerstatedelayer.
 	 * </ul>
 	 */
 	@Override
 	protected boolean isAcceptableConsumption(final ResourceConsumption con) {
 		final ResourceSpreader consumer = con.getConsumer();
-		final boolean internalConsumer = (consumer == directConsumer) && (directConsumerUsageMoratory
-				? (onOffEvent == null ? false : onOffEvent.currentConsumption == con) : true);
+		final boolean internalConsumer = (consumer == directConsumer)
+				&& (directConsumerUsageMoratory ? (onOffEvent == null ? false : onOffEvent.currentConsumption == con)
+						: true);
 		final boolean runningVirtualMachine;
 		if (internalConsumer) {
 			runningVirtualMachine = false;
@@ -1343,8 +1327,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * gets the number of VMs that have already left the PM but that were
-	 * running on it once
+	 * gets the number of VMs that have already left the PM but that were running on
+	 * it once
 	 * 
 	 * @return the number of past VMs related to this PM
 	 */
@@ -1353,11 +1337,10 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * Gets an estimate for the duration (in ticks) of the poweron/off operation
-	 * in progress.
+	 * Gets an estimate for the duration (in ticks) of the poweron/off operation in
+	 * progress.
 	 * 
-	 * @return the estimated complete duration of the power state changing
-	 *         operation
+	 * @return the estimated complete duration of the power state changing operation
 	 * @throws IllegalStateException
 	 *             if there is no power state change in progress
 	 */
@@ -1389,8 +1372,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * offers a nice single line format summary of the properties of this PM -
-	 * good for debugging and tracing.
+	 * offers a nice single line format summary of the properties of this PM - good
+	 * for debugging and tracing.
 	 */
 	@Override
 	public String toString() {
@@ -1424,9 +1407,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * 
 	 * Notifies the state change observers.
 	 * 
-	 * With the state change it also handles the power state changes according
-	 * to the hostPowerBehavior, networkPowerBehavior and storagePowerBehavior
-	 * maps.
+	 * With the state change it also handles the power state changes according to
+	 * the hostPowerBehavior, networkPowerBehavior and storagePowerBehavior maps.
 	 * 
 	 * @param newState
 	 *            the new PM state to be set.
@@ -1472,8 +1454,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	/**
 	 * manages the subscriptions for free capacity events (i.e. those cases when
-	 * there are some resources that are either not allocated anymore or when
-	 * there is a VM that terminates on the PM)
+	 * there are some resources that are either not allocated anymore or when there
+	 * is a VM that terminates on the PM)
 	 * 
 	 * @param e
 	 *            the listener object which expects free capacity events
@@ -1484,12 +1466,11 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	/**
 	 * manages the subscriptions for free capacity events (i.e. those cases when
-	 * there are some resources that are either not allocated anymore or when
-	 * there is a VM that terminates on the PM)
+	 * there are some resources that are either not allocated anymore or when there
+	 * is a VM that terminates on the PM)
 	 * 
 	 * @param e
-	 *            the listener object that no longer expects free capacity
-	 *            events
+	 *            the listener object that no longer expects free capacity events
 	 */
 	public void unsubscribeFromDecreasingFreeCapacityChanges(final CapacityChangeEvent<ResourceConstraints> e) {
 		decreasingFreeCapacityListenerManager.unsubscribeFromEvents(e);
@@ -1497,8 +1478,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	/**
 	 * manages the subscriptions for free capacity events (i.e. those cases when
-	 * there are some resources that are either not allocated anymore or when
-	 * there is a VM that terminates on the PM)
+	 * there are some resources that are either not allocated anymore or when there
+	 * is a VM that terminates on the PM)
 	 * 
 	 * @param e
 	 *            the listener object which expects free capacity events
@@ -1509,12 +1490,11 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 	/**
 	 * manages the subscriptions for free capacity events (i.e. those cases when
-	 * there are some resources that are either not allocated anymore or when
-	 * there is a VM that terminates on the PM)
+	 * there are some resources that are either not allocated anymore or when there
+	 * is a VM that terminates on the PM)
 	 * 
 	 * @param e
-	 *            the listener object that no longer expects free capacity
-	 *            events
+	 *            the listener object that no longer expects free capacity events
 	 */
 	public void unsubscribeFromIncreasingFreeCapacityChanges(final CapacityChangeEvent<ResourceConstraints> e) {
 		increasingFreeCapacityListenerManager.unsubscribeFromEvents(e);

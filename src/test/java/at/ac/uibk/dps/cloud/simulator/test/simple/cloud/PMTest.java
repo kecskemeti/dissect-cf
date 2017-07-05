@@ -667,7 +667,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		pm.turnon();
 	}
 
-	@Test//(timeout = 100)
+	@Test(timeout = 100)
 	public void testTurnOnWhileInTransition() {
 		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
 			boolean needsSORequest = true;
@@ -691,5 +691,16 @@ public class PMTest extends IaaSRelatedFoundation {
 		});
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
+	}
+
+	@Test(timeout = 100)
+	public void doubleRaCancel() throws VMManagementException {
+		pm.turnon();
+		Timed.simulateUntilLastEvent();
+		PhysicalMachine.ResourceAllocation ra = pm.allocateResources(pm.getCapacities(), true,
+				PhysicalMachine.defaultAllocLen);
+		ra.cancel();
+		ra.cancel();
+		Assert.assertEquals("Should have no free capacity change", 0, pm.getCapacities().compareTo(pm.freeCapacities));
 	}
 }
