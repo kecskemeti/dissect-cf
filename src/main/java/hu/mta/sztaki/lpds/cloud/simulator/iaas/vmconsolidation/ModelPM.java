@@ -3,7 +3,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 /**
  * @author Julian Bellendorf, René Ponto
  *
@@ -19,7 +18,7 @@ public class ModelPM {
 	private ArrayList <ModelVM> vmList = new ArrayList <ModelVM>();
 	private int number;
 	
-	private ConstantConstraints totalResources;
+	private ResourceVector totalResources;
 	private ResourceVector consumedResources;
 	
 	private double upperThreshold;
@@ -50,7 +49,7 @@ public class ModelPM {
 	 * @param low 
 	 * 			The lower threshold for checking the allocation.
 	 */
-	public ModelPM(PhysicalMachine pm, ArrayList <ModelVM> vm, double cores, double pCP, long mem, int number, double up, double low) {
+	public ModelPM(PhysicalMachine pm, ArrayList <ModelVM> vm, double cores, double pCP, long mem, int number) {
 		
 		this.pm = pm; 
 		this.number = number;
@@ -67,18 +66,62 @@ public class ModelPM {
 			}
 		}
 		
-		upperThreshold = up;
-		lowerThreshold = low;
-		
-		totalResources = new ConstantConstraints(cores, pCP, mem);
+		totalResources = new ResourceVector(cores, pCP, mem);
 		consumedResources = new ResourceVector(0, 0, 0);
+	}
+	
+	public void setThreshold(double up, double low) {
+		this.upperThreshold = up;
+		this.lowerThreshold = low;
+	}
+	
+	public double getUpperThreshold() {
+		return this.upperThreshold;
+	}
+	
+	public double getLowerThreshold() {
+		return this.lowerThreshold;
+	}
+	
+	/**
+	 * This method checks if a given VM can be hosted on this PM without changing the State to overAllocated.
+	 * 
+	 * @param vmResources
+	 * 			The resources of the VM which shall be added.
+	 * @return
+	 * 			True if the VM can be added.
+	 */
+	public boolean doOrCancelMigration(ModelVM toAdd) {
+		
+		checkAllocation();
+		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
+		available.subtract(consumedResources);
+		if(toAdd.getResources().canBeAdded(available)) {
+
+			addVM(toAdd);
+			checkAllocation();
+			
+			if(this.getState().equals(State.OVERALLOCATED_RUNNING)) {
+				removeVM(toAdd);
+				return false;
+			}
+			else {
+				removeVM(toAdd);
+				return true;
+			}
+		}
+		else
+			return false;
 	}
 	
 	/**
 	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
 	 */	
 	public String toString() {
-		String erg =  System.getProperty("line.separator") + "PM: " + number + " VMs:   " + System.getProperty("line.separator");
+		String erg =  System.getProperty("line.separator") + "PM: " + number + System.getProperty("line.separator") + 
+				"Resources: TotalProcessingPower: " + this.consumedResources.getTotalProcessingPower() + 
+				", Memory: " + this.consumedResources.getRequiredMemory() + System.getProperty("line.separator") +
+				"VMs:   " + System.getProperty("line.separator");
 		for(int i = 0; i < getVMs().size(); i++) {
 			
 			erg = erg + getVM(i).toString() + System.getProperty("line.separator");
@@ -162,7 +205,7 @@ public class ModelPM {
 	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
 	 */
 	
-	public ConstantConstraints getTotalResources() {
+	public ResourceVector getTotalResources() {
 		return this.totalResources;
 	}
 	

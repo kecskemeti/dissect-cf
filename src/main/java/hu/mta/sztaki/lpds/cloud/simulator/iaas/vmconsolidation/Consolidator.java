@@ -2,7 +2,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -32,14 +31,16 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 
 
-public abstract class ModelBasedConsolidator /*extends Timed*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
-	
-	private final long consFreq;
+public class Consolidator implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener{
 	
 	IaaSService toConsolidate;
 	ArrayList <ModelPM> bins = new ArrayList <ModelPM>();
 	//ArrayList for saving the actions which have to be performed inside the simulator
 	ArrayList <Action> actions = new ArrayList<Action>();
+	
+	//variables for the threshold
+	double up;
+	double low;
 	
 	/**
 	 * The abstract constructorfor VM-consolidation. It expects an IaaSService and the two thresholds for
@@ -54,25 +55,12 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	 * 			The desired value for the lower threshold
 	 * @throws Exception
 	 */
-	public ModelBasedConsolidator(IaaSService parent, long consFreq) throws Exception {
-		this.consFreq = consFreq;
+	public Consolidator(IaaSService parent, double upperThreshold, double lowerThreshold) throws Exception {
 		this.toConsolidate = parent;
-		this.instantiate();
+		this.instantiate(bins);
+		up = upperThreshold;
+		low = lowerThreshold;
 	}
-	
-	/**
-	 * This function will be called on all timed objects which asked for a
-	 * recurring event notification at a given time instance.
-	 * 
-	 * @param fires
-	 *            The particular time instance when the function was called. The
-	 *            time instance is passed so the tick functions will not need to
-	 *            call getFireCount() if they need to operate on the actual
-	 *            time.
-	 *//*
-	public void tick(long fires) {
-		// ??
-	}*/
 	
 	/** 
 	 * @return bins
@@ -91,7 +79,7 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	/**
 	 * In this part all PMs and VMs will be put inside this abstract model.
 	*/
-	public void instantiate() {
+	public void instantiate(ArrayList <ModelPM> pmList) {
 		for (int i = 0; i < toConsolidate.machines.size(); i++) {
 			
 			PhysicalMachine pm = toConsolidate.machines.get(i);
@@ -100,7 +88,7 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 			vmList.addAll(pm.listVMs());
 			
 			ModelPM act = new ModelPM(pm, items, pm.getCapacities().getRequiredCPUs(), 
-					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i +1);
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i +1, up, low);
 			
 			for(int j = 0; j < pm.listVMs().size(); j ++) {
 				items.add(new ModelVM(vmList.get(j), act, 
@@ -110,15 +98,21 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 			}
 			
 			act.initializePM(items);
-			bins.add(act);
+			pmList.add(act);
 		}
 	}
 	
 	
 	/**
 	 * The method for doing the consolidation, which means start PMs, stop PMs, migrate VMs, ...
+	 * 
+	 * @throws NetworkException 
+	 * @throws VMManagementException 
 	 */
-	public abstract void optimize(); 
+	public void optimize() throws VMManagementException, NetworkException {
+		
+	}
+	
 	
 	/**
 	 * The graph which does the changes.

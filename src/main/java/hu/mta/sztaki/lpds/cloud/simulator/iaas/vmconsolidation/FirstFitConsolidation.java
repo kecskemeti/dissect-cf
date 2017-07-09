@@ -1,6 +1,8 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -30,8 +32,11 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 			The IaaSService of the superclass Consolidator.
 	 */
 	
-	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold) throws Exception {
-		super(parent, upperThreshold, lowerThreshold);		
+	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold, long consFreq) throws Exception {
+		super(parent, consFreq);
+		for(int i = 0; i < bins.size(); i++) {
+			bins.get(i).setThreshold(upperThreshold, lowerThreshold);
+		}
 	}	
 	
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -55,10 +60,8 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * Step 2: Call the migration algorithm and do the migrations. Concurrently the graph shall be created (Step 3), which contain 
 	 * 		   the changes made during this step in order to do the migration inside the real simulation, too.
 	 * Step 3: Create a graph and fill it with the changes that had been done.
-	 * @throws NetworkException 
-	 * @throws VMManagementException 
 	 */
-	public void optimize() throws VMManagementException, NetworkException {
+	public void optimize() {
 		
 		while(isOverAllocated() || isUnderAllocated()) {
 			for(ModelPM pm : this.getBins()) {
@@ -87,10 +90,24 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}
 		}
 		
+		for(ModelPM pm : this.getBins()) {
+			ArrayList<ModelVM> allVMsOnPM = pm.getVMs();
+			
+			Set<ModelVM> setItems = new LinkedHashSet<ModelVM>(allVMsOnPM);
+			allVMsOnPM.clear();
+			allVMsOnPM.addAll(setItems);
+		}
+		
 		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down
 		
 		super.createGraph(getActions());		//creates the graph with all previously done actions
-		super.performActions();				//do the changes inside the simulator
+		try {
+			super.performActions();				//do the changes inside the simulator
+		} catch (VMManagementException e) {
+			e.printStackTrace();
+		} catch (NetworkException e) {
+			e.printStackTrace();
+		}				
 	}
 	
 	/**
@@ -140,7 +157,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {		
-			ModelPM actualPM = this.getBins().get(i);
+			ModelPM actualPM = getBins().get(i);
 			if(actualPM == toMig.gethostPM() 
 					|| actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERALLOCATED_RUNNING) 
@@ -149,47 +166,23 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}
 			else {
 				
-				//These are the constraints of the actual PM
-				ResourceVector pmRes = actualPM.getConsumedResources();
-				
-				if(pmRes.fitsIn(toMig.getResources())) {
+				if(actualPM.doOrCancelMigration(toMig)) {
 					
-					actualPM.addVM(toMig);
-					actualPM.checkAllocation();
-					if(actualPM.getState().equals(State.OVERALLOCATED_RUNNING)) {
-						actualPM.removeVM(toMig);
-						actualPM.checkAllocation();
-					}					
-					else {
-						actualPM.removeVM(toMig);
-						actualPM.checkAllocation();
-						//the PM which first fits to the criteria
-						return actualPM;
-					}
+					return actualPM;
 				}
 			}
 		}
 		
 		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM
+		
 		for(int j = 0; j < bins.size(); j++) {
 			ModelPM actualPM = getBins().get(j);
 			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
-				//These are the constraints of the actual PM
-				ResourceVector pmRes = actualPM.getConsumedResources();
 				
-				if(pmRes.fitsIn(toMig.getResources()) == false) {
+				if(actualPM.doOrCancelMigration(toMig)) {
 					
-					actualPM.addVM(toMig);
-					actualPM.checkAllocation();
-					if(actualPM.getState().equals(State.OVERALLOCATED_RUNNING)) {
-						actualPM.removeVM(toMig);
-					}
-					else {
-						actualPM.removeVM(toMig);
-						//the PM which first fits to the criteria
-						return actualPM;
-					}
+					return actualPM;
 				}
 			}
 			else {
@@ -259,7 +252,6 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 */
 	public void migrateOverAllocatedPM(ModelPM source) {
 		
-		source.checkAllocation();	// check if something has changed before migrating
 		State state = source.getState();
 		
 		while(state.equals(State.OVERALLOCATED_RUNNING) || state.equals(State.STILL_OVERALLOCATED)) {
@@ -293,12 +285,10 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	
 	/** 
 	 * Method for migrating underAllocated PMs.
-	 */
-	
+	 */	
 	public void migrateUnderAllocatedPM(ModelPM source) {
 		
-		int i = 1;
-		source.checkAllocation();	// check if something has changed before migrating
+		int i = 0;	
 		State state = source.getState();
 		
 		while(state.equals(State.UNDERALLOCATED_RUNNING) || state.equals(State.STILL_UNDERALLOCATED)) {
@@ -315,11 +305,11 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				if(migVMs.isEmpty()) {
 					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
 						source.changeState(State.STILL_UNDERALLOCATED);
-						return; // no migration possible and no has been done previously
+						return; // no migration possible and no one has been done previously
 					}
 					else if(state.equals(State.STILL_UNDERALLOCATED)) {
 						source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
-						return; // no migration possible and no has been done previously, second try
+						return; // no migration possible and no one has been done previously, second try
 					}
 				}
 				else {
@@ -345,8 +335,13 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 				actual.gethostPM().migrateVM(actual, pm);
 				actions.add(new MigrationAction(count++, source, pm, actual)); 	//give the information to the graph
 			}			
-			source.checkAllocation();		//check if the state has changed
 			state = source.getState();		//set the actual State
 		}
 	}
+	/*
+	@Override
+	public void tick(long fires) {
+		// TODO Auto-generated method stub
+		
+	}*/
 }

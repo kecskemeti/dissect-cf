@@ -63,14 +63,15 @@ public class ResourceVector extends AlterableResourceConstraints {
 	}
 	
 	/**
-	 * Compares the allocation of two ResourceVectors to verfify that the allocation of the first on is smaller than the second one.
+	 * Compares the allocation of two ResourceVectors to verfify that the VM which calls this methods on its resources can be 
+	 * added to the consumed resources of the PM in the parameter.
 	 * @param available
 	 * 			The second ResourceVector
 	 * @return true if all values are greater.
 	 */
-	public boolean fitsIn(ResourceConstraints second) {
+	public boolean canBeAdded(ResourceConstraints second) {
 		
-		if(getRequiredCPUs() <= second.getRequiredCPUs() && getRequiredMemory() <= second.getRequiredMemory() && getRequiredProcessingPower() <= second.getRequiredProcessingPower()) {
+		if(getTotalProcessingPower() <= second.getTotalProcessingPower() && getRequiredMemory() <= second.getRequiredMemory()) {
 			return true;
 		}
 		else {
