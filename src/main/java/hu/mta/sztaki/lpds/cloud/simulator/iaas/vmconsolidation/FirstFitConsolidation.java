@@ -54,27 +54,20 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	
 	
 	
-	/** 
-	 * Functionality of this optimization:
-	 * 
-	 * Step 1: Check the threshold of all PMs. A PM is underAllocated, if its used resources are lower than 25 %
-	 * 		   of the cores, perCoreProcessingPower and the memory and it is overAllocated, if its used resources are higher than 75 %
-	 * 		   of the cores, perCoreProcessingPower or the memory.
-	 * Step 2: Call the migration algorithm and do the migrations. Concurrently the graph shall be created (Step 3), which contain 
-	 * 		   the changes made during this step in order to do the migration inside the real simulation, too.
-	 * Step 3: Create a graph and fill it with the changes that had been done.
+	/**
+	 * The method for doing the consolidation, which means start PMs, stop PMs, migrate VMs, ...
+	 * To do that, every action is saved as an Action-Node inside a graph, which does the changes
+	 * inside the simulator.
 	 */
 	public void optimize() {
 		
 		while(isOverAllocated() || isUnderAllocated()) {
-			for(ModelPM pm : this.getBins()) {
-				
-				if(pm.nothingIsToChange()) {
+			for(ModelPM pm : this.getBins()) {				
+				if(pm.isNothingToChange()) {
 					
 				}
 				else {					
-					if(pm.isUnderAllocatedChangeable()) {
-						
+					if(pm.isUnderAllocatedChangeable()) {						
 						if(pm.isHostingVMs() != true) {
 							pm.changeState(State.EMPTY_RUNNING);
 						}
@@ -91,16 +84,15 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}
 		}
 		
+		//cleares the VMlist of each PM, so no VM is in the list more than once
 		for(ModelPM pm : this.getBins()) {
-			ArrayList<ModelVM> allVMsOnPM = pm.getVMs();
-			
+			ArrayList<ModelVM> allVMsOnPM = pm.getVMs();			
 			Set<ModelVM> setItems = new LinkedHashSet<ModelVM>(allVMsOnPM);
 			allVMsOnPM.clear();
 			allVMsOnPM.addAll(setItems);
 		}
 		
-		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down
-		
+		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down		
 		createGraph(getActions());		//creates the graph with all previously done actions
 		try {
 			performActions();				//do the changes inside the simulator
@@ -150,7 +142,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * @param VM
 	 * 			The VM which shall be migrated.
 	 * @return A PM where the given VM can be migrated
-	 * 		   starts a new PM if there is no one with needed resources.
+	 * 		   starts a new PM if there is no running VM with the needed resources.
 	 */
 	public ModelPM getMigPm(ModelVM vm) {
 		
@@ -167,22 +159,18 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}
 			else {
 				
-				if(actualPM.doOrCancelMigration(toMig)) {
-					
+				if(actualPM.isMigrationPossible(toMig)) {					
 					return actualPM;
 				}
 			}
-		}
-		
-		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM
-		
+		}		
+		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM		
 		for(int j = 0; j < bins.size(); j++) {
 			ModelPM actualPM = getBins().get(j);
 			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
 				
-				if(actualPM.doOrCancelMigration(toMig)) {
-					
+				if(actualPM.isMigrationPossible(toMig)) {					
 					return actualPM;
 				}
 			}
@@ -249,7 +237,13 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	}
 	
 	/** 
-	 * Method for migrating overAllocated PMs.
+	 * This method handles the migration of all VMs of an OverAllocated PM, til the state changes to 
+	 * NORMAL_RUNNING. To do that, a targetPM will be find for every VM on this PM and then the migrations 
+	 * will be performed. If not enough VMs can be migrated, the state of this PM will be changed to
+	 * STILL_OVERALLOCATED, so there will be another try to migrate the surplus VMs.
+	 * 
+	 * @param source
+	 * 			The source PM which host the VMs to migrate.
 	 */
 	private void migrateOverAllocatedPM(ModelPM source) {
 		
@@ -285,7 +279,12 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	}
 	
 	/** 
-	 * Method for migrating underAllocated PMs.
+	 * This method handles the migration of all VMs of an underAllocated PM. To do that, a targetPM will be
+	 * find for every VM on this PM and then the migrations will be performed, but if not all of the hosted VMs
+	 * can be migrated (after this process the PM would still host running VMs), nothing will be changed.
+	 * 
+	 * @param source
+	 * 			The source PM which host the VMs to migrate.
 	 */	
 	private void migrateUnderAllocatedPM(ModelPM source) {
 		
@@ -301,8 +300,13 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target			
 			ModelPM pm = getMigPm(actual); 
 			
-			if(pm == null) {
-				
+			if(pm != null) {				
+				migVMs.add(actual);
+				i++;
+				actual.gethostPM().migrateVM(actual, pm);
+				actions.add(new MigrationAction(count++, source, pm, actual)); 	//give the information to the graph
+			}
+			else {
 				if(migVMs.isEmpty()) {
 					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
 						source.changeState(State.STILL_UNDERALLOCATED);
@@ -328,13 +332,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 							source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
 						}
 					}
-				} 
-			}
-			else {
-				migVMs.add(actual);
-				i++;
-				actual.gethostPM().migrateVM(actual, pm);
-				actions.add(new MigrationAction(count++, source, pm, actual)); 	//give the information to the graph
+				}
 			}			
 			state = source.getState();		//set the actual State
 		}

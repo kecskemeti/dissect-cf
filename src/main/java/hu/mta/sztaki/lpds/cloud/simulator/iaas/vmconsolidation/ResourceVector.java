@@ -30,16 +30,28 @@ public class ResourceVector extends AlterableResourceConstraints {
 		super(cores, perCoreProcessing, memory);
 	}
 	
-	
+	/**
+	 * 
+	 * @param up
+	 * @param low
+	 */
 	public void setThreshold(double up, double low) {
 		this.upperThreshold = up;
 		this.lowerThreshold = low;
 	}
 	
+	/**
+	 * @return
+	 * 			The upper threshold for checking if a PM is overAllocated.
+	 */
 	public double getUpperThreshold() {
 		return this.upperThreshold;
 	}
 	
+	/**
+	 * @return
+	 * 			The lower threshold for checking if a PM is underAllocated.
+	 */
 	public double getLowerThreshold() {
 		return this.lowerThreshold;
 	}
@@ -49,13 +61,11 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * Comparison for checking if the PM is overAllocated.
 	 * @param total
 	 * 			The total resources
-	 * @param upperThreshold 
-	 * 			The defined threshold
 	 * @return true if the pm is overAllocated.
 	 */
 	public boolean compareToOverAllocated(ResourceConstraints total) {	
 		
-		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 /* * upperThreshold */ || this.getRequiredMemory() > total.getRequiredMemory() * 0.75 /* * upperThreshold */ ) {
+		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 || this.getRequiredMemory() > total.getRequiredMemory() * 0.75) {
 			return true;
 		}
 		else
@@ -66,13 +76,11 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * Comparison for checking if the PM is underAllocated.
 	 * @param total
 	 * 			The total resources
-	 * @param lowerThreshold
-	 * 			The defined threshold
 	 * @return true if the pm is underAllocated.
 	 */
 	public boolean compareToUnderAllocated(ResourceConstraints total) {
 		
-		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 /* * lowerThreshold */ && this.getRequiredMemory() < total.getRequiredMemory() * 0.25 /* * lowerThreshold */ ) {
+		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 && this.getRequiredMemory() < total.getRequiredMemory() * 0.25) {
 			return true;
 		}
 		else
@@ -86,9 +94,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The second ResourceVector
 	 * @return true if all values are greater.
 	 */
-	public boolean canBeAdded(ResourceConstraints second) {
+	public boolean canBeAdded(ResourceConstraints pmResources) {
 		
-		if(getTotalProcessingPower() <= second.getTotalProcessingPower() && getRequiredMemory() <= second.getRequiredMemory()) {
+		if(getTotalProcessingPower() <= pmResources.getTotalProcessingPower() && getRequiredMemory() <= pmResources.getRequiredMemory()) {
 			return true;
 		}
 		else {

@@ -69,7 +69,7 @@ public class ModelPM {
 	 * @return
 	 * 			True if the State is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED
 	 */
-	public boolean nothingIsToChange() {
+	public boolean isNothingToChange() {
 		
 		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
 			return true;
@@ -92,7 +92,7 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Checks if the PM is OverAllocated and shall be migrated.
+	 * Checks if the PM is OverAllocated and VMs have to be migrated.
 	 * @return
 	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
 	 */
@@ -107,12 +107,12 @@ public class ModelPM {
 	/**
 	 * This method checks if a given VM can be hosted on this PM without changing the State to overAllocated.
 	 * 
-	 * @param vmResources
-	 * 			The resources of the VM which shall be added.
+	 * @param toAdd
+	 * 			The VM which shall be added.
 	 * @return
 	 * 			True if the VM can be added.
 	 */
-	public boolean doOrCancelMigration(ModelVM toAdd) {
+	public boolean isMigrationPossible(ModelVM toAdd) {
 		
 		checkAllocation();
 		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
@@ -175,10 +175,9 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be put on this PM.
 	 */
-	public void addVM(ModelVM vm) {
+	private void addVM(ModelVM vm) {
 		vmList.add(vm);
-		consumedResources.add(vm.getResources());
-		
+		consumedResources.add(vm.getResources());		
 		checkAllocation();
 	}
 	
@@ -187,14 +186,11 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be removed of this PM.
 	 */
-	public void removeVM(ModelVM vm) {
+	private void removeVM(ModelVM vm) {
 		vmList.remove(vm);
-		consumedResources.subtract(vm.getResources());
-		
+		consumedResources.subtract(vm.getResources());		
 		checkAllocation();
 	}
-	
-	
 	
 	/**
 	 * @return The matching PM inside the simulator.
@@ -210,28 +206,25 @@ public class ModelPM {
 	public boolean isHostingVMs() {
 		return !getVMs().isEmpty();
 	}
-	
-	
+		
 	/**
-	 * This class represents all properties of the PM regarding to the avialable resources.
+	 * This class represents the consumed resources of this PM.
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
-	 */
-	
+	 */	
 	public ResourceVector getConsumedResources() {
 		return this.consumedResources;
 	}	
 	
 	/**
-	 * This class represents all properties of the PM regarding to the total resources.
+	 * This class represents the total resources of this PM.
 	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
-	 */
-	
+	 */	
 	public ConstantConstraints getTotalResources() {
 		return this.totalResources;
 	}
 	
 	/**
-	 * The possible States for a PM in this abstract modell.
+	 * The possible States for a PM in this abstract model.
 	 * 
 	 * For understanding, we need the 'double'-states because of the graph. If we shut down 
 	 * a PM and have to restart it again, it would be an unnecessary action, so we mark them 
@@ -240,7 +233,8 @@ public class ModelPM {
 	 * would be empty.
 	 * 
 	 * Additionally we have two other States for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
-	 * STILL_OVERALLOCATED / UNCHANGEABLE_OVERALLOCATED and STILL_UNDERALLOCATED and UNCHANGEABLE_UNDERALLOCATED.
+	 * STILL_OVERALLOCATED / UNCHANGEABLE_OVERALLOCATED and STILL_UNDERALLOCATED and 
+	 * UNCHANGEABLE_UNDERALLOCATED.
 	 * This is important becouse of the possibility to determine how often it has been tried
 	 * to migrate this PM or VMs of this PM without success. So the State STILL_x shows that
 	 * it was not possible to migrate VMs of this PM once and the UNCHANGEABLE_x stands for
