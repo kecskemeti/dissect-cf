@@ -27,7 +27,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	/**
-	 * @author Julian, René
+	 * @author Julian Bellendorf, René Ponto
 	 * 
 	 * Testcases:
 	 * 
@@ -251,7 +251,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -345,7 +345,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 *      				Can a not running PM get started if necessary?
 	 */	
 	
-	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16,	
+	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16	
 	// overAllocated at 19 totalProc, 13 mem
 	// underAllocated at 5 totalProc, 3 mem
 	// normal at 6 to 18 totalProc, 4 to 12 mem
@@ -373,7 +373,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelPM second = ffc.getBins().get(1);
 		ModelPM third = ffc.getBins().get(2);
 		
-		Timed.simulateUntilLastEvent();
+		Timed.simulateUntilLastEvent();		
 		
 		Assert.assertEquals("The first PM has not the right Resources, constotalproc", reqcores * reqProcessing, first.getTotalResources().getTotalProcessingPower(), 0);
 		Assert.assertEquals("The first PM has not the right Resources, consmem", reqmem, first.getTotalResources().getRequiredMemory(), 0);
@@ -416,7 +416,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The target PM is not correct",	second, target);
 	}
 	
-	// This test verifies the functionality for the migrateOverAllkocatedPM()-method
+	// This test verifies the functionality for the migrateOverAllocatedPM()-method
 	@Test(timeout = 100)
 	public void verifyMigrateOverAllocatedPM() throws Exception {
 		
@@ -432,9 +432,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The VM has the wrong memory", 8, firstVM.getResources().getRequiredMemory(), 0);
 		Assert.assertEquals("The VM has the wrong host", first, firstVM.gethostPM());
 		
-		Assert.assertNotEquals("The VM has a wrong ResourceVector", null , firstVM.getResources());
-		
-		ffc.migrateOverAllocatedPM(first);
+		ffc.optimize();
 		
 		
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
@@ -553,12 +551,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
 	
 	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously
+	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16
 	@Test(timeout = 100)
 	public void verifyFFAlgorithm() throws Exception {
 		
@@ -621,6 +620,25 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		
 		
+		Assert.assertEquals("The first PM has not the right amount of VMs running",
+				3, firstOverAllocated.getVMs().size());		
+		Assert.assertEquals("The second PM has not the right amount of VMs running", 
+				2, secondUnderAllocated.getVMs().size());		
+		Assert.assertEquals("The third PM has not the right amount of VMs running", 
+				1, thirdNormal.getVMs().size());		
+		Assert.assertEquals("The fourth PM has not the right amount of VMs running", 
+				1, fourthOverAllocated.getVMs().size());		
+		Assert.assertEquals("The fifth PM has not the right amount of VMs running", 
+				2, fifthUnderAllocated.getVMs().size());		
+		Assert.assertEquals("The sixth PM has not the right amount of VMs running", 
+				1, sixthNormal.getVMs().size());		
+		Assert.assertEquals("The seventh PM has not the right amount of VMs running", 
+				0, seventhUnderAllocated.getVMs().size());		
+		Assert.assertEquals("The eighth PM has not the right amount of VMs running", 
+				0, eighthUnderAllocated.getVMs().size());
+		
+		
+		
 		Assert.assertEquals("The first VM has not the right host PM after optimization", 
 				secondUnderAllocated, firstVM.gethostPM());
 		Assert.assertEquals("The second VM has not the right host PM after optimization", 
@@ -659,7 +677,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		ModelPM empty= ffc.getBins().get(3);
 		
-		ffc.shutEmptyPMsDown();
+		ffc.optimize();
 		
 		Assert.assertEquals("The empty PM is not shut down", State.EMPTY_OFF, empty.getState());
 	}
@@ -682,7 +700,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.bigConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25);
+		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
