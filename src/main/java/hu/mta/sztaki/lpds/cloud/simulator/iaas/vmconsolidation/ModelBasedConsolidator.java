@@ -48,10 +48,6 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	 * 
 	 * @param parent
 	 * 			The used IaaSService
-	 * @param upperThreshold
-	 * 			The desired value for the upper threshold
-	 * @param lowerThreshold
-	 * 			The desired value for the lower threshold
 	 * @throws Exception
 	 */
 	public ModelBasedConsolidator(IaaSService parent, long consFreq) throws Exception {

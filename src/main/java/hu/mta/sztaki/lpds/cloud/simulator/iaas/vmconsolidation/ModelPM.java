@@ -3,6 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 /**
  * @author Julian Bellendorf, René Ponto
  *
@@ -18,11 +19,8 @@ public class ModelPM {
 	private ArrayList <ModelVM> vmList = new ArrayList <ModelVM>();
 	private int number;
 	
-	private ResourceVector totalResources;
+	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	
-	private double upperThreshold;
-	private double lowerThreshold;
 	
 	private State state;
 	
@@ -44,10 +42,6 @@ public class ModelPM {
 	 * 			The memory of this PM.
 	 * @param number
 	 * 			The number of the PM in its IaaS, used for debugging.
-	 * @param up 
-	 * 			The upper threshold for checking the allocation.
-	 * @param low 
-	 * 			The lower threshold for checking the allocation.
 	 */
 	public ModelPM(PhysicalMachine pm, ArrayList <ModelVM> vm, double cores, double pCP, long mem, int number) {
 		
@@ -66,21 +60,48 @@ public class ModelPM {
 			}
 		}
 		
-		totalResources = new ResourceVector(cores, pCP, mem);
+		totalResources = new ConstantConstraints(cores, pCP, mem);
 		consumedResources = new ResourceVector(0, 0, 0);
 	}
 	
-	public void setThreshold(double up, double low) {
-		this.upperThreshold = up;
-		this.lowerThreshold = low;
+	/**
+	 * Checks if the PM is in a state where nothing has to be changed.
+	 * @return
+	 * 			True if the State is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED
+	 */
+	public boolean nothingIsToChange() {
+		
+		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
 	}
 	
-	public double getUpperThreshold() {
-		return this.upperThreshold;
+	/**
+	 * Checks if the PM is UnderAllocated and shall be migrated.
+	 * @return
+	 * 			True if the State is UNDERALLOCATED_RUNNING or STILL_UNDERALLOCATED
+	 */
+	public boolean isUnderAllocatedChangeable() {
+		if(getState() == State.UNDERALLOCATED_RUNNING || getState() == State.STILL_UNDERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
 	}
 	
-	public double getLowerThreshold() {
-		return this.lowerThreshold;
+	/**
+	 * Checks if the PM is OverAllocated and shall be migrated.
+	 * @return
+	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
+	 */
+	public boolean isOverAllocatedChangeable() {
+		if(getState() ==  State.OVERALLOCATED_RUNNING || getState() == State.STILL_OVERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
 	}
 	
 	/**
@@ -205,7 +226,7 @@ public class ModelPM {
 	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
 	 */
 	
-	public ResourceVector getTotalResources() {
+	public ConstantConstraints getTotalResources() {
 		return this.totalResources;
 	}
 	
@@ -349,7 +370,7 @@ public class ModelPM {
 	 */	
 	private boolean isOverAllocated() {
 		
-		if(consumedResources.compareToOverAllocated(totalResources, upperThreshold)) {
+		if(consumedResources.compareToOverAllocated(totalResources)) {
 			return true;
 		}
 		else
@@ -362,7 +383,7 @@ public class ModelPM {
 	 */	
 	private boolean isUnderAllocated() {
 		
-		if(consumedResources.compareToUnderAllocated(totalResources, lowerThreshold)) {
+		if(consumedResources.compareToUnderAllocated(totalResources)) {
 			return true;
 		}
 		else

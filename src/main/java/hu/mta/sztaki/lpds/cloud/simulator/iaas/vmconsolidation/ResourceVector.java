@@ -14,6 +14,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 public class ResourceVector extends AlterableResourceConstraints {	
 	
+	private double upperThreshold;
+	private double lowerThreshold;
+	
 	/**
 	 * The constructor for a ResourceVector. This class represents the cores, perCoreProcessingPower
 	 * and the memory for either a PM or a VM.
@@ -28,6 +31,20 @@ public class ResourceVector extends AlterableResourceConstraints {
 	}
 	
 	
+	public void setThreshold(double up, double low) {
+		this.upperThreshold = up;
+		this.lowerThreshold = low;
+	}
+	
+	public double getUpperThreshold() {
+		return this.upperThreshold;
+	}
+	
+	public double getLowerThreshold() {
+		return this.lowerThreshold;
+	}
+	
+	
 	/**
 	 * Comparison for checking if the PM is overAllocated.
 	 * @param total
@@ -36,9 +53,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The defined threshold
 	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverAllocated(ResourceConstraints total, double upperThreshold) {	
+	public boolean compareToOverAllocated(ResourceConstraints total) {	
 		
-		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 || this.getRequiredMemory() > total.getRequiredMemory() * 0.75) {
+		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 /* * upperThreshold */ || this.getRequiredMemory() > total.getRequiredMemory() * 0.75 /* * upperThreshold */ ) {
 			return true;
 		}
 		else
@@ -53,9 +70,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The defined threshold
 	 * @return true if the pm is underAllocated.
 	 */
-	public boolean compareToUnderAllocated(ResourceConstraints total, double lowerThreshold) {
+	public boolean compareToUnderAllocated(ResourceConstraints total) {
 		
-		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 && this.getRequiredMemory() < total.getRequiredMemory() * 0.25) {
+		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 /* * lowerThreshold */ && this.getRequiredMemory() < total.getRequiredMemory() * 0.25 /* * lowerThreshold */ ) {
 			return true;
 		}
 		else

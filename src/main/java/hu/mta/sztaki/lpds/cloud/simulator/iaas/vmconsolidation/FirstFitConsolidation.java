@@ -26,8 +26,11 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	int count = 1;	// Counter for the graph actions
 	
 	/**
-	 * The constructor for the First-Fit-Consolidator. It uses the PM-ArrayList out of the
-	 * superclass Consolidator.
+	 * The constructor for the First-Fit-Consolidator. This class uses the methods out of the superclass, for example
+	 * instantiate() is used to create the ModelPMs and ModelVMs, createGraph() ist used to get a graph with nodes which has got
+	 * the information, what shall be done in which order inside the simulator for migration and starting / shut down PMs, and
+	 * performActions() does the changes based on the graph.
+	 * 
 	 * @param parent
 	 * 			The IaaSService of the superclass Consolidator.
 	 */
@@ -35,7 +38,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold, long consFreq) throws Exception {
 		super(parent, consFreq);
 		for(int i = 0; i < bins.size(); i++) {
-			bins.get(i).setThreshold(upperThreshold, lowerThreshold);
+			bins.get(i).getConsumedResources().setThreshold(upperThreshold, lowerThreshold);
 		}
 	}	
 	
@@ -65,14 +68,12 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		
 		while(isOverAllocated() || isUnderAllocated()) {
 			for(ModelPM pm : this.getBins()) {
-				State state = pm.getState();
 				
-				if(state == State.NORMAL_RUNNING || state == State.UNCHANGEABLE_OVERALLOCATED || state == State.UNCHANGEABLE_UNDERALLOCATED) {
+				if(pm.nothingIsToChange()) {
 					
 				}
-				else {
-					
-					if(state == State.UNDERALLOCATED_RUNNING || state == State.STILL_UNDERALLOCATED) {
+				else {					
+					if(pm.isUnderAllocatedChangeable()) {
 						
 						if(pm.isHostingVMs() != true) {
 							pm.changeState(State.EMPTY_RUNNING);
@@ -82,7 +83,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 						}
 					}
 					else {
-						if(state ==  State.OVERALLOCATED_RUNNING || state == State.STILL_OVERALLOCATED) {
+						if(pm.isOverAllocatedChangeable()) {
 							migrateOverAllocatedPM(pm);
 						}
 					}
@@ -100,9 +101,9 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		
 		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down
 		
-		super.createGraph(getActions());		//creates the graph with all previously done actions
+		createGraph(getActions());		//creates the graph with all previously done actions
 		try {
-			super.performActions();				//do the changes inside the simulator
+			performActions();				//do the changes inside the simulator
 		} catch (VMManagementException e) {
 			e.printStackTrace();
 		} catch (NetworkException e) {
@@ -237,7 +238,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * PMs do not have any VMs hosted and then this method shut them down. A node is created
 	 * to add this information to the graph.
 	 */
-	public void shutEmptyPMsDown() {
+	private void shutEmptyPMsDown() {
 		
 		for(int i = 0; i < bins.size(); i++) {
 			if(!bins.get(i).isHostingVMs() && bins.get(i).getState() != State.EMPTY_OFF) {
@@ -250,11 +251,11 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	/** 
 	 * Method for migrating overAllocated PMs.
 	 */
-	public void migrateOverAllocatedPM(ModelPM source) {
+	private void migrateOverAllocatedPM(ModelPM source) {
 		
 		State state = source.getState();
 		
-		while(state.equals(State.OVERALLOCATED_RUNNING) || state.equals(State.STILL_OVERALLOCATED)) {
+		while(source.isOverAllocatedChangeable()) {
 			if(source.getVMs().isEmpty()) {
 				source.checkAllocation();
 				return;
@@ -286,7 +287,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	/** 
 	 * Method for migrating underAllocated PMs.
 	 */	
-	public void migrateUnderAllocatedPM(ModelPM source) {
+	private void migrateUnderAllocatedPM(ModelPM source) {
 		
 		int i = 0;	
 		State state = source.getState();
@@ -337,6 +338,51 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}			
 			state = source.getState();		//set the actual State
 		}
+		
+		/*		
+		int x = 0;		//variable for getting VM
+		
+		State state = source.getState();
+		
+		while(source.isUnderAllocatedChangeable()) {
+			if(source.getVMs().isEmpty()) {
+				source.checkAllocation();
+				return;
+			}
+			ArrayList <Action> migrationActions = new ArrayList <Action>();		//save all actions in this list before 
+			ArrayList <ModelPM> migPMs = new ArrayList <ModelPM>();
+			
+			if(migrationActions.size() == source.getVMs().size()) {
+				for(int i = 0; i < migrationActions.size(); i++) {
+					source.migrateVM(source.getVM(i), migPMs.get(i));
+					actions.add(migrationActions.get(i)); 	//give the information to the graph
+				}
+				return;
+			}
+			
+			ModelVM actual = source.getVM(x);	//now taking the next VM on this PM and try to migrate it to a target			
+			ModelPM pm = getMigPm(actual); 
+			
+			if(pm != null) {
+				migPMs.add(pm);
+				migrationActions.add(new MigrationAction(count++, source, pm, actual));
+				x++;
+			}
+			else {				
+				if(migrationActions.isEmpty()) {
+					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
+						source.changeState(State.STILL_UNDERALLOCATED);
+						return; // no migration possible and no one has been done previously
+					}
+					else if(state.equals(State.STILL_UNDERALLOCATED)) {
+						source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
+						return; // no migration possible and no one has been done previously, second try
+					}
+				}	
+			}				
+			state = source.getState();		//set the actual State
+		}
+		*/
 	}
 	/*
 	@Override
