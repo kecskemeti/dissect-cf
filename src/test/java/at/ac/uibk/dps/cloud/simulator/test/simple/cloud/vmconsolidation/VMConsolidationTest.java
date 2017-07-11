@@ -14,11 +14,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.EmptyScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidation;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MigrationAction;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelVM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ShutDownAction;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
@@ -55,6 +57,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * Creation of all necassary objects and variables
 	 */
 	
+	double upperThreshold = 0.75d;
+	double lowerThreshold = 0.75d;
+	
+	
 	IaaSService basic;
 	FirstFitConsolidation ffc;
 	PhysicalMachine testOverPM1;
@@ -79,10 +85,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	//The different ResourceConstraints to get an other allocation for each PM
 	
-	final ResourceConstraints smallConstraints = new ConstantConstraints(1, 1, 2);
-	
-	final ResourceConstraints mediumConstraints = new ConstantConstraints(3, 1, 6);
-	
+	final ResourceConstraints smallConstraints = new ConstantConstraints(1, 1, 2);	
+	final ResourceConstraints mediumConstraints = new ConstantConstraints(3, 1, 6);	
 	final ResourceConstraints bigConstraints = new ConstantConstraints(5, 1, 8);
 	
 	/**
@@ -92,7 +96,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Before
 	public void testSim() throws Exception {
 		basic = new IaaSService(NonQueueingScheduler.class,
-				EmptyScheduler.class);
+				OnOffScheduler.class);
 		
 		latmap.put("test1", 1);
 		
@@ -251,7 +255,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
+		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -298,8 +302,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	// This test verifies that all resources of each VM are correct
 	@Test(timeout = 100)
 	public void checkVMresources() throws Exception {
-		
-		
 		
 		createAbstractModel();
 		
@@ -432,11 +434,33 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The VM has the wrong memory", 8, firstVM.getResources().getRequiredMemory(), 0);
 		Assert.assertEquals("The VM has the wrong host", first, firstVM.gethostPM());
 		
-		ffc.optimize();
-		
+		ffc.optimize();		
 		
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The first VM has not the right host", second ,firstVM.gethostPM());
+	}
+	
+	// This test verifies the functionality for the migrateUnderAllocatedPM()-method
+	@Test(timeout = 100)
+	public void verifyMigrateUnderAllocatedPM() throws Exception {
+			
+		createComplexAbstractModel();
+			
+		ModelPM seventh = ffc.getBins().get(6);
+		ModelPM first = ffc.getBins().get(0);
+			
+		ModelVM ninthVM = seventh.getVM(0);
+			
+		Assert.assertEquals("The VM has the wrong CPUs", 1, ninthVM.getResources().getRequiredCPUs(), 0);
+		Assert.assertEquals("The VM has the wrong perCoreProcessingPower", 1, ninthVM.getResources().getRequiredProcessingPower(), 0);
+		Assert.assertEquals("The VM has the wrong memory", 2, ninthVM.getResources().getRequiredMemory(), 0);
+		Assert.assertEquals("The VM has the wrong host", seventh, ninthVM.gethostPM());
+			
+		ffc.optimize();			
+		
+		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
+		Assert.assertEquals("The seventh PM has not the right State after migration",	ModelPM.State.EMPTY_OFF, seventh.getState());
+		Assert.assertEquals("The ninth VM has not the right host", first ,ninthVM.gethostPM());
 	}
 	
 	// This test verifies the functionality of the optimize()-method	
@@ -551,7 +575,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
+		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -700,7 +724,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.bigConstraints, testUnderPM2, true);
 		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 		
-		ffc = new FirstFitConsolidation(basic, 0.75, 0.25, 0);
+		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
 		
 		Timed.simulateUntilLastEvent();
 	}
@@ -734,32 +758,144 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	// This test verifies, that every node can be constructed	
 	@Test(timeout = 100)
-	public void checkNodes() {
+	public void checkNodes() throws Exception {
+		Timed.simulateUntilLastEvent();
+			
+		this.createComplexAbstractModel();
+			
+		ModelPM firstOverAllocated = ffc.getBins().get(0);
+		ModelPM secondUnderAllocated = ffc.getBins().get(1);
+		ModelPM thirdNormal = ffc.getBins().get(2);
+		ModelPM fourthOverAllocated = ffc.getBins().get(3);
+		ModelPM fifthUnderAllocated = ffc.getBins().get(4);
+		ModelPM sixthNormal = ffc.getBins().get(5);
+		ModelPM seventhUnderAllocated = ffc.getBins().get(6);
+		ModelPM eighthUnderAllocated = ffc.getBins().get(7);
+			
+		ModelVM firstVM = firstOverAllocated.getVM(0);
+		ModelVM secondVM = firstOverAllocated.getVM(1);
+		ModelVM thirdVM = secondUnderAllocated.getVM(0);
+		ModelVM fourthVM = thirdNormal.getVM(0);
+		ModelVM fifthVM = fourthOverAllocated.getVM(0);
+		ModelVM sixthVM = fourthOverAllocated.getVM(1);
+		ModelVM seventhVM = fifthUnderAllocated.getVM(0);
+		ModelVM eighthVM = sixthNormal.getVM(0);
+		ModelVM ninthVM = seventhUnderAllocated.getVM(0);
+		ModelVM tenthVM = eighthUnderAllocated.getVM(0);
+			
+		ffc.optimize();
 		
-	}
-	
-	// This test verifies the observance of a given order 	
-	@Test(timeout = 100)
-	public void verfiyOrder() {
+		Assert.assertEquals("The ArrayList actions does not contain the correct number of Actions", 6, ffc.getActions().size());
+			
+		Assert.assertEquals("The ArrayList actions does not contain the first Action", firstOverAllocated, ((MigrationAction) ffc.getActions().get(0)).getSource());
+		Assert.assertEquals("The ArrayList actions does not contain the first Action", secondUnderAllocated, ((MigrationAction) ffc.getActions().get(0)).getTarget());
+		Assert.assertEquals("The ArrayList actions does not contain the first Action", firstVM, ((MigrationAction) ffc.getActions().get(0)).getItemVM());
 		
-	}
-	
-	// This test verifies the correct creation of the graph out of the FirstFitConsolidation	
-	@Test(timeout = 100)
-	public void verifyGraphCreation() {
-		
-	}
-	
-	// This test verfies the functionality of the graph-functions	
-	@Test(timeout = 100)
-	public void checkGraphFunctions() {
-		
-	}
+		Assert.assertEquals("The ArrayList actions does not contain the second Action", fourthOverAllocated, ((MigrationAction) ffc.getActions().get(1)).getSource());
+		Assert.assertEquals("The ArrayList actions does not contain the second Action", fifthUnderAllocated, ((MigrationAction) ffc.getActions().get(1)).getTarget());
+		Assert.assertEquals("The ArrayList actions does not contain the second Action", fifthVM, ((MigrationAction) ffc.getActions().get(1)).getItemVM());
+			
+		Assert.assertEquals("The ArrayList actions does not contain the third Action", seventhUnderAllocated, ((MigrationAction) ffc.getActions().get(2)).getSource());
+		Assert.assertEquals("The ArrayList actions does not contain the third Action", firstOverAllocated, ((MigrationAction) ffc.getActions().get(2)).getTarget());
+		Assert.assertEquals("The ArrayList actions does not contain the third Action", ninthVM, ((MigrationAction) ffc.getActions().get(2)).getItemVM());
+			
+		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", eighthUnderAllocated, ((MigrationAction) ffc.getActions().get(3)).getSource());
+		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", firstOverAllocated, ((MigrationAction) ffc.getActions().get(3)).getTarget());
+		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", tenthVM, ((MigrationAction) ffc.getActions().get(3)).getItemVM());
+			
+		Assert.assertEquals("The ArrayList actions does not contain the fifth Action", seventhUnderAllocated, ((ShutDownAction) ffc.getActions().get(4)).getshutdownpm());
+			
+		Assert.assertEquals("The ArrayList actions does not contain the sixth Action", eighthUnderAllocated, ((ShutDownAction) ffc.getActions().get(5)).getshutdownpm());
+			
+		Assert.assertEquals("The first Action does not have the correct number of previous nodes",0,ffc.getActions().get(0).getPrevious().size());
+		Assert.assertEquals("The second Action does not have the correct number of previous nodes",0,ffc.getActions().get(1).getPrevious().size());
+		Assert.assertEquals("The third Action does not have the correct number of previous nodes",0,ffc.getActions().get(2).getPrevious().size());
+		Assert.assertEquals("The fourth Action does not have the correct number of previous nodes",0,ffc.getActions().get(3).getPrevious().size());
+		Assert.assertEquals("The fifth Action does not have the correct number of previous nodes",1,ffc.getActions().get(4).getPrevious().size());
+		Assert.assertEquals("The sixth Action does not have the correct number of previous nodes",1,ffc.getActions().get(5).getPrevious().size());
+			
+		Assert.assertEquals("The fifth Action does not have the correct previous node",ffc.getActions().get(2),ffc.getActions().get(4).getPrevious().get(0));
+		Assert.assertEquals("The sixth Action does not have the correct previous node",ffc.getActions().get(3),ffc.getActions().get(5).getPrevious().get(0));
+
+	}	
 	
 	// This test verifies everything together, which means, that out of a given situation every previous step is taken and
 	// at the end the necassary changes are made inside the simulator	
 	@Test(timeout = 100)
-	public void verifyFullFunctionality() {
+	public void verifyFullFunctionality() throws Exception {
+		Timed.simulateUntilLastEvent();
+		
+		createAbstractModel();
+		
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM second = ffc.getBins().get(1);
+		ModelPM third = ffc.getBins().get(2);
+		
+		ModelVM firstVM = first.getVM(0);
+		ModelVM secondVM = first.getVM(1);
+		ModelVM thirdVM = second.getVM(0);
+		ModelVM fourthVM = third.getVM(0);
+		
+	//	ffc.optimize();
+		
+		Timed.simulateUntilLastEvent();
+		
+		Assert.assertEquals("Did not switch on all machines as expected",
+				3, basic.runningMachines.size());
+		
+		Assert.assertEquals(8, first.getConsumedResources().getTotalProcessingPower(), 0);
+		Assert.assertEquals(14, first.getConsumedResources().getRequiredMemory(), 0);
+		
+		Assert.assertEquals(24, first.getPM().getCapacities().getTotalProcessingPower(), 0);
+		Assert.assertEquals(16, first.getPM().getCapacities().getRequiredMemory(), 0);
+		
+		Assert.assertEquals(16, first.getPM().availableCapacities.getTotalProcessingPower(), 0);
+		Assert.assertEquals(2, first.getPM().availableCapacities.getRequiredMemory(), 0);
+		
+		Assert.assertEquals(5, firstVM.getVM().getResourceAllocation().allocated.getTotalProcessingPower(), 0);
+		Assert.assertEquals(8, firstVM.getVM().getResourceAllocation().allocated.getRequiredMemory(), 0);
+		
+		Assert.assertEquals(23, second.getPM().availableCapacities.getTotalProcessingPower(), 0);
+		Assert.assertEquals(14, second.getPM().availableCapacities.getRequiredMemory(), 0);
+		
+		Assert.assertNotNull(first);
+		Assert.assertNotNull(firstVM);
+		Assert.assertNotNull(second);
+		Assert.assertFalse(second.getPM().listVMs().contains(firstVM.getVM()));
+		Assert.assertTrue(first.getPM().listVMs().contains(firstVM.getVM()));
+		
+		first.getPM().migrateVM(firstVM.getVM(), second.getPM());
+		Timed.simulateUntilLastEvent();
+		
+		Assert.assertEquals(VirtualMachine.State.RUNNING, firstVM.getVM().getState());
+		
+		
+		
+	//	ResourceAllocation alloc = null;
+	//	alloc = second.getPM().allocateResources(firstVM.getVM().getResourceAllocation().allocated, true,
+	//			PhysicalMachine.migrationAllocLen * 100);
+	//	firstVM.getVM().migrate(alloc);
+		
+	//	Assert.assertEquals(VirtualMachine.State.RUNNING, firstVM.getVM().getState());
+		
+		Timed.simulateUntilLastEvent();
+	//	Assert.assertEquals(8, first.getPM().availableCapacities.getRequiredCPUs(), 0);
+	//	Assert.assertEquals(5, first.getPM().availableCapacities.getRequiredProcessingPower(), 0);
+	//	Assert.assertEquals(16, first.getPM().availableCapacities.getRequiredMemory(), 0);
+		
+	//	Assert.assertEquals(7.8, second.getPM().availableCapacities.getRequiredCPUs(), 0);
+	//	Assert.assertEquals(5, second.getPM().availableCapacities.getRequiredProcessingPower(), 0);
+	//	Assert.assertEquals(14, second.getPM().availableCapacities.getRequiredMemory(), 0);
+		Assert.assertEquals("gbfgb", VirtualMachine.State.MIGRATING, firstVM.getVM().getState());
+		
+		//Timed.simulateUntilLastEvent();
+		
+		Assert.assertEquals("Did not switch on all machines as expected",
+				0, first.getPM().listVMs().size());
+		
+		Assert.assertEquals("Did not switch on all machines as expected",
+				2, second.getPM().listVMs().size());
+		
 		
 	}
 }
