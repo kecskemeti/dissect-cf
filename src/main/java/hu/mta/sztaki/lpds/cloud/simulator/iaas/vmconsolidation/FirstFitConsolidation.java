@@ -35,7 +35,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 			The IaaSService of the superclass Consolidator.
 	 */
 	
-	public FirstFitConsolidation(IaaSService parent, double upperThreshold, double lowerThreshold, long consFreq) throws Exception {
+	public FirstFitConsolidation(IaaSService parent, final double upperThreshold, final double lowerThreshold, long consFreq) throws Exception {
 		super(parent, consFreq);
 		for(int i = 0; i < bins.size(); i++) {
 			bins.get(i).getConsumedResources().setThreshold(upperThreshold, lowerThreshold);
@@ -287,77 +287,15 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 			The source PM which host the VMs to migrate.
 	 */	
 	private void migrateUnderAllocatedPM(ModelPM source) {
-		
-		int i = 0;	
+						
+		int x = 0;		//variable for getting VM		
 		State state = source.getState();
 		
-		while(state.equals(State.UNDERALLOCATED_RUNNING) || state.equals(State.STILL_UNDERALLOCATED)) {
-			if(source.getVMs().isEmpty()) {
-				source.checkAllocation();
-				return;
-			}
-			ArrayList <ModelVM> migVMs = new ArrayList <ModelVM>();
-			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target			
-			ModelPM pm = getMigPm(actual); 
-			
-			if(pm != null) {				
-				migVMs.add(actual);
-				i++;
-				actual.gethostPM().migrateVM(actual, pm);
-				actions.add(new MigrationAction(count++, source, pm, actual)); 	//give the information to the graph
-			}
-			else {
-				if(migVMs.isEmpty()) {
-					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
-						source.changeState(State.STILL_UNDERALLOCATED);
-						return; // no migration possible and no one has been done previously
-					}
-					else if(state.equals(State.STILL_UNDERALLOCATED)) {
-						source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
-						return; // no migration possible and no one has been done previously, second try
-					}
-				}
-				else {
-					for(int x = i ; x > 0; x--) {
-						
-						ModelVM demig = migVMs.get(x);
-						demig.gethostPM().migrateVM(demig, source);
-						
-						//ToDo : knoten vom migrieren entfernen
-						
-						if(state.equals(State.UNDERALLOCATED_RUNNING)) {
-							source.changeState(State.STILL_UNDERALLOCATED);
-						}
-						else {
-							source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
-						}
-					}
-				}
-			}			
-			state = source.getState();		//set the actual State
-		}
+		ArrayList <Action> migrationActions = new ArrayList <Action>();		//save all actions in this list before 
+		ArrayList <ModelPM> migPMs = new ArrayList <ModelPM>();
 		
-		/*		
-		int x = 0;		//variable for getting VM
-		
-		State state = source.getState();
-		
-		while(source.isUnderAllocatedChangeable()) {
-			if(source.getVMs().isEmpty()) {
-				source.checkAllocation();
-				return;
-			}
-			ArrayList <Action> migrationActions = new ArrayList <Action>();		//save all actions in this list before 
-			ArrayList <ModelPM> migPMs = new ArrayList <ModelPM>();
-			
-			if(migrationActions.size() == source.getVMs().size()) {
-				for(int i = 0; i < migrationActions.size(); i++) {
-					source.migrateVM(source.getVM(i), migPMs.get(i));
-					actions.add(migrationActions.get(i)); 	//give the information to the graph
-				}
-				return;
-			}
-			
+		for(int j = 0; j < source.getVMs().size(); j++){
+						
 			ModelVM actual = source.getVM(x);	//now taking the next VM on this PM and try to migrate it to a target			
 			ModelPM pm = getMigPm(actual); 
 			
@@ -380,7 +318,12 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			}				
 			state = source.getState();		//set the actual State
 		}
-		*/
+		
+		for(int i = 0; i < migrationActions.size(); i++) {
+			source.migrateVM(source.getVM(i), migPMs.get(i));
+			actions.add(migrationActions.get(i)); 	//give the information to the graph
+		}
+		
 	}
 	/*
 	@Override

@@ -24,16 +24,17 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * @param cores
 	 * @param perCoreProcessing
 	 * @param memory
-	 */
-	
+	 */	
 	public ResourceVector(double cores, double perCoreProcessing, long memory) {
 		super(cores, perCoreProcessing, memory);
 	}
 	
 	/**
-	 * 
+	 * Setter for the thresholds, called in FirstFitConsolidation
 	 * @param up
+	 * 			The value for the upperThreshold.
 	 * @param low
+	 * 			The value for the lowerThreshold.
 	 */
 	public void setThreshold(double up, double low) {
 		this.upperThreshold = up;
@@ -41,16 +42,14 @@ public class ResourceVector extends AlterableResourceConstraints {
 	}
 	
 	/**
-	 * @return
-	 * 			The upper threshold for checking if a PM is overAllocated.
+	 * @return The upper threshold for checking if a PM is overAllocated.
 	 */
 	public double getUpperThreshold() {
 		return this.upperThreshold;
 	}
 	
 	/**
-	 * @return
-	 * 			The lower threshold for checking if a PM is underAllocated.
+	 * @return The lower threshold for checking if a PM is underAllocated.
 	 */
 	public double getLowerThreshold() {
 		return this.lowerThreshold;

@@ -391,7 +391,11 @@ public class ModelPM {
 	 * @return The VM on this position.
 	 */	
 	public ModelVM getVM(int position) {
-		return getVMs().get(position);
+		if(getVMs().size() <= position) {
+			return null;
+		}
+		else
+			return getVMs().get(position);
 	}
 	
 	/**
