@@ -57,8 +57,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * Creation of all necassary objects and variables
 	 */
 	
-	double upperThreshold = 0.75d;
-	double lowerThreshold = 0.75d;
+	final double upperThreshold = 0.75;
+	final double lowerThreshold = 0.75;
 	
 	
 	IaaSService basic;
@@ -364,6 +364,21 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	//switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
 	//switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
 	
+	// This test verifies the correct threshold is used
+	@Test(timeout = 100)
+	public void checkThresholds() throws Exception {
+		
+		createAbstractModel();
+		
+		ModelPM first = ffc.getBins().get(0);
+		ModelPM last = ffc.getBins().get(2);
+		
+		Assert.assertEquals("The first PM has not the right upperThreshold", upperThreshold, first.getConsumedResources().getUpperThreshold(), 0);
+		Assert.assertEquals("The first PM has not the right lowerThreshold", lowerThreshold, first.getConsumedResources().getLowerThreshold(), 0);
+		
+		Assert.assertEquals("The third PM has not the right upperThreshold", upperThreshold, last.getConsumedResources().getUpperThreshold(), 0);
+		Assert.assertEquals("The third PM has not the right lowerThreshold", lowerThreshold, last.getConsumedResources().getLowerThreshold(), 0);
+	}
 	
 	// This test verifies the correct allocation of each PM	
 	@Test(timeout = 100)
