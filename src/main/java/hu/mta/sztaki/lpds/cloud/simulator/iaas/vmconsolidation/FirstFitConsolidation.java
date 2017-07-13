@@ -3,6 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -24,21 +25,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 public class FirstFitConsolidation extends ModelBasedConsolidator {
 	
 	int count = 1;	// Counter for the graph actions
-	
+
 	/**
 	 * The constructor for the First-Fit-Consolidator. This class uses the methods out of the superclass, for example
-	 * instantiate() is used to create the ModelPMs and ModelVMs, createGraph() ist used to get a graph with nodes which has got
+	 * instantiate() is used to create the ModelPMs and ModelVMs, createGraph() is used to get a graph with nodes which has got
 	 * the information, what shall be done in which order inside the simulator for migration and starting / shut down PMs, and
 	 * performActions() does the changes based on the graph.
 	 * 
 	 * @param parent
 	 * 			The IaaSService of the superclass Consolidator.
 	 */
-	
 	public FirstFitConsolidation(IaaSService parent, final double upperThreshold, final double lowerThreshold, long consFreq) throws Exception {
 		super(parent, consFreq);
 		for(int i = 0; i < bins.size(); i++) {
-			bins.get(i).getConsumedResources().setThreshold(upperThreshold, lowerThreshold);
+			bins.get(i).setLowerThreshold(lowerThreshold);
+			bins.get(i).setUpperThreshold(upperThreshold);
 		}
 	}	
 	
@@ -94,6 +95,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		
 		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down		
 		createGraph(getActions());		//creates the graph with all previously done actions
+		Logger.getGlobal().info("At end of optimization: "+toString());
 		try {
 			performActions();				//do the changes inside the simulator
 		} catch (VMManagementException e) {
@@ -145,12 +147,13 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 		   starts a new PM if there is no running VM with the needed resources.
 	 */
 	public ModelPM getMigPm(ModelVM vm) {
-		
+		Logger.getGlobal().info("vm="+vm.toString());
 		ModelVM toMig = vm;
 		
 		//now we have to search for a fitting pm
 		for(int i = 0; i < bins.size(); i++) {		
 			ModelPM actualPM = getBins().get(i);
+			Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			if(actualPM == toMig.gethostPM() 
 					|| actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERALLOCATED_RUNNING) 
@@ -167,6 +170,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM		
 		for(int j = 0; j < bins.size(); j++) {
 			ModelPM actualPM = getBins().get(j);
+			Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			if(actualPM != vm.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING) 
 					|| actualPM.getState().equals(State.EMPTY_OFF) ) {
 				
@@ -246,7 +250,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 			The source PM which host the VMs to migrate.
 	 */
 	private void migrateOverAllocatedPM(ModelPM source) {
-		
+		Logger.getGlobal().info("source="+source.toString());
 		State state = source.getState();
 		
 		while(source.isOverAllocatedChangeable()) {

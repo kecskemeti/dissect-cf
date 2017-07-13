@@ -1,8 +1,11 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -42,8 +45,8 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	ArrayList <Action> actions = new ArrayList<Action>();
 	
 	/**
-	 * The abstract constructorfor VM-consolidation. It expects an IaaSService and the two thresholds for
-	 * defining the borders for consolidation which both are betwenn 0 and 1 (of course the upperThreshold has
+	 * The abstract constructor for VM consolidation. It expects an IaaSService and the two thresholds for
+	 * defining the borders for consolidation which both are between 0 and 1 (of course the upperThreshold has
 	 * to be greater than the lowerThreshold).
 	 * 
 	 * @param parent
@@ -53,9 +56,18 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	public ModelBasedConsolidator(IaaSService parent, long consFreq) throws Exception {
 		this.consFreq = consFreq;
 		this.toConsolidate = parent;
+		Handler logFileHandler;
+		try {
+			logFileHandler = new FileHandler("log.txt");
+			logFileHandler.setFormatter(new SimpleFormatter());
+			Logger.getGlobal().addHandler(logFileHandler);
+		} catch (Exception e) {
+			System.out.println("Could not open log file for output"+e);
+			System.exit(-1);
+		}
 		this.instantiate();
 	}
-	
+
 	/**
 	 * This function will be called on all timed objects which asked for a
 	 * recurring event notification at a given time instance.
@@ -108,6 +120,7 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 			act.initializePM(items);
 			bins.add(act);
 		}
+		Logger.getGlobal().info("Instantiated model: "+toString());
 	}
 	
 	
@@ -161,7 +174,7 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 		}
 	}
 	
-	//if a migration is succesful, this action gets removed of every other node which
+	//if a migration is successful, this action gets removed of every other node which
 	//has this one as the previous element
 	@Override
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -220,6 +233,18 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 				e.printStackTrace();
 			}			
 		}		
+	}
+
+	public String toString() {
+		String result="";
+		boolean first=true;
+		for(ModelPM bin : bins) {
+			if(!first)
+				result=result+"\n";
+			result=result+bin.toString();
+			first=false;
+		}
+		return result;
 	}
 }
 

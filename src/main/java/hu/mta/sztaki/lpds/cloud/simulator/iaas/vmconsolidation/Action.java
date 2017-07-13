@@ -2,10 +2,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
-
 /*
  * abstract class for saving the actions done
  */

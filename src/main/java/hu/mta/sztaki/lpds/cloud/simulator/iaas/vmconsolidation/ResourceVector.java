@@ -14,9 +14,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 public class ResourceVector extends AlterableResourceConstraints {	
 	
-	private double upperThreshold;
-	private double lowerThreshold;
-	
 	/**
 	 * The constructor for a ResourceVector. This class represents the cores, perCoreProcessingPower
 	 * and the memory for either a PM or a VM.
@@ -28,48 +25,20 @@ public class ResourceVector extends AlterableResourceConstraints {
 	public ResourceVector(double cores, double perCoreProcessing, long memory) {
 		super(cores, perCoreProcessing, memory);
 	}
-	
-	/**
-	 * Setter for the thresholds, called in FirstFitConsolidation
-	 * @param up
-	 * 			The value for the upperThreshold.
-	 * @param low
-	 * 			The value for the lowerThreshold.
-	 */
-	public void setThreshold(double up, double low) {
-		this.upperThreshold = up;
-		this.lowerThreshold = low;
-	}
-	
-	/**
-	 * @return The upper threshold for checking if a PM is overAllocated.
-	 */
-	public double getUpperThreshold() {
-		return this.upperThreshold;
-	}
-	
-	/**
-	 * @return The lower threshold for checking if a PM is underAllocated.
-	 */
-	public double getLowerThreshold() {
-		return this.lowerThreshold;
-	}
-	
-	
+		
 	/**
 	 * Comparison for checking if the PM is overAllocated.
 	 * @param total
 	 * 			The total resources
 	 * @return true if the pm is overAllocated.
 	 */
-	public boolean compareToOverAllocated(ResourceConstraints total) {	
-		
-		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * 0.75 || this.getRequiredMemory() > total.getRequiredMemory() * 0.75) {
+	public boolean isOverAllocated(ResourceConstraints total, double upperThreshold) {	
+		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * upperThreshold || this.getRequiredMemory() > total.getRequiredMemory() * upperThreshold) {
 			return true;
 		}
 		else
 			return false;
-	}	
+	}
 	
 	/**
 	 * Comparison for checking if the PM is underAllocated.
@@ -77,17 +46,16 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * 			The total resources
 	 * @return true if the pm is underAllocated.
 	 */
-	public boolean compareToUnderAllocated(ResourceConstraints total) {
-		
-		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * 0.25 && this.getRequiredMemory() < total.getRequiredMemory() * 0.25) {
+	public boolean isUnderAllocated(ResourceConstraints total, double lowerThreshold) {
+		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * lowerThreshold && this.getRequiredMemory() < total.getRequiredMemory() * lowerThreshold) {
 			return true;
 		}
 		else
 			return false;
 	}
-	
+
 	/**
-	 * Compares the allocation of two ResourceVectors to verfify that the VM which calls this methods on its resources can be 
+	 * Compares the allocation of two ResourceVectors to verify that the VM which calls this methods on its resources can be 
 	 * added to the consumed resources of the PM in the parameter.
 	 * @param available
 	 * 			The second ResourceVector
@@ -101,5 +69,10 @@ public class ResourceVector extends AlterableResourceConstraints {
 		else {
 			return false;
 		}
+	}
+
+	public String toString() {
+		//return "["+getTotalProcessingPower()+","+getRequiredMemory()+"]";
+		return "["+getRequiredCPUs()+","+getRequiredProcessingPower()+","+getRequiredMemory()+"]";
 	}
 }

@@ -1,6 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
@@ -8,7 +9,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
  * @author Julian Bellendorf, René Ponto
  *
  * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
- * the total resources as ConstantConstraints, the avaiable resources as a ResourceVector and the possible
+ * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
  * States. The States are not the same as inside the simulator, because for migrating it is useful to
  * introduce some new States for the allocation of the given PM.
  */
@@ -18,14 +19,16 @@ public class ModelPM {
 	private PhysicalMachine pm; 
 	private ArrayList <ModelVM> vmList = new ArrayList <ModelVM>();
 	private int number;
-	
+
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	
+	private double lowerThreshold=0.25;
+	private double upperThreshold=0.75;
+
 	private State state;
-	
+
 	/**
-	 * This represents a Phsyical Machine of the simulator. It is abstract and inherits only the methods and properties
+	 * This represents a Physical Machine of the simulator. It is abstract and inherits only the methods and properties
 	 * which are necessary to do the consolidation inside this model.
 	 * The threshold is defined by the start of the consolidator and a percentage of the total resources. If the allocation is 
 	 * greater than the upper bound or less than the lower bound, the state of the PM switches to OVERALLOCATED or UNDERALLOCATED.
@@ -61,7 +64,8 @@ public class ModelPM {
 		}
 		
 		totalResources = new ConstantConstraints(cores, pCP, mem);
-		consumedResources = new ResourceVector(0, 0, 0);
+		consumedResources = new ResourceVector(0, pCP, 0);
+		Logger.getGlobal().info("Created PM: "+toString());
 	}
 	
 	/**
@@ -117,7 +121,9 @@ public class ModelPM {
 		checkAllocation();
 		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
 		available.subtract(consumedResources);
+		Logger.getGlobal().info("available: "+available.toString());
 		if(toAdd.getResources().canBeAdded(available)) {
+			Logger.getGlobal().info("canbeadded");
 
 			addVM(toAdd);
 			checkAllocation();
@@ -139,6 +145,7 @@ public class ModelPM {
 	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
 	 */	
 	public String toString() {
+		/*
 		String erg =  System.getProperty("line.separator") + "PM: " + number + System.getProperty("line.separator") + 
 				"Resources: TotalProcessingPower: " + this.consumedResources.getTotalProcessingPower() + 
 				", Memory: " + this.consumedResources.getRequiredMemory() + System.getProperty("line.separator") +
@@ -148,6 +155,12 @@ public class ModelPM {
 			erg = erg + getVM(i).toString() + System.getProperty("line.separator");
 		}
 		return erg ;
+		*/
+		String result="PM cap="+totalResources.toString()+", curr="+consumedResources.toString()+", VMs=";
+		for(ModelVM vm : vmList) {
+			result=result+" "+vm.getResources().toString();
+		}
+		return result;
 	}
 	
 	/**
@@ -364,7 +377,7 @@ public class ModelPM {
 	 */	
 	private boolean isOverAllocated() {
 		
-		if(consumedResources.compareToOverAllocated(totalResources)) {
+		if(consumedResources.isOverAllocated(totalResources,upperThreshold)) {
 			return true;
 		}
 		else
@@ -377,7 +390,7 @@ public class ModelPM {
 	 */	
 	private boolean isUnderAllocated() {
 		
-		if(consumedResources.compareToUnderAllocated(totalResources)) {
+		if(consumedResources.isUnderAllocated(totalResources,lowerThreshold)) {
 			return true;
 		}
 		else
@@ -420,5 +433,21 @@ public class ModelPM {
 				this.getVMs().remove(i);
 			}
 		}
+	}
+
+	public double getLowerThreshold() {
+		return lowerThreshold;
+	}
+
+	public void setLowerThreshold(double lowerThreshold) {
+		this.lowerThreshold = lowerThreshold;
+	}
+
+	public double getUpperThreshold() {
+		return upperThreshold;
+	}
+
+	public void setUpperThreshold(double upperThreshold) {
+		this.upperThreshold = upperThreshold;
 	}
 }
