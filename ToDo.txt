@@ -1,0 +1,47 @@
+Anmerkungen:
+
+Zweige zusammenführen - dringend
+Probleme im Test versuchen zu fixen - dringend
+PSO weiter implementieren
+
+@Julian:
+
+Action.java und Unterklassen:
+
+Bitte mit Kommentaren ergänzen
+
+Der Name createGraph ist etwas irreführend. Vielleicht eher determinePredecessors?
+
+Soweit es geht ist es im Allgemeinen besser, sich auf Interfaces zu beziehen und nicht auf konkrete 
+Implementierungen. Dies erleichtert spätere Anpassungen. So wäre es z.B. vermutlich ausreichend, 
+wenn getPrevious nur List<Action> und nicht ArrayList<Action> liefern würde. Ähnlicherweise sollte 
+createGraph nur List<Action> und nicht ArrayList<Action> als Argument bekommen.
+
+toString Methode wäre hilfreich.
+
+Auf Groß-/Kleinschreibung in Methodennamen achten (z.B. getshutdownpm).
+
+
+Consolidator.java:
+
+optimize sollte vermutlich eine abstrakte Methode sein, die keine Exceptions 
+wirft, dafür aber eine Liste von Actions zurückgibt. Der Kommentar vor optimize 
+sollte angepasst werden.
+
+In createGraph muss man bei einer ShutDownAction m.M.n. nichts machen, da darauf keine andere 
+Aktion warten kann (ist aber nicht schlimm, kann auch so bleiben).
+
+performActions wäre eleganter, wenn Action eine abstrakte Methode execute() hätte, die von den 
+einzelnen Unterklassen entsprechend implementiert wäre. Hier müsste man nur schauen, ob die Aktion 
+noch Vorgänger hat, und wenn nicht, könnte man die execute()-Methode aufrufen.
+
+Die stateChanged-Logik könnte deutlich vereinfacht und performanter gestaltet werden. Dazu braucht 
+man zwei Änderungen. Erstens solle im Graphen jede Kante in beide Richtungen gespeichert werden. 
+D.h. jede Aktion sollte nicht nur ihre Vorgänger sondern auch ihre Nachfolger kennen. Dadurch kann 
+man, wenn eine Aktion abgeschlossen wurde, ihre Nachfolger direkt darüber informieren. Zweitens wäre 
+es sinnvoll, wenn nicht der Consolidator alle stateChanged-Events abfangen würde, weil danach immer 
+gesucht werden muss, welche Aktion betroffen war. Stattdessen sollte die Aktion selbst die sie 
+betreffenden Events abfangen und direkt bearbeiten.
+
+Es fehlt noch die Logik, dass der Consolidator alle x Minuten aufgerufen wird und seine 
+entsprechenden Methoden abarbeitet. (Ist im Consolidator von Kecskemeti enthalten.)
