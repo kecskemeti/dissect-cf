@@ -851,66 +851,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelVM thirdVM = second.getVM(0);
 		ModelVM fourthVM = third.getVM(0);
 		
-	//	ffc.optimize();
-		
-		Timed.simulateUntilLastEvent();
-		
-		Assert.assertEquals("Did not switch on all machines as expected",
-				3, basic.runningMachines.size());
-		
-		Assert.assertEquals(8, first.getConsumedResources().getTotalProcessingPower(), 0);
-		Assert.assertEquals(14, first.getConsumedResources().getRequiredMemory(), 0);
-		
-		Assert.assertEquals(24, first.getPM().getCapacities().getTotalProcessingPower(), 0);
-		Assert.assertEquals(16, first.getPM().getCapacities().getRequiredMemory(), 0);
-		
-		Assert.assertEquals(16, first.getPM().availableCapacities.getTotalProcessingPower(), 0);
-		Assert.assertEquals(2, first.getPM().availableCapacities.getRequiredMemory(), 0);
-		
-		Assert.assertEquals(5, firstVM.getVM().getResourceAllocation().allocated.getTotalProcessingPower(), 0);
-		Assert.assertEquals(8, firstVM.getVM().getResourceAllocation().allocated.getRequiredMemory(), 0);
-		
-		Assert.assertEquals(23, second.getPM().availableCapacities.getTotalProcessingPower(), 0);
-		Assert.assertEquals(14, second.getPM().availableCapacities.getRequiredMemory(), 0);
-		
-		Assert.assertNotNull(first);
-		Assert.assertNotNull(firstVM);
-		Assert.assertNotNull(second);
-		Assert.assertFalse(second.getPM().listVMs().contains(firstVM.getVM()));
-		Assert.assertTrue(first.getPM().listVMs().contains(firstVM.getVM()));
-		
-		first.getPM().migrateVM(firstVM.getVM(), second.getPM());
-		Timed.simulateUntilLastEvent();
-		
-		Assert.assertEquals(VirtualMachine.State.RUNNING, firstVM.getVM().getState());
-		
-		
-		
-	//	ResourceAllocation alloc = null;
-	//	alloc = second.getPM().allocateResources(firstVM.getVM().getResourceAllocation().allocated, true,
-	//			PhysicalMachine.migrationAllocLen * 100);
-	//	firstVM.getVM().migrate(alloc);
-		
-	//	Assert.assertEquals(VirtualMachine.State.RUNNING, firstVM.getVM().getState());
-		
-		Timed.simulateUntilLastEvent();
-	//	Assert.assertEquals(8, first.getPM().availableCapacities.getRequiredCPUs(), 0);
-	//	Assert.assertEquals(5, first.getPM().availableCapacities.getRequiredProcessingPower(), 0);
-	//	Assert.assertEquals(16, first.getPM().availableCapacities.getRequiredMemory(), 0);
-		
-	//	Assert.assertEquals(7.8, second.getPM().availableCapacities.getRequiredCPUs(), 0);
-	//	Assert.assertEquals(5, second.getPM().availableCapacities.getRequiredProcessingPower(), 0);
-	//	Assert.assertEquals(14, second.getPM().availableCapacities.getRequiredMemory(), 0);
-		Assert.assertEquals("gbfgb", VirtualMachine.State.MIGRATING, firstVM.getVM().getState());
-		
-		//Timed.simulateUntilLastEvent();
-		
-		Assert.assertEquals("Did not switch on all machines as expected",
-				0, first.getPM().listVMs().size());
-		
-		Assert.assertEquals("Did not switch on all machines as expected",
-				2, second.getPM().listVMs().size());
-		
-		
+		ffc.optimize();
+
+		//todo: check functionality and placement of pms, vms and inside the simulator everything
 	}
 }
