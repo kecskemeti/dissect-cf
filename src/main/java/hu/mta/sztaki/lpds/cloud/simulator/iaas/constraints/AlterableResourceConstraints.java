@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2017, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -30,8 +31,10 @@ import java.util.List;
  * Provides an implementation of a resource constraints class that allows in
  * place alterations on its instances
  * 
- * @author 
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2017"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
  */
 public class AlterableResourceConstraints extends ResourceConstraints {
 	// data members to represent the state required for the standard RC calls
@@ -52,8 +55,7 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 * @param memory
 	 *            number of bytes
 	 */
-	public AlterableResourceConstraints(final double cpu,
-			final double processing, final long memory) {
+	public AlterableResourceConstraints(final double cpu, final double processing, final long memory) {
 		this(cpu, processing, false, memory);
 	}
 
@@ -75,8 +77,8 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 * @param memory
 	 *            number of bytes
 	 */
-	public AlterableResourceConstraints(final double cpu,
-			final double processing, boolean isMinimum, final long memory) {
+	public AlterableResourceConstraints(final double cpu, final double processing, boolean isMinimum,
+			final long memory) {
 		requiredCPUs = cpu;
 		requiredMemory = memory;
 		requiredProcessingPower = processing;
@@ -92,9 +94,8 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 *            the other resource constraints to copy
 	 */
 	public AlterableResourceConstraints(final ResourceConstraints toCopy) {
-		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(),
-				toCopy.isRequiredProcessingIsMinimum(), toCopy
-						.getRequiredMemory());
+		this(toCopy.getRequiredCPUs(), toCopy.getRequiredProcessingPower(), toCopy.isRequiredProcessingIsMinimum(),
+				toCopy.getRequiredMemory());
 	}
 
 	/**
@@ -132,10 +133,28 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 *            the other resource constraints object to be added to this one
 	 */
 	private void simpleAddition(final ResourceConstraints singleAdd) {
-		requiredCPUs += singleAdd.getRequiredCPUs();
-		requiredProcessingPower = singleAdd.getRequiredProcessingPower() < requiredProcessingPower ? requiredProcessingPower
-				: singleAdd.getRequiredProcessingPower();
+		changeProcessingByScaling(singleAdd.getRequiredCPUs(), singleAdd.getRequiredProcessingPower());
 		requiredMemory += singleAdd.getRequiredMemory();
+	}
+
+	/**
+	 * Adds the specified processing power to the total processing of this
+	 * resource constraints object but keeps the per core processing power fixed
+	 * (essentially transforms all operations to changes in the required cpu
+	 * cores)
+	 * 
+	 * @param withCores
+	 *            the number of cpu cores to be added
+	 * @param withProc
+	 *            with the processing capacity per each core
+	 */
+	private void changeProcessingByScaling(final double withCores, final double withProc) {
+		if (requiredProcessingPower == 0) {
+			requiredCPUs = withCores;
+			requiredProcessingPower = withProc;
+		} else {
+			requiredCPUs = requiredCPUs + withProc * withCores / requiredProcessingPower;
+		}
 	}
 
 	/**
@@ -191,10 +210,7 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 *            the other party to subtract
 	 */
 	public void subtract(final ResourceConstraints what) {
-		requiredCPUs -= what.getRequiredCPUs();
-		requiredProcessingPower = requiredProcessingPower < what
-				.getRequiredProcessingPower() ? requiredProcessingPower : what
-				.getRequiredProcessingPower();
+		changeProcessingByScaling(-what.getRequiredCPUs(), what.getRequiredProcessingPower());
 		requiredMemory -= what.getRequiredMemory();
 		updateTotal();
 	}
@@ -207,6 +223,21 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 		requiredProcessingPower = requiredCPUs == 0 ? 0
 				: requiredProcessingPower;
 		totalProcessingPower = requiredCPUs * requiredProcessingPower;
+	}
+
+	/**
+	 * Allows the conversion of this resource constraints object to an
+	 * alternative processing power unit
+	 * 
+	 * @param multiplier
+	 *            to be applied to change the processing power
+	 */
+	public void scaleProcessingPower(final double multiplier) {
+		if (multiplier != 1) {
+			requiredCPUs /= multiplier;
+			requiredProcessingPower *= multiplier;
+			updateTotal();
+		}
 	}
 
 	// Standard set of RC calls

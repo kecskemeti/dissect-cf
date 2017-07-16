@@ -31,6 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
@@ -39,12 +41,12 @@ public class StateDependentTest extends TestFoundation {
 		public void handle(String payload);
 	}
 
-	StateDependentEventHandler<MyHandler,String> sdeh;
+	StateDependentEventHandler<MyHandler, String> sdeh;
 
 	@Before
 	public void setupSDEH() {
-		sdeh = new StateDependentEventHandler<MyHandler,String>(new SingleNotificationHandler<MyHandler,String>() {
-			public void sendNotification(MyHandler onObject,String data) {
+		sdeh = new StateDependentEventHandler<MyHandler, String>(new SingleNotificationHandler<MyHandler, String>() {
+			public void sendNotification(MyHandler onObject, String data) {
 				onObject.handle(data);
 			};
 		});
@@ -98,7 +100,7 @@ public class StateDependentTest extends TestFoundation {
 
 	@Test(timeout = 100)
 	public void nestedAdditionWithRepeatedNotify() {
-		final int[] counters=new int[2];
+		final int[] counters = new int[2];
 		final MyHandler easyListener = new MyHandler() {
 			@Override
 			public void handle(String data) {
@@ -135,21 +137,48 @@ public class StateDependentTest extends TestFoundation {
 		sdeh.notifyListeners(null);
 		Assert.assertEquals("Should receive multiple handling events", maxCount, count[0]);
 	}
-	
+
 	@Test(timeout = 100)
 	public void payloadTest() {
-		final int textBase=10;
-		final boolean[] happened=new boolean[1];
-		happened[0]=false;
-		MyHandler listener=new MyHandler() {
+		final int textBase = 10;
+		final boolean[] happened = new boolean[1];
+		happened[0] = false;
+		MyHandler listener = new MyHandler() {
 			@Override
 			public void handle(String data) {
-				happened[0]=true;
-				Assert.assertEquals("Does not receive the correct payload", textBase,Integer.parseInt(data));
+				happened[0] = true;
+				Assert.assertEquals("Does not receive the correct payload", textBase, Integer.parseInt(data));
 			}
 		};
 		sdeh.subscribeToEvents(listener);
 		sdeh.notifyListeners(Integer.toString(textBase));
 		Assert.assertTrue(happened[0]);
+	}
+
+	@Test(timeout = 100)
+	public void noApparentChangeDuringNesting() {
+		final int[] handleCount = new int[1];
+		MyHandler listener = new MyHandler() {
+			@Override
+			public void handle(String data) {
+				handleCount[0]++;
+				sdeh.unsubscribeFromEvents(this);
+				sdeh.subscribeToEvents(this);
+				if (handleCount[0] == 1) {
+					new DeferredEvent(1) {
+						@Override
+						protected void eventAction() {
+							// Second notification
+							sdeh.notifyListeners(null);
+						}
+					};
+				}
+			}
+		};
+		sdeh.subscribeToEvents(listener);
+		// First notification
+		sdeh.notifyListeners(null);
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("There should be two notifications coming", 2, handleCount[0]);
 	}
 }

@@ -25,13 +25,6 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -39,13 +32,20 @@ import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
 
 public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 	public static final double processingTasklen = 1;
 	public static final double permsProcessing = processingTasklen / aSecond;
 	MaxMinProvider offer;
 	MaxMinConsumer utilize;
-	ResourceConsumption con;
+	protected ResourceConsumption con;
 
 	public ResourceConsumption createAUnitConsumption(final ConsumptionEvent ce) {
 		return new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, offer,
@@ -115,14 +115,14 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		Assert.assertFalse("Consumption should not be cancelled before registration", ce.isCancelled());
 	}
 
-	private double preSuspendPhase() {
+	protected double preSuspendPhase() {
 		Assert.assertTrue("Should be able to register an unprocessed consumption", con.registerConsumption());
 		double before = con.getUnProcessed();
 		Timed.simulateUntil(Timed.getFireCount() + 500);
 		return before;
 	}
 
-	private void pastSuspendChecks(double before) {
+	protected void pastSuspendChecks(double before) {
 		double after = con.getUnProcessed();
 		Assert.assertTrue("Should already have some consumption recorded", after != before);
 		Assert.assertTrue("Consumption should be incomplete", after != 0);
@@ -154,6 +154,14 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		Assert.assertEquals("Cancellation arrived at improper time", timeBefore - 1, cae.getArrivedAt());
 		Assert.assertTrue("There should be no events after cancellation",
 				cae.getArrivedAt() + 1 >= Timed.getFireCount());
+	}
+
+	@Test(timeout = 100)
+	public void cancelUnregistered() {
+		ConsumptionEventAssert cae = new ConsumptionEventAssert();
+		con = createAUnitConsumption(cae);
+		con.cancel();
+		Assert.assertTrue("Should receive cancellation even if not registered", cae.isCancelled());
 	}
 
 	@Ignore
@@ -209,6 +217,34 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		con = new ResourceConsumption(-1, ResourceConsumption.unlimitedProcessing, utilize, offer,
 				new ConsumptionEventAssert());
 		con.registerConsumption();
+		Timed.simulateUntilLastEvent();
+	}
+
+	@Test(timeout = 100)
+	public void testSuspendRightBeforeCompletionNotification() {
+		long before = Timed.getFireCount();
+		// benchmark consumption
+		con.registerConsumption();
+		Timed.simulateUntilLastEvent();
+		// needed to determine length of benchmark
+		long after = ConsumptionEventAssert.hits.get(0);
+		// The tested consumption
+		con = createAUnitConsumption(null);
+		con.registerConsumption();
+		new DeferredEvent(after - before) {
+			@Override
+			protected void eventAction() {
+				// This should come just on the same time the consumption
+				// finishes = allowing to test if RS handles these situations
+				// correctly
+				con.suspend();
+			}
+		};
+		Timed.fire();
+		Timed.simulateUntilLastEvent();
+		// Resume right after the suspend
+		con.registerConsumption();
+		// By this time we should not receive two notifications...
 		Timed.simulateUntilLastEvent();
 	}
 }

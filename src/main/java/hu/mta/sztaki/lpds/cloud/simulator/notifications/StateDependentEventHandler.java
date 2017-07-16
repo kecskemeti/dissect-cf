@@ -105,7 +105,11 @@ public class StateDependentEventHandler<T, P> {
 		} else {
 			if (changedListeners == null) {
 				changedListeners = new ArrayList<T>();
+			} else if (checkAndRemoveFromListeners(newCount, changedListeners.size(), listener)) {
+				// Was it about to be removed?
+				return;
 			}
+			// Not really, we have to add it after the dispatching
 			if (changedListeners.size() == newCount) {
 				changedListeners.add(listener);
 			} else {
@@ -115,6 +119,20 @@ public class StateDependentEventHandler<T, P> {
 			}
 			newCount++;
 		}
+	}
+
+	private boolean checkAndRemoveFromListeners(int start, int stop, T what) {
+		for (int i = start; i < stop; i++) {
+			if (changedListeners.get(i) == what) {
+				stop--;
+				T otherListener = changedListeners.remove(stop);
+				if (stop != i) {
+					changedListeners.set(i, otherListener);
+				}
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -131,6 +149,14 @@ public class StateDependentEventHandler<T, P> {
 		} else {
 			if (changedListeners == null) {
 				changedListeners = new ArrayList<T>();
+			} else if (checkAndRemoveFromListeners(0, newCount, listener)) {
+				int cls = changedListeners.size();
+				if (cls > newCount) {
+					cls--;
+					changedListeners.set(newCount, changedListeners.remove(cls));
+				}
+				newCount--;
+				return;
 			}
 			changedListeners.add(listener);
 		}
@@ -166,8 +192,8 @@ public class StateDependentEventHandler<T, P> {
 						eventing.removeAll(StateDependentEventHandler.this,
 								changedListeners.subList(newCount, changedListeners.size()));
 					}
-					changedListeners=null;
-					newCount=0;
+					changedListeners = null;
+					newCount = 0;
 				}
 			} else {
 				// Nested call handling

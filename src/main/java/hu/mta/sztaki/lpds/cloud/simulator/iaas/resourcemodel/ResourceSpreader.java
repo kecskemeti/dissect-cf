@@ -440,23 +440,21 @@ public abstract class ResourceSpreader {
 					// managing removals
 					if (!rs.underRemoval.isEmpty()) {
 						didRemovals = true;
-						int rsuLen = rs.toProcess.size();
 						final int urLen = rs.underRemoval.size();
 						final boolean isConsumer = rs.isConsumer();
 						for (int urIndex = 0; urIndex < urLen; urIndex++) {
 							final ResourceConsumption con = rs.underRemoval.get(urIndex);
 							if (ArrayHandler.removeAndReplaceWithLast(rs.toProcess, con)) {
-								rsuLen--;
+								rs.underProcessingLen--;
 							}
 							if (isConsumer) {
 								if (con.getUnProcessed() == 0) {
-									con.ev.conComplete();
+									con.fireCompleteEvent();
 								} else if (!con.isResumable()) {
-									con.ev.conCancelled(con);
+									con.fireCancelEvent();
 								}
 							}
 						}
-						rs.underProcessingLen = rsuLen;
 						rs.underRemoval.clear();
 					}
 					// managing additions
@@ -634,12 +632,11 @@ public abstract class ResourceSpreader {
 		 *            should be constructured.
 		 */
 		private void buildDepGroup(final ResourceSpreader startingItem) {
-			final int upLen;
-			if ((upLen = startingItem.toProcess.size()) == 0 || startingItem.stillInDepGroup) {
+			if (startingItem.underProcessingLen == 0 || startingItem.stillInDepGroup) {
 				return;
 			}
 			startingItem.stillInDepGroup = true;
-			for (int i = 0; i < upLen; i++) {
+			for (int i = 0; i < startingItem.underProcessingLen; i++) {
 				buildDepGroup(startingItem.getCounterPart(startingItem.toProcess.get(i)));
 			}
 		}
@@ -689,7 +686,9 @@ public abstract class ResourceSpreader {
 	 */
 	protected final void removeTheseConsumptions(final ResourceConsumption[] conList, final int len) {
 		for (int i = 0; i < len; i++) {
-			underRemoval.add(conList[i]);
+			if(!underRemoval.contains(conList[i])) {
+				underRemoval.add(conList[i]);
+			}
 			ArrayHandler.removeAndReplaceWithLast(underAddition, conList[i]);
 		}
 		if (mySyncer != null) {

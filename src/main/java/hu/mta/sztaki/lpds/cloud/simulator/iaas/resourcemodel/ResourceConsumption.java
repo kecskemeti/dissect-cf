@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -45,15 +46,17 @@ import java.util.Comparator;
  * VirtualMachine.newComputeTask(), NetworkNode.initTransfer() and similar
  * functions.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Vincenzo De Maio, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2015"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
  * 
  */
 public class ResourceConsumption {
 
 	/**
 	 * This comparator class provides a simple comparison tool for two resource
-	 * consumptions based on their real limits. Useful for sorting the
-	 * consumptions.
+	 * consumptions based on their real limits. Useful for sorting the consumptions.
 	 */
 	public static final Comparator<ResourceConsumption> limitComparator = new Comparator<ResourceConsumption>() {
 		@Override
@@ -65,33 +68,32 @@ public class ResourceConsumption {
 	};
 
 	/**
-	 * If a resource consumption is not supposed to be limited by anything but
-	 * the actual resource providers/consumers then this limit could be used in
-	 * its constructor.
+	 * If a resource consumption is not supposed to be limited by anything but the
+	 * actual resource providers/consumers then this limit could be used in its
+	 * constructor.
 	 */
 	public static final double unlimitedProcessing = Double.MAX_VALUE;
 
 	/**
 	 * This interface allows its implementors to get notified when a consumption
 	 * completes. Note: the objects will only receive a single call on the below
-	 * interfaces depending on the outcome of the resouece consumption's
-	 * execution.
+	 * interfaces depending on the outcome of the resouece consumption's execution.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
 	public interface ConsumptionEvent {
 		/**
-		 * This function is called when the resource consumption represented by
-		 * the ResourceConsumption object is fulfilled
+		 * This function is called when the resource consumption represented by the
+		 * ResourceConsumption object is fulfilled
 		 */
 		void conComplete();
 
 		/**
-		 * This function is called when the resource consumption cannot be
-		 * handled properly - if a consumption is suspended (allowing its
-		 * migration to some other consumers/providers then this function is
-		 * <b>not</b> called.
+		 * This function is called when the resource consumption cannot be handled
+		 * properly - if a consumption is suspended (allowing its migration to some
+		 * other consumers/providers then this function is <b>not</b> called.
 		 */
 		void conCancelled(ResourceConsumption problematic);
 	}
@@ -139,9 +141,9 @@ public class ResourceConsumption {
 	 */
 	private double halfRealLimit;
 	/**
-	 * The number of ticks it is expected to take that renders both
-	 * underProcessing and toBeProcessed as 0 (i.e., the time when the initially
-	 * specified amount of resources are completely utilized).
+	 * The number of ticks it is expected to take that renders both underProcessing
+	 * and toBeProcessed as 0 (i.e., the time when the initially specified amount of
+	 * resources are completely utilized).
 	 */
 	private long completionDistance;
 	/**
@@ -159,9 +161,9 @@ public class ResourceConsumption {
 	 */
 	double consumerLimit;
 	/**
-	 * the amount of processing that can be surely done by both the provider and
-	 * the consumer. This is a temporary variable used by the MaxMinFairSpreader
-	 * to determine the provider/consumerLimits.
+	 * the amount of processing that can be surely done by both the provider and the
+	 * consumer. This is a temporary variable used by the MaxMinFairSpreader to
+	 * determine the provider/consumerLimits.
 	 * 
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
@@ -177,8 +179,8 @@ public class ResourceConsumption {
 	 */
 	boolean unassigned;
 	/**
-	 * A helper field to show if the consumer/providerLimit fields are under
-	 * update by MaxMinFairSpreader.assignProcessingPower()
+	 * A helper field to show if the consumer/providerLimit fields are under update
+	 * by MaxMinFairSpreader.assignProcessingPower()
 	 * 
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
@@ -186,29 +188,33 @@ public class ResourceConsumption {
 	boolean inassginmentprocess;
 
 	/**
+	 * Added for live migration memDirtyingRate: percentage of memory dirtied
+	 */
+	protected double memDirtyingRate = 0.0;
+	protected long memSize = 0;
+
+	/**
 	 * The event to be fired when there is nothing left to process in this
 	 * consumption.
 	 */
-	final ConsumptionEvent ev;
+	private final ConsumptionEvent ev;
 
 	/**
 	 * The consumer which receives the resources of this consumption.
 	 * 
 	 * If null, then the consumer must be set before proper operation of the
-	 * consumption. As this can be null the resource consumption objects could
-	 * be created in multiple phases allowing to first determine the amount of
-	 * consumption to be made before actually assigning to a particular
-	 * consumer.
+	 * consumption. As this can be null the resource consumption objects could be
+	 * created in multiple phases allowing to first determine the amount of
+	 * consumption to be made before actually assigning to a particular consumer.
 	 */
 	private ResourceSpreader consumer;
 	/**
 	 * The provider which offers the resources for this consumption.
 	 * 
 	 * If null, then the provider must be set before proper operation of the
-	 * consumption. As this can be null the resource consumption objects could
-	 * be created in multiple phases allowing to first determine the amount of
-	 * consumption to be made before actually assigning to a particular
-	 * provider.
+	 * consumption. As this can be null the resource consumption objects could be
+	 * created in multiple phases allowing to first determine the amount of
+	 * consumption to be made before actually assigning to a particular provider.
 	 */
 	private ResourceSpreader provider;
 
@@ -217,10 +223,14 @@ public class ResourceConsumption {
 	 */
 	private boolean resumable = true;
 	/**
-	 * shows if the consumption object actually participates in the resource
-	 * sharing machanism.
+	 * shows if the consumption object actually participates in the resource sharing
+	 * machanism.
 	 */
 	private boolean registered = false;
+	/**
+	 * shows if the consumption event was already sent out to the listener
+	 */
+	private boolean eventNotFired = true;
 
 	/**
 	 * This constructor describes the basic properties of an individual resource
@@ -231,24 +241,24 @@ public class ResourceConsumption {
 	 *            just created object
 	 * @param limit
 	 *            the maximum amount of processing allowable for this particular
-	 *            resource consumption (this allows the specification of an
-	 *            upper limit of any consumption). If there is no upper limit
-	 *            needed then this value should be set with the value of the
-	 *            unlimitedProcessing field.
+	 *            resource consumption (this allows the specification of an upper
+	 *            limit of any consumption). If there is no upper limit needed then
+	 *            this value should be set with the value of the unlimitedProcessing
+	 *            field.
 	 * @param consumer
-	 *            the consumer that will benefit from the resource consumption.
-	 *            This field could be null, then the consumer must be set with
-	 *            the setConsumer() function.
+	 *            the consumer that will benefit from the resource consumption. This
+	 *            field could be null, then the consumer must be set with the
+	 *            setConsumer() function.
 	 * @param provider
-	 *            the provider which will offer its resources for the consumer.
-	 *            This field could be null, then the provider must be set with
-	 *            the setProvider() function.
+	 *            the provider which will offer its resources for the consumer. This
+	 *            field could be null, then the provider must be set with the
+	 *            setProvider() function.
 	 * @param e
-	 *            Specify here the event to be fired when the just created
-	 *            object completes its transfers. With this event it is possible
-	 *            to notify the entity who initiated the transfer. This event
-	 *            object cannot be null. If there is no special event handling
-	 *            is needed then just create a ConsumptionEventAdapter.
+	 *            Specify here the event to be fired when the just created object
+	 *            completes its transfers. With this event it is possible to notify
+	 *            the entity who initiated the transfer. This event object cannot be
+	 *            null. If there is no special event handling is needed then just
+	 *            create a ConsumptionEventAdapter.
 	 */
 	public ResourceConsumption(final double total, final double limit, final ResourceSpreader consumer,
 			final ResourceSpreader provider, final ConsumptionEvent e) {
@@ -258,7 +268,7 @@ public class ResourceConsumption {
 		this.provider = provider;
 		if (e == null) {
 			throw new IllegalStateException("Cannot create a consumption without an event to be fired");
-		} else if(total<0||limit<0) {
+		} else if (total < 0 || limit < 0) {
 			throw new IllegalArgumentException("Cannot create negative consumptions");
 		}
 		ev = e;
@@ -266,14 +276,13 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Provides a unified update method for the hard processing limit (which
-	 * will become the minimum of the provider's/consumer's per tick processing
-	 * power) of this consumption. All values that depend on hard limit (the
-	 * real and processing limits) are also updated.
+	 * Provides a unified update method for the hard processing limit (which will
+	 * become the minimum of the provider's/consumer's per tick processing power) of
+	 * this consumption. All values that depend on hard limit (the real and
+	 * processing limits) are also updated.
 	 * 
-	 * This function can be called even if the provider/consumer is not set yet
-	 * in that case the processing limit for the non-set spreader will be
-	 * unlimited.
+	 * This function can be called even if the provider/consumer is not set yet in
+	 * that case the processing limit for the non-set spreader will be unlimited.
 	 */
 	private void updateHardLimit() {
 		final double provLimit = provider == null ? unlimitedProcessing : provider.perTickProcessingPower;
@@ -287,29 +296,28 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Initiates the processing of a resource consumption. By calling this
-	 * function the resource consumption object will be participating in the
-	 * unified resource sharing mechanism's scheduling and spreading operations.
+	 * Initiates the processing of a resource consumption. By calling this function
+	 * the resource consumption object will be participating in the unified resource
+	 * sharing mechanism's scheduling and spreading operations.
 	 * 
-	 * Before the registration actually happens, it updates the hard limit of
-	 * the consumption so the spreaders could now operate using its values.
+	 * Before the registration actually happens, it updates the hard limit of the
+	 * consumption so the spreaders could now operate using its values.
 	 * 
-	 * <i>NOTE:</i> this function is also used for resuming a suspended
-	 * consumption
+	 * <i>NOTE:</i> this function is also used for resuming a suspended consumption
 	 * 
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li><i>true</i> if the registration was successful
-	 *         <li><i>false</i> otherwise. For example: if the provider/consumer
-	 *         is not yet set, if the consumption cannot be registered between
-	 *         the particular provider/consumer pair or if the consumption was
-	 *         already registered.
+	 *         <li><i>false</i> otherwise. For example: if the provider/consumer is
+	 *         not yet set, if the consumption cannot be registered between the
+	 *         particular provider/consumer pair or if the consumption was already
+	 *         registered.
 	 *         </ul>
 	 */
 	public boolean registerConsumption() {
 		if (!registered) {
 			if (getUnProcessed() == 0) {
-				ev.conComplete();
+				fireCompleteEvent();
 				return true;
 			} else if (resumable && provider != null && consumer != null) {
 				updateHardLimit();
@@ -333,18 +341,22 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * terminates the consumption, deregisters it from its consumer/provider
-	 * pair and ensures that it can no longer be registered
+	 * terminates the consumption, deregisters it from its consumer/provider pair
+	 * and ensures that it can no longer be registered
 	 */
 	public void cancel() {
+		boolean wasRegistered = registered;
 		suspend();
 		resumable = false;
+		if (!wasRegistered) {
+			fireCancelEvent();
+		}
 	}
 
 	/**
-	 * Terminates the consumption but ensures that it will be resumable later
-	 * on. If a consumption needs to be resumed then it must be re-registered,
-	 * there is no special function for resume.
+	 * Terminates the consumption but ensures that it will be resumable later on. If
+	 * a consumption needs to be resumed then it must be re-registered, there is no
+	 * special function for resume.
 	 */
 	public void suspend() {
 		if (registered) {
@@ -354,8 +366,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Allows to set a provider for the consumption if the consumption is not
-	 * yet under way.
+	 * Allows to set a provider for the consumption if the consumption is not yet
+	 * under way.
 	 * 
 	 * @param provider
 	 *            the provider to be used for offering the resources for the
@@ -372,8 +384,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Allows to set a consumer for the consumption if the consumption is not
-	 * yet under way.
+	 * Allows to set a consumer for the consumption if the consumption is not yet
+	 * under way.
 	 * 
 	 * @param consumer
 	 *            the consumer to be used for utilizing the resources received
@@ -390,9 +402,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Updates the completion distance field, should be called every time the
-	 * real limit is updated or when the amount of unprocessed consumption
-	 * changes.
+	 * Updates the completion distance field, should be called every time the real
+	 * limit is updated or when the amount of unprocessed consumption changes.
 	 */
 	private void calcCompletionDistance() {
 		completionDistance = Math.round(getUnProcessed() / realLimit);
@@ -400,27 +411,26 @@ public class ResourceConsumption {
 
 	/**
 	 * This function simulates how the provider offers the resources for its
-	 * consumer. The offered resources are put in the underprocessing field from
-	 * the toBeprocessed.
+	 * consumer. The offered resources are put in the underprocessing field from the
+	 * toBeprocessed.
 	 * 
 	 * If the processing is really close to completion (determined by using
-	 * halfreallimit), then this function cheats a bit and offers the resources
-	 * for the last remaining processable consumption. This is actually ensuring
-	 * that we don't need to simulate sub-tick processing operations.
+	 * halfreallimit), then this function cheats a bit and offers the resources for
+	 * the last remaining processable consumption. This is actually ensuring that we
+	 * don't need to simulate sub-tick processing operations.
 	 * 
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
 	 * 
 	 * @param ticksPassed
-	 *            the number of ticks to be simulated (i.e. how many times we
-	 *            should multiply realLimit) before offering the resources to
-	 *            the underprocessing field.
-	 * @return the amount of resources actually offered for consumption.
-	 *         Negative values mark the end of this resource consumption (i.e.
-	 *         when there is no more processing to be done for this
-	 *         consumption). Albeit such values are negative, their negativeness
-	 *         is just used as a flag and their absolute value still represent
-	 *         the amount of offered resources.
+	 *            the number of ticks to be simulated (i.e. how many times we should
+	 *            multiply realLimit) before offering the resources to the
+	 *            underprocessing field.
+	 * @return the amount of resources actually offered for consumption. Negative
+	 *         values mark the end of this resource consumption (i.e. when there is
+	 *         no more processing to be done for this consumption). Albeit such
+	 *         values are negative, their negativeness is just used as a flag and
+	 *         their absolute value still represent the amount of offered resources.
 	 */
 	double doProviderProcessing(final long ticksPassed) {
 		double processed = 0;
@@ -444,25 +454,24 @@ public class ResourceConsumption {
 	 * This function simulates how the consumer utilizes the resources from its
 	 * provider. The utilized resources are used from the underprocessing field.
 	 * 
-	 * If the processing is really close to completion (determined by
-	 * calculating the completion distance), then this function cheats a bit and
-	 * utilizes the resources for the last remaining underprocessing. This is
-	 * actually ensuring that we don't need to simulate sub-tick processing
-	 * operations.
+	 * If the processing is really close to completion (determined by calculating
+	 * the completion distance), then this function cheats a bit and utilizes the
+	 * resources for the last remaining underprocessing. This is actually ensuring
+	 * that we don't need to simulate sub-tick processing operations.
 	 * 
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
 	 * 
 	 * @param ticksPassed
-	 *            the number of ticks to be simulated (i.e. how many times we
-	 *            should multiply realLimit) before utilizing the resources from
-	 *            the underprocessing field.
-	 * @return the amount of resources actually utilized by the consumer.
-	 *         Negative values mark the end of this resource consumption (i.e.
-	 *         when there is no more processing to be done for this
-	 *         consumption). Albeit such values are negative, their negativeness
-	 *         is just used as a flag and their absolute value still represent
-	 *         the amount of utilized resources.
+	 *            the number of ticks to be simulated (i.e. how many times we should
+	 *            multiply realLimit) before utilizing the resources from the
+	 *            underprocessing field.
+	 * @return the amount of resources actually utilized by the consumer. Negative
+	 *         values mark the end of this resource consumption (i.e. when there is
+	 *         no more processing to be done for this consumption). Albeit such
+	 *         values are negative, their negativeness is just used as a flag and
+	 *         their absolute value still represent the amount of utilized
+	 *         resources.
 	 */
 	double doConsumerProcessing(final long ticksPassed) {
 		double processed = 0;
@@ -482,8 +491,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Determines the amount of processing for which no resources were offered
-	 * from the provider so far.
+	 * Determines the amount of processing for which no resources were offered from
+	 * the provider so far.
 	 * 
 	 * @return the tobeprocessed value
 	 */
@@ -492,8 +501,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Determines the amount of resoruces already offered by the provider but
-	 * not yet used by the consumer.
+	 * Determines the amount of resoruces already offered by the provider but not
+	 * yet used by the consumer.
 	 * 
 	 * @return the underprocessing value
 	 */
@@ -511,8 +520,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Retrieves the processing limit at the particular moment of time (just
-	 * queries the value last set by the scheduler)
+	 * Retrieves the processing limit at the particular moment of time (just queries
+	 * the value last set by the scheduler)
 	 */
 	public double getRealLimit() {
 		return realLimit;
@@ -521,9 +530,8 @@ public class ResourceConsumption {
 	/**
 	 * Retrieves the number of ticks it is expected to take that renders both
 	 * underProcessing and toBeProcessed as 0 (i.e., the time when the initially
-	 * specified amount of resources are completely utilized). This is again
-	 * just the value that is derived from the real limit last set by the
-	 * scheduler.
+	 * specified amount of resources are completely utilized). This is again just
+	 * the value that is derived from the real limit last set by the scheduler.
 	 */
 	public long getCompletionDistance() {
 		return completionDistance;
@@ -532,8 +540,8 @@ public class ResourceConsumption {
 	/**
 	 * Queries the consumer associated with this resource consumption.
 	 * 
-	 * @return the consumer which will utilize the resources received through
-	 *         this consumption object
+	 * @return the consumer which will utilize the resources received through this
+	 *         consumption object
 	 */
 	public ResourceSpreader getConsumer() {
 		return consumer;
@@ -551,8 +559,8 @@ public class ResourceConsumption {
 
 	/**
 	 * Simultaneously updates the real limit (the instantaneous processing limit
-	 * determined by the low level scheduler of the unified resoruce sharing
-	 * model of DISSECT-CF) value as well as the halfreallimit field.
+	 * determined by the low level scheduler of the unified resoruce sharing model
+	 * of DISSECT-CF) value as well as the halfreallimit field.
 	 * 
 	 * @param rL
 	 *            the value to be set as real limit
@@ -563,22 +571,21 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Sets the real limit based on the scheduler set provider and consumer
-	 * limits (the smaller is used as real).
+	 * Sets the real limit based on the scheduler set provider and consumer limits
+	 * (the smaller is used as real).
 	 * 
 	 * Updates the completion distance if instructed.
 	 * 
 	 * @param updateCD
 	 *            <i>true</i> tells the system to update the completion distance
-	 *            alongside the real limit setup. This more frequent update on
-	 *            the real limit than the completion distance is calculated.
+	 *            alongside the real limit setup. This more frequent update on the
+	 *            real limit than the completion distance is calculated.
 	 * 
 	 *            <i>IMPORTANT:</i> if set to false then it is expected that the
-	 *            scheduler will call the updateRealLimit at least once more
-	 *            with a true parameter. Failing to do so the consumption object
-	 *            will become broken.
-	 * @return the real limit that was actually determined and set by this
-	 *         function
+	 *            scheduler will call the updateRealLimit at least once more with a
+	 *            true parameter. Failing to do so the consumption object will
+	 *            become broken.
+	 * @return the real limit that was actually determined and set by this function
 	 * @throws IllegalStateException
 	 *             if the real limit would become 0
 	 */
@@ -596,9 +603,56 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Provides a nice formatted output of the resource consumption showing how
-	 * much processing is under way, how much is still held back and what is the
-	 * current real limit set by the scheduler.
+	 * Determines the dirtying rate of this process in a single tick
+	 * 
+	 * @return the current dirtying rate
+	 */
+	public double getMemDirtyingRate() {
+		return memDirtyingRate;
+	}
+
+	/**
+	 * Sets the dirtying rate for this RC.
+	 * 
+	 * <p>
+	 * <i>Note</i>, the value set here only considered just before a live migration
+	 * round, if it changes during a particular round, the last set dirtying rate
+	 * will be used by the VM.
+	 * 
+	 * @param memDirtyingRate
+	 */
+	public void setMemDirtyingRate(double memDirtyingRate) {
+		if (memDirtyingRate < 0.0 || memDirtyingRate > 1.0)
+			throw new IllegalArgumentException("Dirtying rate must be between 0.0 and 1.0");
+		this.memDirtyingRate = memDirtyingRate;
+	}
+
+	/**
+	 * The amount of memory used by the task
+	 * 
+	 * @return
+	 */
+	public long getMemSize() {
+		return memSize;
+	}
+
+	/**
+	 * Change the amount of memory used by the task.
+	 * <p>
+	 * <i>Note</i>, the value set here only considered just before a live migration
+	 * round, if it changes during a particular round, the last set size will be
+	 * used by the VM.
+	 * 
+	 * @param newMemSize
+	 */
+	public void setMemSize(long newMemSize) {
+		memSize = newMemSize;
+	}
+
+	/**
+	 * Provides a nice formatted output of the resource consumption showing how much
+	 * processing is under way, how much is still held back and what is the current
+	 * real limit set by the scheduler.
 	 * 
 	 * Intended for debugging and tracing outputs.
 	 */
@@ -608,8 +662,8 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Determines if the object is registered and resources are used because of
-	 * this consumption object
+	 * Determines if the object is registered and resources are used because of this
+	 * consumption object
 	 * 
 	 * @return <i>true</i> if the object is registered.
 	 */
@@ -620,9 +674,9 @@ public class ResourceConsumption {
 	/**
 	 * Allows to query whether this resource consumption was cancelled or not
 	 * 
-	 * @return <i>false</i> if the resource consumption was cancelled and it can
-	 *         no longer be registered within the unified resource sharing model
-	 *         of the simulator.
+	 * @return <i>false</i> if the resource consumption was cancelled and it can no
+	 *         longer be registered within the unified resource sharing model of the
+	 *         simulator.
 	 */
 	public boolean isResumable() {
 		return resumable;
@@ -635,5 +689,33 @@ public class ResourceConsumption {
 	 */
 	public double getHardLimit() {
 		return hardLimit;
+	}
+
+	/**
+	 * Sends out the completion event to the listener
+	 * 
+	 * @return false if the event was not sent
+	 */
+	boolean fireCompleteEvent() {
+		if (eventNotFired && getUnProcessed() == 0) {
+			eventNotFired = false;
+			ev.conComplete();
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Sends out the cancellation event to the listener
+	 * 
+	 * @return false if the event was not sent
+	 */
+	boolean fireCancelEvent() {
+		if (eventNotFired) {
+			eventNotFired = false;
+			ev.conCancelled(this);
+			return true;
+		}
+		return false;
 	}
 }

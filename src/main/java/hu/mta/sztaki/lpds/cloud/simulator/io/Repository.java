@@ -19,20 +19,20 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2017, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
 
 package hu.mta.sztaki.lpds.cloud.simulator.io;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
 /**
  * This class represents the storage entities in the system. Data transfers
@@ -43,8 +43,12 @@ import java.util.Map;
  * the registerObject function. For regular use during the simulation, please
  * use its requestContentDelivery, and duplicateContent functions.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012, 2014-"
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2017"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2012, 2014"
  */
 public class Repository extends NetworkNode {
 
@@ -122,7 +126,7 @@ public class Repository extends NetworkNode {
 	 * @param so
 	 *            The storage object to be removed from the repository
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li>true, if the requested object was dropped from the repo,
 	 *         <li>false if there are ongoing transfers involving the object
 	 *         </ul>
@@ -143,7 +147,7 @@ public class Repository extends NetworkNode {
 	 * @param soid
 	 *            The storage object identifier
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li>true, if the requested object was dropped from the repo,
 	 *         <li>false if there are ongoing transfers involving the object
 	 *         </ul>
@@ -172,9 +176,10 @@ public class Repository extends NetworkNode {
 	 *            The target repository where the transferred data will reside
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
-	 * @return true if the transfer was successfully initiated, false otherwise
+	 * @return the consumption object that represents the appropriate data
+	 *         transfer or <b>null</b> if it is not possible to initiate
 	 */
-	public boolean requestContentDelivery(final String id, final Repository target,
+	public ResourceConsumption requestContentDelivery(final String id, final Repository target,
 			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		return requestContentDelivery(id, null, target, ev);
 	}
@@ -189,11 +194,11 @@ public class Repository extends NetworkNode {
 	 *            same repository where the request is made.
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
-	 * @return true if the duplication request was successfully initiated, false
-	 *         otherwise
+	 * @return the consumption object that represents the appropriate data
+	 *         duplication or <b>null</b> if it is not possible to initiate
 	 */
-	public boolean duplicateContent(final String id, final String newId, final ResourceConsumption.ConsumptionEvent ev)
-			throws NetworkException {
+	public ResourceConsumption duplicateContent(final String id, final String newId,
+			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		return requestContentDelivery(id, newId, this, ev);
 	}
 
@@ -216,36 +221,47 @@ public class Repository extends NetworkNode {
 	 *            requirements for newId!
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
-	 * @return true if the transfer was successfully initiated, false otherwise
-	 *         (the system will not fire a transfer event if false is returned!)
+	 * @return the consumption object that represents the appropriate data
+	 *         transfer or <b>null</b> if it is not possible to initiate. The
+	 *         system will not fire a transfer event if false is returned!
 	 */
-	public boolean requestContentDelivery(final String id, final String newId, final Repository target,
+	public ResourceConsumption requestContentDelivery(final String id, final String newId, final Repository target,
 			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		if (target == null || (this == target && (newId == null || newId.equals(id))))
-			return false;
+			return null;
 		final StorageObject totransfer = contents.get(id);
 		if (totransfer == null) {
-			return false;
+			return null;
 		}
 		return manageStoragePromise(totransfer.size, id, target, new MainStorageActivity() {
 			@Override
-			public void doStorage() throws NetworkException {
+			public ResourceConsumption doStorage() throws NetworkException {
 				underTransfer.add(id);
-				initTransfer(totransfer.size, ResourceConsumption.unlimitedProcessing, Repository.this, target,
-						new ConsumptionEventAdapter() {
-					@Override
-					public void conComplete() {
-						underTransfer.remove(id);
-						final StorageObject toRegister = (target == Repository.this || newId != null)
-								? totransfer.newCopy(newId) : totransfer;
+				return initTransfer(totransfer.size, ResourceConsumption.unlimitedProcessing, Repository.this, target,
+						new ResourceConsumption.ConsumptionEvent() {
+							private void cleanUpRepos() {
+								underTransfer.remove(id);
+								target.promisedStorage -= totransfer.size;
+							}
 
-						target.promisedStorage -= totransfer.size;
-						target.registerObject(toRegister);
-						if (ev != null) {
-							ev.conComplete();
-						}
-					}
-				});
+							@Override
+							public void conComplete() {
+								cleanUpRepos();
+								target.registerObject((target == Repository.this || newId != null)
+										? totransfer.newCopy(newId) : totransfer);
+								if (ev != null) {
+									ev.conComplete();
+								}
+							}
+
+							@Override
+							public void conCancelled(ResourceConsumption problematic) {
+								cleanUpRepos();
+								if (ev != null) {
+									ev.conCancelled(problematic);
+								}
+							}
+						});
 			}
 		});
 	}
@@ -253,17 +269,20 @@ public class Repository extends NetworkNode {
 	/**
 	 * An internal interface for managing storage related operations
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
+	 *         Systems, MTA SZTAKI (c) 2015"
 	 *
 	 */
 	private static interface MainStorageActivity {
 		/**
 		 * The action that actually does the depositing of the requested content
 		 * 
+		 * @return the consumption object that represents the appropriate data
+		 *         transfer or <b>null</b> if it is not possible to initiate
 		 * @throws NetworkException
 		 *             if there are connectivity errors amongst repositories
 		 */
-		void doStorage() throws NetworkException;
+		ResourceConsumption doStorage() throws NetworkException;
 	}
 
 	/**
@@ -284,24 +303,20 @@ public class Repository extends NetworkNode {
 	 * @param mainActivity
 	 *            the storage activity to be done if there is enough promised
 	 *            storage on the target repository
-	 * @return
-	 * 		<ul>
-	 *         <li><i>true</i> if the storage object was successfully stored
-	 *         <li><i>false</i> otherwise
-	 *         </ul>
+	 * @return the consumption object that represents the appropriate data
+	 *         transfer or <b>null</b> if it is not possible to initiate
 	 * @throws NetworkException
 	 *             if there were connectivity problems with the target
 	 *             reppository
 	 */
-	private static boolean manageStoragePromise(final long size, final String id, final Repository target,
+	private static ResourceConsumption manageStoragePromise(final long size, final String id, final Repository target,
 			final MainStorageActivity mainActivity) throws NetworkException {
 		final long increasedpromise = target.promisedStorage + size;
 		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
 			target.promisedStorage = increasedpromise;
-			mainActivity.doStorage();
-			return true;
+			return mainActivity.doStorage();
 		}
-		return false;
+		return null;
 
 	}
 
@@ -313,33 +328,38 @@ public class Repository extends NetworkNode {
 	 *            the storage object that represents the data in memory
 	 * @param ev
 	 *            the event to be fired upon completing the storage operation
-	 * @return
-	 * 		<ul>
-	 *         <li><i>true</i> if the storage object was successfully stored
-	 *         <li><i>false</i> otherwise (e.g., if the to be stored storage
-	 *         object is already in the repository)
-	 *         </ul>
+	 * @return the consumption object that represents the appropriate data
+	 *         transfer or <b>null</b> if it is not possible to initiate (e.g.,
+	 *         if the to be stored storage object is already in the repository)
 	 * @throws NetworkException
 	 *             propagated from MainStorageActivity, never used here.
 	 */
-	public boolean storeInMemoryObject(final StorageObject so, final ResourceConsumption.ConsumptionEvent ev)
-			throws NetworkException {
+	public ResourceConsumption storeInMemoryObject(final StorageObject so,
+			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		if (lookup(so.id) != null) {
-			return false;
+			return null;
 		}
 		return manageStoragePromise(so.size, so.id, this, new MainStorageActivity() {
 			@Override
-			public void doStorage() throws NetworkException {
-				pushFromMemory(so.size, ResourceConsumption.unlimitedProcessing, true, new ConsumptionEventAdapter() {
-					@Override
-					public void conComplete() {
-						promisedStorage -= so.size;
-						registerObject(so);
-						if (ev != null) {
-							ev.conComplete();
-						}
-					}
-				});
+			public ResourceConsumption doStorage() throws NetworkException {
+				return pushFromMemory(so.size, ResourceConsumption.unlimitedProcessing, true,
+						new ResourceConsumption.ConsumptionEvent() {
+							@Override
+							public void conComplete() {
+								promisedStorage -= so.size;
+								registerObject(so);
+								if (ev != null) {
+									ev.conComplete();
+								}
+							}
+							@Override
+							public void conCancelled(ResourceConsumption problematic) {
+								promisedStorage-=so.size;
+								if(ev!=null) {
+									ev.conCancelled(problematic);
+								}
+							}
+						});
 			}
 		});
 	}
@@ -353,28 +373,35 @@ public class Repository extends NetworkNode {
 	 * @param ev
 	 *            the event to be fired upon completing the transfer of the
 	 *            above object to the memory of the repository.
-	 * @return
-	 * 		<ul>
-	 *         <li><i>true</i> if the storage object was successfully read
-	 *         <li><i>false</i> if the to be read storage object was not found
-	 *         in the repository
-	 *         </ul>
+	 * @return the consumption object that represents the appropriate data
+	 *         transfer or <b>null</b> if it is not possible to initiate (e.g.,
+	 *         if the to be stored storage object is already in the repository)
 	 */
-	public boolean fetchObjectToMemory(final StorageObject so, final ResourceConsumption.ConsumptionEvent ev) {
+	public ResourceConsumption fetchObjectToMemory(final StorageObject so,
+			final ResourceConsumption.ConsumptionEvent ev) {
 		if (lookup(so.id) == null) {
-			return false;
+			return null;
 		}
 		underTransfer.add(so.id);
-		readToMemory(so.size, ResourceConsumption.unlimitedProcessing, true, new ConsumptionEventAdapter() {
-			@Override
-			public void conComplete() {
-				underTransfer.remove(so.id);
-				if (ev != null) {
-					ev.conComplete();
-				}
-			}
-		});
-		return true;
+		return readToMemory(so.size, ResourceConsumption.unlimitedProcessing, true,
+				new ResourceConsumption.ConsumptionEvent() {
+
+					@Override
+					public void conComplete() {
+						underTransfer.remove(so.id);
+						if (ev != null) {
+							ev.conComplete();
+						}
+					}
+
+					@Override
+					public void conCancelled(ResourceConsumption problematic) {
+						underTransfer.remove(so.id);
+						if (ev != null) {
+							ev.conCancelled(problematic);
+						}
+					}
+				});
 	}
 
 	/**

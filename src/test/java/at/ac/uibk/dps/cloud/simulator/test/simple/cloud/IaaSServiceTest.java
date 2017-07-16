@@ -507,15 +507,38 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 		}
 	}
-	
-	@Test(timeout=100)
+
+	@Test(timeout = 100)
 	public void dropARunningPM() throws Exception {
-		int pmcount=3;
-		IaaSService iaas=setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, pmcount, 1);
+		int pmcount = 3;
+		IaaSService iaas = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, pmcount, 1);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Should have all machines running", pmcount, iaas.runningMachines.size());
 		iaas.deregisterHost(iaas.machines.get(0));
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should have one less machine running", pmcount -1, iaas.runningMachines.size());
+		Assert.assertEquals("Should have one less machine running", pmcount - 1, iaas.runningMachines.size());
+	}
+
+	@Test(timeout = 100)
+	public void heterogenousPMCapacityReport() throws Exception {
+		IaaSService iaas = new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class);
+		Assert.assertEquals("Should not report any processing power if there are no PMs", 0,
+				iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		PhysicalMachine small = dummyPMcreator();
+		ResourceConstraints sRC = small.getCapacities();
+		iaas.registerHost(small);
+		Assert.assertEquals("Should report the small PM's processing power if it is the only one",
+				sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		PhysicalMachine big = dummyPMsCreator(1, (int) sRC.getRequiredCPUs(), sRC.getRequiredProcessingPower() * 2,
+				sRC.getRequiredMemory())[0];
+		iaas.registerHost(big);
+		Assert.assertEquals("Should report the big PM's processing power if the IaaS has more than one type of PM",
+				big.getCapacities().getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(),
+				0.00001);
+		iaas.deregisterHost(big);
+		Assert.assertEquals("Should report the small PM's processing power if it is the only one",
+				sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		iaas.deregisterHost(small);
+		Timed.simulateUntilLastEvent();
 	}
 }

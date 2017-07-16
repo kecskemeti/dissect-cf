@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2017, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -40,6 +41,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
  * be possible to schedule this scheduler just ignores them until they reach the
  * head of the queue.
  * 
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2017"
  * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
  *         MTA SZTAKI (c) 2012"
  */
@@ -115,6 +118,7 @@ public class FirstFitScheduler extends Scheduler {
 			int vmNum = 0;
 			while (queue.size() > 0 && processableRequest) {
 				request = queue.get(0);
+				currIterator.restart(false);
 				vmNum = 0;
 				do {
 					processableRequest = false;
