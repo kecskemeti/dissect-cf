@@ -20,6 +20,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelVM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ShutDownAction;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.StartAction;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -447,13 +448,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 		ModelVM firstVM = first.getVM(0);
 
-		/*
-		Assert.assertEquals("The VM has the wrong CPUs", 5, firstVM.getResources().getRequiredCPUs(), 0);
-		Assert.assertEquals("The VM has the wrong perCoreProcessingPower", 1, firstVM.getResources().getRequiredProcessingPower(), 0);
-		Assert.assertEquals("The VM has the wrong memory", 8, firstVM.getResources().getRequiredMemory(), 0);
-		Assert.assertEquals("The VM has the wrong host", first, firstVM.gethostPM());
-		*/
-
 		ffc.optimize();		
 
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
@@ -761,9 +755,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The first VM is not placed on the empty PM after optimization", empty, vm1.gethostPM());
 	}
 	
-	//so far everything is running except the graph method "performActions()"
-	//after migrating the resources out of the simulator there are problems with the perCoreProcessingPower, need to fix that but now not possible
-	 
 	/**  				
 	 * graph: 				Do actions exist?
 	 * 		  				Are the actions bound to their order?
@@ -771,9 +762,34 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 		  				Are the changes done inside the simulator?
 	 */
 	
-	// This test verifies, that every node can be constructed	
+	// This test verifies, that no action references on null as a parameter
 	@Test(timeout = 100)
 	public void checkNodes() throws Exception {
+		this.createComplexAbstractModel();
+		
+		Timed.simulateUntilLastEvent();
+		
+		for(int i = 0; i < ffc.getActions().size(); i++){
+			ffc.getActions().get(i).toString();
+			if(ffc.getActions().get(i).getType().equals(hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.START)){
+			Assert.assertNotNull(((StartAction) ffc.getActions().get(i)).getStartPM());
+			}
+			if(ffc.getActions().get(i).getType().equals(hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.SHUTDOWN)){
+				Assert.assertNotNull(((ShutDownAction) ffc.getActions().get(i)).getShutDownPM());
+			}
+			if(ffc.getActions().get(i).getType().equals(hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.MIGRATION)){
+				Assert.assertNotNull(((MigrationAction) ffc.getActions().get(i)).getSource());
+				Assert.assertNotNull(((MigrationAction) ffc.getActions().get(i)).getTarget());
+				Assert.assertNotNull(((MigrationAction) ffc.getActions().get(i)).getItemVM());
+			}
+		}
+		
+	}
+	
+	// This test verifies, that every node can be constructed, stores the correct action and
+	// has the correct Successors and Predecessors	
+	@Test(timeout = 100)
+	public void checkPredecessors() throws Exception {
 		Timed.simulateUntilLastEvent();
 			
 		this.createComplexAbstractModel();
@@ -818,20 +834,39 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", firstOverAllocated, ((MigrationAction) ffc.getActions().get(3)).getTarget());
 		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", tenthVM, ((MigrationAction) ffc.getActions().get(3)).getItemVM());
 			
-		Assert.assertEquals("The ArrayList actions does not contain the fifth Action", seventhUnderAllocated, ((ShutDownAction) ffc.getActions().get(4)).getshutdownpm());
+		Assert.assertEquals("The ArrayList actions does not contain the fifth Action", seventhUnderAllocated, ((ShutDownAction) ffc.getActions().get(4)).getShutDownPM());
 			
-		Assert.assertEquals("The ArrayList actions does not contain the sixth Action", eighthUnderAllocated, ((ShutDownAction) ffc.getActions().get(5)).getshutdownpm());
+		Assert.assertEquals("The ArrayList actions does not contain the sixth Action", eighthUnderAllocated, ((ShutDownAction) ffc.getActions().get(5)).getShutDownPM());
 			
+		Assert.assertEquals("The ArrayList actions does not contain the first Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.MIGRATION,ffc.getActions().get(0).getType());
+		Assert.assertEquals("The ArrayList actions does not contain the second Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.MIGRATION,ffc.getActions().get(1).getType());
+		Assert.assertEquals("The ArrayList actions does not contain the third Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.MIGRATION,ffc.getActions().get(2).getType());
+		Assert.assertEquals("The ArrayList actions does not contain the fourth Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.MIGRATION,ffc.getActions().get(3).getType());
+		Assert.assertEquals("The ArrayList actions does not contain the fifth Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.SHUTDOWN,ffc.getActions().get(4).getType());
+		Assert.assertEquals("The ArrayList actions does not contain the sixth Action", hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.Action.Type.SHUTDOWN,ffc.getActions().get(5).getType());
+		
 		Assert.assertEquals("The first Action does not have the correct number of previous nodes",0,ffc.getActions().get(0).getPrevious().size());
 		Assert.assertEquals("The second Action does not have the correct number of previous nodes",0,ffc.getActions().get(1).getPrevious().size());
-		Assert.assertEquals("The third Action does not have the correct number of previous nodes",0,ffc.getActions().get(2).getPrevious().size());
-		Assert.assertEquals("The fourth Action does not have the correct number of previous nodes",0,ffc.getActions().get(3).getPrevious().size());
+		Assert.assertEquals("The third Action does not have the correct number of previous nodes",1,ffc.getActions().get(2).getPrevious().size());
+		Assert.assertEquals("The fourth Action does not have the correct number of previous nodes",1,ffc.getActions().get(3).getPrevious().size());
 		Assert.assertEquals("The fifth Action does not have the correct number of previous nodes",1,ffc.getActions().get(4).getPrevious().size());
 		Assert.assertEquals("The sixth Action does not have the correct number of previous nodes",1,ffc.getActions().get(5).getPrevious().size());
+		
+		Assert.assertEquals("The first Action does not have the correct number of following nodes",2,ffc.getActions().get(0).getSuccessors().size());
+		Assert.assertEquals("The second Action does not have the correct number of following nodes",0,ffc.getActions().get(1).getSuccessors().size());
+		Assert.assertEquals("The third Action does not have the correct number of following nodes",1,ffc.getActions().get(2).getSuccessors().size());
+		Assert.assertEquals("The fourth Action does not have the correct number of following nodes",1,ffc.getActions().get(3).getSuccessors().size());
+		Assert.assertEquals("The fifth Action does not have the correct number of followings nodes",0,ffc.getActions().get(4).getSuccessors().size());
+		Assert.assertEquals("The sixth Action does not have the correct number of following nodes",0,ffc.getActions().get(5).getSuccessors().size());
 			
+		Assert.assertEquals("The third Action does not have the correct previous node",ffc.getActions().get(0),ffc.getActions().get(2).getPrevious().get(0));
+		Assert.assertEquals("The fourth Action does not have the correct previous node",ffc.getActions().get(0),ffc.getActions().get(3).getPrevious().get(0));
 		Assert.assertEquals("The fifth Action does not have the correct previous node",ffc.getActions().get(2),ffc.getActions().get(4).getPrevious().get(0));
 		Assert.assertEquals("The sixth Action does not have the correct previous node",ffc.getActions().get(3),ffc.getActions().get(5).getPrevious().get(0));
-
+		Assert.assertEquals("The third Action does not have the correct previous node",ffc.getActions().get(2),ffc.getActions().get(0).getSuccessors().get(0));
+		Assert.assertEquals("The fourth Action does not have the correct previous node",ffc.getActions().get(3),ffc.getActions().get(0).getSuccessors().get(1));
+		Assert.assertEquals("The fifth Action does not have the correct previous node",ffc.getActions().get(4),ffc.getActions().get(2).getSuccessors().get(0));
+		Assert.assertEquals("The sixth Action does not have the correct previous node",ffc.getActions().get(5),ffc.getActions().get(3).getSuccessors().get(0));
 	}	
 	
 	// This test verifies everything together, which means, that out of a given situation every previous step is taken and
@@ -840,19 +875,33 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	public void verifyFullFunctionality() throws Exception {
 		Timed.simulateUntilLastEvent();
 		
-		createAbstractModel();
+		createComplexAbstractModel();
 		
-		ModelPM first = ffc.getBins().get(0);
-		ModelPM second = ffc.getBins().get(1);
-		ModelPM third = ffc.getBins().get(2);
-		
-		ModelVM firstVM = first.getVM(0);
-		ModelVM secondVM = first.getVM(1);
-		ModelVM thirdVM = second.getVM(0);
-		ModelVM fourthVM = third.getVM(0);
-		
+		ModelPM firstOverAllocated = ffc.getBins().get(0);
+		ModelPM secondUnderAllocated = ffc.getBins().get(1);
+		ModelPM thirdNormal = ffc.getBins().get(2);
+		ModelPM fourthOverAllocated = ffc.getBins().get(3);
+		ModelPM fifthUnderAllocated = ffc.getBins().get(4);
+		ModelPM sixthNormal = ffc.getBins().get(5);
+		ModelPM seventhUnderAllocated = ffc.getBins().get(6);
+		ModelPM eighthUnderAllocated = ffc.getBins().get(7);
+			
 		ffc.optimize();
-
-		//todo: check functionality and placement of pms, vms and inside the simulator everything
+		Timed.simulateUntilLastEvent();				
+		
+		
+		//the migrations are not done, the situation is like before the consolidator was called
+		Assert.assertEquals(3,firstOverAllocated.getPM().listVMs().size());
+		Assert.assertEquals(2,secondUnderAllocated.getPM().listVMs().size());
+		Assert.assertEquals(1,thirdNormal.getPM().listVMs().size());
+		Assert.assertEquals(1,fourthOverAllocated.getPM().listVMs().size());
+		Assert.assertEquals(2,fifthUnderAllocated.getPM().listVMs().size());
+		Assert.assertEquals(1,sixthNormal.getPM().listVMs().size());
+		Assert.assertEquals(0,seventhUnderAllocated.getPM().listVMs().size());
+		Assert.assertEquals(0,eighthUnderAllocated.getPM().listVMs().size());
+		Assert.assertEquals(0, ffc.getActions().size());
+		
+		Assert.assertEquals(6, basic.runningMachines.size());
+		
 	}
 }
