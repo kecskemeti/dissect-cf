@@ -183,7 +183,7 @@ public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements
 	@Override
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State newState) {
-		if(oldState.equals(VirtualMachine.State.RESUME_TR) && newState.equals(VirtualMachine.State.RUNNING)){
+		if(newState.equals(VirtualMachine.State.RUNNING)){
 			for(int i = 0; i < actions.size(); i++){
 					if(actions.get(i).getType().equals(Action.Type.MIGRATION) && ((MigrationAction) actions.get(i)).getItemVM().getVM().equals(vm)){
 						Action act = actions.get(i);
