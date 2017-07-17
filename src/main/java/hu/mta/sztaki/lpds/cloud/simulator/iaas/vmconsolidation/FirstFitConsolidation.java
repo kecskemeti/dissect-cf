@@ -34,8 +34,14 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * 
 	 * @param parent
 	 * 			The IaaSService of the superclass Consolidator.
+	 * @param upperThreshold
+	 * 			The double value representing the upper Threshold.
+	 * @param lowerThreshold
+	 * 			The double value representing the lower Threshold.
+	 * @param consFreq
+	 * 			This value determines, how often the consolidation should run.
 	 */
-	public FirstFitConsolidation(IaaSService parent, final double upperThreshold, final double lowerThreshold, long consFreq) throws Exception {
+	public FirstFitConsolidation(IaaSService parent, final double upperThreshold, final double lowerThreshold, long consFreq) {
 		super(parent, consFreq);
 		for(int i = 0; i < bins.size(); i++) {
 			bins.get(i).setLowerThreshold(lowerThreshold);
@@ -52,9 +58,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
 		super.stateChanged(pm, oldState, newState);
 	}
-	
-	
-	
+		
 	/**
 	 * The method for doing the consolidation, which means start PMs, stop PMs, migrate VMs, ...
 	 * To do that, every action is saved as an Action-Node inside a graph, which does the changes
@@ -329,10 +333,5 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		}
 		
 	}
-	/*
-	@Override
-	public void tick(long fires) {
-		// TODO Auto-generated method stub
-		
-	}*/
+	
 }

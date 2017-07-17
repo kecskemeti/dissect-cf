@@ -35,7 +35,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 
 
-public abstract class ModelBasedConsolidator implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
+public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
 	
 	IaaSService toConsolidate;
 	ArrayList <ModelPM> bins = new ArrayList <ModelPM>();
@@ -51,9 +51,11 @@ public abstract class ModelBasedConsolidator implements VirtualMachine.StateChan
 	 * 			The used IaaSService
 	 * @throws Exception
 	 */
-	public ModelBasedConsolidator(IaaSService parent, long consFreq) throws Exception {
+	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		
-		this.toConsolidate = parent;
+		//super(toConsolidate, consFreq);
+		
+		this.toConsolidate = toConsolidate;
 		Handler logFileHandler;
 		try {
 			logFileHandler = new FileHandler("log.txt");
