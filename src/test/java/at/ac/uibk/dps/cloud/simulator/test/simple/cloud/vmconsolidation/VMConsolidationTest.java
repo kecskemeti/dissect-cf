@@ -796,21 +796,21 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			
 		ModelPM firstOverAllocated = ffc.getBins().get(0);
 		ModelPM secondUnderAllocated = ffc.getBins().get(1);
-		ModelPM thirdNormal = ffc.getBins().get(2);
+		//ModelPM thirdNormal = ffc.getBins().get(2);
 		ModelPM fourthOverAllocated = ffc.getBins().get(3);
 		ModelPM fifthUnderAllocated = ffc.getBins().get(4);
-		ModelPM sixthNormal = ffc.getBins().get(5);
+		//ModelPM sixthNormal = ffc.getBins().get(5);
 		ModelPM seventhUnderAllocated = ffc.getBins().get(6);
 		ModelPM eighthUnderAllocated = ffc.getBins().get(7);
 			
 		ModelVM firstVM = firstOverAllocated.getVM(0);
-		ModelVM secondVM = firstOverAllocated.getVM(1);
-		ModelVM thirdVM = secondUnderAllocated.getVM(0);
-		ModelVM fourthVM = thirdNormal.getVM(0);
+		//ModelVM secondVM = firstOverAllocated.getVM(1);
+		//ModelVM thirdVM = secondUnderAllocated.getVM(0);
+		//ModelVM fourthVM = thirdNormal.getVM(0);
 		ModelVM fifthVM = fourthOverAllocated.getVM(0);
-		ModelVM sixthVM = fourthOverAllocated.getVM(1);
-		ModelVM seventhVM = fifthUnderAllocated.getVM(0);
-		ModelVM eighthVM = sixthNormal.getVM(0);
+		//ModelVM sixthVM = fourthOverAllocated.getVM(1);
+		//ModelVM seventhVM = fifthUnderAllocated.getVM(0);
+		//ModelVM eighthVM = sixthNormal.getVM(0);
 		ModelVM ninthVM = seventhUnderAllocated.getVM(0);
 		ModelVM tenthVM = eighthUnderAllocated.getVM(0);
 			
