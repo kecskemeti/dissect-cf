@@ -5,25 +5,26 @@ import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-/**
- * @author Julian Bellendorf, René Ponto
- *
- * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
- * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
- * States. The States are not the same as inside the simulator, because for migrating it is useful to
- * introduce some new States for the allocation of the given PM.
- */
+	/**
+	 * @author Julian Bellendorf, René Ponto
+	 *
+	 * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
+	 * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
+	 * States. The States are not the same as inside the simulator, because for migrating it is useful to
+	 * introduce some new States for the allocation of the given PM.
+	 */
 
 public class ModelPM {
 	
-	private PhysicalMachine pm; 
+	private PhysicalMachine pm;		// the real PM inside the simulator
 	private ArrayList <ModelVM> vmList = new ArrayList <ModelVM>();
 	private int number;
 
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	private double lowerThreshold=0.25;
-	private double upperThreshold=0.75;
+	
+	private double lowerThreshold = 0.25;
+	private double upperThreshold = 0.75;
 
 	private State state;
 
@@ -68,95 +69,12 @@ public class ModelPM {
 		Logger.getGlobal().info("Created PM: "+toString());
 	}
 	
-	/**
-	 * Checks if the PM is in a state where nothing has to be changed.
-	 * @return
-	 * 			True if the State is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED
-	 */
-	public boolean isNothingToChange() {
-		
-		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is UnderAllocated and shall be migrated.
-	 * @return
-	 * 			True if the State is UNDERALLOCATED_RUNNING or STILL_UNDERALLOCATED
-	 */
-	public boolean isUnderAllocatedChangeable() {
-		if(getState() == State.UNDERALLOCATED_RUNNING || getState() == State.STILL_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is OverAllocated and VMs have to be migrated.
-	 * @return
-	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
-	 */
-	public boolean isOverAllocatedChangeable() {
-		if(getState() ==  State.OVERALLOCATED_RUNNING || getState() == State.STILL_OVERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * This method checks if a given VM can be hosted on this PM without changing the State to overAllocated.
-	 * 
-	 * @param toAdd
-	 * 			The VM which shall be added.
-	 * @return
-	 * 			True if the VM can be added.
-	 */
-	public boolean isMigrationPossible(ModelVM toAdd) {
-		
-		checkAllocation();
-		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
-		available.subtract(consumedResources);
-		Logger.getGlobal().info("available: "+available.toString());
-		if(toAdd.getResources().canBeAdded(available)) {
-			Logger.getGlobal().info("canbeadded");
-
-			addVM(toAdd);
-			checkAllocation();
-			
-			if(this.getState().equals(State.OVERALLOCATED_RUNNING)) {
-				removeVM(toAdd);
-				return false;
-			}
-			else {
-				removeVM(toAdd);
-				return true;
-			}
-		}
-		else
-			return false;
-	}
 	
 	/**
 	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
 	 */	
-	public String toString() {
-		/*
-		String erg =  System.getProperty("line.separator") + "PM: " + number + System.getProperty("line.separator") + 
-				"Resources: TotalProcessingPower: " + this.consumedResources.getTotalProcessingPower() + 
-				", Memory: " + this.consumedResources.getRequiredMemory() + System.getProperty("line.separator") +
-				"VMs:   " + System.getProperty("line.separator");
-		for(int i = 0; i < getVMs().size(); i++) {
-			
-			erg = erg + getVM(i).toString() + System.getProperty("line.separator");
-		}
-		return erg ;
-		*/
-		String result="PM cap="+totalResources.toString()+", curr="+consumedResources.toString()+", VMs=";
+	public String toString() {		
+		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", VMs=";
 		for(ModelVM vm : vmList) {
 			result=result+" "+vm.getResources().toString();
 		}
@@ -164,27 +82,19 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Instantiates the PM.
+	 * Instantiates the PM with its VMs.
 	 * @param vm
 	 * 			The list with the VMs.
 	 */
 	public void initializePM(ArrayList<ModelVM> vms) {
-		//set the VM list and consumes resources
+		//set the VM list and consume resources
 		for(int i = 0; i < vms.size(); i++) {
 			this.addVM(vms.get(i));
 		}
 	}
 	
 	/**
-	 * Get the ArrayList which contains all actual running VMs on this PM.
-	 * @return vmList
-	 */
-	public ArrayList <ModelVM> getVMs() {
-		return vmList;		
-	}
-	
-	/**
-	 * Adds a given VM to this PM
+	 * Adds a given VM to this PM.
 	 * @param vm
 	 * 			The VM which is going to be put on this PM.
 	 */
@@ -195,21 +105,39 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Removes a given VM of this PM
+	 * Removes a given VM of this PM.
 	 * @param vm
 	 * 			The VM which is going to be removed of this PM.
 	 */
 	private void removeVM(ModelVM vm) {
 		vmList.remove(vm);
+		// adapt the consumed resources
 		consumedResources.subtract(vm.getResources());		
 		checkAllocation();
 	}
 	
 	/**
-	 * @return The matching PM inside the simulator.
-	 */
-	public PhysicalMachine getPM() {
-		return pm;
+	 * Standard Migration for one VM.
+	 * @param vm
+	 * 			The VM which is going to be migrated.
+	 * @param target
+	 * 			The target PM where to migrate.
+	 */	
+	public void migrateVM(ModelVM vm, ModelPM target) {
+		
+		target.getVMs().add(vm);
+		target.addVM(vm);
+		this.removeVM(vm);
+		vm.sethostPM(target);
+		
+		//deleting the VM out of the vmlist
+		for(int i = 0; i < getVMs().size(); i++) {
+			ModelVM x = getVM(i);
+			
+			if(x.equals(vm)) {
+				this.getVMs().remove(i);
+			}
+		}
 	}
 
 	/**
@@ -218,22 +146,6 @@ public class ModelPM {
 	 */
 	public boolean isHostingVMs() {
 		return !getVMs().isEmpty();
-	}
-		
-	/**
-	 * This class represents the consumed resources of this PM.
-	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
-	 */	
-	public ResourceVector getConsumedResources() {
-		return this.consumedResources;
-	}	
-	
-	/**
-	 * This class represents the total resources of this PM.
-	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
-	 */	
-	public ConstantConstraints getTotalResources() {
-		return this.totalResources;
 	}
 	
 	/**
@@ -306,14 +218,6 @@ public class ModelPM {
 		 */
 		UNCHANGEABLE_UNDERALLOCATED
 	};
-	
-	/**
-	 * Getter for the State.
-	 * @return actual State.
-	 */	
-	public State getState() {
-		return this.state;
-	}
 	
 	/**
 	 * changes the state of the PM so the graph can give the switch off information
@@ -398,10 +302,84 @@ public class ModelPM {
 	}
 	
 	/**
+	 * Checks if the PM is in a state where nothing has to be changed.
+	 * @return
+	 * 			True if the State is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED
+	 */
+	public boolean isNothingToChange() {
+		
+		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Checks if the PM is UnderAllocated and shall be migrated.
+	 * @return
+	 * 			True if the State is UNDERALLOCATED_RUNNING or STILL_UNDERALLOCATED
+	 */
+	public boolean isUnderAllocatedChangeable() {
+		if(getState() == State.UNDERALLOCATED_RUNNING || getState() == State.STILL_UNDERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * Checks if the PM is OverAllocated and VMs have to be migrated.
+	 * @return
+	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
+	 */
+	public boolean isOverAllocatedChangeable() {
+		if(getState() ==  State.OVERALLOCATED_RUNNING || getState() == State.STILL_OVERALLOCATED) {
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	/**
+	 * This method checks if a given VM can be hosted on this PM without changing the State to overAllocated.
+	 * 
+	 * @param toAdd
+	 * 			The VM which shall be added.
+	 * @return
+	 * 			True if the VM can be added.
+	 */
+	public boolean isMigrationPossible(ModelVM toAdd) {
+		
+		checkAllocation();
+		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
+		available.subtract(consumedResources);
+		Logger.getGlobal().info("available: "+available.toString());
+		if(toAdd.getResources().canBeAdded(available)) {
+			Logger.getGlobal().info("canbeadded");
+
+			addVM(toAdd);
+			checkAllocation();
+			
+			if(this.getState().equals(State.OVERALLOCATED_RUNNING)) {
+				removeVM(toAdd);
+				return false;
+			}
+			else {
+				removeVM(toAdd);
+				return true;
+			}
+		}
+		else
+			return false;
+	}
+	
+	
+	/**
 	 * Getter for a specific VM.
 	 * @param position
 	 * 			The desired position where the VM is.
-	 * @return The VM on this position.
+	 * @return The VM on this position, null if there is none.
 	 */	
 	public ModelVM getVM(int position) {
 		if(getVMs().size() <= position) {
@@ -412,29 +390,44 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Standard Migration for one VM.
-	 * @param vm
-	 * 			The VM which is going to be migrated.
-	 * @param target
-	 * 			The target PM where to migrate.
-	 */	
-	public void migrateVM(ModelVM vm, ModelPM target) {
-		
-		target.getVMs().add(vm);
-		target.addVM(vm);
-		this.removeVM(vm);
-		vm.sethostPM(target);
-		
-		//deleting the VM out of the vmlist
-		for(int i = 0; i < getVMs().size(); i++) {
-			ModelVM x = getVM(i);
-			
-			if(x.equals(vm)) {
-				this.getVMs().remove(i);
-			}
-		}
+	 * Get the ArrayList which contains all actual running VMs on this PM.
+	 * @return vmList
+	 */
+	public ArrayList <ModelVM> getVMs() {
+		return vmList;		
 	}
-
+	
+	/**
+	 * @return The matching PM inside the simulator.
+	 */
+	public PhysicalMachine getPM() {
+		return pm;
+	}
+	
+	/**
+	 * Getter for the State.
+	 * @return actual State.
+	 */	
+	public State getState() {
+		return this.state;
+	}
+	
+	/**
+	 * This class represents the consumed resources of this PM.
+	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
+	 */	
+	public ResourceVector getConsumedResources() {
+		return this.consumedResources;
+	}	
+	
+	/**
+	 * This class represents the total resources of this PM.
+	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
+	 */	
+	public ConstantConstraints getTotalResources() {
+		return this.totalResources;
+	}
+	
 	public double getLowerThreshold() {
 		return lowerThreshold;
 	}

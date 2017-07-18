@@ -25,19 +25,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 	 * 		1. Which PMs shall start?
 	 * 		2. Which VMs on which PMs shall be migrated to target PMs?
 	 * 		3. Which PMs shall be shut down?
-	 * The order plays an important role, because it could be necessary to do Steps 1 and 2
-	 * Simultaneously. 
 	 * 
 	 * At last the created graph out of the changes needs to get worked with. This graph 
 	 * has all changes saved in nodes (actions) which are going to be done inside the simulator
 	 * when there is nothing to be done before doing the action on the actual node.
 	 */
 
-
-
-public abstract class ModelBasedConsolidator /*extends Timed*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
-	
-	private final long consFreq;
+public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
 	
 	IaaSService toConsolidate;
 	ArrayList <ModelPM> bins = new ArrayList <ModelPM>();
@@ -45,17 +39,19 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	ArrayList <Action> actions = new ArrayList<Action>();
 	
 	/**
-	 * The abstract constructor for VM consolidation. It expects an IaaSService and the two thresholds for
-	 * defining the borders for consolidation which both are between 0 and 1 (of course the upperThreshold has
-	 * to be greater than the lowerThreshold).
+	 * The abstract constructor for VM consolidation. It expects an IaaSService and a variable
+	 * which says how often the consolidation shall occur.
 	 * 
-	 * @param parent
-	 * 			The used IaaSService
-	 * @throws Exception
+	 * @param toConsolidate
+	 * 			The used IaaSService.
+	 * @param consFreq
+	 * 			This value determines, how often the consolidation should run.
 	 */
-	public ModelBasedConsolidator(IaaSService parent, long consFreq) throws Exception {
-		this.consFreq = consFreq;
-		this.toConsolidate = parent;
+	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
+		
+		//super(toConsolidate, consFreq);
+		
+		this.toConsolidate = toConsolidate;
 		Handler logFileHandler;
 		try {
 			logFileHandler = new FileHandler("log.txt");
@@ -65,22 +61,9 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 			System.out.println("Could not open log file for output"+e);
 			System.exit(-1);
 		}
-		this.instantiate();
+		
+		this.instantiate();		//create the abstract model
 	}
-
-	/**
-	 * This function will be called on all timed objects which asked for a
-	 * recurring event notification at a given time instance.
-	 * 
-	 * @param fires
-	 *            The particular time instance when the function was called. The
-	 *            time instance is passed so the tick functions will not need to
-	 *            call getFireCount() if they need to operate on the actual
-	 *            time.
-	 *//*
-	public void tick(long fires) {
-		// ??
-	}*/
 	
 	/** 
 	 * @return bins
@@ -102,13 +85,14 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	public void instantiate() {
 		for (int i = 0; i < toConsolidate.machines.size(); i++) {
 			
+			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = toConsolidate.machines.get(i);
 			ArrayList <ModelVM> items = new ArrayList <ModelVM>();
 			ArrayList <VirtualMachine> vmList = new ArrayList <VirtualMachine>();
 			vmList.addAll(pm.listVMs());
 			
 			ModelPM act = new ModelPM(pm, items, pm.getCapacities().getRequiredCPUs(), 
-					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i +1);
+					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i + 1);
 			
 			for(int j = 0; j < pm.listVMs().size(); j ++) {
 				items.add(new ModelVM(vmList.get(j), act, 
@@ -135,40 +119,44 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	public void createGraph(ArrayList<Action> actions) {
 		
 		for(int i = 0; i < actions.size(); i++) {
+			Logger.getGlobal().info(actions.get(i).toString());
 			//actual action is a migration
-			actions.get(i).createGraph(actions);
+			actions.get(i).determinePredecessors(actions);
 			if(actions.get(i).getType().equals(Action.Type.MIGRATION)){
 				((MigrationAction)actions.get(i)).getItemVM().getVM().subscribeStateChange(this);		
 			}
 			//actual action shall shut down a PM
 			if(actions.get(i).getType().equals(Action.Type.SHUTDOWN)){
-				((ShutDownAction)actions.get(i)).getshutdownpm().getPM().subscribeStateChangeEvents(this);		
+				((ShutDownAction)actions.get(i)).getShutDownPM().getPM().subscribeStateChangeEvents(this);		
 			}
 			//actual action is starting a PM
 			//this can be done instantly, there can be no previous actions
 			if(actions.get(i).equals(Action.Type.START)){
-				((StartAction)actions.get(i)).getstartpm().getPM().subscribeStateChangeEvents(this);
+				((StartAction)actions.get(i)).getStartPM().getPM().subscribeStateChangeEvents(this);
 			}
 		}
+		for(int j = 0; j < actions.size(); j++) {			
+			actions.get(j).determineSuccessors(actions);
+		}
 	}
-	
+
 	//here the necessary actions are performed
 	//do the migration, shut a PM down, start a PM
 	public void performActions() throws VMManagementException, NetworkException{
 		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getType().equals(Action.Type.MIGRATION) && actions.get(i).getPrevious().isEmpty()){
+			if(actions.get(i).getType().equals(Action.Type.MIGRATION) && actions.get(i).getPrevious().isEmpty() && ((MigrationAction) actions.get(i)).getItemVM().getVM().getState().equals(VirtualMachine.State.RUNNING)){
 				PhysicalMachine source = ((MigrationAction)actions.get(i)).getSource().getPM();
 				PhysicalMachine target = ((MigrationAction)actions.get(i)).getTarget().getPM();
 				VirtualMachine vm = ((MigrationAction)actions.get(i)).getItemVM().getVM();
 				source.migrateVM(vm, target);
 			}
-			if(actions.get(i).equals(Action.Type.SHUTDOWN) && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = ((ShutDownAction)actions.get(i)).getshutdownpm().getPM();
+			if(actions.get(i).getType().equals(Action.Type.SHUTDOWN) && actions.get(i).getPrevious().isEmpty()){
+				PhysicalMachine pm = ((ShutDownAction)actions.get(i)).getShutDownPM().getPM();
 				pm.switchoff(null);
 			}
 			
-			if(actions.get(i).equals(Action.Type.START) && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = ((StartAction)actions.get(i)).getstartpm().getPM();
+			if(actions.get(i).getType().equals(Action.Type.START) && actions.get(i).getPrevious().isEmpty()){
+				PhysicalMachine pm = ((StartAction)actions.get(i)).getStartPM().getPM();
 				pm.turnon();
 			}
 		}
@@ -179,26 +167,24 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	@Override
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State newState) {
-		if(oldState.equals(VirtualMachine.State.MIGRATING) && newState.equals(VirtualMachine.State.RUNNING)){
+		if(newState.equals(VirtualMachine.State.RUNNING)){
 			for(int i = 0; i < actions.size(); i++){
-				if(!actions.get(i).getPrevious().isEmpty()){
-					for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
-						if(((MigrationAction) actions.get(i).getPrevious().get(j)).getItemVM().getVM().equals(vm)){
-							actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
+					if(actions.get(i).getType().equals(Action.Type.MIGRATION) && ((MigrationAction) actions.get(i)).getItemVM().getVM().equals(vm)){
+						Action act = actions.get(i);
+						for(int j = 0; j < act.getSuccessors().size(); j++){
+							act.getSuccessors().get(j).removePrevious(act);
 						}
+						for(int j = 0; j < act.getSuccessors().size(); j++){
+							act.removeSuccessor(act.getSuccessors().get(j));
+						}
+						actions.remove(actions.get(i));
 					}
-				}
-				if(((MigrationAction)actions.get(i)).getItemVM().getVM().equals(vm)){
-					actions.remove(actions.get(i));
-				}
 			}
 			try {
 				performActions();
 			} catch (VMManagementException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (NetworkException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -209,32 +195,41 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 	@Override
 	public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
-		if(oldState.equals(PhysicalMachine.State.SWITCHINGON) && newState.equals(PhysicalMachine.State.RUNNING)){
+		if(newState.equals(PhysicalMachine.State.RUNNING)){
 			for(int i = 0; i < actions.size(); i++){
-				if(!actions.get(i).getPrevious().isEmpty()){
-					for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
-						if(((StartAction) actions.get(i).getPrevious().get(j)).getstartpm().getPM().equals(pm)){
-							actions.get(i).getPrevious().remove(actions.get(i).getPrevious().get(j));
-						}
+				if(actions.get(i).getType().equals(Action.Type.START) && ((StartAction) actions.get(i)).getStartPM().getPM().equals(pm)){
+					Action act = actions.get(i);
+					for(int j = 0; j < act.getSuccessors().size(); j++){
+						act.getSuccessors().get(j).removePrevious(act);
 					}
-				}
-				if(((StartAction)actions.get(i)).getstartpm().getPM().equals(pm)){
-					actions.remove(actions.get(i));
+					for(int j = 0; j < act.getSuccessors().size(); j++){
+						act.removeSuccessor(act.getSuccessors().get(j));
+					}
+					actions.remove(act);
 				}
 			}
 			
 			try {
 				performActions();
 			} catch (VMManagementException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (NetworkException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}			
-		}		
+			}
+		}	
+		if(newState.equals(PhysicalMachine.State.OFF)){
+			for(int i = 0; i < actions.size(); i++){
+				if(actions.get(i).getType().equals(Action.Type.SHUTDOWN) && ((ShutDownAction) actions.get(i)).getShutDownPM().getPM().equals(pm)){
+					Action act = actions.get(i);
+					actions.remove(act);
+				}
+			}
+		}
 	}
 
+	/**
+	 * The toString()-method.
+	 */
 	public String toString() {
 		String result="";
 		boolean first=true;
@@ -247,4 +242,3 @@ public abstract class ModelBasedConsolidator /*extends Timed*/ implements Virtua
 		return result;
 	}
 }
-

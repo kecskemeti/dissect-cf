@@ -3,14 +3,14 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
-/**
- * @author René Ponto
- * 
- * This class manages the resources of the modeled VMs and PMs as an extension of 'AlterableResourceConstraints'.
- * The additional functions are comparisons of the resources (cores, perCoreProcessing and memory) between a ConstantConstraint
- * and a ResourceVector to look if a PM is overAllocated or underAllocated with the actual placed VMs and a method to compare two
- * ResourceVectors.
- */
+	/**
+	 * @author René Ponto
+	 * 
+	 * This class manages the resources of the modeled VMs and PMs as an extension of 'AlterableResourceConstraints'.
+	 * The additional functions are comparisons of the resources (cores, perCoreProcessing and memory) between a ConstantConstraint
+	 * and a ResourceVector to look if a PM is overAllocated or underAllocated with the actual placed VMs and a method to compare two
+	 * ResourceVectors.
+	 */
 
 public class ResourceVector extends AlterableResourceConstraints {	
 	
@@ -29,7 +29,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	/**
 	 * Comparison for checking if the PM is overAllocated.
 	 * @param total
-	 * 			The total resources
+	 * 			The total resources as ResourceConstraints.
+	 * @param upperThreshold
+	 * 			The defined upper Threshold.
 	 * @return true if the pm is overAllocated.
 	 */
 	public boolean isOverAllocated(ResourceConstraints total, double upperThreshold) {	
@@ -43,7 +45,9 @@ public class ResourceVector extends AlterableResourceConstraints {
 	/**
 	 * Comparison for checking if the PM is underAllocated.
 	 * @param total
-	 * 			The total resources
+	 * 			The total resources as ResourceConstraints.
+	 * @param lowerThreshold
+	 * 			The defined lower Threshold.
 	 * @return true if the pm is underAllocated.
 	 */
 	public boolean isUnderAllocated(ResourceConstraints total, double lowerThreshold) {
@@ -56,14 +60,14 @@ public class ResourceVector extends AlterableResourceConstraints {
 
 	/**
 	 * Compares the allocation of two ResourceVectors to verify that the VM which calls this methods on its resources can be 
-	 * added to the consumed resources of the PM in the parameter.
-	 * @param available
-	 * 			The second ResourceVector
+	 * added to the available resources of the PM in the parameter.
+	 * @param availablePMResources
+	 * 			The resources of the possible host PM as ResourceConstraints.
 	 * @return true if all values are greater.
 	 */
-	public boolean canBeAdded(ResourceConstraints pmResources) {
+	public boolean canBeAdded(ResourceConstraints availablePMResources) {
 		
-		if(getTotalProcessingPower() <= pmResources.getTotalProcessingPower() && getRequiredMemory() <= pmResources.getRequiredMemory()) {
+		if(getTotalProcessingPower() <= availablePMResources.getTotalProcessingPower() && getRequiredMemory() <= availablePMResources.getRequiredMemory()) {
 			return true;
 		}
 		else {
@@ -71,8 +75,10 @@ public class ResourceVector extends AlterableResourceConstraints {
 		}
 	}
 
+	/**
+	 * The toString()-method.
+	 */
 	public String toString() {
-		//return "["+getTotalProcessingPower()+","+getRequiredMemory()+"]";
 		return "["+getRequiredCPUs()+","+getRequiredProcessingPower()+","+getRequiredMemory()+"]";
 	}
 }
