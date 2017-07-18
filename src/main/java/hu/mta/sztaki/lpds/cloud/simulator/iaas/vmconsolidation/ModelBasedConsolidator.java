@@ -31,11 +31,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 	 * when there is nothing to be done before doing the action on the actual node.
 	 */
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> cc52a86147c7547ef546ec2b65b460a17c627775
 public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
 	
 	IaaSService toConsolidate;

@@ -40,13 +40,8 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
-<<<<<<< HEAD
 	public FirstFitConsolidation(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold, long consFreq) {
 		super(toConsolidate, consFreq);
-=======
-	public FirstFitConsolidation(IaaSService parent, final double upperThreshold, final double lowerThreshold, long consFreq) {
-		super(parent, consFreq);
->>>>>>> cc52a86147c7547ef546ec2b65b460a17c627775
 		for(int i = 0; i < bins.size(); i++) {
 			bins.get(i).setLowerThreshold(lowerThreshold);
 			bins.get(i).setUpperThreshold(upperThreshold);
@@ -349,8 +344,6 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		}
 		
 	}
-	
-<<<<<<< HEAD
 }
 
 	/**
@@ -363,6 +356,4 @@ class StartingNotPossibleException extends Exception
     {
         super("There is no PM which fits to the starting criteria.");
     }
-=======
->>>>>>> cc52a86147c7547ef546ec2b65b460a17c627775
 }
