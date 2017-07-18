@@ -3,6 +3,7 @@ Anmerkungen:
 Zweige zusammenführen - dringend
 Probleme im Test versuchen zu fixen - dringend
 PSO weiter implementieren
+FFC migrateUnderAllocatedPM() fixen
 
 Action.java und Unterklassen:
 
@@ -17,9 +18,6 @@ Consolidator.java:
 optimize sollte vermutlich eine abstrakte Methode sein, die keine Exceptions 
 wirft, dafür aber eine Liste von Actions zurückgibt. Der Kommentar vor optimize 
 sollte angepasst werden.
-
-In createGraph muss man bei einer ShutDownAction m.M.n. nichts machen, da darauf keine andere 
-Aktion warten kann (ist aber nicht schlimm, kann auch so bleiben).
 
 performActions wäre eleganter, wenn Action eine abstrakte Methode execute() hätte, die von den 
 einzelnen Unterklassen entsprechend implementiert wäre. Hier müsste man nur schauen, ob die Aktion 
