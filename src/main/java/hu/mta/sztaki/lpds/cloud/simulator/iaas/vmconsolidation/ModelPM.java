@@ -23,6 +23,8 @@ public class ModelPM {
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
 	
+	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
+	
 	private double lowerThreshold = 0.25;
 	private double upperThreshold = 0.75;
 
@@ -138,6 +140,22 @@ public class ModelPM {
 				this.getVMs().remove(i);
 			}
 		}
+	}
+	
+	/**
+	 * Reserves resources for possible migrations. 
+	 * @param vm
+	 * 			The Virtual Machine which could be migrated.
+	 */
+	public void reserveResources(ModelVM vm) {
+		this.reserved.add(vm.getResources());
+	}
+	
+	/**
+	 * Resets the resources.
+	 */
+	public void setResourcesFree() {
+		this.reserved.subtract(reserved);
 	}
 
 	/**
@@ -354,6 +372,7 @@ public class ModelPM {
 		checkAllocation();
 		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
 		available.subtract(consumedResources);
+		available.subtract(reserved);
 		Logger.getGlobal().info("available: "+available.toString());
 		if(toAdd.getResources().canBeAdded(available)) {
 			Logger.getGlobal().info("canbeadded");

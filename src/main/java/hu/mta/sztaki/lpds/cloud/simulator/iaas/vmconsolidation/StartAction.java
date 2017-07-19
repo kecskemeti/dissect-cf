@@ -2,6 +2,8 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+
 /**
  * This class stores actions, which need to start a PM in the simulator
  *
@@ -40,5 +42,11 @@ public class StartAction extends Action{
 	@Override
 	public String toString() {
 		return "Action: "+getType()+"  :"+getStartPM().toString();
+	}
+
+	@Override
+	public void execute() {
+		PhysicalMachine pm = this.getStartPM().getPM();
+		pm.turnon();
 	}
 }

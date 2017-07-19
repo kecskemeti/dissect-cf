@@ -2,6 +2,11 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+
 /**
  * This class stores actions, that need to commit a migration in the simulator
  *
@@ -82,6 +87,20 @@ public class MigrationAction extends Action{
 	@Override
 	public String toString() {
 		return "Action: "+getType()+" Source:  "+getSource().toString()+" Target: "+getTarget().toString()+" VM: "+getItemVM().toString();
+	}
+
+	@Override
+	public void execute() {
+		PhysicalMachine source = this.getSource().getPM();
+		PhysicalMachine target = this.getTarget().getPM();
+		VirtualMachine vm = this.getItemVM().getVM();
+		try {
+			source.migrateVM(vm, target);
+		} catch (VMManagementException e) {
+			e.printStackTrace();
+		} catch (NetworkException e) {
+			e.printStackTrace();
+		}
 	}
 
 	

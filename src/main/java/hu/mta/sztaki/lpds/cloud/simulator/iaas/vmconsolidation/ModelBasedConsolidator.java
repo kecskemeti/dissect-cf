@@ -144,20 +144,8 @@ public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements
 	//do the migration, shut a PM down, start a PM
 	public void performActions() throws VMManagementException, NetworkException{
 		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getType().equals(Action.Type.MIGRATION) && actions.get(i).getPrevious().isEmpty() && ((MigrationAction) actions.get(i)).getItemVM().getVM().getState().equals(VirtualMachine.State.RUNNING)){
-				PhysicalMachine source = ((MigrationAction)actions.get(i)).getSource().getPM();
-				PhysicalMachine target = ((MigrationAction)actions.get(i)).getTarget().getPM();
-				VirtualMachine vm = ((MigrationAction)actions.get(i)).getItemVM().getVM();
-				source.migrateVM(vm, target);
-			}
-			if(actions.get(i).getType().equals(Action.Type.SHUTDOWN) && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = ((ShutDownAction)actions.get(i)).getShutDownPM().getPM();
-				pm.switchoff(null);
-			}
-			
-			if(actions.get(i).getType().equals(Action.Type.START) && actions.get(i).getPrevious().isEmpty()){
-				PhysicalMachine pm = ((StartAction)actions.get(i)).getStartPM().getPM();
-				pm.turnon();
+			if(actions.get(i).getPrevious().isEmpty()) {
+				actions.get(i).execute();
 			}
 		}
 	}

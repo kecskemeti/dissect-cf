@@ -2,6 +2,10 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+
 /**
  * This class stores actions, which need to shut down a PM in the simulator
  *
@@ -50,5 +54,17 @@ public class ShutDownAction extends Action{
 	@Override
 	public String toString() {
 		return "Action: "+getType()+"  :"+getShutDownPM().toString();
+	}
+
+	@Override
+	public void execute() {
+		PhysicalMachine pm = this.getShutDownPM().getPM();
+		try {
+			pm.switchoff(null);
+		} catch (VMManagementException e) {
+			e.printStackTrace();
+		} catch (NetworkException e) {
+			e.printStackTrace();
+		}
 	}
 }

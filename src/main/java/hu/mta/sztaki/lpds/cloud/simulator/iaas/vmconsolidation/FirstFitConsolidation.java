@@ -317,7 +317,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 			// if there is a PM which could host the actual VM, save it
 			if(pm != null) {
 				
-				//toDo: reserve the resource for the actual VM if there are more than one VMs to migrate
+				pm.reserveResources(actual);		//reserve the resource for the possible migration
 				
 				migPMs.add(pm);
 				migrationActions.add(new MigrationAction(count++, source, pm, actual));
@@ -334,6 +334,11 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 						return; // no migration possible and no one has been done previously, second try
 					}
 				}	
+				else {
+					for(int a = 0; a < migPMs.size(); a++) {
+						migPMs.get(a).setResourcesFree();
+					}
+				}
 			}				
 			state = source.getState();		//set the actual State
 		}

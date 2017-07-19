@@ -9,17 +9,17 @@ public abstract class Action{
 	
 	public static enum Type{
 		/**
-		 * The current action needs to start another PM
+		 * The current action needs to start another PM.
 		 */
 		START,
 		
 		/**
-		 * The current action needs to migrate a VM
+		 * The current action needs to migrate a VM.
 		 */
 		MIGRATION,
 		
 		/**
-		 * The current action needs to shut down a PM
+		 * The current action needs to shut down a PM.
 		 */
 		SHUTDOWN
 	}
@@ -60,7 +60,7 @@ public abstract class Action{
 	
 	/**
 	 * This method determines the successors of this aciton, based on the predecessors 
-	 * of every other action
+	 * of every other action.
 	 * @param actions
 	 */
 	public void determineSuccessors(ArrayList<Action> actions){
@@ -73,12 +73,17 @@ public abstract class Action{
 		}		
 	}
 	/**
-	 * This Method determines the predecessors of this action, based on its type
+	 * This Method determines the predecessors of this action, based on its type.
 	 */
 	public abstract void determinePredecessors(ArrayList<Action> actions);
 	
 	/**
-	 * This Method returns the type of the action
+	 * This method is indivualized by every subclass and performs the actions.
+	 */
+	public abstract void execute();
+	
+	/**
+	 * This Method returns the type of the action.
 	 */
 	public abstract Type getType();
 	
