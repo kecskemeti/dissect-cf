@@ -1,9 +1,6 @@
 Anmerkungen:
 
-Zweige zusammenführen - dringend
-Probleme im Test versuchen zu fixen - dringend
 PSO weiter implementieren
-FFC migrateUnderAllocatedPM() fixen
 
 Action.java und Unterklassen:
 
@@ -14,14 +11,6 @@ createGraph nur List<Action> und nicht ArrayList<Action> als Argument bekommen.
 
 
 Consolidator.java:
-
-optimize sollte vermutlich eine abstrakte Methode sein, die keine Exceptions 
-wirft, dafür aber eine Liste von Actions zurückgibt. Der Kommentar vor optimize 
-sollte angepasst werden.
-
-performActions wäre eleganter, wenn Action eine abstrakte Methode execute() hätte, die von den 
-einzelnen Unterklassen entsprechend implementiert wäre. Hier müsste man nur schauen, ob die Aktion 
-noch Vorgänger hat, und wenn nicht, könnte man die execute()-Methode aufrufen.
 
 Die stateChanged-Logik könnte deutlich vereinfacht und performanter gestaltet werden. Dazu braucht 
 man zwei Änderungen. Erstens solle im Graphen jede Kante in beide Richtungen gespeichert werden. 
