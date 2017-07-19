@@ -128,7 +128,7 @@ public class NetworkNode {
 		RUNNING
 	};
 
-	State currState = State.OFF;
+	State currState;
 	/**
 	 * Models the incoming network connections of this network node
 	 */
@@ -209,13 +209,18 @@ public class NetworkNode {
 		inbws = new MaxMinConsumer(maxInBW);
 		diskinbws = new MaxMinConsumer(diskBW / 2f);
 		diskoutbws = new MaxMinProvider(diskBW / 2f);
-		// Just making sure we will have enough bandwidht for every operation we
+		// Just making sure we will have enough bandwidth for every operation we
 		// could possibly have
 		final double memBW = (maxOutBW + maxInBW + diskBW);
 		meminbws = new MaxMinConsumer(memBW);
 		memoutbws = new MaxMinProvider(memBW);
 		latencies = latencymap;
 		allSpreaders = new ResourceSpreader[] { diskinbws, diskoutbws, outbws, inbws, meminbws, memoutbws };
+		try {
+			setState(State.OFF);
+		} catch (NetworkException nex) {
+			// Not expected
+		}
 	}
 
 	/**
@@ -384,14 +389,16 @@ public class NetworkNode {
 	}
 
 	public void setState(State newState) throws NetworkException {
-		if (currState.equals(newState)) {
-			return;
-		}
-		if (currState.equals(State.RUNNING)) {
-			for (ResourceSpreader rs : allSpreaders) {
-				if (rs.toBeAdded.size() + rs.underProcessing.size() > 0) {
-					throw new NetworkException(
-							"There is still some network activity in progress, cannot transition to a non-running state");
+		if (currState != null) {
+			if (currState.equals(newState)) {
+				return;
+			}
+			if (currState.equals(State.RUNNING)) {
+				for (ResourceSpreader rs : allSpreaders) {
+					if (rs.toBeAdded.size() + rs.underProcessing.size() > 0) {
+						throw new NetworkException(
+								"There is still some network activity in progress, cannot transition to a non-running state");
+					}
 				}
 			}
 		}

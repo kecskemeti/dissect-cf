@@ -56,7 +56,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.SmallestFirstScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
-import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
@@ -99,7 +98,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		final String[] names = generateNames(machineCount, "M", 1);
 		for (int i = 0; i < machineCount; i++) {
 			pms[i] = new PhysicalMachine(corecount, pcpp, memory, dummyRepoWithName(false, names[i]), 1, 1,
-					defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.host));
+					defaultHostTransitions);
 		}
 		return pms;
 
@@ -111,8 +110,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 
 	public static Repository dummyRepoWithName(boolean withVa, String name) {
 		final Repository repo = new Repository(vaSize * 400, name, 1, 1, 1, globalLatencyMapInternal,
-				defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
-				defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.network));
+				defaultStorageTransitions, defaultNetworkTransitions);
 		if (withVa) {
 			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0, false, vaSize / 5);
 			Assert.assertTrue("Registration should succeed", repo.registerObject(va));

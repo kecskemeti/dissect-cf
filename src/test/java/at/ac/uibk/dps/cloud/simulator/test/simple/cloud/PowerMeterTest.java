@@ -46,6 +46,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.SchedulingDependentM
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
@@ -65,6 +66,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 	public void VMmeasurementTest() throws VMManagementException, NetworkException {
 		PhysicalMachine pm = dummyPMcreator();
 		Repository repo = dummyRepoCreator(true);
+		repo.setState(NetworkNode.State.RUNNING);
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
 		VirtualMachine vm = pm.requestVM((VirtualAppliance) repo.contents().iterator().next(), pm.getCapacities(), repo,
@@ -193,9 +195,10 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		final IaaSService iaas = new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class);
 		final ArrayList<EnergyMeter> meters = new ArrayList<EnergyMeter>();
 		for (int i = 0; i < 7; i++) {
-			final PhysicalMachine pm = new PhysicalMachine(64, 1, 64 * 1024,
-					new Repository(vaSize, generateName("M", 1), 1, 1, 1, globalLatencyMap), 89000, 29000,
-					defaultTransitions);
+			final PhysicalMachine pm = new PhysicalMachine(
+					64, 1, 64 * 1024, new Repository(vaSize, generateName("M", 1), 1, 1, 1, globalLatencyMap,
+							defaultStorageTransitions, defaultNetworkTransitions),
+					89000, 29000, defaultHostTransitions);
 			iaas.registerHost(pm);
 			meters.add(new PhysicalMachineEnergyMeter(pm));
 		}

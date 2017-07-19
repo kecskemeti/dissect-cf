@@ -49,12 +49,17 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 	public static final double diskDivider = 10;
 	public static final double netDivider = 20;
 	public static final double totalIdle = idlepower + idlepower / diskDivider + idlepower / netDivider;
-	public final static EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> defaultTransitions;
+	public final static Map<String, PowerState> defaultHostTransitions;
+	public final static Map<String, PowerState> defaultStorageTransitions;
+	public final static Map<String, PowerState> defaultNetworkTransitions;
 
 	static {
 		try {
-			defaultTransitions = PowerTransitionGenerator.generateTransitions(minpower, idlepower, maxpower,
-					diskDivider, netDivider);
+			EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> transitions = PowerTransitionGenerator
+					.generateTransitions(minpower, idlepower, maxpower, diskDivider, netDivider);
+			defaultHostTransitions = transitions.get(PowerTransitionGenerator.PowerStateKind.host);
+			defaultStorageTransitions = transitions.get(PowerTransitionGenerator.PowerStateKind.storage);
+			defaultNetworkTransitions = transitions.get(PowerTransitionGenerator.PowerStateKind.network);
 		} catch (Exception e) {
 			throw new IllegalStateException("Cannot initialize the default transitions");
 		}
