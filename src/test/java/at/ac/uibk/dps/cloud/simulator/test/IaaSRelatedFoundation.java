@@ -56,6 +56,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.SmallestFirstScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
@@ -97,9 +98,8 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		final PhysicalMachine[] pms = new PhysicalMachine[machineCount];
 		final String[] names = generateNames(machineCount, "M", 1);
 		for (int i = 0; i < machineCount; i++) {
-			pms[i] = new PhysicalMachine(corecount, pcpp, memory,
-					new Repository(vaSize * 200, names[i], 1, 1, 1, globalLatencyMapInternal), 1, 1,
-					defaultTransitions);
+			pms[i] = new PhysicalMachine(corecount, pcpp, memory, dummyRepoWithName(false, names[i]), 1, 1,
+					defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.host));
 		}
 		return pms;
 
@@ -109,13 +109,20 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		return dummyPMsCreator(1, dummyPMCoreCount, dummyPMPerCorePP, dummyPMMemory)[0];
 	}
 
-	public static Repository dummyRepoCreator(boolean withVA) {
-		final Repository repo = new Repository(vaSize * 400, generateName("R", 3), 1, 1, 1, globalLatencyMapInternal);
-		if (withVA) {
+	public static Repository dummyRepoWithName(boolean withVa, String name) {
+		final Repository repo = new Repository(vaSize * 400, name, 1, 1, 1, globalLatencyMapInternal,
+				defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
+				defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.network));
+		if (withVa) {
 			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0, false, vaSize / 5);
 			Assert.assertTrue("Registration should succeed", repo.registerObject(va));
 		}
 		return repo;
+
+	}
+
+	public static Repository dummyRepoCreator(boolean withVA) {
+		return dummyRepoWithName(withVA, generateName("R", 3));
 	}
 
 	public static IaaSService setupIaaS(Class<? extends Scheduler> vmsch,

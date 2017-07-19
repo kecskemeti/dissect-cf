@@ -26,6 +26,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.complex;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import org.junit.Assert;
@@ -35,6 +36,7 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -50,6 +52,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
+import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 public class ParallelUsageTest extends PMRelatedFoundation {
@@ -74,11 +77,15 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		String repoID = cloudName + "-Repo", machineID = cloudName + "-Machine";
 		lmap.put(repoID, lat);
 		lmap.put(machineID, lat);
-		Repository repo = new Repository(6000000000000L, repoID, repoNBW, repoNBW, repoDBW, lmap);
-		Repository disk = new Repository(6000000000000L, machineID, diskNBW, diskNBW, repoDBW, lmap);
+		Map<String, PowerState> diskStMap = defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.storage);
+		Map<String, PowerState> nwStMap = defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.network);
+		Repository repo = new Repository(6000000000000L, repoID, repoNBW, repoNBW, repoDBW, lmap, diskStMap, nwStMap);
+		Repository disk = new Repository(6000000000000L, machineID, diskNBW, diskNBW, repoDBW, lmap, diskStMap,
+				nwStMap);
 		repo.registerObject(initialVA);
 		iaas.registerRepository(repo);
-		PhysicalMachine pm = new PhysicalMachine(cores, 1.0, 128000000000L, disk, 89000, 29000, defaultTransitions);
+		PhysicalMachine pm = new PhysicalMachine(cores, 1.0, 128000000000L, disk, 89000, 29000,
+				defaultTransitions.get(PowerTransitionGenerator.PowerStateKind.host));
 		iaas.registerHost(pm);
 		return iaas;
 	}
@@ -193,19 +200,19 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 						try {
 							vm.newComputeTask(300 * aSecond, ResourceConsumption.unlimitedProcessing,
 									new ResourceConsumption.ConsumptionEvent() {
-								@Override
-								public void conComplete() {
-									try {
-										vm.destroy(false);
-									} catch (VMManagementException e) {
-										e.printStackTrace();
-									}
-								}
+										@Override
+										public void conComplete() {
+											try {
+												vm.destroy(false);
+											} catch (VMManagementException e) {
+												e.printStackTrace();
+											}
+										}
 
-								@Override
-								public void conCancelled(ResourceConsumption problematic) {
-								}
-							});
+										@Override
+										public void conCancelled(ResourceConsumption problematic) {
+										}
+									});
 						} catch (Exception e) {
 							throw new IllegalStateException(e);
 						}

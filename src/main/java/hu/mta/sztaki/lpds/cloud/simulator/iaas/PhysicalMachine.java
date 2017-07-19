@@ -29,11 +29,11 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -58,6 +58,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
+import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 
 /**
  * This class represents a single Physical machine with computing resources as
@@ -471,7 +472,32 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			if (tasksDue.size() == 0) {
 				// Mark the completion of the state change
 				onOffEvent = null;
-				setState(newState);
+				class NetworkCausedStateDelay extends Timed {
+					int infiniteLoopTest = 0;
+
+					public NetworkCausedStateDelay() {
+						tick(Timed.getFireCount());
+					}
+
+					@Override
+					public void tick(long fires) {
+						try {
+							setState(newState);
+							// Everything is fine we are good to go.
+							unsubscribe();
+						} catch (NetworkException nex) {
+							// Some network activities stop the transition
+							if (infiniteLoopTest++ > 10000) {
+								throw new RuntimeException("Unsettling amount of network activity...");
+							}
+							long whenToCheckNext = localDisk.getLastEvent();
+							if (whenToCheckNext > 0) {
+								updateFrequency(whenToCheckNext + 1 - fires);
+							}
+						}
+					}
+				}
+				new NetworkCausedStateDelay();
 				return;
 			}
 
@@ -620,43 +646,10 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	private final long offDelayEstimate;
 
 	/**
-	 * When defining powertransitions for the PM one has to label each transiton's
-	 * properties with a kind
-	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
-	 *         MTA SZTAKI (c) 2014"
-	 * 
-	 */
-	public static enum PowerStateKind {
-		/**
-		 * the powerstate definitions belong to the cpu and memory resources of the PM
-		 */
-		host,
-		/**
-		 * the powerstate definitions belong to the local disk of the PM
-		 */
-		storage,
-		/**
-		 * the powerstate definitions belong to the network interface of the PM
-		 */
-		network
-	};
-
-	/**
 	 * Mapping between the various PM states and its representative CPU/memory power
 	 * behaviors.
 	 */
-	private final EnumMap<State, PowerState> hostPowerBehavior;
-	/**
-	 * Mapping between the various PM states and its representative disk power
-	 * behaviors.
-	 */
-	private final EnumMap<State, PowerState> storagePowerBehavior;
-	/**
-	 * Mapping between the various PM states and its representative network power
-	 * behaviors.
-	 */
-	private final EnumMap<State, PowerState> networkPowerBehavior;
+	private final Map<String, PowerState> hostPowerBehavior;
 	/**
 	 * the manager of the PM's state change notifications.
 	 */
@@ -753,11 +746,11 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            energy consumption behavior.
 	 */
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk, int onD, int offD,
-			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
+			Map<String, PowerState> cpuPowerTransitions) {
 		this(cores, perCorePocessing, memory, disk,
 				new double[] { onD * perCorePocessing * smallUtilization, perCorePocessing * smallUtilization },
 				new double[] { offD * perCorePocessing * smallUtilization, perCorePocessing * smallUtilization },
-				powerTransitions);
+				cpuPowerTransitions);
 	}
 
 	/**
@@ -811,9 +804,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk,
-			double[] turnonOperations, double[] switchoffOperations,
-			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions) {
+			double[] turnonOperations, double[] switchoffOperations, Map<String, PowerState> cpuPowerTransitions) {
 		super(cores * perCorePocessing);
+		if (cpuPowerTransitions == null) {
+			throw new IllegalStateException("Cannot initialize physical machine without a complete power behavior set");
+		}
+
 		// Init resources:
 		totalCapacities = new ConstantConstraints(cores, perCorePocessing, memory);
 		internalAvailableCaps = new AlterableResourceConstraints(totalCapacities);
@@ -822,19 +818,18 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		freeCapacities = new UnalterableConstraintsPropagator(internalReallyFreeCaps);
 		localDisk = disk;
 
-		hostPowerBehavior = powerTransitions.get(PowerStateKind.host);
-		storagePowerBehavior = powerTransitions.get(PowerStateKind.storage);
-		networkPowerBehavior = powerTransitions.get(PowerStateKind.network);
+		hostPowerBehavior = Collections.unmodifiableMap(cpuPowerTransitions);
 		onTransition = new double[turnonOperations.length];
 		onDelayEstimate = prepareTransitionalTasks(true, turnonOperations);
 		offTransition = new double[switchoffOperations.length];
 		offDelayEstimate = prepareTransitionalTasks(false, switchoffOperations);
 
-		if (hostPowerBehavior == null || storagePowerBehavior == null || networkPowerBehavior == null) {
-			throw new IllegalStateException("Cannot initialize physical machine without a complete power behavior set");
+		try {
+			setState(State.OFF);
+		} catch (NetworkException e) {
+			// This should never happen
+			throw new RuntimeException(e);
 		}
-
-		setState(State.OFF);
 		directConsumer = new MaxMinConsumer(getPerTickProcessingPower());
 	}
 
@@ -903,40 +898,46 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * running on the PM
 	 */
 	private void actualSwitchOff() {
-		switch (currentState) {
-		case SWITCHINGON:
-			setState(State.SWITCHINGOFF);
-			onOffEvent.addFurtherTasks(offTransition);
-			onOffEvent.setNewState(State.OFF);
-			break;
-		case RUNNING:
-			setState(State.SWITCHINGOFF);
-			new Timed() {
-				@Override
-				public void tick(final long fires) {
-					if (State.SWITCHINGOFF.equals(currentState)) {
-						ResourceSpreader.FreqSyncer syncer = getSyncer();
-						// Ensures that the switching off activities are only
-						// started once all runtime activities complete for the
-						// directConsumer
-						if (syncer != null && syncer.isSubscribed()
-								&& (underProcessing.size() + toBeAdded.size() - toBeRemoved.size() > 0)) {
-							updateFrequency(syncer.getNextEvent() - fires + 1);
-						} else {
-							unsubscribe();
-							new PowerStateDelayer(offTransition, State.OFF);
+		try {
+			switch (currentState) {
+			case SWITCHINGON:
+				setState(State.SWITCHINGOFF);
+				onOffEvent.addFurtherTasks(offTransition);
+				onOffEvent.setNewState(State.OFF);
+				break;
+			case RUNNING:
+				setState(State.SWITCHINGOFF);
+				new Timed() {
+					@Override
+					public void tick(final long fires) {
+						if (State.SWITCHINGOFF.equals(currentState)) {
+							ResourceSpreader.FreqSyncer syncer = getSyncer();
+							// Ensures that the switching off activities are only
+							// started once all runtime activities complete for the
+							// directConsumer
+							if (syncer != null && syncer.isSubscribed()
+									&& (underProcessing.size() + toBeAdded.size() - toBeRemoved.size() > 0)) {
+								updateFrequency(syncer.getNextEvent() - fires + 1);
+							} else {
+								unsubscribe();
+								new PowerStateDelayer(offTransition, State.OFF);
+							}
 						}
+						// else: Another transition dropped the switchoff task. do
+						// nothing
 					}
-					// else: Another transition dropped the switchoff task. do
-					// nothing
-				}
-			}.tick(Timed.getFireCount());
-			break;
-		case OFF:
-		case SWITCHINGOFF:
-			// Nothing to do
-			System.err.println("WARNING: an already off PM was tasked to switch off!");
+				}.tick(Timed.getFireCount());
+				break;
+			case OFF:
+			case SWITCHINGOFF:
+				// Nothing to do
+				System.err.println("WARNING: an already off PM was tasked to switch off!");
+			}
+		} catch (NetworkException nex) {
+			// Should not happen as long as the network node don't have a SWITCHINGOFF state
+			throw new RuntimeException(nex);
 		}
+
 	}
 
 	/**
@@ -969,7 +970,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		switch (currentState) {
 		case SWITCHINGOFF:
 		case OFF:
-			setState(State.SWITCHINGON);
+			try {
+				setState(State.SWITCHINGON);
+			} catch (NetworkException nex) {
+				// Should not happen as long as the networknode don't have a switchingon state
+				throw new RuntimeException(nex);
+			}
 
 			if (onOffEvent == null) {
 				new PowerStateDelayer(onTransition, State.RUNNING);
@@ -1413,20 +1419,20 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * @param newState
 	 *            the new PM state to be set.
 	 */
-	private void setState(final State newState) {
+	private void setState(final State newState) throws NetworkException {
+		try {
+			localDisk.setState(NetworkNode.State.valueOf(newState.name()));
+			// Behaviour change propagated
+		} catch (IllegalArgumentException e) {
+			// No need to propagate behaviour change
+		}
 		final State pastState = currentState;
 		currentState = newState;
 		directConsumerUsageMoratory = newState != State.RUNNING;
 		stateListenerManager.notifyListeners(Pair.of(pastState, newState));
 
 		// Power state management:
-		setCurrentPowerBehavior(hostPowerBehavior.get(newState));
-		// TODO: if the repository class also implements proper power state
-		// management then this must move there
-		localDisk.diskinbws.setCurrentPowerBehavior(storagePowerBehavior.get(newState));
-		localDisk.diskoutbws.setCurrentPowerBehavior(storagePowerBehavior.get(newState));
-		localDisk.inbws.setCurrentPowerBehavior(networkPowerBehavior.get(newState));
-		localDisk.outbws.setCurrentPowerBehavior(networkPowerBehavior.get(newState));
+		setCurrentPowerBehavior(PowerTransitionGenerator.getPowerStateFromMap(hostPowerBehavior, newState.toString()));
 	}
 
 	/**
