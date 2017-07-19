@@ -883,7 +883,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();				
 		
 		
-		//the migrations are not done, the situation is like before the consolidator was called
 		Assert.assertEquals(3,firstOverAllocated.getPM().listVMs().size());
 		Assert.assertEquals(2,secondUnderAllocated.getPM().listVMs().size());
 		Assert.assertEquals(1,thirdNormal.getPM().listVMs().size());
