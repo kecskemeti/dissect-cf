@@ -1,6 +1,7 @@
 Anmerkungen:
 
 PSO weiter implementieren
+eventuell weitere Testfälle einfügen, um die Ergänzungen zu testen
 
 Action.java und Unterklassen:
 
