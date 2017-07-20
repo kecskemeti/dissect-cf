@@ -345,7 +345,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 *      				Can a not running PM get started if necessary?
 	 */	
 	
-	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16	
+	// per PM: reqcores = 8, reqProcessing = 1, reqmem = 16	
 	// overAllocated at 19 totalProc, 13 mem
 	// underAllocated at 5 totalProc, 3 mem
 	// normal at 6 to 18 totalProc, 4 to 12 mem
@@ -468,6 +468,72 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The seventh PM has not the right State after migration",	ModelPM.State.EMPTY_OFF, seventh.getState());
 		Assert.assertEquals("The ninth VM has not the right host", first ,ninthVM.gethostPM());
+	}
+	
+	// This method creates a model with more than two VMs on some PMs
+	public void createMigrationVerificationModel() throws VMManagementException, NetworkException {
+		
+		PhysicalMachine testNormalPM4 = createPm("PM4", reqcores, reqProcessing, reqmem, reqDisk);
+
+		Timed.simulateUntilLastEvent();
+		
+		//register PMs
+		basic.registerHost(testNormalPM4);
+		
+		// The four VMs set the Load of PM1 to overAllocated, PM2 to underoverAllocated and PM3 to normal.				
+		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
+		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
+		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+		VirtualAppliance VA8 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+
+		//save the VAs in the repository
+		centralRepo.registerObject(VA5);
+		centralRepo.registerObject(VA6);
+		centralRepo.registerObject(VA7);
+		centralRepo.registerObject(VA8);		
+
+		VirtualMachine VM5 = new VirtualMachine(VA5);
+		VirtualMachine VM6 = new VirtualMachine(VA6);
+		VirtualMachine VM7 = new VirtualMachine(VA7);
+		VirtualMachine VM8 = new VirtualMachine(VA8);
+		
+		Timed.simulateUntilLastEvent();
+		
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		testNormalPM4.turnon();
+		
+		Timed.simulateUntilLastEvent();
+		
+		// per PM: reqcores = 8, reqProcessing = 1, reqmem = 16	
+		
+		// VM constraints: reqcores, reqProcessing, reqmem
+		// smallConstraints = new ConstantConstraints(1, 1, 2);	
+		// mediumConstraints = new ConstantConstraints(3, 1, 6);	
+		// bigConstraints = new ConstantConstraints(5, 1, 8);
+				
+		switchOnVM(VM1, this.smallConstraints, testOverPM1, true);
+		switchOnVM(VM2, this.smallConstraints, testOverPM1, true);
+		switchOnVM(VM3, this.bigConstraints, testOverPM1, true);
+		switchOnVM(VM4, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM5, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM6, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM7, this.bigConstraints, testNormalPM3, true);
+		switchOnVM(VM8, this.bigConstraints, testNormalPM4, true);
+
+		ffc = new FirstFitConsolidation(basic, 0.7, 0.3, 0);
+
+		Timed.simulateUntilLastEvent();
+	}
+	
+	// This test verfies the migration of PMs with more than two VMs per PM
+	@Test(timeout = 100)
+	public void verifyMoreComplexMigrations() throws VMManagementException, NetworkException {
+		
+		createMigrationVerificationModel();
+		
+		//TODO
 	}
 	
 	// This test verifies the functionality of the optimize()-method	
