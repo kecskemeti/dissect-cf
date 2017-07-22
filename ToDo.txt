@@ -2,6 +2,7 @@ Anmerkungen:
 
 PSO weiter implementieren
 eventuell weitere Testfälle einfügen, um die Ergänzungen zu testen
+OnOffScheduler
 
 Action.java und Unterklassen:
 
@@ -23,4 +24,4 @@ betreffenden Events abfangen und direkt bearbeiten.
 
 Es fehlt noch die Logik, dass der Consolidator alle x Minuten aufgerufen wird und seine 
 entsprechenden Methoden abarbeitet. (Ist im Consolidator von Kecskemeti enthalten.)
---> Probleme
+--> Probleme, siehe Mail von mir
