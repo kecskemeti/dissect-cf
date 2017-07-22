@@ -53,6 +53,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 		  				Are the changes done inside the simulator?
 	 */
 	
+	// Timed.simulateUntil(Timed.getFireCount() + 1000);	maybe use this instead of the actual simulate
 	
 	// Creation of all necessary objects and variables
 	
@@ -240,26 +241,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 						are the resources of the VMs correct?
 	 * 
 	 */
-	
-	// Method to create an abstract working model.
-	// We start three PMs and host vour VMs on them, so PM1 is overAllocated, PM2 is underAllocated and
-	// PM3 has a normal allocation.
-	public void createAbstractModel() throws Exception {
-		
-		testOverPM1.turnon();
-		testUnderPM2.turnon();
-		testNormalPM3.turnon();
-		Timed.simulateUntilLastEvent();
-
-		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
-		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
-		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
-		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
-
-		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
-
-		Timed.simulateUntilLastEvent();
-	}
 
 	// This test verifies that all three abstract PMs were created and fit with the real ones	
 	@Test(timeout = 100)
@@ -344,6 +325,153 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 *       				Is the shut down method working?
 	 *      				Can a not running PM get started if necessary?
 	 */	
+	
+	// Method to create an abstract working model.
+	// We start three PMs and host vour VMs on them, so PM1 is overAllocated, PM2 is underAllocated and
+	// PM3 has a normal allocation.
+	public void createAbstractModel() throws Exception {
+			
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		Timed.simulateUntilLastEvent();
+
+		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
+		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
+		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
+
+		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
+
+		Timed.simulateUntil(1000);
+	}
+	
+	// This method creates a model with more than two VMs on some PMs
+	public void createMigrationVerificationModel() throws VMManagementException, NetworkException {
+			
+		PhysicalMachine testNormalPM4 = createPm("PM4", reqcores, reqProcessing, reqmem, reqDisk);
+
+		Timed.simulateUntilLastEvent();
+			
+		//register PMs
+		basic.registerHost(testNormalPM4);
+			
+		// The four VMs set the Load of PM1 to overAllocated, PM2 to underoverAllocated and PM3 to normal.				
+		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
+		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
+		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+		VirtualAppliance VA8 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+
+		//save the VAs in the repository
+		centralRepo.registerObject(VA5);
+		centralRepo.registerObject(VA6);
+		centralRepo.registerObject(VA7);
+		centralRepo.registerObject(VA8);		
+
+		VirtualMachine VM5 = new VirtualMachine(VA5);
+		VirtualMachine VM6 = new VirtualMachine(VA6);
+		VirtualMachine VM7 = new VirtualMachine(VA7);
+		VirtualMachine VM8 = new VirtualMachine(VA8);
+			
+		Timed.simulateUntilLastEvent();
+			
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		testNormalPM4.turnon();
+			
+		Timed.simulateUntilLastEvent();
+			
+		// per PM: reqcores = 8, reqProcessing = 1, reqmem = 16	
+			
+		// VM constraints: reqcores, reqProcessing, reqmem
+		// smallConstraints = new ConstantConstraints(1, 1, 2);	
+		// mediumConstraints = new ConstantConstraints(3, 1, 6);	
+		// bigConstraints = new ConstantConstraints(5, 1, 8);
+					
+		switchOnVM(VM1, this.smallConstraints, testOverPM1, true);
+		switchOnVM(VM2, this.smallConstraints, testOverPM1, true);
+		switchOnVM(VM3, this.bigConstraints, testOverPM1, true);
+		switchOnVM(VM4, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM5, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM6, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM7, this.bigConstraints, testNormalPM3, true);
+		switchOnVM(VM8, this.bigConstraints, testNormalPM4, true);
+		ffc = new FirstFitConsolidation(basic, 0.7, 0.3, 0);
+		
+		Timed.simulateUntil(1000);
+	}	
+	
+	//Method to create another more complex abstract working model	
+	public void createComplexAbstractModel() throws Exception {		
+
+		PhysicalMachine testOverPM4 = createPm("pm4", reqcores, reqProcessing, reqmem, reqDisk);		
+		PhysicalMachine testUnderPM5 = createPm("pm5", reqcores, reqProcessing, reqmem, reqDisk);
+		PhysicalMachine testNormalPM6 = createPm("pm6", reqcores, reqProcessing, reqmem, reqDisk);
+		PhysicalMachine testUnderPM7 = createPm("pm7", reqcores, reqProcessing, reqmem, reqDisk);
+		PhysicalMachine testUnderPM8 = createPm("pm8", reqcores, reqProcessing, reqmem, reqDisk);
+
+		//save the PMs inside the register		
+		basic.registerHost(testOverPM4);
+		basic.registerHost(testUnderPM5);
+		basic.registerHost(testNormalPM6);
+		basic.registerHost(testUnderPM7);
+		basic.registerHost(testUnderPM8);
+			
+		// The six additional VMs set the Load of PM4 to overAllocated, PM5 to underAllocated, PM6 to normal,
+		// PM7 to underAllocated and PM8 to underAllocated. 
+		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
+		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
+		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+		VirtualAppliance VA8 = new VirtualAppliance("VM 8", 1, 0, false, 1);
+		VirtualAppliance VA9 = new VirtualAppliance("VM 9", 1, 0, false, 1);
+		VirtualAppliance VA10 = new VirtualAppliance("VM 10", 1, 0, false, 1);
+			
+		//save the VAs inside the register and the PMs		
+		centralRepo.registerObject(VA5);
+		centralRepo.registerObject(VA6);
+		centralRepo.registerObject(VA7);
+		centralRepo.registerObject(VA8);
+		centralRepo.registerObject(VA9);
+		centralRepo.registerObject(VA10);
+		
+		VirtualMachine VM5 = new VirtualMachine(VA5);
+		VirtualMachine VM6 = new VirtualMachine(VA6);
+		VirtualMachine VM7 = new VirtualMachine(VA7);
+		VirtualMachine VM8 = new VirtualMachine(VA8);
+		VirtualMachine VM9 = new VirtualMachine(VA9);
+		VirtualMachine VM10 = new VirtualMachine(VA10);
+			
+		Timed.simulateUntilLastEvent();
+			
+		testOverPM1.turnon();
+		testUnderPM2.turnon();
+		testNormalPM3.turnon();
+		testOverPM4.turnon();
+		testUnderPM5.turnon();
+		testNormalPM6.turnon();
+		testUnderPM7.turnon();
+		testUnderPM8.turnon();
+		
+		Timed.simulateUntilLastEvent();
+			
+		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
+		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
+		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
+		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
+		switchOnVM(VM5, this.bigConstraints, testOverPM4, true);
+		switchOnVM(VM6, this.mediumConstraints, testOverPM4, true);
+		switchOnVM(VM7, this.smallConstraints, testUnderPM5, true);
+		switchOnVM(VM8, this.bigConstraints, testNormalPM6, true);
+		switchOnVM(VM9, this.smallConstraints, testUnderPM7, true);
+		switchOnVM(VM10, this.smallConstraints, testUnderPM8, true);
+			
+		Timed.simulateUntilLastEvent();
+			
+		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
+			
+		Timed.simulateUntil(1000);
+	}
 	
 	// per PM: reqcores = 8, reqProcessing = 1, reqmem = 16	
 	// overAllocated at 19 totalProc, 13 mem
@@ -441,7 +569,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 		ModelVM firstVM = first.getVM(0);
 
-		ffc.optimize();		
+		ffc.doConsolidation(null);		
 
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The first VM has not the right host", second ,firstVM.gethostPM());
@@ -463,70 +591,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("The VM has the wrong memory", 2, ninthVM.getResources().getRequiredMemory(), 0);
 		Assert.assertEquals("The VM has the wrong host", seventh, ninthVM.gethostPM());
 			
-		ffc.optimize();			
+		ffc.doConsolidation(null);			
 		
 		Assert.assertEquals("The first PM has not the right State after migration",	ModelPM.State.NORMAL_RUNNING, first.getState());
 		Assert.assertEquals("The seventh PM has not the right State after migration",	ModelPM.State.EMPTY_OFF, seventh.getState());
 		Assert.assertEquals("The ninth VM has not the right host", first ,ninthVM.gethostPM());
 	}
-	
-	// This method creates a model with more than two VMs on some PMs
-	public void createMigrationVerificationModel() throws VMManagementException, NetworkException {
 		
-		PhysicalMachine testNormalPM4 = createPm("PM4", reqcores, reqProcessing, reqmem, reqDisk);
-
-		Timed.simulateUntilLastEvent();
-		
-		//register PMs
-		basic.registerHost(testNormalPM4);
-		
-		// The four VMs set the Load of PM1 to overAllocated, PM2 to underoverAllocated and PM3 to normal.				
-		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
-		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
-		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
-		VirtualAppliance VA8 = new VirtualAppliance("VM 7", 1, 0, false, 1);
-
-		//save the VAs in the repository
-		centralRepo.registerObject(VA5);
-		centralRepo.registerObject(VA6);
-		centralRepo.registerObject(VA7);
-		centralRepo.registerObject(VA8);		
-
-		VirtualMachine VM5 = new VirtualMachine(VA5);
-		VirtualMachine VM6 = new VirtualMachine(VA6);
-		VirtualMachine VM7 = new VirtualMachine(VA7);
-		VirtualMachine VM8 = new VirtualMachine(VA8);
-		
-		Timed.simulateUntilLastEvent();
-		
-		testOverPM1.turnon();
-		testUnderPM2.turnon();
-		testNormalPM3.turnon();
-		testNormalPM4.turnon();
-		
-		Timed.simulateUntilLastEvent();
-		
-		// per PM: reqcores = 8, reqProcessing = 1, reqmem = 16	
-		
-		// VM constraints: reqcores, reqProcessing, reqmem
-		// smallConstraints = new ConstantConstraints(1, 1, 2);	
-		// mediumConstraints = new ConstantConstraints(3, 1, 6);	
-		// bigConstraints = new ConstantConstraints(5, 1, 8);
-				
-		switchOnVM(VM1, this.smallConstraints, testOverPM1, true);
-		switchOnVM(VM2, this.smallConstraints, testOverPM1, true);
-		switchOnVM(VM3, this.bigConstraints, testOverPM1, true);
-		switchOnVM(VM4, this.smallConstraints, testUnderPM2, true);
-		switchOnVM(VM5, this.smallConstraints, testUnderPM2, true);
-		switchOnVM(VM6, this.smallConstraints, testUnderPM2, true);
-		switchOnVM(VM7, this.bigConstraints, testNormalPM3, true);
-		switchOnVM(VM8, this.bigConstraints, testNormalPM4, true);
-
-		ffc = new FirstFitConsolidation(basic, 0.7, 0.3, 0);
-
-		Timed.simulateUntilLastEvent();
-	}
-	
 	// This test verfies the migration of PMs with more than two VMs per PM
 	@Test(timeout = 100)
 	public void verifyMoreComplexMigrations() throws VMManagementException, NetworkException {
@@ -551,7 +622,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelVM thirdVMsmall = second.getVM(0);
 		ModelVM fourthVMbig = third.getVM(0);
 		
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		
 		Assert.assertEquals("The first PM has not the right State after optimization", 
 				ModelPM.State.NORMAL_RUNNING, first.getState());
@@ -570,85 +641,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 				third, fourthVMbig.gethostPM());		
 	}	
 
-	//Method to create another more complex abstract working model	
-	public void createComplexAbstractModel() throws Exception {		
-
-		PhysicalMachine testOverPM4 = createPm("pm4", reqcores, reqProcessing, reqmem, reqDisk);		
-		PhysicalMachine testUnderPM5 = createPm("pm5", reqcores, reqProcessing, reqmem, reqDisk);
-		PhysicalMachine testNormalPM6 = createPm("pm6", reqcores, reqProcessing, reqmem, reqDisk);
-		PhysicalMachine testUnderPM7 = createPm("pm7", reqcores, reqProcessing, reqmem, reqDisk);
-		PhysicalMachine testUnderPM8 = createPm("pm8", reqcores, reqProcessing, reqmem, reqDisk);
-
-		//save the PMs inside the register		
-		basic.registerHost(testOverPM4);
-		basic.registerHost(testUnderPM5);
-		basic.registerHost(testNormalPM6);
-		basic.registerHost(testUnderPM7);
-		basic.registerHost(testUnderPM8);
-		
-		// The six additional VMs set the Load of PM4 to overAllocated, PM5 to underAllocated, PM6 to normal,
-		// PM7 to underAllocated and PM8 to underAllocated. 
-		VirtualAppliance VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
-		VirtualAppliance VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
-		VirtualAppliance VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
-		VirtualAppliance VA8 = new VirtualAppliance("VM 8", 1, 0, false, 1);
-		VirtualAppliance VA9 = new VirtualAppliance("VM 9", 1, 0, false, 1);
-		VirtualAppliance VA10 = new VirtualAppliance("VM 10", 1, 0, false, 1);
-		
-		//save the VAs inside the register and the PMs		
-		centralRepo.registerObject(VA5);
-		centralRepo.registerObject(VA6);
-		centralRepo.registerObject(VA7);
-		centralRepo.registerObject(VA8);
-		centralRepo.registerObject(VA9);
-		centralRepo.registerObject(VA10);
-
-		/*
-		testOverPM4.localDisk.registerObject(VA5);
-		testOverPM4.localDisk.registerObject(VA6);
-		testUnderPM5.localDisk.registerObject(VA7);
-		testNormalPM6.localDisk.registerObject(VA8);
-		testUnderPM7.localDisk.registerObject(VA9);
-		testUnderPM8.localDisk.registerObject(VA10);
-		*/
-		
-		VirtualMachine VM5 = new VirtualMachine(VA5);
-		VirtualMachine VM6 = new VirtualMachine(VA6);
-		VirtualMachine VM7 = new VirtualMachine(VA7);
-		VirtualMachine VM8 = new VirtualMachine(VA8);
-		VirtualMachine VM9 = new VirtualMachine(VA9);
-		VirtualMachine VM10 = new VirtualMachine(VA10);
-		
-		Timed.simulateUntilLastEvent();
-		
-		testOverPM1.turnon();
-		testUnderPM2.turnon();
-		testNormalPM3.turnon();
-		testOverPM4.turnon();
-		testUnderPM5.turnon();
-		testNormalPM6.turnon();
-		testUnderPM7.turnon();
-		testUnderPM8.turnon();
-		
-		Timed.simulateUntilLastEvent();
-		
-		switchOnVM(VM1, this.bigConstraints, testOverPM1, true);
-		switchOnVM(VM2, this.mediumConstraints, testOverPM1, true);
-		switchOnVM(VM3, this.smallConstraints, testUnderPM2, true);
-		switchOnVM(VM4, this.bigConstraints, testNormalPM3, true);
-		switchOnVM(VM5, this.bigConstraints, testOverPM4, true);
-		switchOnVM(VM6, this.mediumConstraints, testOverPM4, true);
-		switchOnVM(VM7, this.smallConstraints, testUnderPM5, true);
-		switchOnVM(VM8, this.bigConstraints, testNormalPM6, true);
-		switchOnVM(VM9, this.smallConstraints, testUnderPM7, true);
-		switchOnVM(VM10, this.smallConstraints, testUnderPM8, true);
-		
-		Timed.simulateUntilLastEvent();
-		
-		ffc = new FirstFitConsolidation(basic, upperThreshold, lowerThreshold, 0);
-		
-		Timed.simulateUntilLastEvent();
-	}
+	
 	
 	// This test ensures the functionality of the FF algorithm on a few more PMs running simultaneously
 	// per PM: reqcores = 8, reqProcessing = 3, reqmem = 16
@@ -686,7 +679,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelVM ninthVM = seventhUnderAllocated.getVM(0);
 		ModelVM tenthVM = eighthUnderAllocated.getVM(0);		
 		
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		
 		Assert.assertEquals("The first PM has not the right State after optimization", 
 				ModelPM.State.NORMAL_RUNNING, firstOverAllocated.getState());
@@ -770,7 +763,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		ModelPM empty= ffc.getBins().get(3);
 		
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		
 		Assert.assertEquals("The empty PM is not shut down", State.EMPTY_OFF, empty.getState());
 	}
@@ -808,7 +801,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		ModelVM vm1 = first.getVM(0);
 		
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		
 		Assert.assertEquals("The empty PM is still empty", true, empty.isHostingVMs());
 		Assert.assertEquals("The first VM is not placed on the empty PM after optimization", empty, vm1.gethostPM());
@@ -873,7 +866,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelVM ninthVM = seventhUnderAllocated.getVM(0);
 		ModelVM tenthVM = eighthUnderAllocated.getVM(0);
 			
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		
 		Assert.assertEquals("The ArrayList actions does not contain the correct number of Actions", 6, ffc.getActions().size());
 			
@@ -945,7 +938,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ModelPM seventhUnderAllocated = ffc.getBins().get(6);
 		ModelPM eighthUnderAllocated = ffc.getBins().get(7);
 			
-		ffc.optimize();
+		ffc.doConsolidation(null);
 		Timed.simulateUntilLastEvent();				
 		
 		
