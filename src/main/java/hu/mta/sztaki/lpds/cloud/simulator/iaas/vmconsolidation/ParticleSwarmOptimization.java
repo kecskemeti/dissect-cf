@@ -1,5 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.List;
+import java.util.Random;
+import java.util.Vector;
+
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
@@ -8,14 +12,27 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
  * @author René Ponto
  *
  * This class manages vmconsolidation with a particle swarm optimization algorithm. For that, particles
- * are used to finde the best solution for consolidation.
+ * are used to find the best solution for consolidation.
  */
 
 public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 
+	// constants for doing consolidation
+	int SWARM_SIZE = 30;
+	int MAX_ITERATION = 100;
+	int PROBLEM_DIMENSION = bins.size();
+		
 	int count = 1;	// Counter for the graph actions
 	
-	public double globalBest;
+	private Vector<Particle> swarm = new Vector<Particle>();
+	private double[] pBest = new double[SWARM_SIZE];
+	private double[] fitnessValueList = new double[SWARM_SIZE];
+		
+	private double globalBest;
+	private List<ModelPM> gBestLocation;
+	
+	Random generator = new Random();
+	
 	
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model and work on the 
@@ -28,6 +45,14 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	 */
 	public ParticleSwarmOptimization(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
+		initializeSwarm();
+	}
+	
+	/**
+	 * Method to create a swarm and a few particles.
+	 */
+	private void initializeSwarm() {
+		
 	}
 	
 	public void stateChanged(VirtualMachine vm, hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State oldState, 
@@ -41,16 +66,19 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	}
 
 	@Override
-	public void optimize() {
-		// TODO Auto-generated method stub
-
+	protected void doConsolidation(PhysicalMachine[] pmList) {
+		// TODO look at psoprocess		
+	}	
+	
+	private void updateGlobalBestLocation(List <ModelPM> global) {
+		this.gBestLocation = global;
 	}
 	
-	private void updateGlobalBest(double global) {
-		this.globalBest = global;
+	private void updateGlobalBest(double value) {
+		this.globalBest = value;
 	}
 	
 	private void fitnessFunction() {
-		
+		//TODO
 	}
 }

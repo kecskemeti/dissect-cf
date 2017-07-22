@@ -68,6 +68,8 @@ public class MigrationAction extends Action{
 					this.addPrevious(actions.get(i));
 				}
 			}
+			// If two PMs would like to migrate one VM to each other,
+			// there could be a loop. Not solved yet.
 			if(actions.get(i).getType().equals(Type.MIGRATION)){
 				if((((MigrationAction) actions.get(i)).getSource()).equals(this.getTarget())){
 					this.addPrevious(actions.get(i));

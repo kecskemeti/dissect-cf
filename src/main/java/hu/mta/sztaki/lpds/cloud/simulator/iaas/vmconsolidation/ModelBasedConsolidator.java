@@ -10,6 +10,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 	/**
@@ -31,7 +32,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 	 * when there is nothing to be done before doing the action on the actual node.
 	 */
 
-public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
+public abstract class ModelBasedConsolidator extends Consolidator implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
 	
 	IaaSService toConsolidate;
 	ArrayList <ModelPM> bins = new ArrayList <ModelPM>();
@@ -49,7 +50,7 @@ public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements
 	 */
 	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		
-		//super(toConsolidate, consFreq);
+		super(toConsolidate, consFreq);
 		
 		this.toConsolidate = toConsolidate;
 		Handler logFileHandler;
@@ -106,12 +107,6 @@ public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements
 		}
 		Logger.getGlobal().info("Instantiated model: "+toString());
 	}
-	
-	
-	/**
-	 * The method for doing the consolidation, which means start PMs, stop PMs, migrate VMs, ...
-	 */
-	public abstract void optimize(); 
 	
 	/**
 	 * The graph which does the changes.

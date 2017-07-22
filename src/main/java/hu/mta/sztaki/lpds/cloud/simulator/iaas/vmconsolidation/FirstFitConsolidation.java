@@ -65,7 +65,7 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 	 * To do that, every action is saved as an Action-Node inside a graph, which does the changes
 	 * inside the simulator.
 	 */
-	public void optimize() {	
+	public void doConsolidation(PhysicalMachine[] pmList) {	
 		
 		while(isOverAllocated() || isUnderAllocated()) {
 			for(ModelPM pm : this.getBins()) {				
@@ -349,6 +349,8 @@ public class FirstFitConsolidation extends ModelBasedConsolidator {
 		}
 		
 	}
+
+	
 }
 
 	/**
