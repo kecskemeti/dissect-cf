@@ -1,12 +1,13 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /*
  * This abstract class stores the actions that need to be committed in the simulator
  */
 public abstract class Action{
-	
+
 	public static enum Type{
 		/**
 		 * The current action needs to start another PM.
@@ -23,69 +24,78 @@ public abstract class Action{
 		 */
 		SHUTDOWN
 	}
-	
-	int id;
+
+	protected int id;
 	//List of actions, which need to be completed before the action starts
-	ArrayList<Action> previous = new ArrayList<Action>();
+	protected List<Action> predecessors;
 	//List of actions, which need to start after completion of this one
-	ArrayList<Action> successors = new ArrayList<Action>();
-	
+	protected List<Action> successors;
+
 	public Action(int id){
-		this.id = id;	
+		this.id = id;
+		predecessors=new ArrayList<>();
+		successors=new ArrayList<>();
+	}
+
+	/**
+	 * Adds v as a predecessor of this action AND also this action as a 
+	 * successor of v.
+	 */
+	public void addPredecessor(Action v){
+		predecessors.add(v);
+		v.addSuccessor(this);
+	}
+
+	/**
+	 * Removes v as a predecessor of this action AND also this action as a 
+	 * successor of v.
+	 */
+	public void removePredecessor(Action v){
+		predecessors.remove(v);
+		//v.removeSuccessor(this); //commented out to avoid concurrent modification exception
 	}
 	
-	public void addPrevious(Action v){
-		this.previous.add(v);
+	public List<Action> getPredecessors(){
+		return predecessors;
 	}
-	
-	public void removePrevious(Action v){
-		previous.remove(v);
-	}
-	
-	public ArrayList<Action> getPrevious(){
-		return previous;
-	}
-	
+
 	public void addSuccessor(Action v){
-		this.successors.add(v);
+		successors.add(v);
 	}
-	
+
 	public void removeSuccessor(Action v){
 		successors.remove(v);
 	}
-	
-	public ArrayList<Action> getSuccessors(){
+
+	public List<Action> getSuccessors(){
 		return successors;
 	}
-	
-	/**
-	 * This method determines the successors of this aciton, based on the predecessors 
-	 * of every other action.
-	 * @param actions
-	 */
-	public void determineSuccessors(ArrayList<Action> actions){
-		for(int i = 0; i < actions.size(); i++){
-			for(int j = 0; j < actions.get(i).getPrevious().size(); j++){
-				if(actions.get(i).getPrevious().get(j).equals(this)){
-					this.addSuccessor(actions.get(i));
-				}
-			}
-		}		
-	}
+
 	/**
 	 * This Method determines the predecessors of this action, based on its type.
 	 */
-	public abstract void determinePredecessors(ArrayList<Action> actions);
+	public abstract void determinePredecessors(List<Action> actions);
 	
 	/**
-	 * This method is indivualized by every subclass and performs the actions.
+	 * This method is individualized by every subclass and performs the actions.
 	 */
 	public abstract void execute();
-	
+
+	/**
+	 * This method is to be called when the action has been finished.
+	 */
+	public void finished() {
+		for(Action a : successors) {
+			a.removePredecessor(this);
+			if(a.getPredecessors().isEmpty())
+				a.execute();
+		}
+	}
+
 	/**
 	 * This Method returns the type of the action.
 	 */
 	public abstract Type getType();
-	
+
 	public abstract String toString();
 }

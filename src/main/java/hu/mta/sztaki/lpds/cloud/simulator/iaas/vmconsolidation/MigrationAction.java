@@ -1,42 +1,34 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
+import java.util.List;
+//import java.util.logging.Logger;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
- * This class stores actions, that need to commit a migration in the simulator
- *
+ * This class stores actions, that need to commit a migration in the simulator.
  */
-public class MigrationAction extends Action{
+public class MigrationAction extends Action implements VirtualMachine.StateChange {
 
 	//Reference to the model of the PM, which contains the VM before migrating it
 	ModelPM source;
-	
+
 	//Reference to the model of the PM, which contains the VM after migrating it
 	ModelPM target;
-	
+
 	//Reference to the model of the VM, which needs be migrated
 	ModelVM vm;
-	
+
 	public MigrationAction(int id, ModelPM source, ModelPM target, ModelVM vm) {
 		super(id);
-		this.target = target;
 		this.source = source;
+		this.target = target;
 		this.vm = vm;
 	}
 
-	/**
-	 * 
-	 * @return Reference to the model of the PM, which contains the VM after migrating it
-	 */
-	public ModelPM getTarget(){
-		return target;
-	}
-	
 	/**
 	 * 
 	 * @return Reference to the model of the PM, which contains the VM before migrating it
@@ -47,57 +39,63 @@ public class MigrationAction extends Action{
 	
 	/**
 	 * 
+	 * @return Reference to the model of the PM, which contains the VM after migrating it
+	 */
+	public ModelPM getTarget(){
+		return target;
+	}
+	
+	/**
+	 * 
 	 * @return Reference to the model of the VM, which needs be migrated
 	 */
-	public ModelVM getItemVM(){
+	public ModelVM getVm(){
 		return vm;
 	}
 
 	/**
-	 * This Method determines the predecessors of this action. A predecessor of a migration-action
-	 * is a starting-action, which starts the PM, this action needs as a target. Another predecessor
-	 * of a starting-action is a migration-action, which migrates a VM from the PM this action uses
-	 * as a target
+	 * This method determines the predecessors of this action. A predecessor of
+	 * a migration action is a starting action, which starts the target PM of 
+	 * this action. 
+	 * Furthermore, migrations from our target PM are also considered 
+	 * predecessors, in order to prohibit temporary overloads of the PM.
+	 * TODO: this needs improvement, as it can currently lead to deadlocks.
 	 */
 	@Override
-	public void determinePredecessors(ArrayList<Action> actions) {
+	public void determinePredecessors(List<Action> actions) {
 		//looking for actions where a PM gets started, that is the target of this migration
-		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getType().equals(Type.START)){
-				if((((StartAction) actions.get(i)).getStartPM()).equals(this.getTarget())){
-					this.addPrevious(actions.get(i));
+		for(Action action : actions) {
+			if(action.getType().equals(Type.START)){
+				if((((StartAction) action).getPmToStart()).equals(getTarget())){
+					this.addPredecessor(action);
 				}
 			}
 			// If two PMs would like to migrate one VM to each other,
 			// there could be a loop. Not solved yet.
-			if(actions.get(i).getType().equals(Type.MIGRATION)){
-				if((((MigrationAction) actions.get(i)).getSource()).equals(this.getTarget())){
-					this.addPrevious(actions.get(i));
+			if(action.getType().equals(Type.MIGRATION)){
+				if((((MigrationAction) action).getSource()).equals(this.getTarget())){
+					this.addPredecessor(action);
 				}
 			}
 		}	
-		
 	}
 
-	/**
-	 * This Method returns the type of the action
-	 */
+	@Override
 	public Type getType() {
 		return Type.MIGRATION;
 	}
 
 	@Override
 	public String toString() {
-		return "Action: "+getType()+" Source:  "+getSource().toString()+" Target: "+getTarget().toString()+" VM: "+getItemVM().toString();
+		return "Action: "+getType()+" Source:  "+getSource().toString()+" Target: "+getTarget().toString()+" VM: "+getVm().toString();
 	}
 
 	@Override
 	public void execute() {
-		PhysicalMachine source = this.getSource().getPM();
-		PhysicalMachine target = this.getTarget().getPM();
-		VirtualMachine vm = this.getItemVM().getVM();
+		//Logger.getGlobal().info("Migration action starts to execute");
+		vm.getVM().subscribeStateChange(this);
 		try {
-			source.migrateVM(vm, target);
+			source.getPM().migrateVM(vm.getVM(), target.getPM());
 		} catch (VMManagementException e) {
 			e.printStackTrace();
 		} catch (NetworkException e) {
@@ -105,6 +103,13 @@ public class MigrationAction extends Action{
 		}
 	}
 
-	
-	
+	@Override
+	public void stateChanged(VirtualMachine vm, State oldState, State newState) {
+		if(newState.equals(VirtualMachine.State.RUNNING)){
+			vm.unsubscribeStateChange(this);
+			//Logger.getGlobal().info("Migration action finished");
+			finished();
+		}
+	}
+
 }

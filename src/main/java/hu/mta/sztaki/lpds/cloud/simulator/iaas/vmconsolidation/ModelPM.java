@@ -1,30 +1,29 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import java.util.logging.Logger;
+import java.util.List;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
-	/**
-	 * @author Julian Bellendorf, René Ponto
-	 *
-	 * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
-	 * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
-	 * States. The States are not the same as inside the simulator, because for migrating it is useful to
-	 * introduce some new States for the allocation of the given PM.
-	 */
 
+/**
+ * @author Julian Bellendorf, René Ponto
+ *
+ * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
+ * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
+ * States. The States are not the same as inside the simulator, because for migrating it is useful to
+ * introduce some new States for the allocation of the given PM.
+ */
 public class ModelPM {
-	
+
 	private PhysicalMachine pm;		// the real PM inside the simulator
-	private ArrayList <ModelVM> vmList = new ArrayList <ModelVM>();
+	private List<ModelVM> vmList;
 	private int number;
 
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	
 	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
-	
+
 	private double lowerThreshold = 0.25;
 	private double upperThreshold = 0.75;
 
@@ -49,11 +48,11 @@ public class ModelPM {
 	 * @param number
 	 * 			The number of the PM in its IaaS, used for debugging.
 	 */
-	public ModelPM(PhysicalMachine pm, ArrayList <ModelVM> vm, double cores, double pCP, long mem, int number) {
-		
-		this.pm = pm; 
+	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number) {
+		this.pm = pm;
+		vmList = new ArrayList<>();
 		this.number = number;
-		
+
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			changeState(State.EMPTY_OFF);
 		}
@@ -65,83 +64,64 @@ public class ModelPM {
 				changeState(State.EMPTY_RUNNING);
 			}
 		}
-		
+
 		totalResources = new ConstantConstraints(cores, pCP, mem);
 		consumedResources = new ResourceVector(0, pCP, 0);
-		Logger.getGlobal().info("Created PM: "+toString());
+		//Logger.getGlobal().info("Created PM: "+toString());
 	}
-	
-	
+
 	/**
 	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
 	 */	
-	public String toString() {		
+	public String toString() {
 		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", VMs=";
+		boolean first=true;
 		for(ModelVM vm : vmList) {
-			result=result+" "+vm.getResources().toString();
+			if(!first)
+				result=result+" ";
+			result=result+vm.getResources().toString();
+			first=false;
 		}
+		//result=result+" (running="+pm.isRunning()+")";
 		return result;
 	}
-	
-	/**
-	 * Instantiates the PM with its VMs.
-	 * @param vm
-	 * 			The list with the VMs.
-	 */
-	public void initializePM(ArrayList<ModelVM> vms) {
-		//set the VM list and consume resources
-		for(int i = 0; i < vms.size(); i++) {
-			this.addVM(vms.get(i));
-		}
-	}
-	
+
 	/**
 	 * Adds a given VM to this PM.
 	 * @param vm
 	 * 			The VM which is going to be put on this PM.
 	 */
-	private void addVM(ModelVM vm) {
+	public void addVM(ModelVM vm) {
 		vmList.add(vm);
 		consumedResources.add(vm.getResources());		
 		checkAllocation();
 	}
-	
+
 	/**
 	 * Removes a given VM of this PM.
 	 * @param vm
 	 * 			The VM which is going to be removed of this PM.
 	 */
-	private void removeVM(ModelVM vm) {
+	public void removeVM(ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
 		consumedResources.subtract(vm.getResources());		
 		checkAllocation();
 	}
-	
+
 	/**
-	 * Standard Migration for one VM.
+	 * Migration of a VM from this PM to another.
 	 * @param vm
 	 * 			The VM which is going to be migrated.
 	 * @param target
 	 * 			The target PM where to migrate.
 	 */	
 	public void migrateVM(ModelVM vm, ModelPM target) {
-		
-		target.getVMs().add(vm);
 		target.addVM(vm);
 		this.removeVM(vm);
 		vm.sethostPM(target);
-		
-		//deleting the VM out of the vmlist
-		for(int i = 0; i < getVMs().size(); i++) {
-			ModelVM x = getVM(i);
-			
-			if(x.equals(vm)) {
-				this.getVMs().remove(i);
-			}
-		}
 	}
-	
+
 	/**
 	 * Reserves resources for possible migrations. 
 	 * @param vm
@@ -373,9 +353,9 @@ public class ModelPM {
 		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
 		available.subtract(consumedResources);
 		available.subtract(reserved);
-		Logger.getGlobal().info("available: "+available.toString());
+		//Logger.getGlobal().info("available: "+available.toString());
 		if(toAdd.getResources().canBeAdded(available)) {
-			Logger.getGlobal().info("canbeadded");
+			//Logger.getGlobal().info("canbeadded");
 
 			addVM(toAdd);
 			checkAllocation();
@@ -409,10 +389,10 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Get the ArrayList which contains all actual running VMs on this PM.
+	 * Get the list which contains all actual running VMs on this PM.
 	 * @return vmList
 	 */
-	public ArrayList <ModelVM> getVMs() {
+	public List <ModelVM> getVMs() {
 		return vmList;		
 	}
 	

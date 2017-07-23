@@ -1,64 +1,60 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
+import java.util.List;
+//import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
- * This class stores actions, which need to shut down a PM in the simulator
- *
+ * This class stores actions, which need to shut down a PM in the simulator.
  */
-public class ShutDownAction extends Action{
+public class ShutDownAction extends Action {
 
 	//Reference to the model of the PM, which needs to shut down
-	ModelPM shutdownpm; 
-	
-	public ShutDownAction(int id, ModelPM shutdownpm) {
+	ModelPM pmToShutDown;
+
+	public ShutDownAction(int id, ModelPM pmToShutDown) {
 		super(id);
-		this.shutdownpm = shutdownpm;
+		this.pmToShutDown = pmToShutDown;
+		//Logger.getGlobal().info("ShutDownAction created");
 	}
 
-	/**
-	 * 
-	 * @return Reference to the model of the PM, which needs to shut down
-	 */
-	public ModelPM getShutDownPM(){
-		return shutdownpm;
+	public ModelPM getPmToShutDown(){
+		return pmToShutDown;
 	}
 
 	/**
 	 * This method determines the predecessors of this action. A predecessor of 
-	 * a shut-down-action is a migration-action, which migrates a VM from this PM
+	 * a shut-down action is a migration from this PM.
 	 */
 	@Override
-	public void determinePredecessors(ArrayList<Action> actions) {		
-		//looking for migrations with this PM as source, which needs to get shut down
-		for(int i = 0; i < actions.size(); i++) {
-			if(actions.get(i).getType().equals(Type.MIGRATION)){
-				if((((MigrationAction) actions.get(i)).getSource()).equals(this.getShutDownPM())){
-					this.addPrevious(actions.get(i));
+	public void determinePredecessors(List<Action> actions) {		
+		//looking for migrations with this PM as source
+		for(Action action : actions) {
+			if(action.getType().equals(Type.MIGRATION)){
+				if((((MigrationAction) action).getSource()).equals(this.getPmToShutDown())){
+					this.addPredecessor(action);
 				}
 			}
 		}
 	}
 
-	/**
-	 * This Method returns the type of the action
-	 */
+	@Override
 	public Type getType() {
 		return Type.SHUTDOWN;
 	}
 
 	@Override
 	public String toString() {
-		return "Action: "+getType()+"  :"+getShutDownPM().toString();
+		return "Action: "+getType()+"  :"+getPmToShutDown().toString();
 	}
 
 	@Override
 	public void execute() {
-		PhysicalMachine pm = this.getShutDownPM().getPM();
+		//Logger.getGlobal().info("ShutDownAction starts to execute");
+		PhysicalMachine pm = this.getPmToShutDown().getPM();
 		try {
 			pm.switchoff(null);
 		} catch (VMManagementException e) {
@@ -67,4 +63,5 @@ public class ShutDownAction extends Action{
 			e.printStackTrace();
 		}
 	}
+
 }

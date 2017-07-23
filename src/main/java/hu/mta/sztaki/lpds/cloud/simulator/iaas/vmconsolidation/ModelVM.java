@@ -15,9 +15,10 @@ public class ModelVM {
 	
 	VirtualMachine vm;
 	ModelPM hostPM;
+	ModelPM initialHost;
 	String id;
 	ResourceVector neededResources;
-	
+
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
 	 * the actual abstract host, the resources (cores, perCoreProcessing, memory) and the id for debugging.
@@ -40,10 +41,11 @@ public class ModelVM {
 		
 		this.vm = vm;
 		hostPM = pm;		// save the host PM
+		initialHost = pm;
 		this.id = id;
 		neededResources = new ResourceVector(cores, pCP, mem);		// create the ResourceVector
 	}
-	
+
 	/**
 	 * toString() is just for debugging and returns the ID, cores, perCoreProcessingPower and memory of this VM.
 	 */	
@@ -80,5 +82,9 @@ public class ModelVM {
 	 */
 	public void sethostPM(ModelPM bin) {
 		this.hostPM = bin;
+	}
+
+	public ModelPM getInitialPm() {
+		return initialHost;
 	}
 }
