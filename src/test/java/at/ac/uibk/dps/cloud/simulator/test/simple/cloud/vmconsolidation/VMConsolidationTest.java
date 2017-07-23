@@ -20,6 +20,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -32,27 +33,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * 
 	 * Testcases:
 	 * 
-	 * simulator:			creation of PMs and VMs inside the simulator and their deployment
-	 * 			 			deployment of resources to the VMs
-	 * 			 			creating overAllocated and underAllocated PMs
-	 * 
-	 * selection out    	do the abstract version of the PMs fit with the real ones?
-	 * of the simulator:	do the deployment of the VMs fit with the deployment inside the simulator?
-	 * 						are the resources of the VMs correct?
-	 * 
-	 * algorithm:			Do the allocation of each abstract PM fit with the consumed resources?  
-	 *       				Do the right MigPMs get chosen?
-	 *       				Is the algorithm for migration correct and the right one used (allocation-dependant)?
-	 *       				Is the shut down method working?
-	 *       				Can a not running PM get started if necessary?
-	 *       
-	 * graph: 				Do actions exist?
-	 * 		  				Are the actions bound to their order?
-	 * 		  				Is the selection out of the algorithm correct?
-	 * 		  				Are the changes done inside the simulator?
+	 * Create situation with overAllocated PMs and check if the consolidation is done correctly
+	 * Create situation with underAllocated PMs and check if the consolidation is done correctly
 	 */
-
-	// Timed.simulateUntil(Timed.getFireCount() + 1000);	maybe use this instead of the actual simulate
 
 	// Creation of all necessary objects and variables
 
@@ -61,19 +44,28 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 	IaaSService basic;
 	FirstFitConsolidator ffc;
-	PhysicalMachine testOverPM1;
-	PhysicalMachine testUnderPM2;
-	PhysicalMachine testNormalPM3;
+	PhysicalMachine testPM1;
+	PhysicalMachine testPM2;
+	PhysicalMachine testPM3;
+	PhysicalMachine testPM4;
 
 	VirtualMachine VM1;
 	VirtualMachine VM2;
 	VirtualMachine VM3;
 	VirtualMachine VM4;
+	VirtualMachine VM5;
+	VirtualMachine VM6;
+	VirtualMachine VM7;
+	VirtualMachine VM8;
 
 	VirtualAppliance VA1;	
 	VirtualAppliance VA2;
 	VirtualAppliance VA3;	
 	VirtualAppliance VA4;
+	VirtualAppliance VA5;
+	VirtualAppliance VA6;
+	VirtualAppliance VA7;
+	VirtualAppliance VA8;
 
 	HashMap<String, Integer> latmap = new HashMap<String, Integer>();	
 	Repository centralRepo;
@@ -128,70 +120,126 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		basic.registerRepository(centralRepo);
 
 		//create PMs
-		testOverPM1 = createPm("pm1", reqcores, reqProcessing, reqmem, reqDisk);
-		testUnderPM2 = createPm("pm2", reqcores, reqProcessing, reqmem, reqDisk);
-		testNormalPM3 = createPm("pm3", reqcores, reqProcessing, reqmem, reqDisk);
-
+		testPM1 = createPm("pm1", reqcores, reqProcessing, reqmem, reqDisk);
+		testPM2 = createPm("pm2", reqcores, reqProcessing, reqmem, reqDisk);
+		testPM3 = createPm("pm3", reqcores, reqProcessing, reqmem, reqDisk);
+		testPM4 = createPm("PM4", reqcores, reqProcessing, reqmem, reqDisk);
+		
 		//register PMs
-		basic.registerHost(testOverPM1);
-		basic.registerHost(testUnderPM2);
-		basic.registerHost(testNormalPM3);
+		basic.registerHost(testPM1);
+		basic.registerHost(testPM2);
+		basic.registerHost(testPM3);
+		basic.registerHost(testPM4);
 
 		// The four VMs set the Load of PM1 to overAllocated, PM2 to underoverAllocated and PM3 to normal.				
 		VA1 = new VirtualAppliance("VM 1", 1, 0, false, 1);
 		VA2 = new VirtualAppliance("VM 2", 1, 0, false, 1);
 		VA3 = new VirtualAppliance("VM 3", 1, 0, false, 1);
 		VA4 = new VirtualAppliance("VM 4", 1, 0, false, 1);
+		VA5 = new VirtualAppliance("VM 5", 1, 0, false, 1);
+		VA6 = new VirtualAppliance("VM 6", 1, 0, false, 1);
+		VA7 = new VirtualAppliance("VM 7", 1, 0, false, 1);
+		VA8 = new VirtualAppliance("VM 7", 1, 0, false, 1);
 
 		//save the VAs in the repository
 		centralRepo.registerObject(VA1);
 		centralRepo.registerObject(VA2);
 		centralRepo.registerObject(VA3);
 		centralRepo.registerObject(VA4);		
-
+		centralRepo.registerObject(VA5);
+		centralRepo.registerObject(VA6);
+		centralRepo.registerObject(VA7);
+		centralRepo.registerObject(VA8);	
+		
 		VM1 = new VirtualMachine(VA1);
 		VM2 = new VirtualMachine(VA2);
 		VM3 = new VirtualMachine(VA3);
 		VM4 = new VirtualMachine(VA4);
+		VM5 = new VirtualMachine(VA5);
+		VM6 = new VirtualMachine(VA6);
+		VM7 = new VirtualMachine(VA7);
+		VM8 = new VirtualMachine(VA8);
 	}
-
-
+	
 	@Test(timeout = 1000)
-	public void overAllocTest() throws VMManagementException, NetworkException {
-		testOverPM1.turnon();
-		testUnderPM2.turnon();
+	public void overAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
 		Timed.simulateUntilLastEvent();
-		switchOnVM(VM1, bigConstraints, testOverPM1, false);
-		switchOnVM(VM2, mediumConstraints, testOverPM1, false);
+		switchOnVM(VM1, bigConstraints, testPM1, false);
+		switchOnVM(VM2, mediumConstraints, testPM1, false);
 		Timed.simulateUntilLastEvent();
 
-		//Now, both VMs are on PM1, making it overloaded. PM2 is also on but 
+		//Now, both VMs are on PM1, making it overAllocated. PM2 is also on but 
 		//empty. If we turn on the consolidator, we expect it to move one of the
 		//VMs from PM1 to PM2
 
-		ffc=new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, testOverPM1.publicVms.size());
-		Assert.assertEquals(1, testUnderPM2.publicVms.size());
+		Assert.assertEquals(1, testPM1.publicVms.size());
+		Assert.assertEquals(1, testPM2.publicVms.size());
+	}
+	
+	@Test(timeout = 1000)
+	public void overAllocComplexTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		
+		switchOnVM(VM1, this.smallConstraints, testPM1, true);
+		switchOnVM(VM2, this.smallConstraints, testPM1, true);
+		switchOnVM(VM3, this.smallConstraints, testPM1, true);
+		switchOnVM(VM7, this.bigConstraints, testPM2, true);
+		switchOnVM(VM8, this.mediumConstraints, testPM3, true);
+		
+		Timed.simulateUntilLastEvent();		
+		
+		switchOnVM(VM4, this.smallConstraints, testPM1, true);
+		switchOnVM(VM5, this.smallConstraints, testPM1, true);
+		switchOnVM(VM6, this.mediumConstraints, testPM1, true);
+		
+		Timed.simulateUntilLastEvent();		
+		//Now, PM1 contains 6 VMs, PM2 and PM3 one VM. If we turn on the consolidator,
+		//we expect it to move three VMs of PM1 to other PMs.
+		
+		ffc = new FirstFitConsolidator(basic, 0.5, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+		
+		Assert.assertEquals(0.5, ffc.getBins().get(0).getUpperThreshold(), 0);
+		
+		
+		Assert.assertEquals(ModelPM.State.NORMAL_RUNNING, ffc.getBins().get(0).getState());
+		Assert.assertEquals(ModelPM.State.NORMAL_RUNNING, ffc.getBins().get(1).getState());
+		Assert.assertEquals(ModelPM.State.NORMAL_RUNNING, ffc.getBins().get(2).getState());
+		
+		Assert.assertEquals(4, testPM1.publicVms.size());
+		Assert.assertEquals(2, testPM2.publicVms.size());
+		Assert.assertEquals(2, testPM3.publicVms.size());
 	}
 
 	@Test(timeout = 1000)
-	public void underAllocTest() throws VMManagementException, NetworkException {
-		testUnderPM2.turnon();
-		testNormalPM3.turnon();
+	public void underAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM2.turnon();
+		testPM3.turnon();
 		Timed.simulateUntilLastEvent();
-		switchOnVM(VM1, smallConstraints, testUnderPM2, false);
-		switchOnVM(VM2, mediumConstraints, testNormalPM3, false);
+		switchOnVM(VM1, smallConstraints, testPM2, false);
+		switchOnVM(VM2, mediumConstraints, testPM3, false);
 		Timed.simulateUntilLastEvent();
 
 		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-		//we expect it to consolidate the two VMs to a single VM
+		//we expect it to consolidate the two VMs to a single VM.
 
-		ffc=new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	@Test(timeout = 1000)
+	public void underAllocComplexTest() {
+		
 	}
 
 }
