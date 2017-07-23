@@ -41,7 +41,7 @@ public class ModelVM {
 		
 		this.vm = vm;
 		hostPM = pm;		// save the host PM
-		initialHost = pm;
+		initialHost = pm;	// save the host as the first host PM
 		this.id = id;
 		neededResources = new ResourceVector(cores, pCP, mem);		// create the ResourceVector
 	}
@@ -84,6 +84,9 @@ public class ModelVM {
 		this.hostPM = bin;
 	}
 
+	/** Getter
+	 * @return initialHost PM.
+	 */
 	public ModelPM getInitialPm() {
 		return initialHost;
 	}

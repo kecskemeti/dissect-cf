@@ -22,6 +22,13 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	//Reference to the model of the VM, which needs be migrated
 	ModelVM vm;
 
+	/**
+	 * Constructor for an action which shall migrate a VM inside the simulator.
+	 * @param id The ID of this action.
+	 * @param source The PM which is currently hosting the VM.
+	 * @param target The PM which shall host this VM after migration.
+	 * @param vm The reference to the VM which shall be migrated.
+	 */
 	public MigrationAction(int id, ModelPM source, ModelPM target, ModelVM vm) {
 		super(id);
 		this.source = source;
@@ -90,19 +97,26 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 		return "Action: "+getType()+" Source:  "+getSource().toString()+" Target: "+getTarget().toString()+" VM: "+getVm().toString();
 	}
 
+	/**
+	 * Method for doing the migration inside the simulator.
+	 */
 	@Override
 	public void execute() {
 		//Logger.getGlobal().info("Migration action starts to execute");
-		vm.getVM().subscribeStateChange(this);
+		vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
 		try {
 			source.getPM().migrateVM(vm.getVM(), target.getPM());
 		} catch (VMManagementException e) {
 			e.printStackTrace();
-		} catch (NetworkException e) {
+		} catch (NetworkException e) { 
 			e.printStackTrace();
 		}
 	}
 
+	/**
+	 * The stateChanged-logic, if the VM changes its state to RUNNING after migrating,
+	 * then it do not has to be observed any longer.
+	 */
 	@Override
 	public void stateChanged(VirtualMachine vm, State oldState, State newState) {
 		if(newState.equals(VirtualMachine.State.RUNNING)){

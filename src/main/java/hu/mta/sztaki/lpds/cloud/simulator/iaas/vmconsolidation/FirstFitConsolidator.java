@@ -159,12 +159,12 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	
 	/**
 	 * Starts a PM which contains the necessary resources for hosting the previous VM.
-	 * This is done by first-fit. If no PM can be started, an Exception is thrown to show
+	 * This is done by first-fit. If no PM can be started, a warning is thrown to show
 	 * that.
 	 * 
 	 * @param VMConstraints
 	 * 			The ResourceConstraints of the VM, which shall be hosted on a not running PM 
-	 * @return A PM with the needed resources or null if no appropriate PM was found
+	 * @return A PM with the needed resources or null if no appropriate PM was found.
 	 */
 	private ModelPM startPM(ResourceConstraints VMConstraints) {
 		for(ModelPM pm : getBins()){
@@ -288,5 +288,4 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			source.migrateVM(source.getVM(i), migPMs.get(i));
 		}
 	}
-
 }

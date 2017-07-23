@@ -49,7 +49,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		instantiate(pmList);
 		optimize();
-		List<Action> actions=modelDiff();
+		List<Action> actions = modelDiff();
 		//Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
 		//printGraph(actions);
@@ -78,8 +78,15 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		Logger.getGlobal().info("Instantiated model: "+toString());
 	}
 
+	/**
+	 * The method to do the consolidation.
+	 */
 	protected abstract void optimize();
 
+	/**
+	 * Creates the actions-list with migration-/start- and shutdown-actions.
+	 * @return The list with all the actions.
+	 */
 	private List<Action> modelDiff() {
 		List<Action> actions=new ArrayList<>();
 		int i=0;
@@ -97,7 +104,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * Determine the dependencies between the actions.
+	 * Determines the dependencies between the actions.
 	 */
 	private void createGraph(List<Action> actions) {
 		for(Action action : actions) {			
@@ -105,8 +112,11 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 	}
 
-	//here the necessary actions are performed
-	//do the migration, shut a PM down, start a PM
+	/**
+	 * Checks if there are any predecessors of the actual action. If not, its 
+	 * execute()-method is called.
+	 * @param actions The list with all the actions.
+	 */
 	private void performActions(List<Action> actions) {
 		for(Action action : actions) {			
 			if(action.getPredecessors().isEmpty()) {
@@ -115,6 +125,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 	}
 
+	/**
+	 * Creates a graph with the toString()-method of each action.
+	 * @param actions The list with all the actions.
+	 */
 	public void printGraph(List<Action> actions) {
 		String s="";
 		for(Action action : actions) {

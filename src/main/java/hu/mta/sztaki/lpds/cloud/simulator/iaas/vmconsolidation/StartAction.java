@@ -11,12 +11,21 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 
 	//Reference to the model of the PM, which needs to start
 	ModelPM pmToStart;
-
+ 
+	/**
+	 * Constructor of an action to start a PM.
+	 * @param id The ID of this action.
+	 * @param pmToStart The modelled PM respresenting the PM which shall start.
+	 */
 	public StartAction(int id, ModelPM pmToStart) {
 		super(id);
 		this.pmToStart = pmToStart;
 	}
 
+	/**
+	 * 
+	 * @return The modelled PM respresenting the PM which shall start.
+	 */
 	public ModelPM getPmToStart(){
 		return pmToStart;
 	}
@@ -38,13 +47,20 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 		return "Action: "+getType()+"  :"+getPmToStart().toString();
 	}
 
+	/**
+	 * Method for starting a PM inside the simulator.
+	 */
 	@Override
 	public void execute() {
 		PhysicalMachine pm = this.getPmToStart().getPM();
-		pm.subscribeStateChangeEvents(this);
+		pm.subscribeStateChangeEvents(this);		//observe the PM before turning it on
 		pm.turnon();
 	}
 
+	/**
+	 * The stateChanged-logic, if the PM which has been started changes its state to RUNNING,
+	 * we can stop observing it.
+	 */
 	@Override
 	public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {

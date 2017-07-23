@@ -15,6 +15,11 @@ public class ShutDownAction extends Action {
 	//Reference to the model of the PM, which needs to shut down
 	ModelPM pmToShutDown;
 
+	/**
+	 * Constructor for an action to shut a PM down.
+	 * @param id The ID of this action.
+	 * @param pmToShutDown The reference to the PM inside the simulator to get shut down.
+	 */
 	public ShutDownAction(int id, ModelPM pmToShutDown) {
 		super(id);
 		this.pmToShutDown = pmToShutDown;
@@ -51,6 +56,9 @@ public class ShutDownAction extends Action {
 		return "Action: "+getType()+"  :"+getPmToShutDown().toString();
 	}
 
+	/**
+	 * This method shuts the PM inside the simulator down.
+	 */
 	@Override
 	public void execute() {
 		//Logger.getGlobal().info("ShutDownAction starts to execute");

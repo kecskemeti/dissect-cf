@@ -3,8 +3,8 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
- * This abstract class stores the actions that need to be committed in the simulator
+/**
+ * This abstract class stores the actions that need to be done inside the simulator.
  */
 public abstract class Action{
 
@@ -31,6 +31,10 @@ public abstract class Action{
 	//List of actions, which need to start after completion of this one
 	protected List<Action> successors;
 
+	/**
+	 * Constructor. Instantiates the empty lists for its predecessors and successors.
+	 * @param id
+	 */
 	public Action(int id){
 		this.id = id;
 		predecessors=new ArrayList<>();
