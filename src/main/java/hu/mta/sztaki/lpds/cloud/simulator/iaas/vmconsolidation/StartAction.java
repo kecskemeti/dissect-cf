@@ -1,44 +1,72 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
+import java.util.List;
+
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 
 /**
- * This class stores actions, which need to start a PM in the simulator
- *
+ * This class stores actions, which need to start a PM in the simulator.
  */
-public class StartAction extends Action{
+public class StartAction extends Action implements PhysicalMachine.StateChangeListener {
 
 	//Reference to the model of the PM, which needs to start
-	ModelPM startpm;
-	
-	public StartAction(int id, ModelPM startpm) {
+	ModelPM pmToStart;
+ 
+	/**
+	 * Constructor of an action to start a PM.
+	 * @param id The ID of this action.
+	 * @param pmToStart The modelled PM respresenting the PM which shall start.
+	 */
+	public StartAction(int id, ModelPM pmToStart) {
 		super(id);
-		this.startpm = startpm;
+		this.pmToStart = pmToStart;
 	}
-	
+
 	/**
 	 * 
-	 * @return Reference to the model of the PM, which needs to shut down
+	 * @return The modelled PM respresenting the PM which shall start.
 	 */
-	public ModelPM getStartPM(){
-		return startpm;
+	public ModelPM getPmToStart(){
+		return pmToStart;
 	}
-	
+
 	/**
-	 * There are no predecessors for a starting-action. 
+	 * There are no predecessors for a starting action.
 	 */
 	@Override
-	public void determinePredecessors(ArrayList<Action> actions) {
-		
+	public void determinePredecessors(List<Action> actions) {
 	}
-	/**
-	 * This Method returns the type of the action
-	 */
+
+	@Override
 	public Type getType() {
 		return Type.START;
 	}
+
 	@Override
 	public String toString() {
-		return "Action: "+getType()+"  :"+getStartPM().toString();
+		return "Action: "+getType()+"  :"+getPmToStart().toString();
+	}
+
+	/**
+	 * Method for starting a PM inside the simulator.
+	 */
+	@Override
+	public void execute() {
+		PhysicalMachine pm = this.getPmToStart().getPM();
+		pm.subscribeStateChangeEvents(this);		//observe the PM before turning it on
+		pm.turnon();
+	}
+
+	/**
+	 * The stateChanged-logic, if the PM which has been started changes its state to RUNNING,
+	 * we can stop observing it.
+	 */
+	@Override
+	public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
+			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
+		if(newState.equals(PhysicalMachine.State.RUNNING)){
+			pm.unsubscribeStateChangeEvents(this);
+			finished();
+		}
 	}
 }
