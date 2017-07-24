@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 
 /**
@@ -91,16 +92,17 @@ public class Repository extends NetworkNode {
 	 */
 
 	public Repository(final long capacity, final String id, final long maxInBW, final long maxOutBW, final long diskBW,
-			final Map<String, Integer> latencyMap) {
-		super(id, maxInBW, maxOutBW, diskBW, latencyMap);
+			final Map<String, Integer> latencyMap, Map<String, PowerState> diskPowerTransitions,
+			Map<String, PowerState> networkPowerTransitions) {
+		super(id, maxInBW, maxOutBW, diskBW, latencyMap, diskPowerTransitions, networkPowerTransitions);
 		maxStorageCapacity = capacity;
 	}
 
 	/**
 	 * This function is designed to initially set up the repository contents. It
-	 * does not simulate data movement, for data movement simulation please use
-	 * the request content delivery function. The function also ensures that the
-	 * given StorageObject is only stored once.
+	 * does not simulate data movement, for data movement simulation please use the
+	 * request content delivery function. The function also ensures that the given
+	 * StorageObject is only stored once.
 	 * 
 	 * @param so
 	 *            is the object to be stored
@@ -120,8 +122,8 @@ public class Repository extends NetworkNode {
 	}
 
 	/**
-	 * This function is designed to simulate the erase function of the
-	 * repository given that its user knows the StorageObject to be dropped.
+	 * This function is designed to simulate the erase function of the repository
+	 * given that its user knows the StorageObject to be dropped.
 	 * 
 	 * @param so
 	 *            The storage object to be removed from the repository
@@ -140,9 +142,8 @@ public class Repository extends NetworkNode {
 	}
 
 	/**
-	 * This function is designed to simulate the erase function of the
-	 * repository given that its user knows the identifier of the content to be
-	 * dropped.
+	 * This function is designed to simulate the erase function of the repository
+	 * given that its user knows the identifier of the content to be dropped.
 	 * 
 	 * @param soid
 	 *            The storage object identifier
@@ -176,8 +177,8 @@ public class Repository extends NetworkNode {
 	 *            The target repository where the transferred data will reside
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
-	 * @return the consumption object that represents the appropriate data
-	 *         transfer or <b>null</b> if it is not possible to initiate
+	 * @return the consumption object that represents the appropriate data transfer
+	 *         or <b>null</b> if it is not possible to initiate
 	 */
 	public ResourceConsumption requestContentDelivery(final String id, final Repository target,
 			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
@@ -190,8 +191,8 @@ public class Repository extends NetworkNode {
 	 * @param id
 	 *            The storage object id that will be duplicated
 	 * @param newId
-	 *            The name of the copied storage object id if the target is the
-	 *            same repository where the request is made.
+	 *            The name of the copied storage object id if the target is the same
+	 *            repository where the request is made.
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
 	 * @return the consumption object that represents the appropriate data
@@ -203,27 +204,27 @@ public class Repository extends NetworkNode {
 	}
 
 	/**
-	 * This function registers a storage object for transfer. This object must
-	 * be already stored in the requested repository. After the transfer is
-	 * completed the function ensures that the target repository registers the
-	 * transferred object.
+	 * This function registers a storage object for transfer. This object must be
+	 * already stored in the requested repository. After the transfer is completed
+	 * the function ensures that the target repository registers the transferred
+	 * object.
 	 * 
 	 * @param id
 	 *            The storage object id that will be transferred
 	 * @param newId
 	 *            The name of the copied storage object id if it needs to be
 	 *            changed. If the target is the same repository this must be
-	 *            specified. If the caller needs the same storage id then null
-	 *            can be specified here.
+	 *            specified. If the caller needs the same storage id then null can
+	 *            be specified here.
 	 * @param target
-	 *            The target repository where the transferred data will reside.
-	 *            If the target is the same repository please check the specific
+	 *            The target repository where the transferred data will reside. If
+	 *            the target is the same repository please check the specific
 	 *            requirements for newId!
 	 * @param ev
 	 *            the event to be fired if the transfer is completed
-	 * @return the consumption object that represents the appropriate data
-	 *         transfer or <b>null</b> if it is not possible to initiate. The
-	 *         system will not fire a transfer event if false is returned!
+	 * @return the consumption object that represents the appropriate data transfer
+	 *         or <b>null</b> if it is not possible to initiate. The system will not
+	 *         fire a transfer event if false is returned!
 	 */
 	public ResourceConsumption requestContentDelivery(final String id, final String newId, final Repository target,
 			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
@@ -247,8 +248,9 @@ public class Repository extends NetworkNode {
 							@Override
 							public void conComplete() {
 								cleanUpRepos();
-								target.registerObject((target == Repository.this || newId != null)
-										? totransfer.newCopy(newId) : totransfer);
+								target.registerObject(
+										(target == Repository.this || newId != null) ? totransfer.newCopy(newId)
+												: totransfer);
 								if (ev != null) {
 									ev.conComplete();
 								}
@@ -269,16 +271,16 @@ public class Repository extends NetworkNode {
 	/**
 	 * An internal interface for managing storage related operations
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2015"
 	 *
 	 */
 	private static interface MainStorageActivity {
 		/**
 		 * The action that actually does the depositing of the requested content
 		 * 
-		 * @return the consumption object that represents the appropriate data
-		 *         transfer or <b>null</b> if it is not possible to initiate
+		 * @return the consumption object that represents the appropriate data transfer
+		 *         or <b>null</b> if it is not possible to initiate
 		 * @throws NetworkException
 		 *             if there are connectivity errors amongst repositories
 		 */
@@ -290,9 +292,9 @@ public class Repository extends NetworkNode {
 	 * internally to uniformly manage the promised storage from the various
 	 * functions of the repository.
 	 * 
-	 * WARNING: tis function only manages the increase of the promised storage,
-	 * the decrease must be handled by the entity implementing the actual
-	 * storage activity
+	 * WARNING: tis function only manages the increase of the promised storage, the
+	 * decrease must be handled by the entity implementing the actual storage
+	 * activity
 	 * 
 	 * @param size
 	 *            the amount of size to be deposited in the repository
@@ -303,11 +305,10 @@ public class Repository extends NetworkNode {
 	 * @param mainActivity
 	 *            the storage activity to be done if there is enough promised
 	 *            storage on the target repository
-	 * @return the consumption object that represents the appropriate data
-	 *         transfer or <b>null</b> if it is not possible to initiate
+	 * @return the consumption object that represents the appropriate data transfer
+	 *         or <b>null</b> if it is not possible to initiate
 	 * @throws NetworkException
-	 *             if there were connectivity problems with the target
-	 *             reppository
+	 *             if there were connectivity problems with the target reppository
 	 */
 	private static ResourceConsumption manageStoragePromise(final long size, final String id, final Repository target,
 			final MainStorageActivity mainActivity) throws NetworkException {
@@ -321,16 +322,16 @@ public class Repository extends NetworkNode {
 	}
 
 	/**
-	 * Allows the modeling of storing data that previously resided in the memory
-	 * of this repository.
+	 * Allows the modeling of storing data that previously resided in the memory of
+	 * this repository.
 	 * 
 	 * @param so
 	 *            the storage object that represents the data in memory
 	 * @param ev
 	 *            the event to be fired upon completing the storage operation
-	 * @return the consumption object that represents the appropriate data
-	 *         transfer or <b>null</b> if it is not possible to initiate (e.g.,
-	 *         if the to be stored storage object is already in the repository)
+	 * @return the consumption object that represents the appropriate data transfer
+	 *         or <b>null</b> if it is not possible to initiate (e.g., if the to be
+	 *         stored storage object is already in the repository)
 	 * @throws NetworkException
 	 *             propagated from MainStorageActivity, never used here.
 	 */
@@ -352,10 +353,11 @@ public class Repository extends NetworkNode {
 									ev.conComplete();
 								}
 							}
+
 							@Override
 							public void conCancelled(ResourceConsumption problematic) {
-								promisedStorage-=so.size;
-								if(ev!=null) {
+								promisedStorage -= so.size;
+								if (ev != null) {
 									ev.conCancelled(problematic);
 								}
 							}
@@ -371,14 +373,14 @@ public class Repository extends NetworkNode {
 	 * @param so
 	 *            the storage object to be read from the repository
 	 * @param ev
-	 *            the event to be fired upon completing the transfer of the
-	 *            above object to the memory of the repository.
-	 * @return the consumption object that represents the appropriate data
-	 *         transfer or <b>null</b> if it is not possible to initiate (e.g.,
-	 *         if the to be stored storage object is already in the repository)
+	 *            the event to be fired upon completing the transfer of the above
+	 *            object to the memory of the repository.
+	 * @return the consumption object that represents the appropriate data transfer
+	 *         or <b>null</b> if it is not possible to initiate (e.g., if the to be
+	 *         stored storage object is already in the repository)
 	 */
 	public ResourceConsumption fetchObjectToMemory(final StorageObject so,
-			final ResourceConsumption.ConsumptionEvent ev) {
+			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
 		if (lookup(so.id) == null) {
 			return null;
 		}
@@ -433,8 +435,8 @@ public class Repository extends NetworkNode {
 	}
 
 	/**
-	 * Retrieves the maximum storage capacity of this repository. This is
-	 * constant during the life of the repository.
+	 * Retrieves the maximum storage capacity of this repository. This is constant
+	 * during the life of the repository.
 	 * 
 	 * @return the maximum storage capacity
 	 */

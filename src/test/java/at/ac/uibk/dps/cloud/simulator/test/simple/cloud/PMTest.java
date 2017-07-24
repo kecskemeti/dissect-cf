@@ -69,8 +69,9 @@ public class PMTest extends IaaSRelatedFoundation {
 	@Before
 	public void initializeTests() throws Exception {
 		latmap.put(pmid, 1);
-		reqDisk = new Repository(123, pmid, 456, 789, 12, new HashMap<String, Integer>());
-		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, reqond, reqoffd, defaultTransitions);
+		reqDisk = new Repository(123, pmid, 456, 789, 12, new HashMap<String, Integer>(), defaultStorageTransitions,
+				defaultNetworkTransitions);
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, reqond, reqoffd, defaultHostTransitions);
 	}
 
 	@Test(timeout = 100)
@@ -525,10 +526,7 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void consumptionBlocking() {
-		PhysicalMachine pm = new PhysicalMachine(8, 2500, 8000000000L,
-				new Repository(RepositoryTest.storageCapacity, NetworkNodeTest.sourceName, NetworkNodeTest.inBW,
-						NetworkNodeTest.outBW, NetworkNodeTest.diskBW, new HashMap<String, Integer>()),
-				10, 20, defaultTransitions);
+		PhysicalMachine pm = dummyPMsCreator(1, 8, 2500, 8000000000L)[0];
 		VirtualAppliance va = new VirtualAppliance("Test", 1, 0);
 		pm.localDisk.registerObject(va);
 		VirtualMachine vm = new VirtualMachine(va);
@@ -627,7 +625,7 @@ public class PMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void complexBootup() throws VMManagementException, NetworkException {
 		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, new double[] { 1, 0.1, 2, 0.05, 3, 3 },
-				new double[] { 3, 0.3, 12, ResourceConsumption.unlimitedProcessing }, defaultTransitions);
+				new double[] { 3, 0.3, 12, ResourceConsumption.unlimitedProcessing }, defaultHostTransitions);
 		final long turnOnTime = 10 + 40 + 1;
 		final long switchOffTime = 10 + 2;
 		long before = Timed.getFireCount();
@@ -649,7 +647,7 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void testZeroLenDelays() throws VMManagementException, NetworkException {
-		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 0, 1, defaultTransitions);
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 0, 1, defaultHostTransitions);
 		pm.turnon();
 		pm.switchoff(null);
 		Timed.simulateUntilLastEvent();
@@ -657,7 +655,7 @@ public class PMTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		pm.switchoff(null);
 		Timed.simulateUntilLastEvent();
-		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 1, 0, defaultTransitions);
+		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, 1, 0, defaultHostTransitions);
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
 		pm.switchoff(null);

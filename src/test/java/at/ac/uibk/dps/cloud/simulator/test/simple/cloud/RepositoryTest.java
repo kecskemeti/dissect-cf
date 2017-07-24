@@ -25,6 +25,14 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
+import java.util.HashMap;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
+import at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
@@ -34,28 +42,23 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
-import java.util.HashMap;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
-import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
-
-public class RepositoryTest extends ConsumptionEventFoundation {
+public class RepositoryTest extends PMRelatedFoundation {
 	public final static long storageCapacity = 5000000000000L;
 	public final static String storageObjectID = "SOID";
 	Repository source, target;
 	StorageObject so = new StorageObject(storageObjectID);
 
 	@Before
-	public void repoSetup() {
+	public void repoSetup() throws NetworkException {
 		HashMap<String, Integer> lm = NetworkNodeTest.setupALatencyMap();
 		source = new Repository(storageCapacity, NetworkNodeTest.sourceName, NetworkNodeTest.inBW,
-				NetworkNodeTest.outBW, NetworkNodeTest.diskBW, lm);
+				NetworkNodeTest.outBW, NetworkNodeTest.diskBW, lm, defaultStorageTransitions,
+				defaultNetworkTransitions);
 		target = new Repository(storageCapacity, NetworkNodeTest.targetName, NetworkNodeTest.inBW,
-				NetworkNodeTest.outBW, NetworkNodeTest.diskBW, lm);
+				NetworkNodeTest.outBW, NetworkNodeTest.diskBW, lm, defaultStorageTransitions,
+				defaultNetworkTransitions);
+		source.setState(NetworkNode.State.RUNNING);
+		target.setState(NetworkNode.State.RUNNING);
 	}
 
 	@Test(timeout = 100)
@@ -183,8 +186,8 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 	}
 
 	/**
-	 * Since this is a performance test one might expect this to easily overcome
-	 * the timeout in case some performance degradations!
+	 * Since this is a performance test one might expect this to easily overcome the
+	 * timeout in case some performance degradations!
 	 */
 	@Test(timeout = 100)
 	public void registrationPerformance() {
@@ -209,7 +212,9 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 		}
 		Repository[] repos = new Repository[repoCount];
 		for (int i = 0; i < repoCount; i++) {
-			repos[i] = new Repository(111111111111111111L, "Repo" + i, bandwidth, bandwidth, bandwidth, latencyMap);
+			repos[i] = new Repository(111111111111111111L, "Repo" + i, bandwidth, bandwidth, bandwidth, latencyMap,
+					defaultStorageTransitions, defaultNetworkTransitions);
+			repos[i].setState(NetworkNode.State.RUNNING);
 		}
 		StorageObject[] sos = new StorageObject[fromIndex.length];
 		final long startTiming = Timed.getFireCount();
@@ -293,26 +298,27 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 			}
 		});
 	}
-	
+
 	@Test(timeout = 100)
 	public void cancelMemoryWriteOut() throws NetworkException {
-		ConsumptionEventAssert cae=new ConsumptionEventAssert() {
+		ConsumptionEventAssert cae = new ConsumptionEventAssert() {
 			@Override
 			public void conComplete() {
 				super.conComplete();
 				Assert.fail("Should not receive a consumption complete event!");
 			}
 		};
-		ResourceConsumption con=source.storeInMemoryObject(so, cae);
+		ResourceConsumption con = source.storeInMemoryObject(so, cae);
 		con.cancel();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not have any occupied storage", source.getMaxStorageCapacity(), source.getFreeStorageCapacity());
+		Assert.assertEquals("Should not have any occupied storage", source.getMaxStorageCapacity(),
+				source.getFreeStorageCapacity());
 		Assert.assertTrue("Should receive cancel event", cae.isCancelled());
 	}
-	
+
 	@Test(timeout = 100)
 	public void cancelReadToMemory() throws NetworkException {
-		ConsumptionEventAssert cae=new ConsumptionEventAssert() {
+		ConsumptionEventAssert cae = new ConsumptionEventAssert() {
 			@Override
 			public void conComplete() {
 				super.conComplete();
@@ -320,7 +326,7 @@ public class RepositoryTest extends ConsumptionEventFoundation {
 			}
 		};
 		registerWithCheck(so);
-		ResourceConsumption con=source.fetchObjectToMemory(so, cae);
+		ResourceConsumption con = source.fetchObjectToMemory(so, cae);
 		con.cancel();
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue("Should receive cancel event", cae.isCancelled());

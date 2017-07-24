@@ -24,15 +24,6 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.util;
 
-import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.PowerStateKind;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -41,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -52,6 +44,13 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
+import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
+
 /**
  * This class offers a simple interface to prepare an IaaSService class based on
  * data loaded from an XML cloud configuration file.
@@ -62,17 +61,19 @@ import org.xml.sax.helpers.DefaultHandler;
 public class CloudLoader {
 
 	/**
-	 * Offers the IaaSService creator functionality by defining the sax parser
-	 * for the XML cloud configuration.
+	 * Offers the IaaSService creator functionality by defining the sax parser for
+	 * the XML cloud configuration.
 	 * 
 	 * @param fileName
-	 *            the name of the xml file containing the configuration of the cloud (a
-	 *            samlple xml can be found in
+	 *            the name of the xml file containing the configuration of the cloud
+	 *            (a samlple xml can be found in
 	 *            at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
 	 * @return the instantiated IaaSservice that complies with the configuration
 	 *         specified in the XML file received as the parameter
-	 * @throws IOException if there was some problem with finding/accessing the xml file
-	 * @throws SAXException if there was some problem parsing the configuration file
+	 * @throws IOException
+	 *             if there was some problem with finding/accessing the xml file
+	 * @throws SAXException
+	 *             if there was some problem parsing the configuration file
 	 * @throws ParserConfigurationException
 	 */
 	public static IaaSService loadNodes(String fileName)
@@ -99,9 +100,9 @@ public class CloudLoader {
 			long outbw;
 			long diskbw;
 			HashMap<String, Integer> latencymap;
-			EnumMap<PowerStateKind, EnumMap<State, PowerState>> powerTransitions = new EnumMap<PhysicalMachine.PowerStateKind, EnumMap<State, PowerState>>(
-					PhysicalMachine.PowerStateKind.class);
-			PowerStateKind currentKind;
+			EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
+					PowerTransitionGenerator.PowerStateKind.class);
+			PowerTransitionGenerator.PowerStateKind currentKind;
 
 			@SuppressWarnings("unchecked")
 			@Override
@@ -146,35 +147,23 @@ public class CloudLoader {
 						latencymap.put(attributes.getValue("towards"), Integer.parseInt(attributes.getValue("value")));
 					}
 					if (qName.equals("powerstates")) {
-						currentKind = PowerStateKind.valueOf(attributes.getValue("kind"));
+						currentKind = PowerTransitionGenerator.PowerStateKind.valueOf(attributes.getValue("kind"));
 						powerTransitions.put(currentKind,
-								new EnumMap<PhysicalMachine.State, PowerState>(PhysicalMachine.State.class));
+								new HashMap<String, PowerState>(PhysicalMachine.State.values().length));
 					}
 					if (qName.equals("power") && currentKind != null) {
-						EnumMap<PhysicalMachine.State, PowerState> stateSet = powerTransitions.get(currentKind);
+						Map<String, PowerState> stateSet = powerTransitions.get(currentKind);
 						String currentStateString = attributes.getValue("inState");
 						// Divider is needed so input and output spreaders are
 						// symmetrically consuming energy
-						int currentDivider = currentKind.equals(PhysicalMachine.PowerStateKind.host) ? 1 : 2;
+						int currentDivider = currentKind.equals(PowerTransitionGenerator.PowerStateKind.host) ? 1 : 2;
 						try {
 							double idleCon = Double.parseDouble(attributes.getValue("idle")) / currentDivider;
 							double maxCon = Double.parseDouble(attributes.getValue("max")) / currentDivider;
-							if ("default".equals(currentStateString)) {
-								PowerState defaultState = new PowerState(idleCon, maxCon - idleCon,
-										(Class<? extends PowerState.ConsumptionModel>) Class
-												.forName(attributes.getValue("model")));
-								for (PhysicalMachine.State aState : PhysicalMachine.State.values()) {
-									if (stateSet.containsKey(aState)) {
-										continue;
-									}
-									stateSet.put(aState, defaultState);
-								}
-							} else {
-								stateSet.put(PhysicalMachine.State.valueOf(currentStateString),
-										new PowerState(idleCon, maxCon - idleCon,
-												(Class<? extends PowerState.ConsumptionModel>) Class
-														.forName(attributes.getValue("model"))));
-							}
+							stateSet.put(currentStateString,
+									new PowerState(idleCon, maxCon - idleCon,
+											(Class<? extends PowerState.ConsumptionModel>) Class
+													.forName(attributes.getValue("model"))));
 						} catch (Exception e) {
 							throw new SAXException(
 									"Cannot instantiate PowerStatee because of a consumption model type designation",
@@ -193,35 +182,23 @@ public class CloudLoader {
 					if (qName.equals("repository")) {
 						inrepo = false;
 						if (!inmachine) {
-							Repository newRepo = new Repository(disksize, rid, inbw, outbw, diskbw, latencymap);
+							Repository newRepo = new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
+									powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
+									powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network));
 							returner.get(0).registerRepository(newRepo);
-							// TODO: if the repository class also implements
-							// proper power state management then this must move
-							// there
-							EnumMap<PhysicalMachine.State, PowerState> storagePowerBehavior = powerTransitions
-									.get(PowerStateKind.storage);
-							newRepo.diskinbws
-									.setCurrentPowerBehavior(storagePowerBehavior.get(PhysicalMachine.State.RUNNING));
-							newRepo.diskoutbws
-									.setCurrentPowerBehavior(storagePowerBehavior.get(PhysicalMachine.State.RUNNING));
-							EnumMap<PhysicalMachine.State, PowerState> networkPowerBehavior = powerTransitions
-									.get(PowerStateKind.network);
-							newRepo.inbws
-									.setCurrentPowerBehavior(networkPowerBehavior.get(PhysicalMachine.State.RUNNING));
-							newRepo.outbws
-									.setCurrentPowerBehavior(networkPowerBehavior.get(PhysicalMachine.State.RUNNING));
-							powerTransitions = new EnumMap<PhysicalMachine.PowerStateKind, EnumMap<State, PowerState>>(
-									PhysicalMachine.PowerStateKind.class);
 						}
 					}
 					if (qName.equals("machine")) {
 						inmachine = false;
 						returner.get(0)
 								.registerHost(new PhysicalMachine(cores, processing, memory,
-										new Repository(disksize, rid, inbw, outbw, diskbw, latencymap), startuptime,
-										shutdowntime, powerTransitions));
-						powerTransitions = new EnumMap<PhysicalMachine.PowerStateKind, EnumMap<State, PowerState>>(
-								PhysicalMachine.PowerStateKind.class);
+										new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
+												powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
+												powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network)),
+										startuptime, shutdowntime,
+										powerTransitions.get(PowerTransitionGenerator.PowerStateKind.host)));
+						powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
+								PowerTransitionGenerator.PowerStateKind.class);
 					}
 					if (qName.equals("powerstates")) {
 						currentKind = null;

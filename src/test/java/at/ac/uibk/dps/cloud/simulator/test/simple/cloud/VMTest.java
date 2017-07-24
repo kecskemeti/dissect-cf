@@ -28,7 +28,6 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,6 +47,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
@@ -69,6 +69,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		repo = dummyRepoCreator(false);
 		repo.registerObject(va);
 		repo.registerObject(vaWithBG);
+		repo.setState(NetworkNode.State.RUNNING);
 		centralVMwithBG = new VirtualMachine(vaWithBG);
 		pm.localDisk.registerObject(va);
 		pm.localDisk.registerObject(vaWithBG);
@@ -103,8 +104,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		}
 		ra.cancel();
 		try {
-			centralVM.prepare(new Repository(1, "1", 1, 1, 1, new HashMap<String, Integer>()),
-					new Repository(2, "2", 2, 2, 2, new HashMap<String, Integer>()));
+			centralVM.prepare(dummyRepoCreator(false), dummyRepoCreator(false));
 			Assert.fail("It should not be possible to do preparation if the VM is non servable");
 		} catch (StateChangeException ex) {
 			// Correct behavior
@@ -188,6 +188,8 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = VMManagementException.class, timeout = 100)
 	public void faultyStartupAfterPrepare() throws VMManagementException, NetworkException {
 		PhysicalMachine target = dummyPMcreator();
+		target.turnon();
+		Timed.simulateUntilLastEvent();
 		centralVM.prepare(pm.localDisk, target.localDisk);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("VM is not in expected state after prepare", VirtualMachine.State.SHUTDOWN,
