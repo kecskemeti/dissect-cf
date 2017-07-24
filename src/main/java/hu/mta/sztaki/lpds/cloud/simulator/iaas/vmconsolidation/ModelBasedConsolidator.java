@@ -36,37 +36,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	private double lowerThreshold;
 
 	/**
-<<<<<<< HEAD
 	 * The constructor for VM consolidation. It expects an IaaSService and a variable
-=======
-	 * @author Julian Bellendorf, René Ponto
-	 * 
-	 * This class gives the necessary variables and methods for VM consolidation.
-	 * The main idea is to make an abstract model out of the given PMs and its VMs with the original
-	 * properties and let an algorithm (optimize) do the new placement of the VMs in order
-	 * to save power by shutting down unused PMs. Therefore a threshold is made to set
-	 * the states where migrations are needed of the PMs.
-	 * 
-	 * After this process one graph shall be created with the following information:
-	 * 		1. Which PMs shall start?
-	 * 		2. Which VMs on which PMs shall be migrated to target PMs?
-	 * 		3. Which PMs shall be shut down?
-	 * 
-	 * At last the created graph out of the changes needs to get worked with. This graph 
-	 * has all changes saved in nodes (actions) which are going to be done inside the simulator
-	 * when there is nothing to be done before doing the action on the actual node.
-	 */
-
-public abstract class ModelBasedConsolidator /*extends Consolidator*/ implements VirtualMachine.StateChange, PhysicalMachine.StateChangeListener {
-	
-	IaaSService toConsolidate;
-	ArrayList <ModelPM> bins = new ArrayList <ModelPM>();
-	//ArrayList for saving the actions which have to be performed inside the simulator
-	ArrayList <Action> actions = new ArrayList<Action>();
-	
-	/**
-	 * The abstract constructor for VM consolidation. It expects an IaaSService and a variable
->>>>>>> refs/remotes/origin/master
 	 * which says how often the consolidation shall occur.
 	 * 
 	 * @param toConsolidate
