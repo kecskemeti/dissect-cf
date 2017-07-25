@@ -81,8 +81,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 	private PhysicalMachine createPm(String id, double cores, double perCoreProcessing, int ramMb, int diskMb) {
 		long bandwidth=1000000;
-		Repository disk=new Repository(diskMb*1024*1024, id, bandwidth, bandwidth, bandwidth, latmap);
-		PhysicalMachine pm=new PhysicalMachine(cores, perCoreProcessing, ramMb*1024*1024, disk, reqond, reqoffd, defaultTransitions);
+		Repository disk = new Repository(diskMb*1024*1024, id, bandwidth, bandwidth, bandwidth, latmap, defaultStorageTransitions, defaultNetworkTransitions);
+		PhysicalMachine pm = new PhysicalMachine(cores, perCoreProcessing, ramMb*1024*1024, disk, reqond, reqoffd, defaultHostTransitions);
 		latmap.put(id,1);
 		return pm;
 	}
@@ -115,7 +115,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 		//create central repository
 		long bandwidth=1000000;
-		centralRepo = new Repository(100000, "test1", bandwidth, bandwidth, bandwidth, latmap);
+		centralRepo = new Repository(100000, "test1", bandwidth, bandwidth, bandwidth, latmap, defaultStorageTransitions, defaultNetworkTransitions);
 		latmap.put("test1", 1);
 		basic.registerRepository(centralRepo);
 
@@ -253,6 +253,28 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(0, testPM3.publicVms.size());
 		Assert.assertEquals(0, testPM4.publicVms.size());
 		
+	}
+	
+	@Test(timeout = 100)
+	public void shutDownTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.turnon();
+		testPM4.turnon();
+		
+		Timed.simulateUntilLastEvent();
+		
+		switchOnVM(VM1, this.smallConstraints, testPM2, true);
+		switchOnVM(VM2, this.smallConstraints, testPM3, true);
+		switchOnVM(VM3, this.smallConstraints, testPM4, true);
+		
+		Timed.simulateUntilLastEvent();
+		
+		ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+		
+		Assert.assertEquals(1, basic.runningMachines.size());
+		Assert.assertEquals(PhysicalMachine.State.RUNNING, testPM1.getState());
 	}
 
 }
