@@ -19,12 +19,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  * to save power by shutting down unused PMs. Therefore a threshold is made to set
  * the states where migrations are needed of the PMs.
  * 
- * After this process one graph shall be created with the following information:
+ * During this process one graph gets created inside the superclass ModelBasedConsolidator with 
+ * the following information:
  * 		1. Which PMs shall start?
  * 		2. Which VMs on which PMs shall be migrated to target PMs?
  * 		3. Which PMs shall be shut down?
  * 
- * At last the created graph out of the changes needs to get worked with. This graph 
+ * At last the changes have to get delivered to the simulator. The created graph 
  * has all changes saved in nodes (actions) which are going to be done inside the simulator
  * when there is nothing to be done before doing the action on the actual node.
  */
@@ -36,8 +37,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	private double lowerThreshold;
 
 	/**
-	 * The constructor for VM consolidation. It expects an IaaSService and a variable
-	 * which says how often the consolidation shall occur.
+	 * The constructor for VM consolidation. It expects an IaaSService, a value for the upper threshold,
+	 * a value for the lower threshold and a variable which says how often the consolidation shall occur.
 	 * 
 	 * @param toConsolidate
 	 * 			The used IaaSService.
@@ -50,11 +51,23 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	public ModelBasedConsolidator(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold, long consFreq) {
 		super(toConsolidate, consFreq);
-		this.upperThreshold = upperThreshold;
+		
+		// save the thresholds
+		this.upperThreshold = upperThreshold;		
 		this.lowerThreshold = lowerThreshold;
+		
 		bins = new ArrayList<>();
 	}
 
+	/**
+	 * This is the method where the order for consolidation is defined. At first the abstract
+	 * model gets created, then the thresholds are set for each PM, afterwards the optimize()-method
+	 * is called (which is individualized by each specific consolidator) and the graph gets created 
+	 * out of the action-list. At last the changes get done inside the simulator.
+	 * 
+	 * @param pmList
+	 * 				All PMs which are currently registered in the IaaS service.
+	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		instantiate(pmList);
 		for(int i = 0; i < bins.size(); i++) {
@@ -70,7 +83,11 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * In this part all PMs and VMs will be put inside this abstract model.
+	 * In this part all PMs and VMs will be put inside this abstract model. For that
+	 * the bins-list contains all PMs as ModelPMs and all VMs as ModelVMs afterwards.
+	 * 
+	 * @param pmList
+	 * 				All PMs which are currently registered in the IaaS service.
 	 */
 	private void instantiate(PhysicalMachine[] pmList) {
 		bins.clear();
@@ -80,7 +97,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(), 
 					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i + 1);
 			for(VirtualMachine vm : pm.publicVms) {
-				ModelVM item=new ModelVM(vm, bin, 
+				ModelVM item = new ModelVM(vm, bin, 
 						vm.getResourceAllocation().allocated.getRequiredCPUs(), 
 						vm.getResourceAllocation().allocated.getRequiredProcessingPower(), 
 						vm.getResourceAllocation().allocated.getRequiredMemory(), vm.getVa().id);
@@ -92,7 +109,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * The method to do the consolidation.
+	 * The method to do the consolidation. It is individualized by each specific consolidator.
 	 */
 	protected abstract void optimize();
 
@@ -102,14 +119,14 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	private List<Action> modelDiff() {
 		List<Action> actions=new ArrayList<>();
-		int i=0;
+		int i = 0;
 		for(ModelPM bin : bins) {
-			if(bin.getState()!=State.EMPTY_OFF && !bin.getPM().isRunning())
+			if(bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
 				actions.add(new StartAction(i++, bin));
-			if(bin.getState()==State.EMPTY_OFF && bin.getPM().isRunning())
+			if(bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
 				actions.add(new ShutDownAction(i++, bin));
 			for(ModelVM item : bin.getVMs()) {
-				if(item.gethostPM()!=item.getInitialPm())
+				if(item.gethostPM() != item.getInitialPm())
 					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
 			}
 		}
@@ -118,6 +135,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	/**
 	 * Determines the dependencies between the actions.
+	 * 
+	 * @param actions
+	 * 				The action-list with all changes that have to be done inside the simulator.
 	 */
 	private void createGraph(List<Action> actions) {
 		for(Action action : actions) {			
@@ -128,7 +148,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * Checks if there are any predecessors of the actual action. If not, its 
 	 * execute()-method is called.
-	 * @param actions The list with all the actions.
+	 * @param actions 
+	 * 				The action-list with all changes that have to be done inside the simulator.
 	 */
 	private void performActions(List<Action> actions) {
 		for(Action action : actions) {			
@@ -140,7 +161,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	/**
 	 * Creates a graph with the toString()-method of each action.
-	 * @param actions The list with all the actions.
+	 * @param actions 
+	 * 				The action-list with all changes that have to be done inside the simulator.
 	 */
 	public void printGraph(List<Action> actions) {
 		String s="";
@@ -156,14 +178,17 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		return bins;
 	}
 
+	/**
+	 * The toString()-method, used for debugging.
+	 */
 	public String toString() {
-		String result="";
-		boolean first=true;
+		String result = "";
+		boolean first = true;
 		for(ModelPM bin : bins) {
 			if(!first)
-				result=result+"\n";
-			result=result+bin.toString();
-			first=false;
+				result = result+"\n";
+			result = result+bin.toString();
+			first = false;
 		}
 		return result;
 	}

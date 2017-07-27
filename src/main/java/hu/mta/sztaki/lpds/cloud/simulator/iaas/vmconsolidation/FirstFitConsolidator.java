@@ -14,7 +14,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  * @author René Ponto
  *
  * This class is used to do the consolidation with first fit, i.e. the target
- * PM for a VM is selected using first fit.
+ * PM for a VM is selected using first fit, the VMs on a PM are selected using first fit etc.
  */
 public class FirstFitConsolidator extends ModelBasedConsolidator {
 
@@ -25,6 +25,9 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * instantiate() is used to create the ModelPMs and ModelVMs, createGraph() is used to get a graph with nodes which has got
 	 * the information, what shall be done in which order inside the simulator for migration and starting / shut down PMs. The 
 	 * methods which do the changes inside the simulator also are in the super class ModelBasedConsolidation.
+	 * 
+	 * So the superclass is implemented in that way, that here only the consolidation has to be done. All things like
+	 * creating the model, doing the changes in the simulator etc are done by ModelBasedConsolidator.
 	 * 
 	 * @param parent
 	 * 			The IaaSService of the superclass Consolidator.
@@ -113,7 +116,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @param VM
 	 * 			The VM which shall be migrated.
-	 * @return A PM where the given VM can be migrated,
+	 * @return A PM where the given VM can be migrated;
 	 * 		   starts a new PM if there is no running VM with the needed resources;
 	 * 		   null is returned if no appropriate PM was found.
 	 */

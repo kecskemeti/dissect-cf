@@ -17,25 +17,25 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
-	private final int swarmSize = 20;
-	private final int maxIterations = 100;
-	private int dimension;
+	private final int swarmSize = 20;		// defines the amount of particles
+	private final int maxIterations = 100;	// defines the maximum of iterations
+	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
+	private double C1 = 2.0;				// constant 1
+	private double C2 = 2.0;				// constant 2
+	private double wUpperBound = 1.0;		// the upper bound for variable w (used in the optimize()-method)
+	private double wLowerBound = 0.0;		// the lower bound for variable w
 	
-	private double C1 = 2.0;
-	private double C2 = 2.0;
-	private double wUpperBound = 1.0;
-	private double wLowerBound = 0.0;
-	
-	private static final double errorTolerance = 1E-20; // the smaller the tolerance, the more accurate the result, 
-    												  // but the number of iteration is increased
-	
-	// used for setting a start-velocity for each particle
+	// TODO
+	private final double errorTolerance = 0; 	// defines the tolerance value
+
+	// used for setting the velocity for each particle
 	private static final double velocityLow = -1;
 	private static final double velocityHigh = 1;
 	
 
 	public int count = 1;	// Counter for the graph actions
 
+	// create and initialize all necessary components
 	private Vector<Particle> swarm = new Vector<Particle>();
 	private double[] pBest = new double[swarmSize];
 	private Vector<List<ModelPM>> pBestLocation = new Vector<List<ModelPM>>();
@@ -52,7 +52,11 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	 * modelled PMs and VMs. After finding the solution everything will be done inside the simulator.
 	 * 
 	 * @param toConsolidate
-	 * 			The iaas service with the machines to consolidate.
+	 * 			The iaas service with the machines to consolidate.	 
+	 * @param upperThreshold
+	 * 			The double value representing the upper Threshold.
+	 * @param lowerThreshold
+	 * 			The double value representing the lower Threshold.
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
@@ -123,8 +127,7 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		
 		while(t < this.maxIterations && err > this.errorTolerance) {
 			// step 1 - update pBest
-			for(int i = 0; i < swarmSize; i++) {
-				
+			for(int i = 0; i < swarmSize; i++) {				
 				//unclear
 				if(fitnessValueList[i] < pBest[i]) {
 					pBest[i] = fitnessValueList[i];
@@ -150,11 +153,15 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 				Particle p = swarm.get(i);
 				
 				// step 3 - update velocity
-				double newVel = 0;
 				
-				//TODO update velocity
+				// TODO: create a subtraction / comparison
+				/*
+				double newVel = (w * p.getVelocity()) + 
+				(r1 * C1) * (pBestLocation.get(i) - p.getLocation()) +
+				(r2 * C2) * (globalBestLocation - p.getLocation());
+				*/
 				
-				p.setVelocity(newVel);
+				//p.setVelocity(newVel);
 				
 				// step 4 - update location
 				List<ModelPM> newLoc = new ArrayList<ModelPM>();
@@ -181,8 +188,8 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		
 		for(int i = 0; i < list.length; i++) {
 			if(list[i] < minValue) {
-				pos = i;
 				minValue = list[i];
+				pos = i;
 			}
 		}
 		
