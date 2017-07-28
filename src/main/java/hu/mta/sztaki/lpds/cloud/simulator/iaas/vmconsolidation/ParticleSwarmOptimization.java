@@ -1,7 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.Vector;
 
@@ -11,7 +9,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author René Ponto
  *
  * This class manages VM consolidation with a particle swarm optimization algorithm. For that, particles
- * are used to find the best solution for consolidation.
+ * are used to find the best solution (minimized fitness function) for consolidation.
  */
 
 public class ParticleSwarmOptimization extends ModelBasedConsolidator {
@@ -38,11 +36,11 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	// create and initialize all necessary components
 	private Vector<Particle> swarm = new Vector<Particle>();
 	private double[] pBest = new double[swarmSize];
-	private Vector<List<ModelPM>> pBestLocation = new Vector<List<ModelPM>>();
+	private Vector<ArithmeticVector> pBestLocation = new Vector<ArithmeticVector>();
 	private double[] fitnessValueList = new double[swarmSize];
 
 	private double globalBest;
-	private List<ModelPM> globalBestLocation;
+	private ArithmeticVector globalBestLocation;
 
 	Random generator = new Random();
 
@@ -72,19 +70,24 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		for(int i = 0; i < swarmSize; i++) {
 			p = new Particle();
 			
-			List<ModelPM> loc = new ArrayList<ModelPM>();
 			
 			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
+			ArithmeticVector loc = new ArithmeticVector();
 			for(int j = 0; j < this.dimension; j++) {
 				// create a new int to add random PMs to the list of the actual particle
-				int a = generator.nextInt(bins.size()) + 1;
+				double a = generator.nextInt(bins.size()) + 1;
 				
-				loc.add(bins.get(a)); 	// add the random PM
+				loc.add(a); 	// add the random PM
 			}
 			
 			// randomize velocity in the range defined in Problem Set
-			double vel = 0;
-			vel = velocityLow + generator.nextDouble() * (velocityHigh - velocityLow);
+			ArithmeticVector vel = new ArithmeticVector();
+			for(int j = 0; j < this.dimension; j++) {
+				// create a new int to add random PMs to the list of the actual particle
+				double a = velocityLow + generator.nextDouble() * (velocityHigh - velocityLow);;
+				
+				vel.add(a); 	// add the random PM
+			}
 			
 			p.setLocation(loc);
 			p.setVelocity(vel);			
@@ -102,8 +105,8 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		}
 		this.dimension = dim;
 		
-		this.globalBest = 0;
-		this.globalBestLocation = new ArrayList <ModelPM>();
+		this.globalBest = -1;	// we have to take a negative value becouse of the minimizing 
+		this.globalBestLocation = new ArithmeticVector();
 		
 		//has to be done before starting the actual algorithm
 		initializeSwarm();
@@ -122,13 +125,12 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		
 		int t = 0;		// counter for the iterations
 		
-		double w;
 		double err = 9999;
 		
 		while(t < this.maxIterations && err > this.errorTolerance) {
 			// step 1 - update pBest
-			for(int i = 0; i < swarmSize; i++) {				
-				//unclear
+			for(int i = 0; i < swarmSize; i++) {
+
 				if(fitnessValueList[i] < pBest[i]) {
 					pBest[i] = fitnessValueList[i];
 					pBestLocation.set(i, swarm.get(i).getLocation());
@@ -143,7 +145,7 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();
 			}
 			
-			w = wUpperBound - (((double) t) / maxIterations) * (wUpperBound - wLowerBound);
+			double w = wUpperBound - (((double) t) / maxIterations) * (wUpperBound - wLowerBound);	// used for updating the velocity
 			
 			for(int i = 0; i < swarmSize; i++) {
 				
@@ -154,20 +156,16 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 				
 				// step 3 - update velocity
 				
-				// TODO: create a subtraction / comparison
-				/*
-				double newVel = (w * p.getVelocity()) + 
-				(r1 * C1) * (pBestLocation.get(i) - p.getLocation()) +
-				(r2 * C2) * (globalBestLocation - p.getLocation());
-				*/
-				
-				//p.setVelocity(newVel);
+				ArithmeticVector first = p.getVelocity().multiply(w);
+				ArithmeticVector second = (pBestLocation.get(i).subtract(p.getLocation())).multiply((r1 * C1));
+				ArithmeticVector third = (globalBestLocation.subtract(p.getLocation())).multiply((r2 * C2));				
+				ArithmeticVector newVel = first.add(second).add(third);				
+				p.setVelocity(newVel);
 				
 				// step 4 - update location
-				List<ModelPM> newLoc = new ArrayList<ModelPM>();
 				
-				//TODO update location
-				
+				//TODO defining border
+				ArithmeticVector newLoc = p.getLocation().add(newVel);				
 				p.setLocation(newLoc);
 			}
 			
