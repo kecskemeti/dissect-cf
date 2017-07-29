@@ -442,4 +442,8 @@ public class ModelPM {
 	public void setUpperThreshold(double upperThreshold) {
 		this.upperThreshold = upperThreshold;
 	}
+
+	public int getNumber() {
+		return number;
+	}
 }

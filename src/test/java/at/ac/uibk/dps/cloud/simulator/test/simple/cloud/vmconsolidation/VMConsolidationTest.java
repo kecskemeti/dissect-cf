@@ -20,7 +20,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -43,7 +44,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	final double lowerThreshold = 0.25;	
 
 	IaaSService basic;
-	FirstFitConsolidator ffc;
+	ModelBasedConsolidator ffc;
 	PhysicalMachine testPM1;
 	PhysicalMachine testPM2;
 	PhysicalMachine testPM3;
@@ -275,6 +276,24 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Assert.assertEquals(1, basic.runningMachines.size());
 		Assert.assertEquals(PhysicalMachine.State.RUNNING, testPM1.getState());
+	}
+
+	@Test(timeout = 1000)
+	public void gaUnderAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM2.turnon();
+		testPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM2, false);
+		switchOnVM(VM2, mediumConstraints, testPM3, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, both PMs contain one VM each. If we turn on the consolidator, 
+		//we expect it to consolidate the two VMs to a single VM.
+
+		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 
 }

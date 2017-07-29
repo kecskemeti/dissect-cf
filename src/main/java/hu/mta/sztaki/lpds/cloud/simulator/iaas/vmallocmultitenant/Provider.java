@@ -269,7 +269,7 @@ public class Provider {
 	}
 
 
-	void remove_comp_inst(CompInst ci){
+	static void remove_comp_inst(CompInst ci){
 		comp_insts.remove(ci);
 		VirtualMachine vm = ci.get_vm();
 		vm.remove_comp_inst(ci);

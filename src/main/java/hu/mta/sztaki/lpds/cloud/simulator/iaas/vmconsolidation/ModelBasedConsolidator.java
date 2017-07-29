@@ -11,7 +11,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
- * @author Julian Bellendorf, René Ponto
+ * @author Julian Bellendorf, René Ponto, Zoltan Mann
  * 
  * This class gives the necessary variables and methods for VM consolidation.
  * The main idea is to make an abstract model out of the given PMs and its VMs with the original
@@ -75,6 +75,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			bins.get(i).setUpperThreshold(upperThreshold);
 		}
 		optimize();
+		Logger.getGlobal().info("Optimized model: "+toString());
 		List<Action> actions = modelDiff();
 		//Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
@@ -191,5 +192,38 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			first = false;
 		}
 		return result;
+	}
+
+	/**
+	 * This method can be called after all migrations were done. It is checked which
+	 * PMs do not have any VMs hosted and then this method shut them down. A node is created
+	 * to add this information to the graph.
+	 */
+	protected void shutDownEmptyPMs() {
+		for(ModelPM pm : getBins()){
+			if(!pm.isHostingVMs() && pm.getState() != State.EMPTY_OFF) {
+				pm.switchOff();	//shut down this PM
+			}
+		}
+	}
+
+	/**
+	 * PMs that should host at least one VM are switched on.
+	 */
+	protected void switchOnNonEmptyPMs() {
+		for(ModelPM pm : getBins()){
+			if(pm.isHostingVMs() && pm.getState() == State.EMPTY_OFF) {
+				pm.switchOn();
+			}
+		}
+	}
+
+	/**
+	 * PMs that should host at least one VM are switched on; PMs that should
+	 * host no VM are switched off.
+	 */
+	protected void adaptPmStates() {
+		shutDownEmptyPMs();
+		switchOnNonEmptyPMs();
 	}
 }

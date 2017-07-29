@@ -80,7 +80,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			allVMsOnPM.addAll(setItems);
 		}
 
-		shutEmptyPMsDown();		//at the end all empty PMs have to be shut down		
+		shutDownEmptyPMs();		//at the end all empty PMs have to be shut down		
 		Logger.getGlobal().info("At end of optimization: "+toString());
 	}
 
@@ -185,19 +185,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 */
 	private ModelVM getFirstVM(ModelPM x) {
 		return x.getVM(0);
-	}
-
-	/**
-	 * This method has to be called after all migrations were done. It is checked which
-	 * PMs do not have any VMs hosted and then this method shut them down. A node is created
-	 * to add this information to the graph.
-	 */
-	private void shutEmptyPMsDown() {
-		for(ModelPM pm : getBins()){
-			if(!pm.isHostingVMs() && pm.getState() != State.EMPTY_OFF) {
-				pm.switchOff();	//shut down this PM
-			}
-		}
 	}
 
 	/** 
