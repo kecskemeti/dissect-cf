@@ -1,7 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-	
-	/**
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
 	 * @author René Ponto
 	 *
 	 * The idea for particles is to have a list of double values where all hostPMs in Order of their hosted VMs are.
@@ -13,6 +15,9 @@ public class Particle {
 	private double fitnessValue;	// used to evaluate the quality of the solution
 	private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
 	private ArithmeticVector location;		// the actual location : possible solution
+	
+	private double personalBest;
+	private ArithmeticVector personalBestLocation;
 		
 	public Particle() {
 		
@@ -23,6 +28,20 @@ public class Particle {
 		this.velocity = velocity;
 		this.location = location;
 	}
+
+	/**
+	 * Compute the number of PMs that should be on, given our mapping. This
+	 * is a component of the fitness.
+	 */
+	private int getNrActivePms() {		
+		//clears the list so there is no pm more than once there
+		ArithmeticVector count = location;
+		Set<Double> setItems = new LinkedHashSet<Double>(location);
+		count.clear();
+		count.addAll(setItems);
+		
+		return count.size();
+	}
 	
 	/**
 	 * Used to get the actual fitnessValue of this particle
@@ -30,11 +49,24 @@ public class Particle {
 	 * @return new fitnessValue
 	 */
 	public double evaluateFitnessFunction(ArithmeticVector location) {
-		double result = 0;
-		
-		// TODO problem, need to find a fitness function
-				
+		double result = getNrActivePms();				
 		return result;
+	}
+	
+	public double getPBest() {
+		return this.personalBest;
+	}
+	
+	public void setPBest(double value) {
+		this.personalBest = value;
+	}
+	
+	public ArithmeticVector getPBestLocation() {
+		return this.personalBestLocation;
+	}
+	
+	public void setPBestLocation(ArithmeticVector loc) {
+		this.personalBestLocation = loc;
 	}
 	
 	public ArithmeticVector getVelocity() {

@@ -22,6 +22,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PsoConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -124,7 +125,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		testPM1 = createPm("pm1", reqcores, reqProcessing, reqmem, reqDisk);
 		testPM2 = createPm("pm2", reqcores, reqProcessing, reqmem, reqDisk);
 		testPM3 = createPm("pm3", reqcores, reqProcessing, reqmem, reqDisk);
-		testPM4 = createPm("PM4", reqcores, reqProcessing, reqmem, reqDisk);
+		testPM4 = createPm("pm4", reqcores, reqProcessing, reqmem, reqDisk);
 		
 		//register PMs
 		basic.registerHost(testPM1);
@@ -161,6 +162,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		VM7 = new VirtualMachine(VA7);
 		VM8 = new VirtualMachine(VA8);
 	}
+	
+	// VM consolidator using a first fit algorithm
 	
 	@Test(timeout = 1000)
 	public void overAllocSimpleTest() throws VMManagementException, NetworkException {
@@ -277,6 +280,35 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 		Assert.assertEquals(PhysicalMachine.State.RUNNING, testPM1.getState());
 	}
+	
+	@Test(timeout = 100)
+	public void mutualPlacementTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.switchoff(null);
+		testPM4.switchoff(null);
+		
+		Timed.simulateUntilLastEvent();
+		
+		switchOnVM(VM1, this.smallConstraints, testPM1, true);
+		switchOnVM(VM2, this.smallConstraints, testPM2, true);
+		
+		Timed.simulateUntilLastEvent();
+		
+		//ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		//Timed.simulateUntil(Timed.getFireCount()+1000);
+		
+		testPM1.migrateVM(VM1, testPM2);
+		testPM2.migrateVM(VM2, testPM1);
+		
+		Timed.simulateUntilLastEvent();
+		
+		Assert.assertEquals(2, basic.runningMachines.size());
+		Assert.assertTrue(testPM2.publicVms.contains(VM1));
+		Assert.assertTrue(testPM1.publicVms.contains(VM2));
+	}
+	
+	// VM consolidator using a genetic algorithm
 
 	@Test(timeout = 1000)
 	public void gaUnderAllocSimpleTest() throws VMManagementException, NetworkException {
@@ -291,6 +323,26 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//we expect it to consolidate the two VMs to a single VM.
 
 		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	// VM consolidator using a particle swarm optimization algorithm
+	
+	@Test(timeout = 1000)
+	public void psoUnderAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM2.turnon();
+		testPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM2, false);
+		switchOnVM(VM2, mediumConstraints, testPM3, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, both PMs contain one VM each. If we turn on the consolidator, 
+		//we expect it to consolidate the two VMs to a single VM.
+
+		new PsoConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());

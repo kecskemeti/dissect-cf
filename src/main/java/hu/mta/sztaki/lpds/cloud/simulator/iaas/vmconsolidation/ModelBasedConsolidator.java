@@ -32,6 +32,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 public abstract class ModelBasedConsolidator extends Consolidator {
 
 	protected List<ModelPM> bins;
+	protected List<ModelVM> items;
 	
 	private double upperThreshold;
 	private double lowerThreshold;
@@ -57,6 +58,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		this.lowerThreshold = lowerThreshold;
 		
 		bins = new ArrayList<>();
+		items = new ArrayList<>();
 	}
 
 	/**
@@ -103,6 +105,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 						vm.getResourceAllocation().allocated.getRequiredProcessingPower(), 
 						vm.getResourceAllocation().allocated.getRequiredMemory(), vm.getVa().id);
 				bin.addVM(item);
+				items.add(item);
 			}
 			bins.add(bin);
 		}

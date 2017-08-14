@@ -10,33 +10,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  *
  * This class manages VM consolidation with a particle swarm optimization algorithm. For that, particles
  * are used to find the best solution (minimized fitness function) for consolidation.
+ * 
+ * TODO At the moment no migrations are done correctly.
  */
 
-public class ParticleSwarmOptimization extends ModelBasedConsolidator {
+public class PsoConsolidator extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
 	private final int swarmSize = 20;		// defines the amount of particles
 	private final int maxIterations = 100;	// defines the maximum of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
-	private double C1 = 2.0;				// constant 1
-	private double C2 = 2.0;				// constant 2
-	private double wUpperBound = 1.0;		// the upper bound for variable w (used in the optimize()-method)
-	private double wLowerBound = 0.0;		// the lower bound for variable w
-	
-	// TODO
-	private final double errorTolerance = 0; 	// defines the tolerance value
 
-	// used for setting the velocity for each particle
-	private static final double velocityLow = -1;
-	private static final double velocityHigh = 1;
-	
-
-	public int count = 1;	// Counter for the graph actions
+	public int count = 1;	// counter for the graph actions
 
 	// create and initialize all necessary components
 	private Vector<Particle> swarm = new Vector<Particle>();
-	private double[] pBest = new double[swarmSize];
-	private Vector<ArithmeticVector> pBestLocation = new Vector<ArithmeticVector>();
 	private double[] fitnessValueList = new double[swarmSize];
 
 	private double globalBest;
@@ -58,7 +46,7 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
-	public ParticleSwarmOptimization(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold,long consFreq) {
+	public PsoConsolidator(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold,long consFreq) {
 		super(toConsolidate, upperThreshold, lowerThreshold, consFreq);
 	}
 
@@ -74,8 +62,9 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
 			ArithmeticVector loc = new ArithmeticVector();
 			for(int j = 0; j < this.dimension; j++) {
-				// create a new int to add random PMs to the list of the actual particle
-				double a = generator.nextInt(bins.size()) + 1;
+				
+				// create a new double to add random PMs to the list of the actual particle
+				double a = generator.nextInt(bins.size());
 				
 				loc.add(a); 	// add the random PM
 			}
@@ -83,14 +72,22 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 			// randomize velocity in the range defined in Problem Set
 			ArithmeticVector vel = new ArithmeticVector();
 			for(int j = 0; j < this.dimension; j++) {
-				// create a new int to add random PMs to the list of the actual particle
-				double a = velocityLow + generator.nextDouble() * (velocityHigh - velocityLow);;
+				
+				// create a new double to add random PMs to the list of the actual particle
+				double a;
+				
+				// here we make a 50/50 chance of getting a PM with a lower id or a higher id
+				int zeroOrOne = (int) Math.round(Math.random());								
+				if(zeroOrOne < 1)
+					a = loc.get(j) + generator.nextInt(bins.size());
+				else
+					a = loc.get(j) - generator.nextInt(bins.size());
 				
 				vel.add(a); 	// add the random PM
 			}
 			
 			p.setLocation(loc);
-			p.setVelocity(vel);			
+			p.setVelocity(vel);
 			swarm.add(p);
 		}
 	}
@@ -99,6 +96,7 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 	 * Initializes variables, sets the problem dimension and creates the swarm.
 	 */
 	private void initializePSO() {
+		// get the dimension by getting the amount of VMs on the actual PMs
 		int dim = 0;
 		for(ModelPM p : bins) {
 			dim = dim + p.getVMs().size();
@@ -119,33 +117,33 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 		initializePSO();
 		
 		for(int i = 0; i < swarmSize; i++) {
-			pBest[i] = fitnessValueList[i];
-			pBestLocation.add(swarm.get(i).getLocation());
+			Particle p = swarm.get(i);
+			p.setPBest(fitnessValueList[i]);
+			p.setPBestLocation(swarm.get(i).getLocation());
 		}
 		
 		int t = 0;		// counter for the iterations
 		
-		double err = 9999;
-		
-		while(t < this.maxIterations && err > this.errorTolerance) {
+		while(t < this.maxIterations) {
 			// step 1 - update pBest
 			for(int i = 0; i < swarmSize; i++) {
-
-				if(fitnessValueList[i] < pBest[i]) {
-					pBest[i] = fitnessValueList[i];
-					pBestLocation.set(i, swarm.get(i).getLocation());
+				
+				Particle p = swarm.get(i);
+				
+				//the aim is to minimize the function
+				if(fitnessValueList[i] < p.getPBest()) {
+					p.setPBest(fitnessValueList[i]);
+					p.setPBestLocation(p.getLocation());
 				}
 			}
 			
 			// step 2 - update gBest
 			int bestParticleIndex = getMinPos(fitnessValueList);	// get the position of the minimum fitness value
 			
-			if(t == 0 || fitnessValueList[bestParticleIndex] < globalBest) {
-				globalBest = fitnessValueList[bestParticleIndex];
+			if(t == 0 || bestParticleIndex < globalBest) {
+				globalBest = bestParticleIndex;
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();
 			}
-			
-			double w = wUpperBound - (((double) t) / maxIterations) * (wUpperBound - wLowerBound);	// used for updating the velocity
 			
 			for(int i = 0; i < swarmSize; i++) {
 				
@@ -156,15 +154,16 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 				
 				// step 3 - update velocity
 				
+				double w = 1 - (((double) t) / maxIterations) * (1 - 0);
+				
 				ArithmeticVector first = p.getVelocity().multiply(w);
-				ArithmeticVector second = (pBestLocation.get(i).subtract(p.getLocation())).multiply((r1 * C1));
-				ArithmeticVector third = (globalBestLocation.subtract(p.getLocation())).multiply((r2 * C2));				
+				ArithmeticVector second = (p.getPBestLocation().subtract(p.getLocation())).multiply((r1 * 2));
+				ArithmeticVector third = (globalBestLocation.subtract(p.getLocation())).multiply((r2 * 2));				
 				ArithmeticVector newVel = first.add(second).add(third);				
 				p.setVelocity(newVel);
 				
 				// step 4 - update location
-				
-				//TODO defining border
+
 				ArithmeticVector newLoc = p.getLocation().add(newVel);				
 				p.setLocation(newLoc);
 			}
@@ -172,8 +171,26 @@ public class ParticleSwarmOptimization extends ModelBasedConsolidator {
 			// last step
 			t++;
 			updateFitnessList();
-		}
+		}		
+		
+		implementSolution();
 	}	
+	
+	/**
+	 * In this method the hostPM of each VM is compared to the solution of the algorithm, the globalBestLocation.
+	 * If the hosts are the same, no migration is needed, if not, we migrate the VM to the new host.
+	 */
+	private void implementSolution() {
+		//Implement solution in the model
+		for(int i = 0; i < dimension; i++) {
+			
+			ModelPM oldPm = items.get(i).gethostPM();
+			ModelPM newPm = bins.get(globalBestLocation.get(i).intValue());
+			if(newPm != oldPm)
+				oldPm.migrateVM(items.get(i), newPm);
+		}
+		adaptPmStates();
+	}
 	
 	/**
 	 * Method to find the position where the smallest fitness value is.

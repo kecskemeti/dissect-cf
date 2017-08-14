@@ -13,11 +13,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 public class ModelVM {
 	
-	VirtualMachine vm;
-	ModelPM hostPM;
-	ModelPM initialHost;
+	private VirtualMachine vm;
+	private ModelPM hostPM;
+	private ModelPM initialHost;
 	String id;
-	ResourceVector neededResources;
+	private ResourceVector neededResources;
 
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
