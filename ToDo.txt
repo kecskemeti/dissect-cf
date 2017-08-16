@@ -1,6 +1,6 @@
 Anmerkungen:
 
-PSO weiter implementieren
+PSO weiter implementieren, bugs fixen
+C Code weiter implementieren
 eventuell weitere Testfälle einfügen, um die Ergänzungen zu testen
 OnOffScheduler
-Nach synchronisieren Fehler im Test, Änderungen anschauen und einbinden
