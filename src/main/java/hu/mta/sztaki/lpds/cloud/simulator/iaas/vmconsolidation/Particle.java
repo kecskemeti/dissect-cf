@@ -48,7 +48,7 @@ public class Particle {
 	 * @param location The actual result of this particle.
 	 * @return new fitnessValue
 	 */
-	public double evaluateFitnessFunction(ArithmeticVector location) {
+	public double evaluateFitnessFunction() {
 		double result = getNrActivePms();				
 		return result;
 	}
@@ -86,7 +86,7 @@ public class Particle {
 	}
 
 	public double getFitnessValue() {
-		fitnessValue = evaluateFitnessFunction(location);
+		fitnessValue = evaluateFitnessFunction();
 		return fitnessValue;
 	}
 }
