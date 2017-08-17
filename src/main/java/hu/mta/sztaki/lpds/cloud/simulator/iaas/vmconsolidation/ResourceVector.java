@@ -4,7 +4,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceCons
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 	/**
-	 * @author René Ponto
+	 * @author Rene Ponto
 	 * 
 	 * This class manages the resources of the modeled VMs and PMs as an extension of 'AlterableResourceConstraints'.
 	 * The additional functions are comparisons of the resources (cores, perCoreProcessing and memory) between a ConstantConstraint

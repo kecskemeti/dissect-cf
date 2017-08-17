@@ -1,6 +1,6 @@
 Anmerkungen:
 
-PSO weiter implementieren
-eventuell weitere Testfälle einfügen, um die Ergänzungen zu testen
+PSO bug fixen
+vmmultialloctenant weiter implementieren
+eventuell weitere Testfaelle einfuegen, um die Ergaenzungen zu testen
 OnOffScheduler
-Nach synchronisieren Fehler im Test, Änderungen anschauen und einbinden

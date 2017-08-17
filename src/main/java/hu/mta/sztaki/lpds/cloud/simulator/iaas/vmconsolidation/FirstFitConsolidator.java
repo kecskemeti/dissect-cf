@@ -11,7 +11,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
- * @author René Ponto
+ * @author Rene Ponto
  *
  * This class is used to do the consolidation with first fit, i.e. the target
  * PM for a VM is selected using first fit, the VMs on a PM are selected using first fit etc.

@@ -7,7 +7,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 /**
- * @author Julian Bellendorf, René Ponto
+ * @author Julian Bellendorf, Rene Ponto
  *
  * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
  * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible

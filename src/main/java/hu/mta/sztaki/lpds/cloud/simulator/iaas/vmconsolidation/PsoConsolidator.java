@@ -6,19 +6,18 @@ import java.util.Vector;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 /**
- * @author René Ponto
+ * @author Rene Ponto
  *
  * This class manages VM consolidation with a particle swarm optimization algorithm. For that, particles
- * are used to find the best solution (minimized fitness function) for consolidation.
- * 
- * TODO At the moment no migrations are done correctly.
+ * are used to find the best solution (minimized fitness function) for consolidation. At the moment only
+ * the amount of currenty active PMs is used for the fitness.
  */
 
 public class PsoConsolidator extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
 	private final int swarmSize = 20;		// defines the amount of particles
-	private final int maxIterations = 100;	// defines the maximum of iterations
+	private final int maxIterations = 50;	// defines the maximum of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
 
 	public int count = 1;	// counter for the graph actions
@@ -50,7 +49,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	}
 
 	/**
-	 * Method to create a swarm and a few particles. Should be finished.
+	 * Method to create a swarm and the defined amount of particles. Each Particle gets a random
+	 * location and velocity.
 	 */
 	private void initializeSwarm() {
 		Particle p;
@@ -75,12 +75,11 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				// create a new double to add random PMs to the list of the actual particle
 				double a;
 				
-				// here we make a 50/50 chance of getting a PM with a lower id or a higher id
-				int zeroOrOne = (int) Math.round(Math.random());								
-				if(zeroOrOne < 1)
-					a = loc.get(j) + generator.nextInt(bins.size());
+				// here we make a random chance of getting a PM with a lower id or a higher id
+				if(generator.nextBoolean())
+					a = loc.get(j) + 1;
 				else
-					a = loc.get(j) - generator.nextInt(bins.size());
+					a = loc.get(j) - 1;
 				
 				vel.add(a); 	// add the random PM
 			}
@@ -132,7 +131,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			}
 			
 			// step 2 - update gBest
-			int bestParticleIndex = getMinPos(swarm);	// get the position of the minimum fitness value
+			int bestParticleIndex = getMinPos();	// get the position of the minimum fitness value
 			
 			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue() < globalBest) {
 				globalBest = swarm.get(bestParticleIndex).getFitnessValue();
@@ -151,14 +150,14 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				double w = 1 - (((double) t) / maxIterations) * (1 - 0);
 				
 				ArithmeticVector first = p.getVelocity().multiply(w);
-				ArithmeticVector second = (p.getPBestLocation().subtract(p.getLocation())).multiply((r1 * 2));
-				ArithmeticVector third = (globalBestLocation.subtract(p.getLocation())).multiply((r2 * 2));				
-				ArithmeticVector newVel = first.add(second).add(third);				
+				ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation()).multiply(r1 * 2);
+				ArithmeticVector third = globalBestLocation.subtract(p.getLocation()).multiply(r2 * 2);				
+				ArithmeticVector newVel = first.addUp(second).addUp(third);				
 				p.setVelocity(newVel);
 				
 				// step 4 - update location
 
-				ArithmeticVector newLoc = p.getLocation().add(newVel);				
+				ArithmeticVector newLoc = p.getLocation().addUp(newVel);				
 				p.setLocation(newLoc);
 			}
 			
@@ -178,7 +177,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		for(int i = 0; i < dimension; i++) {
 			
 			ModelPM oldPm = items.get(i).gethostPM();
-			ModelPM newPm = bins.get(globalBestLocation.get(i).intValue());
+			ModelPM newPm = bins.get(globalBestLocation.get(i).intValue());		// TODO bins seems to be empty
 			if(newPm != oldPm)
 				oldPm.migrateVM(items.get(i), newPm);
 		}
@@ -190,7 +189,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	 * @param swarm The vector with all Particles.
 	 * @return The position where the value is in the vector.
 	 */
-	private int getMinPos(Vector<Particle> swarm) {
+	private int getMinPos() {
 		
 		double minValue = swarm.get(0).getFitnessValue();
 		int pos = 0;

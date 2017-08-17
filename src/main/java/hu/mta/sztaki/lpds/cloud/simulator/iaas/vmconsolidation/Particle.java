@@ -4,7 +4,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
-	 * @author René Ponto
+	 * @author Rene Ponto
 	 *
 	 * The idea for particles is to have a list of double values where all hostPMs in Order of their hosted VMs are.
 	 * Therefore the id of the specific PM is used.
@@ -19,14 +19,11 @@ public class Particle {
 	private double personalBest;
 	private ArithmeticVector personalBestLocation;
 		
+	/**
+	 * Empty constructor becouse every value of a Particle is set using the setter-methods.
+	 */
 	public Particle() {
 		
-	}
-
-	public Particle(double fitnessValue, ArithmeticVector velocity, ArithmeticVector location) {
-		this.fitnessValue = fitnessValue;
-		this.velocity = velocity;
-		this.location = location;
 	}
 
 	/**

@@ -31,7 +31,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 	/**
-	 * @author Julian Bellendorf, René Ponto
+	 * @author Julian Bellendorf, Rene Ponto
 	 * 
 	 * Testcases:
 	 * 

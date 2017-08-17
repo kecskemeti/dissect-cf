@@ -4,16 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
-	 * @author René Ponto
+	 * @author Rene Ponto
 	 *
 	 * This class is used to create an Object for the location and the velocity of
-	 * particles of the PSO-Consolidator.
+	 * particles of the PSO-Consolidator. Despite of that there a operations like add a Vector, 
+	 * subtract a Vector and multiply it with a constant.
 	 */
 @SuppressWarnings("serial")
 public class ArithmeticVector extends ArrayList<Double>{
 
 	List<Double> internList;
-	double highest;
+	double highestID;
 	
 	public ArithmeticVector() {
 		internList = new ArrayList<Double>();
@@ -21,18 +22,19 @@ public class ArithmeticVector extends ArrayList<Double>{
 	
 	
 	/**
-	 * Method to add another ArithmeticVector to this one.
+	 * Method to add another ArithmeticVector to this one. There is a defined border
+	 * so there can no PM used which is not in the IaaS.
 	 * @param second
 	 * @return
 	 */
-	public ArithmeticVector add(ArithmeticVector second) {
+	public ArithmeticVector addUp(ArithmeticVector second) {
 		
-		highest = getHighest();		// the border to minimize the amount of used PMs
+		highestID = getHighest();		// the defined border
 		
 		ArithmeticVector erg = new ArithmeticVector();
 		for(int i = 0; i < erg.size(); i++) {
-			if(this.get(i) + second.get(i) > highest)
-				erg.add(highest);
+			if(this.get(i) + second.get(i) > highestID)
+				erg.add(highestID);
 			else
 				erg.add(this.get(i) + second.get(i));
 		}
@@ -40,14 +42,15 @@ public class ArithmeticVector extends ArrayList<Double>{
 	}
 	
 	/**
-	 * Method to subtract another ArithmeticVector of this one.
+	 * Method to subtract another ArithmeticVector of this one. There is a defined border
+	 * for not using a PM with an ID lower than 0, becouse such a PM does not exist.
 	 * @param second
 	 * @return
 	 */
 	public ArithmeticVector subtract(ArithmeticVector second) {
 		ArithmeticVector erg = new ArithmeticVector();
 		for(int i = 0; i < erg.size(); i++) {
-			if(this.get(i) - second.get(i) <= 0)
+			if(this.get(i) - second.get(i) < 0)
 				erg.add(0.0);	// if the value would be lower than 0, 0 is set becouse there is no lower id than 0.
 			else
 				erg.add(this.get(i) - second.get(i));
@@ -69,6 +72,10 @@ public class ArithmeticVector extends ArrayList<Double>{
 		return erg;		
 	}
 	
+	/**
+	 * Method for finding the PM with the highest ID.
+	 * @return
+	 */
 	private double getHighest() {
 		double highest = 0;
 		for(int i = 0; i < internList.size(); i++) {

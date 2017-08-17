@@ -11,7 +11,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
- * @author Julian Bellendorf, René Ponto, Zoltan Mann
+ * @author Julian Bellendorf, Rene Ponto, Zoltan Mann
  * 
  * This class gives the necessary variables and methods for VM consolidation.
  * The main idea is to make an abstract model out of the given PMs and its VMs with the original

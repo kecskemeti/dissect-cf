@@ -4,7 +4,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 
 	/**
-	 * @author Julian Bellendorf, René Ponto
+	 * @author Julian Bellendorf, Rene Ponto
 	 * 
 	 * This class represents a VM in this abstract model. It has only the necessary things for consolidation which
 	 * means the hosting PM, its needed resources and the id of the original VM.
