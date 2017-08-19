@@ -19,6 +19,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ArithmeticVector;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
@@ -346,6 +347,31 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	@Test(timeout = 100)
+	public void arithmeticsTest() {
+		ArithmeticVector v1 = new ArithmeticVector();
+		ArithmeticVector v2 = new ArithmeticVector();
+		
+		v1.add(2.0);
+		v2.add(1.0);
+		
+		ArithmeticVector vErgSub = v1.subtract(v2);
+		Assert.assertEquals(1, vErgSub.size());
+		Assert.assertEquals(1.0, vErgSub.get(0), 0);
+		
+		ArithmeticVector vErgMult = v1.multiply(2.0);
+		Assert.assertEquals(1, vErgMult.size());
+		Assert.assertEquals(4.0, vErgMult.get(0), 0);
+		
+		v1.add(4.0);
+		v2.add(0.0);
+		
+		ArithmeticVector vErgAdd = v1.addUp(v2);
+		Assert.assertEquals(2, vErgAdd.size());
+		Assert.assertEquals(3.0, vErgAdd.get(0), 0);
+		Assert.assertEquals(4.0, vErgAdd.get(1), 0);
 	}
 
 }
