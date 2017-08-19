@@ -23,7 +23,8 @@ public class Particle {
 	 * Empty constructor becouse every value of a Particle is set using the setter-methods.
 	 */
 	public Particle() {
-		
+		personalBestLocation = new ArithmeticVector();
+		personalBest = -1;
 	}
 
 	/**
@@ -62,7 +63,7 @@ public class Particle {
 		return this.personalBestLocation;
 	}
 	
-	public void setPBestLocation(ArithmeticVector loc) {
+	public void setPBestLocation(ArithmeticVector loc) {		
 		this.personalBestLocation = loc;
 	}
 	
@@ -85,5 +86,15 @@ public class Particle {
 	public double getFitnessValue() {
 		fitnessValue = evaluateFitnessFunction();
 		return fitnessValue;
+	}
+	
+	public String toString() {
+		String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") 
+			+ "Velocity: " + this.getVelocity() + System.getProperty("line.separator") 
+			+ "FitnessValue: " + this.getFitnessValue() + ", PersonalBestFitness: " 
+			+ this.getPBest() + System.getProperty("line.separator")
+			+ "PersonalBestLocation: " + this.getPBestLocation() + System.getProperty("line.separator");
+		
+		return erg;
 	}
 }
