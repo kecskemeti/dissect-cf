@@ -130,12 +130,16 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		
 		initializePSO();
 		
+		
 		for(int i = 0; i < swarmSize; i++) {
 			Particle p = swarm.get(i);
-			p.setPBest(p.getFitnessValue());
-			p.setPBestLocation(p.getLocation());		// TODO every entry of the loc which is twice in the list gets taken only once
 			
-			Logger.getGlobal().info("Before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
+			Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
+			
+			p.setPBest(p.getFitnessValue());
+			p.setPBestLocation(p.getLocation());		// TODO the entries which appear more than once only are once in the actual location ...
+			
+			Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
 			+ ", PBestLocation: " + p.getPBestLocation());			
 		}
 		
