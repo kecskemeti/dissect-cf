@@ -327,6 +327,45 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
+	@Test(timeout = 1000)
+	public void gaUnderAllocComplexTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.turnon();
+		testPM4.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM1, false);
+		switchOnVM(VM2, smallConstraints, testPM2, false);
+		switchOnVM(VM3, smallConstraints, testPM3, false);
+		switchOnVM(VM4, smallConstraints, testPM4, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, all four PMs contain one VM each. After turning on the consolidator,
+		//there should be only one PM running, hosting all four VMs.
+
+		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	@Test(timeout = 1000)
+	public void gaOverAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, bigConstraints, testPM1, false);
+		switchOnVM(VM2, mediumConstraints, testPM1, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, PM1 contains twoVM, making it overAllocated. If we turn on the consolidator, 
+		//we expect it to consolidate one VM to another PM.
+
+		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(2, basic.runningMachines.size());
+	}
+	
 	// VM consolidator using artificial bee colony algorithm
 
 	@Test(timeout = 10000)
@@ -348,7 +387,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 1000)
-	public void gaUnderAllocComplexTest() throws VMManagementException, NetworkException {
+	public void abcUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
 		testPM3.turnon();
@@ -363,14 +402,14 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//Now, all four PMs contain one VM each. After turning on the consolidator,
 		//there should be only one PM running, hosting all four VMs.
 
-		new PsoConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		new AbcConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
 	@Test(timeout = 1000)
-	public void gaOverAllocSimpleTest() throws VMManagementException, NetworkException {
+	public void abcOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		Timed.simulateUntilLastEvent();
 		switchOnVM(VM1, bigConstraints, testPM1, false);
@@ -380,7 +419,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//Now, PM1 contains twoVM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
-		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		new AbcConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(2, basic.runningMachines.size());

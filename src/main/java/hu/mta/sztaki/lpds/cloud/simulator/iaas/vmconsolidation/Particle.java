@@ -65,10 +65,10 @@ public class Particle {
 		for(ModelPM pm : bins) {
 			ResourceVector allocation = allocations.get(pm);
 			ConstantConstraints cap = pm.getTotalResources();
-			if(allocation.getTotalProcessingPower() > cap.getTotalProcessingPower())
-				result += allocation.getTotalProcessingPower() / cap.getTotalProcessingPower();
-			if(allocation.getRequiredMemory() > cap.getRequiredMemory())
-				result += allocation.getRequiredMemory() / cap.getRequiredMemory();
+			if(allocation.getTotalProcessingPower() > cap.getTotalProcessingPower()*pm.getUpperThreshold())
+				result += allocation.getTotalProcessingPower() / (cap.getTotalProcessingPower()*pm.getUpperThreshold());
+			if(allocation.getRequiredMemory() > cap.getRequiredMemory()*pm.getUpperThreshold())
+				result += allocation.getRequiredMemory() / (cap.getRequiredMemory()*pm.getUpperThreshold());
 		}
 		return result;
 	}

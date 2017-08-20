@@ -63,10 +63,10 @@ public class Solution {
 		for(ModelPM pm : bins) {
 			ResourceVector load=loads.get(pm);
 			ConstantConstraints cap=pm.getTotalResources();
-			if(load.getTotalProcessingPower()>cap.getTotalProcessingPower())
-				result+=load.getTotalProcessingPower()/cap.getTotalProcessingPower();
-			if(load.getRequiredMemory()>cap.getRequiredMemory())
-				result+=load.getRequiredMemory()/cap.getRequiredMemory();
+			if(load.getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold())
+				result+=load.getTotalProcessingPower()/(cap.getTotalProcessingPower()*pm.getUpperThreshold());
+			if(load.getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold())
+				result+=load.getRequiredMemory()/(cap.getRequiredMemory()*pm.getUpperThreshold());
 		}
 		return result;
 	}
