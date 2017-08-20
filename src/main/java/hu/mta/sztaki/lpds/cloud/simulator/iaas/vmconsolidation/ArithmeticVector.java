@@ -49,8 +49,12 @@ public class ArithmeticVector extends ArrayList<Double>{
 		for(int i = 0; i < this.size(); i++) {
 			if(this.get(i) + second.get(i) > highestID)		
 				erg.add(highestID);
-			else
-				erg.add(this.get(i) + second.get(i));
+			else {
+				if(this.get(i) + second.get(i) < 0)
+					erg.add(0.0);
+				else
+					erg.add(this.get(i) + second.get(i));
+			}				
 		}
 		return erg;
 	}

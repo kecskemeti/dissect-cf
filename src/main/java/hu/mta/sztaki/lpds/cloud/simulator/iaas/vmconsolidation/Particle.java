@@ -49,6 +49,7 @@ public class Particle {
 	 */
 	double getTotalOverload() {
 		//roundValues();
+		//Logger.getGlobal().info(this.toString());
 		
 		double result = 0;
 		//Now we determine the allocation of every PM
@@ -76,7 +77,7 @@ public class Particle {
 	 * Compute the number of PMs that should be on, given our mapping. This
 	 * is a component of the fitness.
 	 */
-	private int getNrActivePms() {		
+	private int getNrActivePms() {	
 		//clears the list so there is no pm more than once there
 		Set<Double> setItems = new LinkedHashSet<Double>(location);
         return setItems.size();
@@ -87,6 +88,7 @@ public class Particle {
 	 * can be used as a component of the fitness.
 	 */
 	int getNrMigrations() {
+		//Logger.getGlobal().info(this.toString());
 		int result = 0;
 		//See for each VM whether it must be migrated.
 		for(int i = 0; i < items.size(); i++) {

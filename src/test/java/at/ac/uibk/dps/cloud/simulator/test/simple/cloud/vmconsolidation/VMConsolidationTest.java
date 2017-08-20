@@ -191,27 +191,26 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		testPM2.turnon();
 		Timed.simulateUntilLastEvent();
 		
+		switchOnVM(VM1, this.smallConstraints, testPM1, true);
 		switchOnVM(VM2, this.smallConstraints, testPM1, true);
 		switchOnVM(VM3, this.smallConstraints, testPM1, true);
 		switchOnVM(VM7, this.smallConstraints, testPM2, true);
 		
-		Timed.simulateUntilLastEvent();		
+		//Timed.simulateUntilLastEvent();		
 		
 		switchOnVM(VM4, this.smallConstraints, testPM1, true);
 		switchOnVM(VM5, this.smallConstraints, testPM1, true);
 		switchOnVM(VM6, this.mediumConstraints, testPM1, true);
 		
 		Timed.simulateUntilLastEvent();		
-		//Now, PM1 contains 5 VMs, PM2 and PM3 one VM. If we turn on the consolidator,
-		//we expect it to move two VMs of PM1 to PM2 and one VM to PM3.
+		//Now, PM1 contains 6 VMs and PM2 one VM. If we turn on the consolidator,
+		//we expect only two running machines.
 		
-		ffc = new FirstFitConsolidator(basic, 0.5, lowerThreshold, 600);
+		ffc = new FirstFitConsolidator(basic, 0.65, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
-		Assert.assertEquals(2, testPM1.publicVms.size());
-		Assert.assertEquals(3, testPM2.publicVms.size());
-		Assert.assertEquals(1, testPM3.publicVms.size());
-		Assert.assertEquals(0, testPM4.publicVms.size());
+		Assert.assertEquals(2, basic.runningMachines.size());
+		Assert.assertNotEquals(6, testPM1.publicVms.size());
 	}
 
 	@Test(timeout = 1000)
@@ -251,8 +250,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(2, testPM1.publicVms.size());
-		Assert.assertEquals(2, testPM2.publicVms.size());
+		Assert.assertEquals(4, testPM1.publicVms.size());
+		Assert.assertEquals(0, testPM2.publicVms.size());
 		Assert.assertEquals(0, testPM3.publicVms.size());
 		Assert.assertEquals(0, testPM4.publicVms.size());
 		
@@ -322,6 +321,28 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//we expect it to consolidate the two VMs to a single VM.
 
 		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	@Test(timeout = 1000)
+	public void gaUnderAllocComplexTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.turnon();
+		testPM4.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM1, false);
+		switchOnVM(VM2, smallConstraints, testPM2, false);
+		switchOnVM(VM3, smallConstraints, testPM3, false);
+		switchOnVM(VM4, smallConstraints, testPM4, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, all four PMs contain one VM each. After turning on the consolidator,
+		//there should be only one PM running, hosting all four VMs.
+
+		new PsoConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());

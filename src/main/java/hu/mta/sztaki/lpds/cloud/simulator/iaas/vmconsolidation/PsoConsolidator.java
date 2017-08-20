@@ -121,7 +121,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		// set all values of the personalBest to -1 to show that there is no personalBest at the beginning
 		globalBest.nrActivePms = -1;
 		globalBest.nrMigrations = -1;
-		globalBest.totalOverload = -1;		//TODO
+		globalBest.totalOverload = -1;	
 		
 		this.globalBestLocation = new ArithmeticVector();
 		
@@ -160,8 +160,11 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			for(int i = 0; i < swarmSize; i++) {
 				
 				Particle p = swarm.get(i);
+				
+				Logger.getGlobal().info("Iteration " + t + ", Particle " + i + ", " + p.toString());
+				
 				p.evaluateFitnessFunction();
-				//Logger.getGlobal().info("Particle " + i + ", " + p.toString());
+				
 				//the aim is to minimize the function
 				if(p.getFitnessValue().isBetterThan(p.getPBest())) {
 					p.setPBest(p.getFitnessValue());
@@ -183,34 +186,44 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			for(int i = 0; i < swarmSize; i++) {
 				
-				double r1 = generator.nextDouble();
-				double r2 = generator.nextDouble();
-				
-				Particle p = swarm.get(i);
-				
-				// step 3 - update velocity
-				
-				double w = 1 - (((double) t) / maxIterations) * (1 - 0);
-				
-				ArithmeticVector first = p.getVelocity().multiply(w);
-				ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
-				ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
-				
-				//Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
-				
-				ArithmeticVector newVel = first.addUp(second).addUp(third);				
-				p.setVelocity(newVel);
-				
-				//Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
-				
-				// step 4 - update location
+				if(t == 0) {
+					Particle p = swarm.get(i);
+					
+					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());				
+					p.setLocation(newLoc);
+					
+				}
+				else {
+					double r1 = generator.nextDouble();
+					double r2 = generator.nextDouble();
+					
+					Particle p = swarm.get(i);
+					
+					// step 3 - update velocity
+					
+					double w = 1 - (((double) t) / maxIterations) * (1 - 0);
+					
+					ArithmeticVector first = p.getVelocity().multiply(w);
+					ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
+					ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
+					
+					//Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
+					
+					ArithmeticVector newVel = first.addUp(second).addUp(third);				
+					p.setVelocity(newVel);
+					
+					//Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
+					
+					// step 4 - update location
 
-				ArithmeticVector newLoc = p.getLocation().addUp(newVel);				
-				p.setLocation(newLoc);
+					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());				
+					p.setLocation(newLoc);
+					
+					//Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
+					
+					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
+				}
 				
-				//Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
-				
-				//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
 			}
 			
 			Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
@@ -256,20 +269,4 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		}		
 		return pos;
 	}
-	
-	/**
-	 * Check the Allocation of the Location of this Particle and compare the
-	 * fitnessValue with the globalBest. If the actual fitnessValue is the globalBest and
-	 * there is neither an overAllocated PM nor and underAllocated PM, this Solution should not
-	 * change anymore.
-	 */
-	private void checkAllocation(Particle P) {
-		
-	}
-	
-	
-	
-	
-	
-	
 }
