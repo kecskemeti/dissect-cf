@@ -47,9 +47,9 @@ public class ArithmeticVector extends ArrayList<Double>{
 		
 		ArithmeticVector erg = new ArithmeticVector();
 		for(int i = 0; i < this.size(); i++) {
-//			if(this.get(i) + second.get(i) > highestID)		
-//				erg.add(highestID);
-//			else
+			if(this.get(i) + second.get(i) > highestID)		
+				erg.add(highestID);
+			else
 				erg.add(this.get(i) + second.get(i));
 		}
 		return erg;
@@ -64,9 +64,9 @@ public class ArithmeticVector extends ArrayList<Double>{
 	public ArithmeticVector subtract(ArithmeticVector second) {
 		ArithmeticVector erg = new ArithmeticVector();
 		for(int i = 0; i < this.size(); i++) {
-//			if(this.get(i) - second.get(i) < 0)
-//				erg.add(0.0);	// if the value would be lower than 0, 0 is set becouse there is no lower id than 0.
-//			else
+			if(this.get(i) - second.get(i) < 0)
+				erg.add(0.0);	// if the value would be lower than 0, 0 is set becouse there is no lower id than 0.
+			else
 				erg.add(this.get(i) - second.get(i));
 			
 		}

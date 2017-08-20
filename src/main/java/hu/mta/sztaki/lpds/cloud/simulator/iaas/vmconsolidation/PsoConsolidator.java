@@ -17,8 +17,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 public class PsoConsolidator extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
-	private final int swarmSize = 10;		// defines the amount of particles
-	private final int maxIterations = 20;	// defines the maximum of iterations
+	private final int swarmSize = 20;		// defines the amount of particles
+	private final int maxIterations = 50;	// defines the maximum of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
 	private final int c1 = 2;				// learning factor one
 	private final int c2 = 2;				// learning factor two
@@ -104,7 +104,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			swarm.add(p);
 			
-			Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
+			// Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
 		}
 		
 	}
@@ -119,7 +119,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		this.globalBest = -1;	// we have to take a negative value becouse of the minimizing 
 		this.globalBestLocation = new ArithmeticVector();
 		
-		Logger.getGlobal().info("Initialized PSO, " + this.toString());
+		//Logger.getGlobal().info("Initialized PSO, " + this.toString());
 		
 		//has to be done before starting the actual algorithm
 		initializeSwarm();
@@ -134,13 +134,13 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		for(int i = 0; i < swarmSize; i++) {
 			Particle p = swarm.get(i);
 			
-			Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
+			//Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
 			
 			p.setPBest(p.getFitnessValue());
-			p.setPBestLocation(p.getLocation());		// TODO the entries which appear more than once only are once in the actual location ...
+			p.setPBestLocation(p.getLocation());		
 			
-			Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
-			+ ", PBestLocation: " + p.getPBestLocation());			
+			//Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
+			//+ ", PBestLocation: " + p.getPBestLocation());			
 		}
 		
 		
@@ -169,7 +169,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();		// gets size of one, error 
 			}
 			
-			Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
+			//Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
 			for(int i = 0; i < swarmSize; i++) {
 				
@@ -186,22 +186,24 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
 				ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
 				
-				Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
+				//Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
 				
 				ArithmeticVector newVel = first.addUp(second).addUp(third);				
 				p.setVelocity(newVel);
 				
-				Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
+				//Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
 				
 				// step 4 - update location
 
 				ArithmeticVector newLoc = p.getLocation().addUp(newVel);				
 				p.setLocation(newLoc);
 				
-				Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
+				//Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
 				
-				Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
+				//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
 			}
+			
+			Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
 			// last step
 			t++;
@@ -243,5 +245,15 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			}
 		}		
 		return pos;
+	}
+	
+	/**
+	 * Check the Allocation of the Location of this Particle and compare the
+	 * fitnessValue with the globalBest. If the actual fitnessValue is the globalBest and
+	 * there is neither an overAllocated PM nor and underAllocated PM, this Solution should not
+	 * change anymore.
+	 */
+	private void checkAllocation(Particle P) {
+		
 	}
 }

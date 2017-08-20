@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class Particle {
 	
-	private double fitnessValue;	// used to evaluate the quality of the solution
+	private double fitnessValue;			// used to evaluate the quality of the solution
 	private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
 	private ArithmeticVector location;		// the actual location : possible solution
 	
@@ -33,12 +33,8 @@ public class Particle {
 	 */
 	private int getNrActivePms() {		
 		//clears the list so there is no pm more than once there
-		ArithmeticVector count = location;
 		Set<Double> setItems = new LinkedHashSet<Double>(location);
-		count.clear();
-		count.addAll(setItems);
-		
-		return count.size();
+        return setItems.size();
 	}
 	
 	/**
@@ -84,8 +80,18 @@ public class Particle {
 	}
 
 	public double getFitnessValue() {
+		roundValues();
+		
 		fitnessValue = evaluateFitnessFunction();
 		return fitnessValue;
+	}
+	
+	private void roundValues() {
+		for(int i = 0; i < location.size(); i++) {
+			
+			double value = location.get(i).intValue();
+			location.set(i, value);
+		}
 	}
 	
 	public String toString() {
