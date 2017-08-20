@@ -24,8 +24,8 @@ public class ModelPM {
 	private ResourceVector consumedResources;
 	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
 
-	private double lowerThreshold = 0.25;
-	private double upperThreshold = 0.75;
+	private double lowerThreshold;
+	private double upperThreshold;
 
 	private State state;
 

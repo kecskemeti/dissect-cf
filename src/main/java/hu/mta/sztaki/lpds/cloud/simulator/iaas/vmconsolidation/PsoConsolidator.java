@@ -17,8 +17,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 public class PsoConsolidator extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
-	private final int swarmSize = 10;		// defines the amount of particles
-	private final int maxIterations = 20;	// defines the maximum of iterations
+	private final int swarmSize = 20;		// defines the amount of particles
+	private final int maxIterations = 50;	// defines the maximum of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
 	private final int c1 = 2;				// learning factor one
 	private final int c2 = 2;				// learning factor two
@@ -28,7 +28,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	// create and initialize all necessary components
 	private Vector<Particle> swarm = new Vector<Particle>();
 
-	private double globalBest;
+	private Fitness globalBest;
 	private ArithmeticVector globalBestLocation;
 
 	Random generator = new Random();
@@ -63,7 +63,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	private void initializeSwarm() {
 		Particle p;
 		for(int i = 0; i < swarmSize; i++) {
-			p = new Particle();
+			p = new Particle(items, bins);
 			
 			
 			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
@@ -104,7 +104,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			swarm.add(p);
 			
-			Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
+			// Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
 		}
 		
 	}
@@ -116,10 +116,16 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
 		
-		this.globalBest = -1;	// we have to take a negative value becouse of the minimizing 
+		this.globalBest = new Fitness();
+		
+		// set all values of the personalBest to -1 to show that there is no personalBest at the beginning
+		globalBest.nrActivePms = -1;
+		globalBest.nrMigrations = -1;
+		globalBest.totalOverload = -1;	
+		
 		this.globalBestLocation = new ArithmeticVector();
 		
-		Logger.getGlobal().info("Initialized PSO, " + this.toString());
+		//Logger.getGlobal().info("Initialized PSO, " + this.toString());
 		
 		//has to be done before starting the actual algorithm
 		initializeSwarm();
@@ -134,13 +140,16 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		for(int i = 0; i < swarmSize; i++) {
 			Particle p = swarm.get(i);
 			
-			Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
+			//Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
+			
+			// fitnessFunction has to be evaluated before setting best values
+			p.evaluateFitnessFunction();
 			
 			p.setPBest(p.getFitnessValue());
-			p.setPBestLocation(p.getLocation());		// TODO the entries which appear more than once only are once in the actual location ...
+			p.setPBestLocation(p.getLocation());		
 			
-			Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
-			+ ", PBestLocation: " + p.getPBestLocation());			
+			//Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
+			//+ ", PBestLocation: " + p.getPBestLocation());			
 		}
 		
 		
@@ -152,8 +161,12 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				
 				Particle p = swarm.get(i);
 				
+				Logger.getGlobal().info("Iteration " + t + ", Particle " + i + ", " + p.toString());
+				
+				p.evaluateFitnessFunction();
+				
 				//the aim is to minimize the function
-				if(p.getFitnessValue() < p.getPBest()) {
+				if(p.getFitnessValue().isBetterThan(p.getPBest())) {
 					p.setPBest(p.getFitnessValue());
 					p.setPBestLocation(p.getLocation());
 				}
@@ -164,44 +177,56 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
-			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue() < globalBest) {
+			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue().isBetterThan(globalBest)) {
 				globalBest = swarm.get(bestParticleIndex).getFitnessValue();
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();		// gets size of one, error 
 			}
 			
-			Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
+			//Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
 			for(int i = 0; i < swarmSize; i++) {
 				
-				double r1 = generator.nextDouble();
-				double r2 = generator.nextDouble();
-				
-				Particle p = swarm.get(i);
-				
-				// step 3 - update velocity
-				
-				double w = 1 - (((double) t) / maxIterations) * (1 - 0);
-				
-				ArithmeticVector first = p.getVelocity().multiply(w);
-				ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
-				ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
-				
-				Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
-				
-				ArithmeticVector newVel = first.addUp(second).addUp(third);				
-				p.setVelocity(newVel);
-				
-				Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
-				
-				// step 4 - update location
+				if(t == 0) {
+					Particle p = swarm.get(i);
+					
+					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());				
+					p.setLocation(newLoc);
+					
+				}
+				else {
+					double r1 = generator.nextDouble();
+					double r2 = generator.nextDouble();
+					
+					Particle p = swarm.get(i);
+					
+					// step 3 - update velocity
+					
+					double w = 1 - (((double) t) / maxIterations) * (1 - 0);
+					
+					ArithmeticVector first = p.getVelocity().multiply(w);
+					ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
+					ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
+					
+					//Logger.getGlobal().info("Particle: " + i + ", " + first.size() + ", " + second.size() + ", " + third.size());
+					
+					ArithmeticVector newVel = first.addUp(second).addUp(third);				
+					p.setVelocity(newVel);
+					
+					//Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
+					
+					// step 4 - update location
 
-				ArithmeticVector newLoc = p.getLocation().addUp(newVel);				
-				p.setLocation(newLoc);
+					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());				
+					p.setLocation(newLoc);
+					
+					//Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
+					
+					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
+				}
 				
-				Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);
-				
-				Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
 			}
+			
+			Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
 			// last step
 			t++;
@@ -233,11 +258,11 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	 */
 	private int getMinPos() {
 		
-		double minValue = swarm.get(0).getFitnessValue();
+		Fitness minValue = swarm.get(0).getFitnessValue();
 		int pos = 0;
 		
 		for(int i = 0; i < swarm.size(); i++) {
-			if(swarm.get(i).getFitnessValue() < minValue) {
+			if(swarm.get(i).getFitnessValue().isBetterThan(minValue)) {
 				minValue = swarm.get(i).getFitnessValue();
 				pos = i;
 			}

@@ -1,7 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 /**
 	 * @author Rene Ponto
@@ -12,33 +17,87 @@ import java.util.Set;
 
 public class Particle {
 	
-	private double fitnessValue;	// used to evaluate the quality of the solution
+	private Fitness fitnessValue;			// used to evaluate the quality of the solution
 	private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
 	private ArithmeticVector location;		// the actual location : possible solution
 	
-	private double personalBest;
+	List<ModelVM> items;
+	List<ModelPM> bins;
+	
+	private Fitness personalBest;
 	private ArithmeticVector personalBestLocation;
 		
 	/**
 	 * Empty constructor becouse every value of a Particle is set using the setter-methods.
 	 */
-	public Particle() {
+	public Particle(List<ModelVM> items, List<ModelPM> bins) {
+		this.items = items;
+		this.bins = bins;
+		
 		personalBestLocation = new ArithmeticVector();
-		personalBest = -1;
+		personalBest = new Fitness();
+		
+		// set all values of the personalBest to -1 to show that there is no personalBest at the beginning
+		personalBest.nrActivePms = -1;
+		personalBest.nrMigrations = -1;
+		personalBest.totalOverload = -1;		
+	}
+	
+	/**
+	 * Computes the total of PM overloads, aggregated over all PMs and all
+	 * resource types. This can be used as a component of the fitness.
+	 */
+	double getTotalOverload() {
+		//roundValues();
+		//Logger.getGlobal().info(this.toString());
+		
+		double result = 0;
+		//Now we determine the allocation of every PM
+		Map<ModelPM,ResourceVector> allocations = new HashMap<>();
+		for(ModelPM pm : bins) {
+			allocations.put(pm, new ResourceVector(0,0,0));
+		}
+		for(int i = 0; i < items.size(); i++) {
+			ModelPM pm = bins.get(location.get(i).intValue());
+			allocations.get(pm).add(items.get(i).getResources());
+		}
+		//For each PM, see if it is overloaded; if yes, increase the result accordingly.
+		for(ModelPM pm : bins) {
+			ResourceVector allocation = allocations.get(pm);
+			ConstantConstraints cap = pm.getTotalResources();
+			if(allocation.getTotalProcessingPower() > cap.getTotalProcessingPower())
+				result += allocation.getTotalProcessingPower() / cap.getTotalProcessingPower();
+			if(allocation.getRequiredMemory() > cap.getRequiredMemory())
+				result += allocation.getRequiredMemory() / cap.getRequiredMemory();
+		}
+		return result;
 	}
 
 	/**
 	 * Compute the number of PMs that should be on, given our mapping. This
 	 * is a component of the fitness.
 	 */
-	private int getNrActivePms() {		
+	private int getNrActivePms() {	
 		//clears the list so there is no pm more than once there
-		ArithmeticVector count = location;
 		Set<Double> setItems = new LinkedHashSet<Double>(location);
-		count.clear();
-		count.addAll(setItems);
-		
-		return count.size();
+        return setItems.size();
+	}
+	
+	/**
+	 * Compute the number of migrations needed, given our mapping. This
+	 * can be used as a component of the fitness.
+	 */
+	int getNrMigrations() {
+		//Logger.getGlobal().info(this.toString());
+		int result = 0;
+		//See for each VM whether it must be migrated.
+		for(int i = 0; i < items.size(); i++) {
+			ModelPM oldPm = items.get(i).gethostPM();
+			ModelPM newPm = bins.get(location.get(i).intValue());		
+			if(newPm != oldPm)
+				result++;
+		}
+		return result;
 	}
 	
 	/**
@@ -46,17 +105,23 @@ public class Particle {
 	 * @param location The actual result of this particle.
 	 * @return new fitnessValue
 	 */
-	public double evaluateFitnessFunction() {
-		double result = getNrActivePms();				
-		return result;
+	public void evaluateFitnessFunction() {
+		roundValues();
+		Fitness result = new Fitness();
+		
+		result.totalOverload = getTotalOverload();			
+		result.nrActivePms = getNrActivePms();
+		result.nrMigrations = getNrMigrations();
+		
+		fitnessValue = result;
 	}
 	
-	public double getPBest() {
+	public Fitness getPBest() {
 		return this.personalBest;
 	}
 	
-	public void setPBest(double value) {
-		this.personalBest = value;
+	public void setPBest(Fitness fitness) {
+		this.personalBest = fitness;
 	}
 	
 	public ArithmeticVector getPBestLocation() {
@@ -83,9 +148,17 @@ public class Particle {
 		this.location = location;
 	}
 
-	public double getFitnessValue() {
-		fitnessValue = evaluateFitnessFunction();
+	public Fitness getFitnessValue() {
+		//fitnessValue = evaluateFitnessFunction();
 		return fitnessValue;
+	}
+	
+	private void roundValues() {
+		for(int i = 0; i < location.size(); i++) {
+			
+			double value = location.get(i).intValue();
+			location.set(i, value);
+		}
 	}
 	
 	public String toString() {
