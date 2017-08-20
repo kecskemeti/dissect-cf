@@ -19,6 +19,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ArithmeticVector;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
@@ -324,6 +325,26 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//we expect it to consolidate the two VMs to a single VM.
 
 		new GaConsolidator(basic, upperThreshold, lowerThreshold, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
+	
+	// VM consolidator using artificial bee colony algorithm
+
+	@Test(timeout = 10000)
+	public void abcUnderAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM2.turnon();
+		testPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM2, false);
+		switchOnVM(VM2, mediumConstraints, testPM3, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, both PMs contain one VM each. If we turn on the consolidator, 
+		//we expect it to consolidate the two VMs to a single VM.
+
+		new AbcConsolidator(basic, upperThreshold, lowerThreshold, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());
