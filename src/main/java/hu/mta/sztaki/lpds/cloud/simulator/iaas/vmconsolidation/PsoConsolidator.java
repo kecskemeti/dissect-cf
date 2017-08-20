@@ -28,7 +28,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	// create and initialize all necessary components
 	private Vector<Particle> swarm = new Vector<Particle>();
 
-	private double globalBest;
+	private Fitness globalBest;
 	private ArithmeticVector globalBestLocation;
 
 	Random generator = new Random();
@@ -63,7 +63,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	private void initializeSwarm() {
 		Particle p;
 		for(int i = 0; i < swarmSize; i++) {
-			p = new Particle();
+			p = new Particle(items, bins);
 			
 			
 			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
@@ -116,7 +116,13 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
 		
-		this.globalBest = -1;	// we have to take a negative value becouse of the minimizing 
+		this.globalBest = new Fitness();
+		
+		// set all values of the personalBest to -1 to show that there is no personalBest at the beginning
+		globalBest.nrActivePms = -1;
+		globalBest.nrMigrations = -1;
+		globalBest.totalOverload = -1;		//TODO
+		
 		this.globalBestLocation = new ArithmeticVector();
 		
 		//Logger.getGlobal().info("Initialized PSO, " + this.toString());
@@ -136,6 +142,9 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			//Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
 			
+			// fitnessFunction has to be evaluated before setting best values
+			p.evaluateFitnessFunction();
+			
 			p.setPBest(p.getFitnessValue());
 			p.setPBestLocation(p.getLocation());		
 			
@@ -151,9 +160,10 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			for(int i = 0; i < swarmSize; i++) {
 				
 				Particle p = swarm.get(i);
-				
+				p.evaluateFitnessFunction();
+				//Logger.getGlobal().info("Particle " + i + ", " + p.toString());
 				//the aim is to minimize the function
-				if(p.getFitnessValue() < p.getPBest()) {
+				if(p.getFitnessValue().isBetterThan(p.getPBest())) {
 					p.setPBest(p.getFitnessValue());
 					p.setPBestLocation(p.getLocation());
 				}
@@ -164,7 +174,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
-			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue() < globalBest) {
+			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue().isBetterThan(globalBest)) {
 				globalBest = swarm.get(bestParticleIndex).getFitnessValue();
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();		// gets size of one, error 
 			}
@@ -235,11 +245,11 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	 */
 	private int getMinPos() {
 		
-		double minValue = swarm.get(0).getFitnessValue();
+		Fitness minValue = swarm.get(0).getFitnessValue();
 		int pos = 0;
 		
 		for(int i = 0; i < swarm.size(); i++) {
-			if(swarm.get(i).getFitnessValue() < minValue) {
+			if(swarm.get(i).getFitnessValue().isBetterThan(minValue)) {
 				minValue = swarm.get(i).getFitnessValue();
 				pos = i;
 			}
@@ -256,4 +266,10 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	private void checkAllocation(Particle P) {
 		
 	}
+	
+	
+	
+	
+	
+	
 }

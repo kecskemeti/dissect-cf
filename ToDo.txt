@@ -1,6 +1,6 @@
 Anmerkungen:
 
-PSO: Solution / Fitness einfügen
+PSO: Fitness bug fixen (tritt manchmal auf)
 vmmultialloctenant weiter implementieren
 eventuell weitere Testfaelle einfuegen, um die Ergaenzungen zu testen
 OnOffScheduler
