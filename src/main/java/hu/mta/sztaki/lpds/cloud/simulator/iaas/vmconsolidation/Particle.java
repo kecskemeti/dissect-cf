@@ -12,7 +12,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 	 * @author Rene Ponto
 	 *
 	 * The idea for particles is to have a list of double values where all hostPMs in Order of their hosted VMs are.
-	 * Therefore the id of the specific PM is used.
+	 * Therefore the id of the specific PM is used. On given list mathematical operations can be done, like additions
+	 * and substractions. For that list an ArithmeticVector is used.
 	 */
 
 public class Particle {
@@ -21,26 +22,20 @@ public class Particle {
 	private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
 	private ArithmeticVector location;		// the actual location : possible solution
 	
-	List<ModelVM> items;
-	List<ModelPM> bins;
+	List<ModelVM> items;	// contains all VMs of the abstract model
+	List<ModelPM> bins;		// contains all PMs of the abstract model
 	
-	private Fitness personalBest;
-	private ArithmeticVector personalBestLocation;
+	private Fitness personalBest;	// the personal best Fitness so far
+	private ArithmeticVector personalBestLocation;	// the personal best location so far
 		
 	/**
-	 * Empty constructor becouse every value of a Particle is set using the setter-methods.
+	 * Creates a new Particle and sets the bins and items lists with the values out of the model.
+	 * @param items
+	 * @param bins
 	 */
 	public Particle(List<ModelVM> items, List<ModelPM> bins) {
 		this.items = items;
 		this.bins = bins;
-		
-		personalBestLocation = new ArithmeticVector();
-		personalBest = new Fitness();
-		
-		// set all values of the personalBest to -1 to show that there is no personalBest at the beginning
-		personalBest.nrActivePms = -1;
-		personalBest.nrMigrations = -1;
-		personalBest.totalOverload = -1;		
 	}
 	
 	/**
@@ -48,7 +43,6 @@ public class Particle {
 	 * resource types. This can be used as a component of the fitness.
 	 */
 	double getTotalOverload() {
-		//roundValues();
 		//Logger.getGlobal().info(this.toString());
 		
 		double result = 0;
@@ -161,6 +155,9 @@ public class Particle {
 		}
 	}
 	
+	/**
+	 * The toString-method, used for debugging.
+	 */
 	public String toString() {
 		String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") 
 			+ "Velocity: " + this.getVelocity() + System.getProperty("line.separator") 

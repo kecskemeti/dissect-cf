@@ -131,6 +131,9 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		initializeSwarm();
 	}
 
+	/**
+	 * 
+	 */
 	@Override
 	protected void optimize() {
 		
