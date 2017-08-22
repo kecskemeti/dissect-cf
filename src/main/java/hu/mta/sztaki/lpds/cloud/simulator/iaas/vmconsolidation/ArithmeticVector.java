@@ -6,23 +6,34 @@ import java.util.ArrayList;
 	 * @author Rene Ponto
 	 *
 	 * This class is used to create an Object for the location and the velocity of
-	 * particles of the PSO-Consolidator. Despite of that there a operations like add a Vector, 
-	 * subtract a Vector and multiply it with a constant.
+	 * particles of the PSO-Consolidator. Despite of that there a operations like add an ArithmeticVector, 
+	 * subtract an ArithmeticVector and multiply it with a constant.
 	 */
 @SuppressWarnings("serial")
 public class ArithmeticVector extends ArrayList<Double>{
 
 	double highestID;
 	
+	/**
+	 * Empty constructor, becouse all values of this class are created randomly at the beginning of the PSO
+	 * and get added to this.
+	 */
 	public ArithmeticVector() {
 		
 	}
 	
+	/**
+	 * The toString-method, used for debugging.
+	 */
 	public String toString() {
 		String erg = "Size: " + this.size() + ", " + this.toList();
 		return erg;
 	}
 	
+	/**
+	 * Creates an artificial list of the Value of this class, used inside the toString-method.
+	 * @return
+	 */
 	private String toList() {
 		String erg = "[";
 		for(int i = 0; i < this.size(); i++) {
@@ -38,8 +49,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 	/**
 	 * Method to add another ArithmeticVector to this one. There is a defined border
 	 * so there can no PM be used which is not in the IaaS.
-	 * @param second
-	 * @return
+	 * @param second The second ArithmeticVector, the velocity.
+	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector addUp(ArithmeticVector second) {
 		
@@ -51,7 +62,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 				erg.add(highestID);
 			else {
 				if(this.get(i) + second.get(i) < 0)
-					erg.add(0.0);
+					erg.add(0.0);	// if the actual value is 0.0 and the actual value of the velcity is smaller than 0.0,
+									// 0.0 is set becouse there is no lower ID than 0.
 				else
 					erg.add(this.get(i) + second.get(i));
 			}				
@@ -62,8 +74,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 	/**
 	 * Method to subtract another ArithmeticVector of this one. There is a defined border
 	 * for not using a PM with an ID lower than 0, becouse such a PM does not exist.
-	 * @param second
-	 * @return
+	 * @param second The second ArithmeticVector, the velocity.
+	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector subtract(ArithmeticVector second) {
 		ArithmeticVector erg = new ArithmeticVector();
@@ -79,8 +91,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 	
 	/**
 	 * Method to multiply every value of this class with a constant.
-	 * @param second
-	 * @return
+	 * @param constant The double Value to multiply with.
+	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector multiply(double constant) {
 		ArithmeticVector erg = new ArithmeticVector();
@@ -91,8 +103,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 	}
 	
 	/**
-	 * Method for finding the PM with the highest ID.
-	 * @return
+	 * Method for getting the PM with the highest ID.
+	 * @return The highest ID of all PMs.
 	 */
 	private double getHighest() {
 		double highest = 0;
