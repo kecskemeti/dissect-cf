@@ -1,0 +1,122 @@
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+
+import java.util.Properties;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+	/**
+	 * @author Rene Ponto
+	 * 
+	 * This class manages the consolidation algorithms, which means do several test cases with different
+	 * values for the constants of the consolidators. The results are going to be saved inside a seperate
+	 * file.
+	 */
+@SuppressWarnings("serial")
+public class ConsolidationController {
+	
+	Properties props;		// the properties-file, contains the constants of the pso-, abc- and ga-consolidator
+	
+	/**
+	 * Sets all default values (which are the origin ones) and reads the properties-file.
+	 * The file is saved in .xml in the root of the simulator.
+	 * @throws IOException 
+	 */
+	public ConsolidationController() throws IOException {
+		
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
+		
+		// the default values
+		
+		setPsoProperties("50", "50", "2", "2");
+		setAbcProperties("10", "50", "5");
+		setGaProperties("10", "50", "10");
+	}
+	
+	/**
+	 * This method shall create an csv-file with the results of the given tests. For the test cases,
+	 * different values for the constants are taken.
+	 */
+	public void runTests() {
+		this.initializeTest("Case 1");
+		
+		// save
+		
+		this.initializeTest("Case 2");
+		
+		// save
+		
+		this.initializeTest("Case 3");
+		
+		// save		
+		// ...
+	}
+	
+	/**
+	 * Here we define which values are taken for the tests. 
+	 */
+	private void initializeTest(String string) {
+		//example 1 : default values
+		if(string == "Case 1") {
+			
+		}		
+		//example 2 : doubled the population, halved the iterations of the algortihms
+		if(string == "Case 2") {
+			this.setPsoProperties("100", "25", "2", "2");
+			this.setAbcProperties("20", "25", "5");
+			this.setGaProperties("20", "25", "20");
+		}
+		
+		//example 3 : halved the population, doubled the iterations
+		if(string == "Case 3") {
+			this.setPsoProperties("25", "100", "2", "2");
+			this.setAbcProperties("5", "100", "5");
+			this.setGaProperties("5", "100", "5");
+		}		
+	}
+	
+	/**
+	 * Setter for the constant values of the pso algorithm.
+	 * @param swarmSize
+	 * @param iterations
+	 * @param c1
+	 * @param c2
+	 */
+	private void setPsoProperties(String swarmSize, String iterations, String c1, String c2) {
+		props.setProperty("psoSwarmSize", swarmSize);
+		props.setProperty("psoNrIterations", iterations);
+		props.setProperty("psoC1", c1);
+		props.setProperty("psoC2", c2);
+	}
+	
+	/**
+	 * Setter for the constant values of the abc algorithm.
+	 * @param populationSize
+	 * @param iterations
+	 * @param limitTrials
+	 */
+	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
+		props.setProperty("abcPopulationSize", populationSize);
+		props.setProperty("abcNrIterations", iterations);
+		props.setProperty("abcLimitTrials", limitTrials);
+	}
+	
+	/**
+	 * Setter for the constant values of the ga algorithm.
+	 * @param populationSize
+	 * @param iterations
+	 * @param crossovers
+	 */
+	private void setGaProperties(String populationSize, String iterations, String crossovers) {
+		props.setProperty("gaPopulationSize", populationSize);
+		props.setProperty("gaNrIterations", iterations);
+		props.setProperty("gaNrCrossovers", crossovers);
+	}
+	
+	
+
+}

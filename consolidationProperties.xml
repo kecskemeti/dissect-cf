@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+<comment>comment</comment>
+<entry key="psoSwarmSize">20</entry>
+<entry key="psoNrIterations">50</entry>
+<entry key="psoC2">2</entry>
+<entry key="psoC1">2</entry>
+<entry key="abcPopulationSize">10</entry>
+<entry key="abcNrIterations">50</entry>
+<entry key="abcLimitTrials">5</entry>
+<entry key="gaPopulationSize">10</entry>
+<entry key="gaNrIterations">50</entry>
+<entry key="gaNrCrossovers">10</entry>
+</properties>

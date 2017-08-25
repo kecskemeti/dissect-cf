@@ -18,7 +18,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 
 	// constants for doing consolidation
 	private final int swarmSize = 20;		// defines the amount of particles
-	private final int maxIterations = 50;	// defines the maximum of iterations
+	private final int nrIterations = 50;	// defines the amount of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
 	private final int c1 = 2;				// learning factor one
 	private final int c2 = 2;				// learning factor two
@@ -134,7 +134,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		}
 		int t = 0;		// counter for the iterations
 		
-		while(t < this.maxIterations) {
+		while(t < this.nrIterations) {
 			// step 1 - update pBest
 			for(int i = 0; i < swarmSize; i++) {				
 				Particle p = swarm.get(i);				
@@ -174,7 +174,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					
 					// step 3 - update velocity
 					
-					double w = 1 - (((double) t) / maxIterations) * (1 - 0);
+					double w = 1 - (((double) t) / nrIterations) * (1 - 0);
 					
 					ArithmeticVector first = p.getVelocity().multiply(w);
 					ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));

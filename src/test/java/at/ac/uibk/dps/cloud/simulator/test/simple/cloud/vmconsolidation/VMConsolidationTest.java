@@ -20,6 +20,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ConsolidationController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
@@ -162,6 +163,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		VM6 = new VirtualMachine(VA6);
 		VM7 = new VirtualMachine(VA7);
 		VM8 = new VirtualMachine(VA8);
+		
+		//ConsolidationController cc = new ConsolidationController();
 	}
 	
 	// VM consolidator using a first fit algorithm
