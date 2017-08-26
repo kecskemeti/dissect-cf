@@ -3,6 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.Properties;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 	/**
@@ -10,7 +11,7 @@ import java.io.IOException;
 	 * 
 	 * This class manages the consolidation algorithms, which means do several test cases with different
 	 * values for the constants of the consolidators. The results are going to be saved inside a seperate
-	 * file.
+	 * file. There are also methods to set the needed values for consolidation of some algorithms.
 	 */
 @SuppressWarnings("serial")
 public class ConsolidationController {
@@ -38,22 +39,49 @@ public class ConsolidationController {
 	}
 	
 	/**
-	 * This method shall create an csv-file with the results of the given tests. For the test cases,
-	 * different values for the constants are taken.
+	 * We define some values for test cases, then doing those tests and save the results. In order to
+	 * do that, the properties have to be changed.
 	 */
 	public void runTests() {
 		this.initializeTest("Case 1");
 		
-		// save
+		try {
+			saveResults(1);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		this.initializeTest("Case 2");
 		
-		// save
+		try {
+			saveResults(2);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		this.initializeTest("Case 3");
 		
-		// save		
+		try {
+			saveResults(3);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		// ...
+	}
+	
+	/**
+	 * Save results inside a csv file.
+	 * @param i
+	 * 			Needed for defining test cases.
+	 * @throws FileNotFoundException
+	 */
+	private void saveResults(int i) throws FileNotFoundException {
+		
+		File file = new File("consolidationResults"+i+".csv");
+		//TODO
 	}
 	
 	/**
@@ -82,9 +110,13 @@ public class ConsolidationController {
 	/**
 	 * Setter for the constant values of the pso algorithm.
 	 * @param swarmSize
+	 * 			This value defines the amount of particles.
 	 * @param iterations
+	 * 			This value defines the number of iterations.
 	 * @param c1
+	 * 			This value defines the first learning factor.
 	 * @param c2
+	 * 			This value defines the second learning factor.
 	 */
 	private void setPsoProperties(String swarmSize, String iterations, String c1, String c2) {
 		props.setProperty("psoSwarmSize", swarmSize);
@@ -96,8 +128,11 @@ public class ConsolidationController {
 	/**
 	 * Setter for the constant values of the abc algorithm.
 	 * @param populationSize
+	 * 			This value defines the amount of individuals in the population.
 	 * @param iterations
+	 * 			This value defines the number of iterations.
 	 * @param limitTrials
+	 * 			This value defines the maximum number of trials for improvement before a solution is abandoned.
 	 */
 	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
 		props.setProperty("abcPopulationSize", populationSize);
@@ -108,15 +143,16 @@ public class ConsolidationController {
 	/**
 	 * Setter for the constant values of the ga algorithm.
 	 * @param populationSize
+	 * 			This value defines the amount of individuals in the population.
 	 * @param iterations
+	 * 			This value defines the number of iterations.
 	 * @param crossovers
+	 * 			This value defines the number of recombinations to perform in each generation.
 	 */
 	private void setGaProperties(String populationSize, String iterations, String crossovers) {
 		props.setProperty("gaPopulationSize", populationSize);
 		props.setProperty("gaNrIterations", iterations);
 		props.setProperty("gaNrCrossovers", crossovers);
 	}
-	
-	
 
 }
