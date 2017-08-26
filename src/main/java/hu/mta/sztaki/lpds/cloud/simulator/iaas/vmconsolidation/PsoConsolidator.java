@@ -1,5 +1,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.InvalidPropertiesFormatException;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -16,12 +21,14 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 public class PsoConsolidator extends ModelBasedConsolidator {
 
+	Properties props;	// the properties file
+	
 	// constants for doing consolidation
-	private final int swarmSize = 20;		// defines the amount of particles
-	private final int nrIterations = 50;	// defines the amount of iterations
+	private int swarmSize;		// defines the amount of particles
+	private int nrIterations;	// defines the amount of iterations
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
-	private final int c1 = 2;				// learning factor one
-	private final int c2 = 2;				// learning factor two
+	private int c1;				// learning factor one
+	private int c2;				// learning factor two
 
 	public int count = 1;	// counter for the graph actions
 
@@ -51,6 +58,28 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		super(toConsolidate, upperThreshold, lowerThreshold, consFreq);		
 	}
 	
+	/**
+	 * Reads the properties file and sets the constant values for consolidation.
+	 * @throws InvalidPropertiesFormatException
+	 * @throws IOException
+	 */
+	private void setValues() throws InvalidPropertiesFormatException, IOException {
+		
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
+		
+		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
+		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
+		this.c1 = Integer.parseInt(props.getProperty("psoC1"));
+		this.c2 = Integer.parseInt(props.getProperty("psoC2"));
+	}
+	
+	/**
+	 * The toString-method, used for debugging.
+	 */
 	public String toString() {
 		String erg = "Amount of VMs: " + dimension + ", GlobalBest: " + this.globalBest + ", GlobalBestLocation: " + this.globalBestLocation;		
 		return erg;
@@ -115,6 +144,16 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	protected void optimize() {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
+		
+		try {
+			this.setValues();
+		} catch (InvalidPropertiesFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		initializeSwarm();
 		

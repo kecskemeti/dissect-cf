@@ -1,5 +1,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.InvalidPropertiesFormatException;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
@@ -23,15 +28,17 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author Zoltan Mann
  */
 public class GaConsolidator extends ModelBasedConsolidator {
-
+	
+	/** The properties file for setting the constant values */
+	Properties props;
 	/** For generating random numbers */
 	private Random random;
 	/** Number of individuals in the population */
-	private static final int populationSize=10;
+	private int populationSize;
 	/** Terminate the GA after this many generations */
-	private static final int nrIterations=50;
+	private int nrIterations;
 	/** Number of recombinations to perform in each generation */
-	private static final int nrCrossovers=populationSize;
+	private int nrCrossovers;
 
 
 	/** Population for the GA, consisting of solutions=individuals */
@@ -97,12 +104,39 @@ public class GaConsolidator extends ModelBasedConsolidator {
 		bestSol.implement();
 		adaptPmStates();
 	}
+	
+	/**
+	 * Reads the properties file and sets the constant values for consolidation.
+	 * @throws InvalidPropertiesFormatException
+	 * @throws IOException
+	 */
+	private void setValues() throws InvalidPropertiesFormatException, IOException {
+		
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
+		
+		this.populationSize = Integer.parseInt(props.getProperty("gaPopulationSize"));
+		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
+		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
+	}
 
 	/**
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
 	protected void optimize() {
+		try {
+			setValues();
+		} catch (InvalidPropertiesFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		initializePopulation();
 		//Logger.getGlobal().info("Population after initialization: "+populationToString());
 		for(int iter=0;iter<nrIterations;iter++) {

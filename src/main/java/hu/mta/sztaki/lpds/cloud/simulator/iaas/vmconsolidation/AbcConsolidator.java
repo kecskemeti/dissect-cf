@@ -1,5 +1,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.InvalidPropertiesFormatException;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
@@ -11,17 +16,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author Zoltan Mann
  */
 public class AbcConsolidator extends ModelBasedConsolidator {
+	
+	/** For setting the constant values */
+	Properties props;
+	
 	/** For generating random numbers */
 	private Random random;
 
 	/** Number of individuals in the population */
-	private static final int populationSize=10;
+	private int populationSize;
 	
 	/** Terminate the algorithm after this many generations */
-	private static final int nrIterations=50;
+	private int nrIterations;
 
 	/** Maximum number of trials for improvement before a solution is abandoned */
-	private static final int limitTrials=5;
+	private int limitTrials;
 
 	/** Population, consisting of solutions for each employed bee */
 	private Vector<Solution> population;
@@ -122,12 +131,39 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 			numTrials.set(j,numTrials.get(j)+1);
 		}
 	}
+	
+	/**
+	 * Reads the properties file and sets the constant values for consolidation.
+	 * @throws InvalidPropertiesFormatException
+	 * @throws IOException
+	 */
+	private void setValues() throws InvalidPropertiesFormatException, IOException {
+		
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
+		
+		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
+		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
+		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
+	}
 
 	/**
 	 * The actual ABC algorithm.
 	 */
 	@Override
 	protected void optimize() {
+		try {
+			setValues();
+		} catch (InvalidPropertiesFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		initializePopulation();
 		for(int iter=0;iter<nrIterations;iter++) {
 			//employed bees phase

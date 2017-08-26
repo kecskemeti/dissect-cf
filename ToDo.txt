@@ -1,6 +1,7 @@
 Anmerkungen:
 
-PSO: Fitness bug fixen (tritt manchmal auf)
+ConsolidationController
+Simulationen durchführen
 vmmultialloctenant weiter implementieren
 eventuell weitere Testfaelle einfuegen, um die Ergaenzungen zu testen
 OnOffScheduler

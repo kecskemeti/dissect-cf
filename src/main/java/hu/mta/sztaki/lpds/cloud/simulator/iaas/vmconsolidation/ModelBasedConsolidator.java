@@ -229,4 +229,5 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		shutDownEmptyPMs();
 		switchOnNonEmptyPMs();
 	}
+
 }
