@@ -1,7 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.InvalidPropertiesFormatException;
 import java.util.List;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -34,8 +39,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected List<ModelPM> bins;
 	protected List<ModelVM> items;
 	
-	private double upperThreshold;
-	private double lowerThreshold;
+	Properties props;
 
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for the upper threshold,
@@ -43,19 +47,11 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * 
 	 * @param toConsolidate
 	 * 			The used IaaSService.
-	 * @param upperThreshold
-	 * 			The double value representing the upper Threshold.
-	 * @param lowerThreshold
-	 * 			The double value representing the lower Threshold.
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
-	public ModelBasedConsolidator(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold, long consFreq) {
+	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		
-		// save the thresholds
-		this.upperThreshold = upperThreshold;		
-		this.lowerThreshold = lowerThreshold;
 		
 		bins = new ArrayList<>();
 		items = new ArrayList<>();
@@ -72,9 +68,16 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		instantiate(pmList);
+		try {
+			loadProps();
+		} catch (InvalidPropertiesFormatException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		for(int i = 0; i < bins.size(); i++) {
-			bins.get(i).setLowerThreshold(lowerThreshold);
-			bins.get(i).setUpperThreshold(upperThreshold);
+			bins.get(i).setLowerThreshold(Double.parseDouble(props.getProperty("lowerThreshold")));
+			bins.get(i).setUpperThreshold(Double.parseDouble(props.getProperty("upperThreshold")));
 		}
 		optimize();
 		Logger.getGlobal().info("Optimized model: "+toString());
@@ -83,6 +86,14 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		createGraph(actions);
 		//printGraph(actions);
 		performActions(actions);
+	}
+	
+	private void loadProps() throws InvalidPropertiesFormatException, IOException {
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
 	}
 
 	/**

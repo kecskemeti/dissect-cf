@@ -12,4 +12,6 @@
 <entry key="gaPopulationSize">10</entry>
 <entry key="gaNrIterations">50</entry>
 <entry key="gaNrCrossovers">10</entry>
+<entry key="upperThreshold">0.75</entry>
+<entry key="lowerThreshold">0.25</entry>
 </properties>

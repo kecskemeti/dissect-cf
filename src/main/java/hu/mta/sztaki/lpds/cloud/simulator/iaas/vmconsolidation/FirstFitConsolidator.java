@@ -38,8 +38,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
-	public FirstFitConsolidator(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold, long consFreq) {
-		super(toConsolidate, upperThreshold, lowerThreshold, consFreq);
+	public FirstFitConsolidator(IaaSService toConsolidate, long consFreq) {
+		super(toConsolidate, consFreq);
 	}
 
 	/**

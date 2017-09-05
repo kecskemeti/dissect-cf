@@ -13,10 +13,22 @@ import java.io.IOException;
 	 * values for the constants of the consolidators. The results are going to be saved inside a seperate
 	 * file. There are also methods to set the needed values for consolidation of some algorithms.
 	 */
-@SuppressWarnings("serial")
 public class ConsolidationController {
 	
 	Properties props;		// the properties-file, contains the constants of the pso-, abc- and ga-consolidator
+	
+	int psoSwarmSize = 20;
+	int psoNrIterations = 50;
+	int psoC2 = 2;
+	int psoC1 = 2;
+	int abcPopulationSize = 10;
+	int abcNrIterations = 50;
+	int abcLimitTrials = 5;
+	int gaPopulationSize = 10;
+	int gaNrIterations = 50;
+	int gaNrCrossovers = 10;
+	double upperThreshold = 0.75;
+	double lowerThreshold = 0.25;
 	
 	/**
 	 * Sets all default values (which are the origin ones) and reads the properties-file.
@@ -33,7 +45,7 @@ public class ConsolidationController {
 		
 		// the default values
 		
-		setPsoProperties("50", "50", "2", "2");
+		setPsoProperties("20", "50", "2", "2");
 		setAbcProperties("10", "50", "5");
 		setGaProperties("10", "50", "10");
 	}
@@ -80,7 +92,7 @@ public class ConsolidationController {
 	 */
 	private void saveResults(int i) throws FileNotFoundException {
 		
-		File file = new File("consolidationResults"+i+".csv");
+		File file = new File("consolidationResults.csv");
 		//TODO
 	}
 	
@@ -119,10 +131,10 @@ public class ConsolidationController {
 	 * 			This value defines the second learning factor.
 	 */
 	private void setPsoProperties(String swarmSize, String iterations, String c1, String c2) {
-		props.setProperty("psoSwarmSize", swarmSize);
-		props.setProperty("psoNrIterations", iterations);
-		props.setProperty("psoC1", c1);
-		props.setProperty("psoC2", c2);
+		this.psoSwarmSize = Integer.parseInt(swarmSize);
+		this.psoNrIterations = Integer.parseInt(iterations);
+		this.psoC1 = Integer.parseInt(c1);
+		this.psoC2 = Integer.parseInt(c2);
 	}
 	
 	/**
@@ -135,9 +147,9 @@ public class ConsolidationController {
 	 * 			This value defines the maximum number of trials for improvement before a solution is abandoned.
 	 */
 	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
-		props.setProperty("abcPopulationSize", populationSize);
-		props.setProperty("abcNrIterations", iterations);
-		props.setProperty("abcLimitTrials", limitTrials);
+		this.abcPopulationSize = Integer.parseInt(populationSize);
+		this.abcNrIterations = Integer.parseInt(iterations);
+		this.abcLimitTrials = Integer.parseInt(limitTrials);
 	}
 	
 	/**
@@ -150,9 +162,9 @@ public class ConsolidationController {
 	 * 			This value defines the number of recombinations to perform in each generation.
 	 */
 	private void setGaProperties(String populationSize, String iterations, String crossovers) {
-		props.setProperty("gaPopulationSize", populationSize);
-		props.setProperty("gaNrIterations", iterations);
-		props.setProperty("gaNrCrossovers", crossovers);
+		this.gaPopulationSize = Integer.parseInt(populationSize);
+		this.gaNrIterations = Integer.parseInt(iterations);
+		this.gaNrCrossovers = Integer.parseInt(crossovers);
 	}
 
 }
