@@ -1,10 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Properties;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 
 	/**
 	 * @author Rene Ponto
@@ -51,49 +53,69 @@ public class ConsolidationController {
 	}
 	
 	/**
-	 * We define some values for test cases, then doing those tests and save the results. In order to
-	 * do that, the properties have to be changed.
+	 * This testcase is to find the best configuration of the parameters of the consolidators. For that, 
+	 * we define a list of values to test and this method runs the appropriate consolidators for all 
+	 * possible combinations of the values. All results are saved inside a csv file.
 	 */
-	public void runTests() {
+	public void runTestcaseOne() {
 		this.initializeTest("Case 1");
 		
-		try {
-			saveResults(1);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		
-		this.initializeTest("Case 2");
+	}
+	
+	/**
+	 * This testcase is to compare the different consolidators with an explicit configuration of the
+	 * parameters. The results are saved in a csf file, too.
+	 */
+	public void runTestcaseTwo() {
+		this.initializeTest("Case 1");
 		
-		try {
-			saveResults(2);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		this.initializeTest("Case 3");
-		
-		try {
-			saveResults(3);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		// ...
 	}
 	
 	/**
 	 * Save results inside a csv file.
 	 * @param i
 	 * 			Needed for defining test cases.
-	 * @throws FileNotFoundException
+	 * @throws IOException 
 	 */
-	private void saveResults(int i) throws FileNotFoundException {
+	public void saveResults(String test, String[] results) throws IOException {
 		
-		File file = new File("consolidationResults.csv");
-		//TODO
+		String[] s = {"consolidator", "parameters", "energy needs", "migrations", "active pms", "overAllocated pms"}; 
+		String name = "consolidationResults" + test + ".csv";
+		File file = new File(name);
+		BufferedWriter writer = null;
+		writer = new BufferedWriter(new FileWriter(file));
+		writeLine(writer, s);
+		
+		// now everything has to be written inside the file		
+		writeLine(writer, results);
+		
+		writer.flush();
+		writer.close();
+	}
+	
+	/**
+	 * Writes a line inside the csv- file.
+	 * @param w
+	 * @param s
+	 * @throws IOException
+	 */
+	private void writeLine(Writer w, String[] s) throws IOException {
+
+		boolean first = true;
+
+	    StringBuilder sb = new StringBuilder();
+	    for (String value : s) {
+	        if (!first) {
+	            sb.append(',');
+	        }
+	            
+	        sb.append(value);
+
+	        first = false;
+	    }
+	    sb.append(System.getProperty("line.separator"));
+	    w.append(sb.toString());
 	}
 	
 	/**
@@ -166,5 +188,5 @@ public class ConsolidationController {
 		this.gaNrIterations = Integer.parseInt(iterations);
 		this.gaNrCrossovers = Integer.parseInt(crossovers);
 	}
-
+	
 }
