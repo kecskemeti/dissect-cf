@@ -6,6 +6,7 @@ import java.util.Properties;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -21,18 +22,18 @@ public class ConsolidationController {
 	
 	Properties props;		// the properties-file, contains the constants of the pso-, abc- and ga-consolidator
 	
-	int psoSwarmSize = 20;
-	int psoNrIterations = 50;
-	int psoC2 = 2;
-	int psoC1 = 2;
-	int abcPopulationSize = 10;
-	int abcNrIterations = 50;
-	int abcLimitTrials = 5;
-	int gaPopulationSize = 10;
-	int gaNrIterations = 50;
-	int gaNrCrossovers = 10;
-	double upperThreshold = 0.75;
-	double lowerThreshold = 0.25;
+	private String psoSwarmSize = "20";
+	private String psoNrIterations = "50";
+	private String psoC1 = "2";
+	private String psoC2 = "2";
+	private String abcPopulationSize = "10";
+	private String abcNrIterations = "50";
+	private String abcLimitTrials = "5";
+	private String gaPopulationSize = "10";
+	private String gaNrIterations = "50";
+	private String gaNrCrossovers = "10";
+	private String upperThreshold = "0.75";
+	private String lowerThreshold = "0.25";
 	
 	/**
 	 * Sets all default values (which are the origin ones) and reads the properties-file.
@@ -47,11 +48,18 @@ public class ConsolidationController {
 		props.loadFromXML(fileInput);
 		fileInput.close();
 		
-		// the default values
+		// set the default values
 		
-		setPsoProperties("20", "50", "2", "2");
-		setAbcProperties("10", "50", "5");
-		setGaProperties("10", "50", "10");
+		setPsoProperties(psoSwarmSize, psoNrIterations, psoC1, psoC2);
+		setAbcProperties(abcPopulationSize, abcNrIterations, abcLimitTrials);
+		setGaProperties(gaPopulationSize, gaNrIterations, gaNrCrossovers);
+		
+		props.setProperty("upperThreshold", upperThreshold);
+		props.setProperty("lowerThreshold", lowerThreshold);
+		
+		FileOutputStream fileOutput = new FileOutputStream(file);
+		props.storeToXML(fileOutput, null);
+		fileOutput.close();
 	}
 	
 	/**
@@ -113,11 +121,11 @@ public class ConsolidationController {
 	}
 	
 	/**
-	 * This testcase is to compare the different consolidators with an explicit configuration of the
-	 * parameters. The results are saved in a csf file, too.
+	 * This testcase is to compare the different consolidators with the best configuration of the
+	 * parameters found in testcase one. The results are saved in a csf file, too.
 	 */
 	public void runTestcaseTwo() {
-		this.initializeTest("Case 1");
+		//this.initializeTest("Case 1");
 		
 	}
 	
@@ -152,15 +160,12 @@ public class ConsolidationController {
 	private void writeLine(Writer w, String[] s) throws IOException {
 
 		boolean first = true;
-
 	    StringBuilder sb = new StringBuilder();
 	    for (String value : s) {
 	        if (!first) {
 	            sb.append(',');
-	        }
-	            
+	        }	            
 	        sb.append(value);
-
 	        first = false;
 	    }
 	    sb.append(System.getProperty("line.separator"));
@@ -202,10 +207,23 @@ public class ConsolidationController {
 	 * 			This value defines the second learning factor.
 	 */
 	private void setPsoProperties(String swarmSize, String iterations, String c1, String c2) {
-		this.psoSwarmSize = Integer.parseInt(swarmSize);
-		this.psoNrIterations = Integer.parseInt(iterations);
-		this.psoC1 = Integer.parseInt(c1);
-		this.psoC2 = Integer.parseInt(c2);
+//		this.psoSwarmSize = Integer.parseInt(swarmSize);
+//		this.psoNrIterations = Integer.parseInt(iterations);
+//		this.psoC1 = Integer.parseInt(c1);
+//		this.psoC2 = Integer.parseInt(c2);
+		
+		File file = new File("consolidationProperties.xml");
+		
+		props.setProperty("psoSwarmSize", swarmSize);
+		props.setProperty("psoNrIterations", iterations);
+		props.setProperty("psoC1", c1);
+		props.setProperty("psoC2", c2);
+		
+		try {
+			this.saveProps(file);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -218,9 +236,21 @@ public class ConsolidationController {
 	 * 			This value defines the maximum number of trials for improvement before a solution is abandoned.
 	 */
 	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
-		this.abcPopulationSize = Integer.parseInt(populationSize);
-		this.abcNrIterations = Integer.parseInt(iterations);
-		this.abcLimitTrials = Integer.parseInt(limitTrials);
+//		this.abcPopulationSize = Integer.parseInt(populationSize);
+//		this.abcNrIterations = Integer.parseInt(iterations);
+//		this.abcLimitTrials = Integer.parseInt(limitTrials);
+		
+		File file = new File("consolidationProperties.xml");
+		
+		props.setProperty("abcPopulationSize", populationSize);
+		props.setProperty("abcNrIterations", iterations);
+		props.setProperty("abcLimitTrials", limitTrials);
+		
+		try {
+			this.saveProps(file);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -233,9 +263,32 @@ public class ConsolidationController {
 	 * 			This value defines the number of recombinations to perform in each generation.
 	 */
 	private void setGaProperties(String populationSize, String iterations, String crossovers) {
-		this.gaPopulationSize = Integer.parseInt(populationSize);
-		this.gaNrIterations = Integer.parseInt(iterations);
-		this.gaNrCrossovers = Integer.parseInt(crossovers);
+//		this.gaPopulationSize = Integer.parseInt(populationSize);
+//		this.gaNrIterations = Integer.parseInt(iterations);
+//		this.gaNrCrossovers = Integer.parseInt(crossovers);
+		
+		File file = new File("consolidationProperties.xml");
+		
+		props.setProperty("gaPopulationSize", populationSize);
+		props.setProperty("gaNrIterations", iterations);
+		props.setProperty("gaNrCrossovers", crossovers);
+		
+		try {
+			this.saveProps(file);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Saves the properties in the data after changing them.
+	 * @param file
+	 * @throws IOException
+	 */
+	private void saveProps(File file) throws IOException {
+		FileOutputStream fileOutput = new FileOutputStream(file);
+		props.storeToXML(fileOutput, null);
+		fileOutput.close();
 	}
 	
 }
