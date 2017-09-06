@@ -1,5 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -58,8 +60,55 @@ public class ConsolidationController {
 	 * possible combinations of the values. All results are saved inside a csv file.
 	 */
 	public void runTestcaseOne() {
-		this.initializeTest("Case 1");
+		//this.initializeTest("Case 1");
 		
+		//defining lists with values for each parameter of each relevant algorithm
+		List<Integer> psoSwarmSizeValues = new ArrayList<>();
+		List<Integer> psoNrIterationsValues = new ArrayList<>();
+		List<Integer> psoC1Values = new ArrayList<>();
+		List<Integer> psoC2Values = new ArrayList<>();
+		
+		List<Integer> gaPopulationSizeValues = new ArrayList<>();
+		List<Integer> gaNrIterationsValues = new ArrayList<>();
+		List<Integer> gaNrCrossoversValues = new ArrayList<>();
+		
+		List<Integer> abcPopulationSizeValues = new ArrayList<>();
+		List<Integer> abcNrIterationsValues = new ArrayList<>();
+		List<Integer> abcLimitTrialsValues = new ArrayList<>();
+
+		//fill the lists with values
+		
+		//now run the consolidators with every possible combination of their parameters
+		//and save the results afterwards
+		
+		//pso consolidator
+		for(int first : psoSwarmSizeValues) {
+			for(int second : psoNrIterationsValues) {
+				for(int third : psoC1Values) {
+					for(int fourth : psoC2Values) {
+												
+					}
+				}
+			}
+		}
+		
+		//ga consolidator
+		for(int first : gaPopulationSizeValues) {
+			for(int second : gaNrIterationsValues) {
+				for(int third : gaNrCrossoversValues) {
+					
+				}
+			}
+		}
+		
+		//abc consolidator
+		for(int first : abcPopulationSizeValues) {
+			for(int second : abcNrIterationsValues) {
+				for(int third : abcLimitTrialsValues) {
+					
+				}
+			}
+		}
 		
 	}
 	
