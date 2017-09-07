@@ -3,6 +3,9 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
+import hu.mta.sztaki.lpds.cloud.simulator.examples.jobhistoryprocessor.JobDispatchingDemo;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -86,34 +89,85 @@ public class ConsolidationController {
 
 		//fill the lists with values
 		
+		//TODO
+		
 		//now run the consolidators with every possible combination of their parameters
 		//and save the results afterwards
+		
+		String name = "consolidationResultsOne.csv";
+		File file = new File(name);
+		boolean firstEntry = true;
 		
 		//pso consolidator
 		for(int first : psoSwarmSizeValues) {
 			for(int second : psoNrIterationsValues) {
 				for(int third : psoC1Values) {
 					for(int fourth : psoC2Values) {
-												
+						String[] jobStart = {""};		//TODO
+						try {
+							JobDispatchingDemo.main(jobStart);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						String[] results = null;		//TODO
+						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(first) + "; NrOfIterations: " + 
+						psoNrIterationsValues.get(second) + "; C1: " + psoC1Values.get(third) + "; C2: " + psoC2Values.get(fourth);
+						try {
+							this.saveResults(firstEntry, file, "pso", parameters, results);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
 					}
 				}
 			}
 		}
 		
 		//ga consolidator
+		firstEntry = true;
+
 		for(int first : gaPopulationSizeValues) {
 			for(int second : gaNrIterationsValues) {
 				for(int third : gaNrCrossoversValues) {
-					
+					String[] jobStart = {""};		//TODO
+					try {
+						JobDispatchingDemo.main(jobStart);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					String[] results = null;		//TODO
+					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(first) + "; NrOfIterations: " + 
+					gaNrIterationsValues.get(second) + "; NrOfCrossovers: " + gaNrCrossoversValues.get(third);
+					try {
+						this.saveResults(firstEntry, file, "pso", parameters, results);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					firstEntry = false;
 				}
 			}
 		}
 		
 		//abc consolidator
+		firstEntry = true;
+
 		for(int first : abcPopulationSizeValues) {
 			for(int second : abcNrIterationsValues) {
 				for(int third : abcLimitTrialsValues) {
-					
+					String[] jobStart = {""};		//TODO
+					try {
+						JobDispatchingDemo.main(jobStart);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					String[] results = null;		//TODO
+					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(first) + "; NrOfIterations: " + 
+							abcNrIterationsValues.get(second) + "; LimitTrials: " + abcLimitTrialsValues.get(third);
+					try {
+						this.saveResults(firstEntry, file, "pso", parameters, results);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					firstEntry = false;
 				}
 			}
 		}
@@ -135,15 +189,16 @@ public class ConsolidationController {
 	 * 			Needed for defining test cases.
 	 * @throws IOException 
 	 */
-	public void saveResults(String test, String[] results) throws IOException {
+	public void saveResults(boolean first, File file, String consolidator, String parameters, String[] results) throws IOException {
 		
-		String[] s = {"consolidator", "parameters", "energy needs", "migrations", "active pms", "overAllocated pms"}; 
-		String name = "consolidationResults" + test + ".csv";
-		File file = new File(name);
 		BufferedWriter writer = null;
 		writer = new BufferedWriter(new FileWriter(file));
-		writeLine(writer, s);
-		
+		// if this shall be the first entry, the title line has to be written before
+		if(first) {
+			String[] s = {"consolidator", "parameters", "energy needs", "migrations", "active pms", "overAllocated pms"}; 
+			writeLine(writer, s);			
+		}
+			
 		// now everything has to be written inside the file		
 		writeLine(writer, results);
 		
