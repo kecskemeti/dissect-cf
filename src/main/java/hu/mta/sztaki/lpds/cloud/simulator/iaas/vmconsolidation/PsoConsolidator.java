@@ -272,4 +272,12 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		}		
 		return pos;
 	}
+	
+	public Fitness getGlobalBest() {
+		return globalBest;
+	}
+	
+	public ArithmeticVector getGlobalBestLocation() {
+		return globalBestLocation;
+	}
 }

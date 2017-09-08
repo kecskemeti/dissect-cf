@@ -209,5 +209,12 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 		bestSolution.implement();
 		adaptPmStates();
 	}
-
+	
+	public Fitness getBestFitness() {
+		return bestFitness;
+	}
+	
+	public Solution getBestSolution() {
+		return bestSolution;
+	}
 }

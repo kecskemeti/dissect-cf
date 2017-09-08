@@ -39,6 +39,10 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	private int nrIterations;
 	/** Number of recombinations to perform in each generation */
 	private int nrCrossovers;
+	/** Best solution found so far */
+	private Solution bestSolution;
+	/** Fitness of the best solution found so far */
+	private Fitness bestFitness;
 
 
 	/** Population for the GA, consisting of solutions=individuals */
@@ -91,17 +95,17 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 */
 	private void implementBestSolution() {
 		//Determine "best" solution (i.e. a solution, compared to which there is no better one)
-		Solution bestSol=population.get(0);
-		Fitness bestFitness=bestSol.evaluate();
+		bestSolution=population.get(0);
+		bestFitness=bestSolution.evaluate();
 		for(int i=1;i<populationSize;i++) {
 			Fitness fitness=population.get(i).evaluate();
 			if(fitness.isBetterThan(bestFitness)) {
-				bestSol=population.get(i);
+				bestSolution=population.get(i);
 				bestFitness=fitness;
 			}
 		}
 		//Implement solution in the model
-		bestSol.implement();
+		bestSolution.implement();
 		adaptPmStates();
 	}
 	
@@ -174,5 +178,13 @@ public class GaConsolidator extends ModelBasedConsolidator {
 			first=false;
 		}
 		return result;
+	}
+	
+	public Fitness getBestFitness() {
+		return bestFitness;
+	}
+	
+	public Solution getBestSolution() {
+		return bestSolution;
 	}
 }
