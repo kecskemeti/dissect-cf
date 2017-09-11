@@ -123,7 +123,7 @@ public class ConsolidationController {
 		}
 		
 		//ga consolidator
-		firstEntry = true;
+		firstEntry = false;
 
 		for(int first : gaPopulationSizeValues) {
 			for(int second : gaNrIterationsValues) {
@@ -148,7 +148,7 @@ public class ConsolidationController {
 		}
 		
 		//abc consolidator
-		firstEntry = true;
+		firstEntry = false;
 
 		for(int first : abcPopulationSizeValues) {
 			for(int second : abcNrIterationsValues) {
