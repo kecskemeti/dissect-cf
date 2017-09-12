@@ -70,9 +70,7 @@ public class ConsolidationController {
 	 * we define a list of values to test and this method runs the appropriate consolidators for all 
 	 * possible combinations of the values. All results are saved inside a csv file.
 	 */
-	public void runTestcaseOne() {
-		//this.initializeTest("Case 1");
-		
+	public void runTestcaseOne() {		
 		//defining lists with values for each parameter of each relevant algorithm
 		List<Integer> psoSwarmSizeValues = new ArrayList<>();
 		List<Integer> psoNrIterationsValues = new ArrayList<>();
@@ -89,7 +87,44 @@ public class ConsolidationController {
 
 		//fill the lists with values
 		
-		//TODO
+//		for(int i = 10; i < 26; i++) {
+//			psoSwarmSizeValues.add(i);
+//			gaPopulationSizeValues.add(i);
+//			gaNrCrossoversValues.add(i);
+//			abcPopulationSizeValues.add(i);
+//		}	
+		
+//		for(int i = 20; i < 51; i++) {
+//			psoNrIterationsValues.add(i);
+//			gaNrIterationsValues.add(i);
+//			abcNrIterationsValues.add(i);
+//		}
+		
+//		int x = 0;
+//		while(x < 6) {
+//			psoC1Values.add(x);
+//			psoC2Values.add(x);
+//			x++;
+//		}		
+
+//		for(int i = 2; i < 11; i++) {
+//			abcLimitTrialsValues.add(i);
+//		}		
+		
+		//test
+		
+		psoSwarmSizeValues.add(20);
+		psoNrIterationsValues.add(50);
+		psoC1Values.add(2);
+		psoC2Values.add(2);
+		
+		gaPopulationSizeValues.add(10);
+		gaNrIterationsValues.add(50);
+		gaNrCrossoversValues.add(10);
+		
+		abcPopulationSizeValues.add(10);
+		abcNrIterationsValues.add(50);
+		abcLimitTrialsValues.add(5);
 		
 		//now run the consolidators with every possible combination of their parameters
 		//and save the results afterwards
@@ -103,17 +138,21 @@ public class ConsolidationController {
 			for(int second : psoNrIterationsValues) {
 				for(int third : psoC1Values) {
 					for(int fourth : psoC2Values) {
-						String[] jobStart = {""};		//TODO
+						
+						//TODO save actual values
+						
+						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "pso"};		
 						try {
 							JobDispatchingDemo.main(jobStart);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						String[] results = null;		//TODO
-						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(first) + "; NrOfIterations: " + 
-						psoNrIterationsValues.get(second) + "; C1: " + psoC1Values.get(third) + "; C2: " + psoC2Values.get(fourth);
+						String[] results = {"null"};		//TODO
+						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)) + "; NrOfIterations: " + 
+								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)) + "; C1: " + psoC1Values.get(psoC1Values.indexOf(third)) + "; C2: " + 
+								psoC2Values.get(psoC2Values.indexOf(fourth));
 						try {
-							this.saveResults(firstEntry, file, "pso", parameters, results);
+							saveResults(firstEntry, file, "pso", parameters, results);
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -128,17 +167,21 @@ public class ConsolidationController {
 		for(int first : gaPopulationSizeValues) {
 			for(int second : gaNrIterationsValues) {
 				for(int third : gaNrCrossoversValues) {
-					String[] jobStart = {""};		//TODO
+					
+					//TODO save actual values
+					
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "ga"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-					String[] results = null;		//TODO
-					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(first) + "; NrOfIterations: " + 
-					gaNrIterationsValues.get(second) + "; NrOfCrossovers: " + gaNrCrossoversValues.get(third);
+					String[] results = {"null"};		//TODO
+					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
+							gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)) + "; NrOfCrossovers: " + 
+							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third));
 					try {
-						this.saveResults(firstEntry, file, "pso", parameters, results);
+						saveResults(firstEntry, file, "pso", parameters, results);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -153,17 +196,20 @@ public class ConsolidationController {
 		for(int first : abcPopulationSizeValues) {
 			for(int second : abcNrIterationsValues) {
 				for(int third : abcLimitTrialsValues) {
-					String[] jobStart = {""};		//TODO
+					
+					//TODO save actual values
+					
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "abc"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-					String[] results = null;		//TODO
-					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(first) + "; NrOfIterations: " + 
-							abcNrIterationsValues.get(second) + "; LimitTrials: " + abcLimitTrialsValues.get(third);
+					String[] results = {"null"};		//TODO
+					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
+							abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + "; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third));
 					try {
-						this.saveResults(firstEntry, file, "pso", parameters, results);
+						saveResults(firstEntry, file, "pso", parameters, results);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -179,7 +225,6 @@ public class ConsolidationController {
 	 * parameters found in testcase one. The results are saved in a csf file, too.
 	 */
 	public void runTestcaseTwo() {
-		//this.initializeTest("Case 1");
 		
 	}
 	
@@ -225,29 +270,6 @@ public class ConsolidationController {
 	    }
 	    sb.append(System.getProperty("line.separator"));
 	    w.append(sb.toString());
-	}
-	
-	/**
-	 * Here we define which values are taken for the tests. 
-	 */
-	private void initializeTest(String string) {
-		//example 1 : default values
-		if(string == "Case 1") {
-			
-		}		
-		//example 2 : doubled the population, halved the iterations of the algortihms
-		if(string == "Case 2") {
-			this.setPsoProperties("100", "25", "2", "2");
-			this.setAbcProperties("20", "25", "5");
-			this.setGaProperties("20", "25", "20");
-		}
-		
-		//example 3 : halved the population, doubled the iterations
-		if(string == "Case 3") {
-			this.setPsoProperties("25", "100", "2", "2");
-			this.setAbcProperties("5", "100", "5");
-			this.setGaProperties("5", "100", "5");
-		}		
 	}
 	
 	/**
