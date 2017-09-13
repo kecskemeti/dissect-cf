@@ -51,17 +51,17 @@ public class Solution {
 	double getTotalOverload() {
 		double result=0;
 		//First determine the load of each PM under our mapping.
-		Map<ModelPM,ResourceVector> loads=new HashMap<>();
+		Map<Integer,ResourceVector> loads=new HashMap<>();
 		for(ModelPM pm : bins) {
-			loads.put(pm,new ResourceVector(0,0,0));
+			loads.put(pm.getNumber(),new ResourceVector(0,0,0));
 		}
 		for(ModelVM vm : mapping.keySet()) {
 			ModelPM pm=mapping.get(vm);
-			loads.get(pm).add(vm.getResources());
+			loads.get(pm.getNumber()).add(vm.getResources());
 		}
 		//For each PM, see if it is overloaded; if yes, increase the result accordingly.
 		for(ModelPM pm : bins) {
-			ResourceVector load=loads.get(pm);
+			ResourceVector load=loads.get(pm.getNumber());
 			ConstantConstraints cap=pm.getTotalResources();
 			if(load.getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold())
 				result+=load.getTotalProcessingPower()/(cap.getTotalProcessingPower()*pm.getUpperThreshold());
