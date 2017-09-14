@@ -8,7 +8,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
  */
 public class Fitness {
 	/** Total amount of PM overloads, aggregated over all PMs and all resource types */
-	double totalOverload;
+	double totalOverAllocated;
 	/** Number of PMs that are on */
 	int nrActivePms;
 	/** Number of migrations necessary from original placement of the VMs */
@@ -24,9 +24,9 @@ public class Fitness {
 	boolean isBetterThan(Fitness other) {
 		//The primary objective is the total overload. If there is a clear
 		//difference (>1%) in that, this decides which is better.
-		if(this.totalOverload<other.totalOverload*0.99)
+		if(this.totalOverAllocated<other.totalOverAllocated*0.99)
 			return true;
-		if(other.totalOverload<this.totalOverload*0.99)
+		if(other.totalOverAllocated<this.totalOverAllocated*0.99)
 			return false;
 		//If there is no significant difference in the total overload, then
 		//the number of active PMs decides.
@@ -42,7 +42,7 @@ public class Fitness {
 	}
 
 	public String toString() {
-		String result="("+totalOverload+","+nrActivePms+","+nrMigrations+")";
+		String result="("+totalOverAllocated+","+nrActivePms+","+nrMigrations+")";
 		return result;
 	}
 }

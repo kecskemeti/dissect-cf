@@ -39,25 +39,25 @@ public class Particle {
 	}
 	
 	/**
-	 * Computes the total of PM overloads, aggregated over all PMs and all
+	 * Computes the total of PM which are overallocated, aggregated over all PMs and all
 	 * resource types. This can be used as a component of the fitness.
 	 */
-	double getTotalOverload() {
+	double getTotalOverAllocation() {
 		//Logger.getGlobal().info(this.toString());
 		
 		double result = 0;
 		//Now we determine the allocation of every PM
-		Map<ModelPM,ResourceVector> allocations = new HashMap<>();
+		Map<Integer,ResourceVector> allocations = new HashMap<>();
 		for(ModelPM pm : bins) {
-			allocations.put(pm, new ResourceVector(0,0,0));
+			allocations.put(pm.getNumber(), new ResourceVector(0,0,0));
 		}
 		for(int i = 0; i < items.size(); i++) {
 			ModelPM pm = bins.get(location.get(i).intValue());
-			allocations.get(pm).add(items.get(i).getResources());
+			allocations.get(pm.getNumber()).add(items.get(i).getResources());
 		}
-		//For each PM, see if it is overloaded; if yes, increase the result accordingly.
+		//For each PM, see if it is overallocated; if yes, increase the result accordingly.
 		for(ModelPM pm : bins) {
-			ResourceVector allocation = allocations.get(pm);
+			ResourceVector allocation = allocations.get(pm.getNumber());
 			ConstantConstraints cap = pm.getTotalResources();
 			if(allocation.getTotalProcessingPower() > cap.getTotalProcessingPower()*pm.getUpperThreshold())
 				result += allocation.getTotalProcessingPower() / (cap.getTotalProcessingPower()*pm.getUpperThreshold());
@@ -103,7 +103,7 @@ public class Particle {
 		roundValues();
 		Fitness result = new Fitness();
 		
-		result.totalOverload = getTotalOverload();			
+		result.totalOverAllocated = getTotalOverAllocation();			
 		result.nrActivePms = getNrActivePms();
 		result.nrMigrations = getNrMigrations();
 		

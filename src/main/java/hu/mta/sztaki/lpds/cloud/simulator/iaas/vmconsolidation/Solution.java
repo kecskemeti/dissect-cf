@@ -45,28 +45,28 @@ public class Solution {
 	}
 
 	/**
-	 * Computes the total of PM overloads, aggregated over all PMs and all
+	 * Computes the total of PM which are overallocated, aggregated over all PMs and all
 	 * resource types. This can be used as a component of the fitness.
 	 */
-	double getTotalOverload() {
+	double getTotalOverAllocated() {
 		double result=0;
-		//First determine the load of each PM under our mapping.
-		Map<Integer,ResourceVector> loads=new HashMap<>();
+		//First determine the allocation of each PM under our mapping.
+		Map<Integer,ResourceVector> allocations=new HashMap<>();
 		for(ModelPM pm : bins) {
-			loads.put(pm.getNumber(),new ResourceVector(0,0,0));
+			allocations.put(pm.getNumber(),new ResourceVector(0,0,0));
 		}
 		for(ModelVM vm : mapping.keySet()) {
 			ModelPM pm=mapping.get(vm);
-			loads.get(pm.getNumber()).add(vm.getResources());
+			allocations.get(pm.getNumber()).add(vm.getResources());
 		}
-		//For each PM, see if it is overloaded; if yes, increase the result accordingly.
+		//For each PM, see if it is overallocated; if yes, increase the result accordingly.
 		for(ModelPM pm : bins) {
-			ResourceVector load=loads.get(pm.getNumber());
+			ResourceVector allocation=allocations.get(pm.getNumber());
 			ConstantConstraints cap=pm.getTotalResources();
-			if(load.getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold())
-				result+=load.getTotalProcessingPower()/(cap.getTotalProcessingPower()*pm.getUpperThreshold());
-			if(load.getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold())
-				result+=load.getRequiredMemory()/(cap.getRequiredMemory()*pm.getUpperThreshold());
+			if(allocation.getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold())
+				result+=allocation.getTotalProcessingPower()/(cap.getTotalProcessingPower()*pm.getUpperThreshold());
+			if(allocation.getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold())
+				result+=allocation.getRequiredMemory()/(cap.getRequiredMemory()*pm.getUpperThreshold());
 		}
 		return result;
 	}
@@ -114,7 +114,7 @@ public class Solution {
 	 */
 	public Fitness evaluate() {
 		Fitness result=new Fitness();
-		result.totalOverload=getTotalOverload();
+		result.totalOverAllocated=getTotalOverAllocated();
 		result.nrActivePms=getNrActivePms();
 		result.nrMigrations=getNrMigrations();
 		return result;

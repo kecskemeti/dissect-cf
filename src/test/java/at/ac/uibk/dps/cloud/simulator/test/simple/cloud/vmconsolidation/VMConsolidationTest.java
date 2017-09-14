@@ -1,5 +1,6 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmconsolidation;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
@@ -20,6 +21,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ConsolidationController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
@@ -479,5 +481,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(2, basic.runningMachines.size());
+	}
+	
+	@Test
+	public void ConsolidationControllerTest() throws IOException {
+		ConsolidationController cc = new ConsolidationController();
+		cc.runTestcaseOne();		
 	}
 }
