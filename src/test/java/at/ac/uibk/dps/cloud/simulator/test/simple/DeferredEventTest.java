@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2017, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -66,11 +67,9 @@ public class DeferredEventTest extends TestFoundation {
 		DeferredTester dt = new DeferredTester(10);
 		Timed.simulateUntilLastEvent();
 		Assert.assertTrue("Deferred event was not received", dt.eventFired);
-		Assert.assertFalse("Deferred event was cancelled unexpectedly",
-				dt.isCancelled());
+		Assert.assertFalse("Deferred event was cancelled unexpectedly", dt.isCancelled());
 		dt.cancel();
-		Assert.assertFalse("Deferred event was cancelled unexpectedly",
-				dt.isCancelled());
+		Assert.assertFalse("Deferred event was cancelled unexpectedly", dt.isCancelled());
 	}
 
 	@Test(timeout = 100)
@@ -80,21 +79,18 @@ public class DeferredEventTest extends TestFoundation {
 		Assert.assertTrue("Deferred event was not cancelled", dt.isCancelled());
 		long beforeTime = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Deferred event cancellation have not succeeded",
-				beforeTime, Timed.getFireCount());
-		Assert.assertFalse("Deferred event was received unexpectedly",
-				dt.eventFired);
+		Assert.assertEquals("Deferred event cancellation have not succeeded", beforeTime, Timed.getFireCount());
+		Assert.assertFalse("Deferred event was received unexpectedly", dt.eventFired);
 	}
 
 	@Test(timeout = 100)
 	public void immediateFireTest() {
-		Assert.assertTrue("Deferred event was not received",
-				new DeferredTester(0).eventFired);
+		Assert.assertTrue("Deferred event was not received", new DeferredTester(0).eventFired);
 	}
 
 	/**
-	 * This test ensures that the timed loop remains performant! So the failure
-	 * of this test is not the failure of the system but the failure of its
+	 * This test ensures that the timed loop remains performant! So the failure of
+	 * this test is not the failure of the system but the failure of its
 	 * performance!
 	 */
 	@Test(timeout = 200)
@@ -109,5 +105,28 @@ public class DeferredEventTest extends TestFoundation {
 			fired &= performer[i].eventFired;
 		}
 		Assert.assertTrue("Not all events arrived", fired);
+	}
+
+	@Test(timeout = 100)
+	public void skipEventsEffects() {
+		int baseTime = 15;
+		new DeferredEvent(baseTime) {
+			@Override
+			protected void eventAction() {
+				Assert.fail("We skipped through this event, thus we don't want to see it arrive!");
+			}
+		};
+		Timed.skipEventsTill(baseTime + 5);
+		final boolean[] arr = new boolean[1];
+		arr[0] = false;
+		new DeferredEvent(baseTime) {
+			@Override
+			protected void eventAction() {
+				arr[0] = true;
+			}
+		};
+		Timed.skipEventsTill(baseTime * 2 - 1);
+		Timed.simulateUntilLastEvent();
+		Assert.assertTrue("The second event should arrive", arr[0]);
 	}
 }

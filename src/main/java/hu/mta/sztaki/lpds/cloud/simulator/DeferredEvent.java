@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2017, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -38,19 +39,22 @@ import gnu.trove.map.hash.TLongObjectHashMap;
  * approach allows that only one Timed event is registered for a bunch of
  * non-recurring events.
  * 
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2017"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
  * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
- *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
- *         Distributed Systems, MTA SZTAKI (c) 2015"
+ *         of Innsbruck (c) 2013"
  */
 public abstract class DeferredEvent {
 
 	/**
 	 * All deferred events that are due in the future are listed here.
 	 * 
-	 * The map is indexed by expected event arrivals. The stored objects in the
-	 * map are MutablePairs where the left item of the pair is the length of the
-	 * right item (which is actually the list of events that should be delivered
-	 * at the particular time instance identified by the key of the map).
+	 * The map is indexed by expected event arrivals. The stored objects in the map
+	 * are MutablePairs where the left item of the pair is the length of the right
+	 * item (which is actually the list of events that should be delivered at the
+	 * particular time instance identified by the key of the map).
 	 */
 	private static final TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>> toSweep = new TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>>();
 	/**
@@ -63,21 +67,20 @@ public abstract class DeferredEvent {
 	 * dispatches the events if Timed notifies for time instance at which the
 	 * non-recurring events should be fired
 	 * 
-	 * Improves the performance of deferred events significantly if multiple
-	 * events should occur at once
+	 * Improves the performance of deferred events significantly if multiple events
+	 * should occur at once
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2015"
 	 *
 	 */
 	private static class AggregatedEventDispatcher extends Timed {
 		/**
-		 * The actual event dispatcher. This function is called by Timed on the
-		 * time instance when the first not yet dispatched deferred event is
-		 * due.
+		 * The actual event dispatcher. This function is called by Timed on the time
+		 * instance when the first not yet dispatched deferred event is due.
 		 * 
-		 * <i>Note:</i> If multiple events must be delivered at a given time
-		 * instance, then the order of the dispatched events are undefined.
+		 * <i>Note:</i> If multiple events must be delivered at a given time instance,
+		 * then the order of the dispatched events are undefined.
 		 */
 		@Override
 		public void tick(long fires) {
@@ -93,17 +96,30 @@ public abstract class DeferredEvent {
 			updateDispatcher();
 		}
 
+		@Override
+		protected void skip() {
+			super.skip();
+			MutablePair<Integer, DeferredEvent[]> cancelledlist = toSweep.remove(getMinKey());
+			for (int i = 0; i < cancelledlist.left; i++) {
+				cancelledlist.right[i].cancelled = true;
+			}
+		}
+
 		/**
-		 * after some deferred events are dispatched, this function actually
-		 * determines the next occurrence of a deferred event (and readjusts the
-		 * notification frequency for Timed) or if there are no further events
-		 * registered, the function cancels the notifications
+		 * after some deferred events are dispatched, this function actually determines
+		 * the next occurrence of a deferred event (and readjusts the notification
+		 * frequency for Timed) or if there are no further events registered, the
+		 * function cancels the notifications
 		 */
 		private void updateDispatcher() {
 			if (toSweep.isEmpty()) {
 				unsubscribe();
 				return;
 			}
+			updateFrequency(getMinKey() - getFireCount());
+		}
+
+		private long getMinKey() {
 			final long[] keys = toSweep.keys();
 			long minkey = Long.MAX_VALUE;
 			for (long key : keys) {
@@ -111,7 +127,7 @@ public abstract class DeferredEvent {
 					minkey = key;
 				}
 			}
-			updateFrequency(minkey - getFireCount());
+			return minkey;
 		}
 	}
 
@@ -133,8 +149,8 @@ public abstract class DeferredEvent {
 	 * Timed after delay ticks.
 	 * 
 	 * @param delay
-	 *            the number of ticks that should pass before this deferred
-	 *            event object's eventAction() will be called.
+	 *            the number of ticks that should pass before this deferred event
+	 *            object's eventAction() will be called.
 	 */
 	public DeferredEvent(final long delay) {
 		if (delay <= 0) {
@@ -204,13 +220,12 @@ public abstract class DeferredEvent {
 	}
 
 	/**
-	 * Allows to determine whether the actual event was cancelled already or
-	 * not.
+	 * Allows to determine whether the actual event was cancelled already or not.
 	 * 
 	 * @return
 	 *         <ul>
-	 *         <li><i>true</i> if the event will not arrive in the future as it
-	 *         was cancelled,
+	 *         <li><i>true</i> if the event will not arrive in the future as it was
+	 *         cancelled,
 	 *         <li><i>false</i> otherwise
 	 *         </ul>
 	 */
@@ -219,8 +234,8 @@ public abstract class DeferredEvent {
 	}
 
 	/**
-	 * When creating a deferred event, implement this function for the actual
-	 * event handling mechanism of yours.
+	 * When creating a deferred event, implement this function for the actual event
+	 * handling mechanism of yours.
 	 */
 	protected abstract void eventAction();
 
