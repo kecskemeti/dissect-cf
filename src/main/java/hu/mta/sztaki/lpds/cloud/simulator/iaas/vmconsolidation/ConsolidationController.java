@@ -71,8 +71,12 @@ public class ConsolidationController {
 	 * This testcase is to find the best configuration of the parameters of the consolidators. For that, 
 	 * we define a list of values to test and this method runs the appropriate consolidators for all 
 	 * possible combinations of the values. All results are saved inside a csv file.
+	 * 
+	 * @param test
+	 * 				If set to true, default values are taken, otherwise the lists get filled and all 
+	 * 				combinations out of these values are taken
 	 */
-	public void runTestcaseOne() {		
+	public void runTestcaseOne(boolean test) {		
 		//defining lists with values for each parameter of each relevant algorithm
 		List<Integer> psoSwarmSizeValues = new ArrayList<>();
 		List<Integer> psoNrIterationsValues = new ArrayList<>();
@@ -89,51 +93,66 @@ public class ConsolidationController {
 
 		//fill the lists with values
 		
-//		for(int i = 10; i < 26; i++) {
-//			psoSwarmSizeValues.add(i);
-//			gaPopulationSizeValues.add(i);
-//			gaNrCrossoversValues.add(i);
-//			abcPopulationSizeValues.add(i);
-//		}	
-		
-//		for(int i = 20; i < 51; i++) {
-//			psoNrIterationsValues.add(i);
-//			gaNrIterationsValues.add(i);
-//			abcNrIterationsValues.add(i);
-//		}
-		
-//		int x = 0;
-//		while(x < 6) {
-//			psoC1Values.add(x);
-//			psoC2Values.add(x);
-//			x++;
-//		}		
+		if(!test) {
+			for(int i = 10; i < 26; i++) {
+				psoSwarmSizeValues.add(i);
+				gaPopulationSizeValues.add(i);
+				gaNrCrossoversValues.add(i);
+				abcPopulationSizeValues.add(i);
+			}	
+			
+			for(int i = 20; i < 51; i++) {
+				psoNrIterationsValues.add(i);
+				gaNrIterationsValues.add(i);
+				abcNrIterationsValues.add(i);
+			}
+			
+			int x = 0;
+			while(x < 6) {
+				psoC1Values.add(x);
+				psoC2Values.add(x);
+				x++;
+			}		
 
-//		for(int i = 2; i < 11; i++) {
-//			abcLimitTrialsValues.add(i);
-//		}		
+			for(int i = 2; i < 11; i++) {
+				abcLimitTrialsValues.add(i);
+			}	
+		}
 		
-		//test
-		
-		psoSwarmSizeValues.add(20);
-		psoNrIterationsValues.add(50);
-		psoC1Values.add(2);
-		psoC2Values.add(2);
-		
-		gaPopulationSizeValues.add(10);
-		gaNrIterationsValues.add(50);
-		gaNrCrossoversValues.add(10);
-		
-		abcPopulationSizeValues.add(10);
-		abcNrIterationsValues.add(50);
-		abcLimitTrialsValues.add(5);
+		//test values, only one run with defaults
+		if(test) {
+			psoSwarmSizeValues.add(20);
+			psoNrIterationsValues.add(50);
+			psoC1Values.add(2);
+			psoC2Values.add(2);
+			
+			gaPopulationSizeValues.add(10);
+			gaNrIterationsValues.add(50);
+			gaNrCrossoversValues.add(10);
+			
+			abcPopulationSizeValues.add(10);
+			abcNrIterationsValues.add(50);
+			abcLimitTrialsValues.add(5);
+		}
 		
 		//now run the consolidators with every possible combination of their parameters
 		//and save the results afterwards
 		
 		String name = "consolidationResultsOne.csv";
 		File file = new File(name);
-		boolean firstEntry = true;
+		
+		StringBuilder s = new StringBuilder();
+		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;energy needs;migrations;active pms;overAllocated pms"); 
+		s.append(System.getProperty("line.separator"));
+		
+		BufferedWriter writer = null;
+		//instantiate the writer and write first line
+		try {
+			writer = new BufferedWriter(new FileWriter(file));
+			writer.append(s.toString());
+		} catch (IOException e1) {
+			throw new IllegalArgumentException("writer is null");
+		}
 		
 		//pso consolidator
 		for(int first : psoSwarmSizeValues) {
@@ -144,7 +163,7 @@ public class ConsolidationController {
 						setPsoProperties(psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)).toString(), psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)).toString(), 
 								psoC1Values.get(psoC1Values.indexOf(third)).toString(), psoC2Values.get(psoC2Values.indexOf(fourth)).toString());
 						
-						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "pso"};		
+						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "pso"};		
 						try {
 							JobDispatchingDemo.main(jobStart);
 						} catch (Exception e) {
@@ -153,9 +172,9 @@ public class ConsolidationController {
 						String[] results = {"null"};		//TODO
 						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)) + "; NrOfIterations: " + 
 								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)) + "; C1: " + psoC1Values.get(psoC1Values.indexOf(third)) + "; C2: " + 
-								psoC2Values.get(psoC2Values.indexOf(fourth));
+								psoC2Values.get(psoC2Values.indexOf(fourth)) + ";";
 						try {
-							saveResults(firstEntry, file, "pso", parameters, results);
+							saveResults(writer, "pso;", parameters, results);
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -165,7 +184,6 @@ public class ConsolidationController {
 		}
 		
 		//ga consolidator
-		firstEntry = false;
 
 		for(int first : gaPopulationSizeValues) {
 			for(int second : gaNrIterationsValues) {
@@ -174,7 +192,7 @@ public class ConsolidationController {
 					setGaProperties(gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)).toString(), gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)).toString(), 
 							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)).toString());
 					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "ga"};		
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "ga"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
@@ -183,19 +201,17 @@ public class ConsolidationController {
 					String[] results = {"null"};		//TODO
 					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
 							gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)) + "; NrOfCrossovers: " + 
-							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third));
+							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)) + "; ;";
 					try {
-						saveResults(firstEntry, file, "pso", parameters, results);
+						saveResults(writer, "ga;", parameters, results);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					firstEntry = false;
 				}
 			}
 		}
 		
 		//abc consolidator
-		firstEntry = false;
 
 		for(int first : abcPopulationSizeValues) {
 			for(int second : abcNrIterationsValues) {
@@ -204,23 +220,36 @@ public class ConsolidationController {
 					setAbcProperties(abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)).toString(), abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)).toString(), 
 							abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)).toString());
 					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "abc"};		
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "abc"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 					String[] results = {"null"};		//TODO
+					
+					
+					
 					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
-							abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + "; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third));
+							abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + "; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)) + "; ;";
 					try {
-						saveResults(firstEntry, file, "pso", parameters, results);
+						saveResults(writer, "abc;", parameters, results);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					firstEntry = false;
 				}
 			}
+		}
+		
+		try {
+			writer.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		
 	}
@@ -252,52 +281,74 @@ public class ConsolidationController {
 		
 		String name = "consolidationResultsTwo.csv";
 		File file = new File(name);
-		boolean firstEntry = true;
+		BufferedWriter writer = null;
+		StringBuilder s = new StringBuilder();
+		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;energy needs;migrations;active pms;overAllocated pms"); 
+		s.append(System.getProperty("line.separator"));
 		
-		String[] abcJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "abc"};		
+		//instantiate the writer and write first line
+		try {
+			writer = new BufferedWriter(new FileWriter(file));
+			writer.append(s.toString());
+		} catch (IOException e1) {
+			throw new IllegalArgumentException("writer is null");
+		}
+	    
+		//abc consolidator
+	    
+		String[] abcJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "abc"};		
 		try {
 			JobDispatchingDemo.main(abcJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		String[] abcResults = {"null"};		//TODO
-		String abcParameters = "PopulationSize: " + abcPopulationSize + "; NrOfIterations: " + abcNrIterations + "; LimitTrials: " + abcLimitTrials;
+		String abcParameters = "PopulationSize: " + abcPopulationSize + "; NrOfIterations: " + abcNrIterations + "; LimitTrials: " + abcLimitTrials + "; ;";
 		try {
-			saveResults(firstEntry, file, "pso", abcParameters, abcResults);
+			saveResults(writer, "abc;", abcParameters, abcResults);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		firstEntry = false;
 		
 		//ga consolidator
 		
-		String[] gaJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "ga"};		
+		String[] gaJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "ga"};		
 		try {
 			JobDispatchingDemo.main(gaJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		String[] gaResults = {"null"};		//TODO
-		String gaParameters = "PopulationSize: " + gaPopulationSize + "; NrOfIterations: " + gaNrIterations + "; NrOfCrossovers: " + gaNrCrossovers;
+		String gaParameters = "PopulationSize: " + gaPopulationSize + "; NrOfIterations: " + gaNrIterations + "; NrOfCrossovers: " + gaNrCrossovers + "; ;";
 		try {
-			saveResults(firstEntry, file, "pso", gaParameters, gaResults);
+			saveResults(writer, "ga;", gaParameters, gaResults);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		firstEntry = false;
 		
 		//pso consolidator
 		
-		String[] psoJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "20@16@1", "5000", "pso"};		
+		String[] psoJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "pso"};		
 		try {
 			JobDispatchingDemo.main(psoJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		String[] psoResults = {"null"};		//TODO
-		String psoParameters = "SwarmSize: " + psoSwarmSize + "; NrOfIterations: " + psoNrIterations + "; C1: " + psoC1 + "; C2: " + psoC2;
+		String psoParameters = "SwarmSize: " + psoSwarmSize + "; NrOfIterations: " + psoNrIterations + "; C1: " + psoC1 + "; C2: " + psoC2 + ";";
 		try {
-			saveResults(firstEntry, file, "pso", psoParameters, psoResults);
+			saveResults(writer, "pso;", psoParameters, psoResults);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		try {
+			writer.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -309,45 +360,21 @@ public class ConsolidationController {
 	 * 			Needed for defining test cases.
 	 * @throws IOException 
 	 */
-	public void saveResults(boolean first, File file, String consolidator, String parameters, String[] results) throws IOException {
+	public void saveResults(BufferedWriter writer, String consolidator, String parameters, String[] results) throws IOException {
 		
-		BufferedWriter writer = null;
-		writer = new BufferedWriter(new FileWriter(file));
-		// if this shall be the first entry, the title line has to be written before
-		if(first) {
-			String[] s = {"consolidator", "parameters", "energy needs", "migrations", "active pms", "overAllocated pms"}; 
-			writeLine(writer, s);			
-		}
-			
 		// now everything has to be written inside the file		
 		
 		String[] erg = {consolidator, parameters};
 		String[] all = (String[])ArrayUtils.addAll(erg, results);
-		writeLine(writer, all);
 		
-		writer.flush();
-		writer.close();
-	}
-	
-	/**
-	 * Writes a line inside the csv- file.
-	 * @param w
-	 * @param s
-	 * @throws IOException
-	 */
-	private void writeLine(Writer w, String[] s) throws IOException {
-
-		boolean first = true;
-	    StringBuilder sb = new StringBuilder();
-	    for (String value : s) {
-	        if (!first) {
-	            sb.append(',');
-	        }	            
+		StringBuilder sb = new StringBuilder();
+	    for (String value : all) {
+	                   
 	        sb.append(value);
-	        first = false;
+	        //sb.append(',');
 	    }
 	    sb.append(System.getProperty("line.separator"));
-	    w.append(sb.toString());
+	    writer.append(sb.toString());
 	}
 	
 	/**

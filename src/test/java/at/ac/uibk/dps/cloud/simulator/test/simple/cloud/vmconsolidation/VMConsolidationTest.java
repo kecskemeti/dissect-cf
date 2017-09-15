@@ -474,7 +474,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM2, mediumConstraints, testPM1, false);
 		Timed.simulateUntilLastEvent();
 
-		//Now, PM1 contains twoVM, making it overAllocated. If we turn on the consolidator, 
+		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
 		new PsoConsolidator(basic, 600);
@@ -486,6 +486,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	@Test
 	public void ConsolidationControllerTest() throws IOException {
 		ConsolidationController cc = new ConsolidationController();
-		cc.runTestcaseOne();		
+		cc.runTestcaseOne(true);		
 	}
 }
