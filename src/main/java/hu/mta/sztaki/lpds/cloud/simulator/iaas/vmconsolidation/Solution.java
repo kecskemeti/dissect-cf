@@ -42,6 +42,7 @@ public class Solution {
 				mapping.put(vm,randPm);
 			}
 		}
+		//System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 
 	/**
@@ -49,6 +50,7 @@ public class Solution {
 	 * resource types. This can be used as a component of the fitness.
 	 */
 	double getTotalOverAllocated() {
+		//System.err.println("getTotalOverAllocated() -> mapping: "+mappingToString());
 		double result=0;
 		//First determine the allocation of each PM under our mapping.
 		Map<Integer,ResourceVector> allocations=new HashMap<>();
@@ -57,7 +59,9 @@ public class Solution {
 		}
 		for(ModelVM vm : mapping.keySet()) {
 			ModelPM pm=mapping.get(vm);
-			allocations.get(pm.getNumber()).add(vm.getResources());
+			ResourceVector pmLoad=allocations.get(pm.getNumber());
+			ResourceVector vmLoad=vm.getResources();
+			pmLoad.add(vmLoad);
 		}
 		//For each PM, see if it is overallocated; if yes, increase the result accordingly.
 		for(ModelPM pm : bins) {
@@ -186,6 +190,23 @@ public class Solution {
 			first=false;
 		}
 		result=result+"),f="+evaluate().toString()+"]";
+		return result;
+	}
+
+	/**
+	 * String representation of the mapping of the
+	 * given solution.
+	 */
+	public String mappingToString() {
+		String result="[m=(";
+		boolean first=true;
+		for(ModelVM vm : mapping.keySet()) {
+			if(!first)
+				result=result+",";
+			result=result+vm.id+"->"+mapping.get(vm).getNumber();
+			first=false;
+		}
+		result=result+")]";
 		return result;
 	}
 }

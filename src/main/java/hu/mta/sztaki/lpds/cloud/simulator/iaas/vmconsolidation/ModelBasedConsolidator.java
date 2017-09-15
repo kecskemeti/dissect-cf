@@ -105,16 +105,19 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	private void instantiate(PhysicalMachine[] pmList) {
 		bins.clear();
+		items.clear();
+		int vmIndex=0;
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = pmList[i];
 			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(), 
 					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i + 1);
 			for(VirtualMachine vm : pm.publicVms) {
+				vmIndex++;
 				ModelVM item = new ModelVM(vm, bin, 
 						vm.getResourceAllocation().allocated.getRequiredCPUs(), 
 						vm.getResourceAllocation().allocated.getRequiredProcessingPower(), 
-						vm.getResourceAllocation().allocated.getRequiredMemory(), vm.getVa().id);
+						vm.getResourceAllocation().allocated.getRequiredMemory(), vmIndex);
 				bin.addVM(item);
 				items.add(item);
 			}

@@ -97,6 +97,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	 * location and velocity.
 	 */
 	private void initializeSwarm() {
+		swarm.clear();
 		Particle p;
 		for(int i = 0; i < swarmSize; i++) {
 			p = new Particle(items, bins);

@@ -446,4 +446,9 @@ public class ModelPM {
 	public int getNumber() {
 		return number;
 	}
+
+	@Override
+	public int hashCode() {
+		return number;
+	}
 }

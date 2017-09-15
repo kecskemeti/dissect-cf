@@ -16,7 +16,8 @@ public class ModelVM {
 	private VirtualMachine vm;
 	private ModelPM hostPM;
 	private ModelPM initialHost;
-	String id;
+	//String id;
+	int id;
 	private ResourceVector neededResources;
 
 	/**
@@ -37,7 +38,7 @@ public class ModelVM {
 	 * @param id
 	 * 			The ID of the original VM.
 	 */	
-	public ModelVM(VirtualMachine vm, ModelPM pm, double cores, double pCP, long mem, String id) {
+	public ModelVM(VirtualMachine vm, ModelPM pm, double cores, double pCP, long mem, int id) {
 		
 		this.vm = vm;
 		hostPM = pm;		// save the host PM
@@ -89,5 +90,14 @@ public class ModelVM {
 	 */
 	public ModelPM getInitialPm() {
 		return initialHost;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	@Override
+	public int hashCode() {
+		return id;
 	}
 }

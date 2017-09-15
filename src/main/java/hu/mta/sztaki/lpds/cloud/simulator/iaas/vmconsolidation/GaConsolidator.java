@@ -61,6 +61,7 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 * Initializes the population with populationSize random solutions.
 	 */
 	private void initializePopulation() {
+		population.clear();
 		for(int i=0;i<populationSize;i++) {
 			Solution s=new Solution(bins);
 			s.fillRandomly();
