@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.commons.lang3.ArrayUtils;
-
 import hu.mta.sztaki.lpds.cloud.simulator.examples.jobhistoryprocessor.JobDispatchingDemo;
 
 import java.io.BufferedWriter;
@@ -14,7 +12,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 
 	/**
 	 * @author Rene Ponto
@@ -125,14 +122,14 @@ public class ConsolidationController {
 			psoNrIterationsValues.add(50);
 			psoC1Values.add(2);
 			psoC2Values.add(2);
-			
+						
 			gaPopulationSizeValues.add(10);
 			gaNrIterationsValues.add(50);
-			gaNrCrossoversValues.add(10);
+			gaNrCrossoversValues.add(10);			
 			
 			abcPopulationSizeValues.add(10);
 			abcNrIterationsValues.add(50);
-			abcLimitTrialsValues.add(5);
+			abcLimitTrialsValues.add(5);			
 		}
 		
 		//now run the consolidators with every possible combination of their parameters
@@ -142,7 +139,7 @@ public class ConsolidationController {
 		File file = new File(name);
 		
 		StringBuilder s = new StringBuilder();
-		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;energy needs;migrations;active pms;overAllocated pms"); 
+		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;total power consumption;migrations;active pms;time;performance"); 
 		s.append(System.getProperty("line.separator"));
 		
 		BufferedWriter writer = null;
@@ -163,13 +160,30 @@ public class ConsolidationController {
 						setPsoProperties(psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)).toString(), psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)).toString(), 
 								psoC1Values.get(psoC1Values.indexOf(third)).toString(), psoC2Values.get(psoC2Values.indexOf(fourth)).toString());
 						
-						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "pso"};		
+						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "pso"};		
 						try {
 							JobDispatchingDemo.main(jobStart);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						String[] results = {"null"};		//TODO
+						//load the results
+						
+						Properties psoResult = new Properties();
+						File psoData = new File("consolidationResults.xml");
+						FileInputStream psoFileInput;
+						try {
+							psoFileInput = new FileInputStream(psoData);
+							psoResult.loadFromXML(psoFileInput);
+							psoFileInput.close();
+						} catch (Exception e1) {
+							e1.printStackTrace();
+						}
+						
+						String results = "" + psoResult.getProperty("total power consumption") + ";" + psoResult.getProperty("migrations") + ";" +
+						psoResult.getProperty("active pms") + ";" + psoResult.getProperty("time") + ";" + psoResult.getProperty("performance") + "";
+						
+						//save the results with the rest of the information
+						
 						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)) + "; NrOfIterations: " + 
 								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)) + "; C1: " + psoC1Values.get(psoC1Values.indexOf(third)) + "; C2: " + 
 								psoC2Values.get(psoC2Values.indexOf(fourth)) + ";";
@@ -192,13 +206,31 @@ public class ConsolidationController {
 					setGaProperties(gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)).toString(), gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)).toString(), 
 							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)).toString());
 					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "ga"};		
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "ga"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-					String[] results = {"null"};		//TODO
+					
+					//load the results
+					
+					Properties gaResult = new Properties();
+					File gaData = new File("consolidationResults.xml");
+					FileInputStream gaFileInput;
+					try {
+						gaFileInput = new FileInputStream(gaData);
+						gaResult.loadFromXML(gaFileInput);
+						gaFileInput.close();
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+					
+					String results = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
+					gaResult.getProperty("active pms") + ";" + gaResult.getProperty("time") + ";" + gaResult.getProperty("performance") + "";
+					
+					//save the results with the rest of the information
+					
 					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
 							gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)) + "; NrOfCrossovers: " + 
 							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)) + "; ;";
@@ -220,15 +252,30 @@ public class ConsolidationController {
 					setAbcProperties(abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)).toString(), abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)).toString(), 
 							abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)).toString());
 					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "abc"};		
+					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "abc"};		
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-					String[] results = {"null"};		//TODO
 					
+					//load the results
 					
+					Properties abcResult = new Properties();
+					File abcData = new File("consolidationResults.xml");
+					FileInputStream abcFileInput;
+					try {
+						abcFileInput = new FileInputStream(abcData);
+						abcResult.loadFromXML(abcFileInput);
+						abcFileInput.close();
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					} 
+					
+					String results = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
+					abcResult.getProperty("active pms") + ";" + abcResult.getProperty("time") + ";" + abcResult.getProperty("performance") + "";
+					
+					//save the results with the rest of the information
 					
 					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
 							abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + "; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)) + "; ;";
@@ -296,13 +343,29 @@ public class ConsolidationController {
 	    
 		//abc consolidator
 	    
-		String[] abcJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "abc"};		
+		String[] abcJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "abc"};		
 		try {
 			JobDispatchingDemo.main(abcJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String[] abcResults = {"null"};		//TODO
+		
+		//load the results
+		
+		Properties abcResult = new Properties();
+		File abcData = new File("consolidationResults.xml");
+		FileInputStream abcFileInput;
+		try {
+			abcFileInput = new FileInputStream(abcData);
+			abcResult.loadFromXML(abcFileInput);
+			abcFileInput.close();
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		} 
+		
+		String abcResults = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
+		abcResult.getProperty("active pms") + ";" + abcResult.getProperty("time") + ";" + abcResult.getProperty("performance") + "";
+		
 		String abcParameters = "PopulationSize: " + abcPopulationSize + "; NrOfIterations: " + abcNrIterations + "; LimitTrials: " + abcLimitTrials + "; ;";
 		try {
 			saveResults(writer, "abc;", abcParameters, abcResults);
@@ -312,13 +375,29 @@ public class ConsolidationController {
 		
 		//ga consolidator
 		
-		String[] gaJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "ga"};		
+		String[] gaJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "ga"};		
 		try {
 			JobDispatchingDemo.main(gaJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String[] gaResults = {"null"};		//TODO
+		
+		//load the results
+		
+		Properties gaResult = new Properties();
+		File gaData = new File("consolidationResults.xml");
+		FileInputStream gaFileInput;
+		try {
+			gaFileInput = new FileInputStream(gaData);
+			gaResult.loadFromXML(gaFileInput);
+			gaFileInput.close();
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		} 
+		
+		String gaResults = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
+		gaResult.getProperty("active pms") + ";" + gaResult.getProperty("time") + ";" + gaResult.getProperty("performance") + "";
+		
 		String gaParameters = "PopulationSize: " + gaPopulationSize + "; NrOfIterations: " + gaNrIterations + "; NrOfCrossovers: " + gaNrCrossovers + "; ;";
 		try {
 			saveResults(writer, "ga;", gaParameters, gaResults);
@@ -328,13 +407,29 @@ public class ConsolidationController {
 		
 		//pso consolidator
 		
-		String[] psoJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "10", "500@16@1", "5000", "pso"};		
+		String[] psoJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "pso"};		
 		try {
 			JobDispatchingDemo.main(psoJobStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String[] psoResults = {"null"};		//TODO
+		
+		//load the results
+		
+		Properties psoResult = new Properties();
+		File psoData = new File("consolidationResults.xml");
+		FileInputStream psoFileInput;
+		try {
+			psoFileInput = new FileInputStream(psoData);
+			psoResult.loadFromXML(psoFileInput);
+			psoFileInput.close();
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		} 
+		
+		String psoResults = "" + psoResult.getProperty("total power consumption") + ";" + psoResult.getProperty("migrations") + ";" +
+		psoResult.getProperty("active pms") + ";" + psoResult.getProperty("time") + ";" + psoResult.getProperty("performance") + "";
+		
 		String psoParameters = "SwarmSize: " + psoSwarmSize + "; NrOfIterations: " + psoNrIterations + "; C1: " + psoC1 + "; C2: " + psoC2 + ";";
 		try {
 			saveResults(writer, "pso;", psoParameters, psoResults);
@@ -360,12 +455,11 @@ public class ConsolidationController {
 	 * 			Needed for defining test cases.
 	 * @throws IOException 
 	 */
-	public void saveResults(BufferedWriter writer, String consolidator, String parameters, String[] results) throws IOException {
+	public void saveResults(BufferedWriter writer, String consolidator, String parameters, String results) throws IOException {
 		
 		// now everything has to be written inside the file		
 		
-		String[] erg = {consolidator, parameters};
-		String[] all = (String[])ArrayUtils.addAll(erg, results);
+		String[] all = {consolidator, parameters, results};
 		
 		StringBuilder sb = new StringBuilder();
 	    for (String value : all) {
