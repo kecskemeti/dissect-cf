@@ -163,8 +163,9 @@ public class ConsolidationController {
 						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "pso"};		
 						try {
 							JobDispatchingDemo.main(jobStart);
+							//here is an error, the method can only be called once
 						} catch (Exception e) {
-							e.printStackTrace();
+							throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
 						}
 						//load the results
 						
@@ -176,7 +177,7 @@ public class ConsolidationController {
 							psoResult.loadFromXML(psoFileInput);
 							psoFileInput.close();
 						} catch (Exception e1) {
-							e1.printStackTrace();
+							throw new RuntimeException("Results could not be read.");
 						}
 						
 						String results = "" + psoResult.getProperty("total power consumption") + ";" + psoResult.getProperty("migrations") + ";" +
@@ -190,7 +191,7 @@ public class ConsolidationController {
 						try {
 							saveResults(writer, "pso;", parameters, results);
 						} catch (IOException e) {
-							e.printStackTrace();
+							throw new RuntimeException("An error occured while saving.");
 						}
 					}
 				}
@@ -210,7 +211,7 @@ public class ConsolidationController {
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
-						e.printStackTrace();
+						throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
 					}
 					
 					//load the results
@@ -223,7 +224,7 @@ public class ConsolidationController {
 						gaResult.loadFromXML(gaFileInput);
 						gaFileInput.close();
 					} catch (Exception e1) {
-						e1.printStackTrace();
+						throw new RuntimeException("Results could not be read.");
 					}
 					
 					String results = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
@@ -237,7 +238,7 @@ public class ConsolidationController {
 					try {
 						saveResults(writer, "ga;", parameters, results);
 					} catch (IOException e) {
-						e.printStackTrace();
+						throw new RuntimeException("An error occured while saving.");
 					}
 				}
 			}
@@ -256,7 +257,7 @@ public class ConsolidationController {
 					try {
 						JobDispatchingDemo.main(jobStart);
 					} catch (Exception e) {
-						e.printStackTrace();
+						throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
 					}
 					
 					//load the results
@@ -269,7 +270,7 @@ public class ConsolidationController {
 						abcResult.loadFromXML(abcFileInput);
 						abcFileInput.close();
 					} catch (Exception e1) {
-						e1.printStackTrace();
+						throw new RuntimeException("Results could not be read.");
 					} 
 					
 					String results = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
@@ -282,7 +283,7 @@ public class ConsolidationController {
 					try {
 						saveResults(writer, "abc;", parameters, results);
 					} catch (IOException e) {
-						e.printStackTrace();
+						throw new RuntimeException("An error occured while saving.");
 					}
 				}
 			}
@@ -483,11 +484,6 @@ public class ConsolidationController {
 	 * 			This value defines the second learning factor.
 	 */
 	private void setPsoProperties(String swarmSize, String iterations, String c1, String c2) {
-//		this.psoSwarmSize = Integer.parseInt(swarmSize);
-//		this.psoNrIterations = Integer.parseInt(iterations);
-//		this.psoC1 = Integer.parseInt(c1);
-//		this.psoC2 = Integer.parseInt(c2);
-		
 		File file = new File("consolidationProperties.xml");
 		
 		props.setProperty("psoSwarmSize", swarmSize);
@@ -512,10 +508,6 @@ public class ConsolidationController {
 	 * 			This value defines the maximum number of trials for improvement before a solution is abandoned.
 	 */
 	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
-//		this.abcPopulationSize = Integer.parseInt(populationSize);
-//		this.abcNrIterations = Integer.parseInt(iterations);
-//		this.abcLimitTrials = Integer.parseInt(limitTrials);
-		
 		File file = new File("consolidationProperties.xml");
 		
 		props.setProperty("abcPopulationSize", populationSize);
@@ -539,10 +531,6 @@ public class ConsolidationController {
 	 * 			This value defines the number of recombinations to perform in each generation.
 	 */
 	private void setGaProperties(String populationSize, String iterations, String crossovers) {
-//		this.gaPopulationSize = Integer.parseInt(populationSize);
-//		this.gaNrIterations = Integer.parseInt(iterations);
-//		this.gaNrCrossovers = Integer.parseInt(crossovers);
-		
 		File file = new File("consolidationProperties.xml");
 		
 		props.setProperty("gaPopulationSize", populationSize);

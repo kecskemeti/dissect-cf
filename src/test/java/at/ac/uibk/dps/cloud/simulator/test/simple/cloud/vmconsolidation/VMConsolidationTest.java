@@ -484,8 +484,14 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	@Test
-	public void ConsolidationControllerTest() throws IOException {
+	public void ConsolidationControllerTestCaseOne() throws IOException {
 		ConsolidationController cc = new ConsolidationController();
 		cc.runTestcaseOne(true);		
+	}
+	
+	@Test
+	public void ConsolidationControllerTestCaseTwo() throws IOException {
+		//ConsolidationController cc = new ConsolidationController();
+		//cc.runTestcaseTwo();		
 	}
 }
