@@ -36,13 +36,21 @@ public class ConsolidationController {
 	private String gaDefaultNrCrossovers = "10";
 	private String upperThreshold = "0.75";
 	private String lowerThreshold = "0.25";
+	private String mutationProb = "0.2";
+	
+	private String trace;		
 	
 	/**
 	 * Sets all default values (which are the origin ones) and reads the properties-file.
 	 * The file is saved in .xml in the root of the simulator.
+	 * 
+	 * @param trace
+	 * 				The location of the trace-file.
 	 * @throws IOException 
 	 */
-	public ConsolidationController() throws IOException {
+	public ConsolidationController(String trace) throws IOException {
+		
+		this.trace = trace;
 		
 		props = new Properties();
 		File file = new File("consolidationProperties.xml");
@@ -53,11 +61,14 @@ public class ConsolidationController {
 		// set the default values
 		
 		setPsoProperties(psoDefaultSwarmSize, psoDefaultNrIterations, psoDefaultC1, psoDefaultC2);
-		setAbcProperties(abcDefaultPopulationSize, abcDefaultNrIterations, abcDefaultLimitTrials);
-		setGaProperties(gaDefaultPopulationSize, gaDefaultNrIterations, gaDefaultNrCrossovers);
+		setAbcProperties(abcDefaultPopulationSize, abcDefaultNrIterations, abcDefaultLimitTrials, mutationProb);
+		setGaProperties(gaDefaultPopulationSize, gaDefaultNrIterations, gaDefaultNrCrossovers, mutationProb);
 		
 		props.setProperty("upperThreshold", upperThreshold);
 		props.setProperty("lowerThreshold", lowerThreshold);
+		props.setProperty("mutationProb", mutationProb);
+		
+		//trace = props.getProperty(trace);
 		
 		FileOutputStream fileOutput = new FileOutputStream(file);
 		props.storeToXML(fileOutput, null);
@@ -83,37 +94,53 @@ public class ConsolidationController {
 		List<Integer> gaPopulationSizeValues = new ArrayList<>();
 		List<Integer> gaNrIterationsValues = new ArrayList<>();
 		List<Integer> gaNrCrossoversValues = new ArrayList<>();
+		List<Double> gaMutationProbValues = new ArrayList<>();
 		
 		List<Integer> abcPopulationSizeValues = new ArrayList<>();
 		List<Integer> abcNrIterationsValues = new ArrayList<>();
 		List<Integer> abcLimitTrialsValues = new ArrayList<>();
+		List<Double> abcMutationProbValues = new ArrayList<>();
 
 		//fill the lists with values
 		
 		if(!test) {
-			for(int i = 10; i < 26; i++) {
+			
+			int i = 5;
+			while(i < 101) {
 				psoSwarmSizeValues.add(i);
 				gaPopulationSizeValues.add(i);
 				gaNrCrossoversValues.add(i);
 				abcPopulationSizeValues.add(i);
-			}	
+				i = i + 10;		// increase the variable by 10 to cover a bigger value range
+			}
 			
-			for(int i = 20; i < 51; i++) {
+			i = 5;
+			while(i < 101) {
 				psoNrIterationsValues.add(i);
 				gaNrIterationsValues.add(i);
 				abcNrIterationsValues.add(i);
+				i = i + 10;
 			}
 			
-			int x = 0;
-			while(x < 6) {
-				psoC1Values.add(x);
-				psoC2Values.add(x);
-				x++;
-			}		
-
-			for(int i = 2; i < 11; i++) {
+			i = 1;
+			while(i < 22) {
 				abcLimitTrialsValues.add(i);
-			}	
+				i++;
+			}
+			
+			i = 1;
+			while(i < 11) {
+				psoC1Values.add(i);
+				psoC2Values.add(i);
+				i = i + 2;
+			}
+			
+			double j = 0.1;
+			while(j <= 1) {
+				abcMutationProbValues.add(j);
+				gaMutationProbValues.add(j);
+				j = j + 0.2;
+			}
 		}
 		
 		//test values, only one run with defaults
@@ -125,11 +152,13 @@ public class ConsolidationController {
 						
 			gaPopulationSizeValues.add(10);
 			gaNrIterationsValues.add(50);
-			gaNrCrossoversValues.add(10);			
+			gaNrCrossoversValues.add(10);	
+			gaMutationProbValues.add(0.2);
 			
 			abcPopulationSizeValues.add(10);
 			abcNrIterationsValues.add(50);
-			abcLimitTrialsValues.add(5);			
+			abcLimitTrialsValues.add(5);
+			abcMutationProbValues.add(0.2);
 		}
 		
 		//now run the consolidators with every possible combination of their parameters
@@ -139,7 +168,8 @@ public class ConsolidationController {
 		File file = new File(name);
 		
 		StringBuilder s = new StringBuilder();
-		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;total power consumption;migrations;active pms;time;performance"); 
+		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;total power consumption;migrations;max active pms;"
+				+ "average active pms;runs;amount of vms;average time per consolidation;time;performance"); 
 		s.append(System.getProperty("line.separator"));
 		
 		BufferedWriter writer = null;
@@ -157,13 +187,14 @@ public class ConsolidationController {
 				for(int third : psoC1Values) {
 					for(int fourth : psoC2Values) {
 						
-						setPsoProperties(psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)).toString(), psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)).toString(), 
-								psoC1Values.get(psoC1Values.indexOf(third)).toString(), psoC2Values.get(psoC2Values.indexOf(fourth)).toString());
+						setPsoProperties(psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)).toString(), 
+								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)).toString(), 
+								psoC1Values.get(psoC1Values.indexOf(third)).toString(), 
+								psoC2Values.get(psoC2Values.indexOf(fourth)).toString());
 						
-						String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "pso"};		
+						String[] jobStart = {trace, "1000", "50@16@1", "5000", "pso"};		
 						try {
 							JobDispatchingDemo.main(jobStart);
-							//here is an error, the method can only be called once
 						} catch (Exception e) {
 							throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
 						}
@@ -181,12 +212,16 @@ public class ConsolidationController {
 						}
 						
 						String results = "" + psoResult.getProperty("total power consumption") + ";" + psoResult.getProperty("migrations") + ";" +
-						psoResult.getProperty("active pms") + ";" + psoResult.getProperty("time") + ";" + psoResult.getProperty("performance") + "";
+								psoResult.getProperty("max active pms") + ";" + psoResult.getProperty("average active pms") + ";" + 
+								psoResult.getProperty("runs") + ";" + psoResult.getProperty("amount of vms") + ";" +
+								psoResult.getProperty("averageTime") + ";" + psoResult.getProperty("time") + ";" + 
+								psoResult.getProperty("performance") + "";
 						
 						//save the results with the rest of the information
 						
 						String parameters = "SwarmSize: " + psoSwarmSizeValues.get(psoSwarmSizeValues.indexOf(first)) + "; NrOfIterations: " + 
-								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)) + "; C1: " + psoC1Values.get(psoC1Values.indexOf(third)) + "; C2: " + 
+								psoNrIterationsValues.get(psoNrIterationsValues.indexOf(second)) + "; C1: " + 
+								psoC1Values.get(psoC1Values.indexOf(third)) + "; C2: " + 
 								psoC2Values.get(psoC2Values.indexOf(fourth)) + ";";
 						try {
 							saveResults(writer, "pso;", parameters, results);
@@ -203,42 +238,49 @@ public class ConsolidationController {
 		for(int first : gaPopulationSizeValues) {
 			for(int second : gaNrIterationsValues) {
 				for(int third : gaNrCrossoversValues) {
-					
-					setGaProperties(gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)).toString(), gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)).toString(), 
-							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)).toString());
-					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "ga"};		
-					try {
-						JobDispatchingDemo.main(jobStart);
-					} catch (Exception e) {
-						throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
-					}
-					
-					//load the results
-					
-					Properties gaResult = new Properties();
-					File gaData = new File("consolidationResults.xml");
-					FileInputStream gaFileInput;
-					try {
-						gaFileInput = new FileInputStream(gaData);
-						gaResult.loadFromXML(gaFileInput);
-						gaFileInput.close();
-					} catch (Exception e1) {
-						throw new RuntimeException("Results could not be read.");
-					}
-					
-					String results = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
-					gaResult.getProperty("active pms") + ";" + gaResult.getProperty("time") + ";" + gaResult.getProperty("performance") + "";
-					
-					//save the results with the rest of the information
-					
-					String parameters = "PopulationSize: " + gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
-							gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)) + "; NrOfCrossovers: " + 
-							gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)) + "; ;";
-					try {
-						saveResults(writer, "ga;", parameters, results);
-					} catch (IOException e) {
-						throw new RuntimeException("An error occured while saving.");
+					for(double fourth: gaMutationProbValues) {
+						setGaProperties(gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)).toString(), 
+								gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)).toString(), 
+								gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)).toString(), 
+								gaMutationProbValues.get(gaMutationProbValues.indexOf(fourth)).toString());
+						
+						String[] jobStart = {trace, "1000", "50@16@1", "5000", "ga"};		
+						try {
+							JobDispatchingDemo.main(jobStart);
+						} catch (Exception e) {
+							throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
+						}
+						
+						//load the results
+						
+						Properties gaResult = new Properties();
+						File gaData = new File("consolidationResults.xml");
+						FileInputStream gaFileInput;
+						try {
+							gaFileInput = new FileInputStream(gaData);
+							gaResult.loadFromXML(gaFileInput);
+							gaFileInput.close();
+						} catch (Exception e1) {
+							throw new RuntimeException("Results could not be read.");
+						}
+						
+						String results = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
+								gaResult.getProperty("max active pms") + ";" + gaResult.getProperty("average active pms") + ";" + 
+								gaResult.getProperty("runs") + ";" + gaResult.getProperty("amount of vms") + ";" +
+								gaResult.getProperty("averageTime") + ";" +	gaResult.getProperty("time") + ";" + 
+								gaResult.getProperty("performance") + "";
+						
+						//save the results with the rest of the information
+						
+						String parameters = "PopulationSize: " + gaPopulationSizeValues.get(gaPopulationSizeValues.indexOf(first)) + 
+								"; NrOfIterations: " + gaNrIterationsValues.get(gaNrIterationsValues.indexOf(second)) + 
+								"; NrOfCrossovers: " + gaNrCrossoversValues.get(gaNrCrossoversValues.indexOf(third)) + 
+								"; MutationProb: " + gaMutationProbValues.get(gaMutationProbValues.indexOf(fourth)) + ";";
+						try {
+							saveResults(writer, "ga;", parameters, results);
+						} catch (IOException e) {
+							throw new RuntimeException("An error occured while saving.");
+						}
 					}
 				}
 			}
@@ -249,52 +291,55 @@ public class ConsolidationController {
 		for(int first : abcPopulationSizeValues) {
 			for(int second : abcNrIterationsValues) {
 				for(int third : abcLimitTrialsValues) {
-					
-					setAbcProperties(abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)).toString(), abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)).toString(), 
-							abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)).toString());
-					
-					String[] jobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "abc"};		
-					try {
-						JobDispatchingDemo.main(jobStart);
-					} catch (Exception e) {
-						throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
-					}
-					
-					//load the results
-					
-					Properties abcResult = new Properties();
-					File abcData = new File("consolidationResults.xml");
-					FileInputStream abcFileInput;
-					try {
-						abcFileInput = new FileInputStream(abcData);
-						abcResult.loadFromXML(abcFileInput);
-						abcFileInput.close();
-					} catch (Exception e1) {
-						throw new RuntimeException("Results could not be read.");
-					} 
-					
-					String results = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
-					abcResult.getProperty("active pms") + ";" + abcResult.getProperty("time") + ";" + abcResult.getProperty("performance") + "";
-					
-					//save the results with the rest of the information
-					
-					String parameters = "PopulationSize: " + abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)) + "; NrOfIterations: " + 
-							abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + "; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)) + "; ;";
-					try {
-						saveResults(writer, "abc;", parameters, results);
-					} catch (IOException e) {
-						throw new RuntimeException("An error occured while saving.");
+					for(double fourth : abcMutationProbValues) {
+						setAbcProperties(abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)).toString(), 
+								abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)).toString(), 
+								abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)).toString(), 
+								abcMutationProbValues.get(abcMutationProbValues.indexOf(fourth)).toString());
+						
+						String[] jobStart = {trace, "1000", "50@16@1", "5000", "abc"};		
+						try {
+							JobDispatchingDemo.main(jobStart);
+						} catch (Exception e) {
+							throw new RuntimeException("JobDispatchingDemo.main() could not be started.");
+						}
+						
+						//load the results
+						
+						Properties abcResult = new Properties();
+						File abcData = new File("consolidationResults.xml");
+						FileInputStream abcFileInput;
+						try {
+							abcFileInput = new FileInputStream(abcData);
+							abcResult.loadFromXML(abcFileInput);
+							abcFileInput.close();
+						} catch (Exception e1) {
+							throw new RuntimeException("Results could not be read.");
+						} 
+						
+						String results = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
+								abcResult.getProperty("max active pms") + ";" + abcResult.getProperty("average active pms") + ";" + 
+								abcResult.getProperty("runs") + ";" + abcResult.getProperty("amount of vms") + ";" +
+								abcResult.getProperty("averageTime") + ";" + abcResult.getProperty("time") + ";" + 
+								abcResult.getProperty("performance") + "";
+						
+						//save the results with the rest of the information
+						
+						String parameters = "PopulationSize: " + abcPopulationSizeValues.get(abcPopulationSizeValues.indexOf(first)) + 
+								"; NrOfIterations: " + abcNrIterationsValues.get(abcNrIterationsValues.indexOf(second)) + 
+								"; LimitTrials: " + abcLimitTrialsValues.get(abcLimitTrialsValues.indexOf(third)) + 
+								"; MutationProb: " + abcMutationProbValues.get(abcMutationProbValues.indexOf(fourth)) + ";";
+						try {
+							saveResults(writer, "abc;", parameters, results);
+						} catch (IOException e) {
+							throw new RuntimeException("An error occured while saving.");
+						}
 					}
 				}
 			}
-		}
-		
+		}		
 		try {
 			writer.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
 			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -313,16 +358,20 @@ public class ConsolidationController {
 		String psoNrIterations = "";
 		String psoC1 = "";
 		String psoC2 = "";
+		
 		String abcPopulationSize = "";
 		String abcNrIterations = "";
 		String abcLimitTrials = "";
+		String abcMutationProb = "";
+		
 		String gaPopulationSize = "";
 		String gaNrIterations = "";
 		String gaNrCrossovers = "";
+		String gaMutationProb = "";
 		
 		setPsoProperties(psoSwarmSize, psoNrIterations, psoC1, psoC2);
-		setAbcProperties(abcPopulationSize, abcNrIterations, abcLimitTrials);
-		setGaProperties(gaPopulationSize, gaNrIterations, gaNrCrossovers);
+		setAbcProperties(abcPopulationSize, abcNrIterations, abcLimitTrials, abcMutationProb);
+		setGaProperties(gaPopulationSize, gaNrIterations, gaNrCrossovers, gaMutationProb);
 		
 		//test the three consolidators and save the results
 		//abc consolidator
@@ -331,7 +380,8 @@ public class ConsolidationController {
 		File file = new File(name);
 		BufferedWriter writer = null;
 		StringBuilder s = new StringBuilder();
-		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;energy needs;migrations;active pms;overAllocated pms"); 
+		s.append("consolidator;parameter 1; parameter 2; parameter 3; parameter 4;total power consumption;migrations;max active pms;"
+				+ "average active pms;runs;amount of vms;average time per consolidation;time;performance");
 		s.append(System.getProperty("line.separator"));
 		
 		//instantiate the writer and write first line
@@ -344,7 +394,7 @@ public class ConsolidationController {
 	    
 		//abc consolidator
 	    
-		String[] abcJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "abc"};		
+		String[] abcJobStart = {trace, "1000", "50@16@1", "5000", "abc"};		
 		try {
 			JobDispatchingDemo.main(abcJobStart);
 		} catch (Exception e) {
@@ -365,9 +415,12 @@ public class ConsolidationController {
 		} 
 		
 		String abcResults = "" + abcResult.getProperty("total power consumption") + ";" + abcResult.getProperty("migrations") + ";" +
-		abcResult.getProperty("active pms") + ";" + abcResult.getProperty("time") + ";" + abcResult.getProperty("performance") + "";
+				abcResult.getProperty("max active pms") + ";" + abcResult.getProperty("average active pms") + ";" + 
+				abcResult.getProperty("runs") + ";" + abcResult.getProperty("amount of vms") + ";" +
+				abcResult.getProperty("time") + ";" + abcResult.getProperty("performance") + "";
 		
-		String abcParameters = "PopulationSize: " + abcPopulationSize + "; NrOfIterations: " + abcNrIterations + "; LimitTrials: " + abcLimitTrials + "; ;";
+		String abcParameters = "PopulationSize: " + abcPopulationSize + "; NrOfIterations: " + abcNrIterations + "; LimitTrials: " + abcLimitTrials + 
+				"; MutationProb: " + abcMutationProb + ";";
 		try {
 			saveResults(writer, "abc;", abcParameters, abcResults);
 		} catch (IOException e) {
@@ -376,7 +429,7 @@ public class ConsolidationController {
 		
 		//ga consolidator
 		
-		String[] gaJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "ga"};		
+		String[] gaJobStart = {trace, "1000", "50@16@1", "5000", "ga"};		
 		try {
 			JobDispatchingDemo.main(gaJobStart);
 		} catch (Exception e) {
@@ -397,9 +450,12 @@ public class ConsolidationController {
 		} 
 		
 		String gaResults = "" + gaResult.getProperty("total power consumption") + ";" + gaResult.getProperty("migrations") + ";" +
-		gaResult.getProperty("active pms") + ";" + gaResult.getProperty("time") + ";" + gaResult.getProperty("performance") + "";
+				gaResult.getProperty("max active pms") + ";" + gaResult.getProperty("average active pms") + ";" + 
+				gaResult.getProperty("runs") + ";" + gaResult.getProperty("amount of vms") + ";" +
+				gaResult.getProperty("time") + ";" + gaResult.getProperty("performance") + "";
 		
-		String gaParameters = "PopulationSize: " + gaPopulationSize + "; NrOfIterations: " + gaNrIterations + "; NrOfCrossovers: " + gaNrCrossovers + "; ;";
+		String gaParameters = "PopulationSize: " + gaPopulationSize + "; NrOfIterations: " + gaNrIterations + "; NrOfCrossovers: " + gaNrCrossovers + 
+				"; MutationProb: " + gaMutationProb + ";";
 		try {
 			saveResults(writer, "ga;", gaParameters, gaResults);
 		} catch (IOException e) {
@@ -408,7 +464,7 @@ public class ConsolidationController {
 		
 		//pso consolidator
 		
-		String[] psoJobStart = {"C://Users//r-pon//Desktop//GWA-T-1-DAS2.gwf", "1000", "50@16@1", "5000", "pso"};		
+		String[] psoJobStart = {trace, "1000", "50@16@1", "5000", "pso"};		
 		try {
 			JobDispatchingDemo.main(psoJobStart);
 		} catch (Exception e) {
@@ -429,25 +485,19 @@ public class ConsolidationController {
 		} 
 		
 		String psoResults = "" + psoResult.getProperty("total power consumption") + ";" + psoResult.getProperty("migrations") + ";" +
-		psoResult.getProperty("active pms") + ";" + psoResult.getProperty("time") + ";" + psoResult.getProperty("performance") + "";
+				psoResult.getProperty("max active pms") + ";" + psoResult.getProperty("average active pms") + ";" + 
+				psoResult.getProperty("runs") + ";" + psoResult.getProperty("amount of vms") + ";" +
+				psoResult.getProperty("time") + ";" + psoResult.getProperty("performance") + "";
 		
 		String psoParameters = "SwarmSize: " + psoSwarmSize + "; NrOfIterations: " + psoNrIterations + "; C1: " + psoC1 + "; C2: " + psoC2 + ";";
 		try {
 			saveResults(writer, "pso;", psoParameters, psoResults);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		try {
 			writer.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
 			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
 	}
 	
 	/**
@@ -506,13 +556,15 @@ public class ConsolidationController {
 	 * 			This value defines the number of iterations.
 	 * @param limitTrials
 	 * 			This value defines the maximum number of trials for improvement before a solution is abandoned.
+	 * @param mutationProb 
 	 */
-	private void setAbcProperties(String populationSize, String iterations, String limitTrials) {
+	private void setAbcProperties(String populationSize, String iterations, String limitTrials, String mutationProb) {
 		File file = new File("consolidationProperties.xml");
 		
 		props.setProperty("abcPopulationSize", populationSize);
 		props.setProperty("abcNrIterations", iterations);
 		props.setProperty("abcLimitTrials", limitTrials);
+		props.setProperty("mutationProb", mutationProb);
 		
 		try {
 			this.saveProps(file);
@@ -530,12 +582,13 @@ public class ConsolidationController {
 	 * @param crossovers
 	 * 			This value defines the number of recombinations to perform in each generation.
 	 */
-	private void setGaProperties(String populationSize, String iterations, String crossovers) {
+	private void setGaProperties(String populationSize, String iterations, String crossovers, String mutationProb) {
 		File file = new File("consolidationProperties.xml");
 		
 		props.setProperty("gaPopulationSize", populationSize);
 		props.setProperty("gaNrIterations", iterations);
 		props.setProperty("gaNrCrossovers", crossovers);
+		props.setProperty("mutationProb", mutationProb);
 		
 		try {
 			this.saveProps(file);

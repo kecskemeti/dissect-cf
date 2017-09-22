@@ -1,8 +1,13 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
@@ -19,7 +24,9 @@ public class Solution {
 	/** For generating random numbers */
 	private Random random;
 	/** Each gene is replaced by a random value with this probability during mutation */ 
-	private static final double mutationProb=0.2;
+	private double mutationProb;
+	
+	Properties props;
 
 	/** 
 	 * Creates a solution with an empty mapping that will need to be filled
@@ -27,8 +34,36 @@ public class Solution {
 	 */
 	public Solution(List<ModelPM> bins) {
 		this.bins=bins;
+		setMutationProb();
 		mapping=new HashMap<>();
 		random=new Random();
+	}
+	
+	/**
+	 * Reads the properties file and sets the mutationProb.
+	 */
+	private void setMutationProb(){
+		
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = null;
+		try {
+			fileInput = new FileInputStream(file);
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		}
+		try {
+			props.loadFromXML(fileInput);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			fileInput.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
 	}
 
 	/**

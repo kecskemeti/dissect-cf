@@ -485,13 +485,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	@Test
 	public void ConsolidationControllerTestCaseOne() throws IOException {
-		ConsolidationController cc = new ConsolidationController();
-		cc.runTestcaseOne(true);		
+		ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
+		cc.runTestcaseOne(false);		
 	}
 	
 	@Test
 	public void ConsolidationControllerTestCaseTwo() throws IOException {
-		//ConsolidationController cc = new ConsolidationController();
+		//ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
 		//cc.runTestcaseTwo();		
 	}
 }

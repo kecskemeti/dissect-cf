@@ -43,7 +43,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	
 	// counter for migrations etc.
 	public static long migrationCounter = 0;
-	public static long activePmCounter = 0;
+	public static long averagePmCounter = 0;		// at the end this variable has to be divided through the callCounter
+	public static long callCounter = 0;
+	public static long maxPmCounter = 0;
+	public static long vmCounter = 0;
 	
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for the upper threshold,
@@ -91,13 +94,27 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		//printGraph(actions);
 		performActions(actions);
 		
-		activePmCounter = 0;
+		callCounter++;
+		
+		int pms = 0;
 		
 		for(PhysicalMachine pm : pmList) {
 			if(pm.isRunning()) {
-				activePmCounter ++;
+				pms ++;
+				averagePmCounter++;
+				vmCounter += pm.publicVms.size();
 			}
 		}
+		if(pms > maxPmCounter)
+			maxPmCounter = pms;
+	}
+	
+	public static void clearStatics() {
+		averagePmCounter = 0;
+		callCounter = 0;
+		maxPmCounter = 0;
+		migrationCounter = 0;
+		vmCounter = 0;
 	}
 	
 	private void loadProps() throws InvalidPropertiesFormatException, IOException {
