@@ -7,7 +7,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 /**
- * @author Julian Bellendorf, René Ponto
+ * @author Julian Bellendorf, Rene Ponto
  *
  * This class represents a PhysicalMachine. It contains the original PM, its VMs in an ArrayList,
  * the total resources as ConstantConstraints, the available resources as a ResourceVector and the possible
@@ -24,8 +24,8 @@ public class ModelPM {
 	private ResourceVector consumedResources;
 	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
 
-	private double lowerThreshold = 0.25;
-	private double upperThreshold = 0.75;
+	private double lowerThreshold;
+	private double upperThreshold;
 
 	private State state;
 
@@ -444,6 +444,11 @@ public class ModelPM {
 	}
 
 	public int getNumber() {
+		return number;
+	}
+
+	@Override
+	public int hashCode() {
 		return number;
 	}
 }

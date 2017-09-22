@@ -1,7 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.InvalidPropertiesFormatException;
 import java.util.List;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -11,7 +16,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
- * @author Julian Bellendorf, René Ponto, Zoltan Mann
+ * @author Julian Bellendorf, Rene Ponto, Zoltan Mann
  * 
  * This class gives the necessary variables and methods for VM consolidation.
  * The main idea is to make an abstract model out of the given PMs and its VMs with the original
@@ -34,28 +39,26 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected List<ModelPM> bins;
 	protected List<ModelVM> items;
 	
-	private double upperThreshold;
-	private double lowerThreshold;
-
+	Properties props;
+	
+	// counter for migrations etc.
+	public static long migrationCounter = 0;
+	public static long averagePmCounter = 0;		// at the end this variable has to be divided through the callCounter
+	public static long callCounter = 0;
+	public static long maxPmCounter = 0;
+	public static long vmCounter = 0;
+	
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for the upper threshold,
 	 * a value for the lower threshold and a variable which says how often the consolidation shall occur.
 	 * 
 	 * @param toConsolidate
 	 * 			The used IaaSService.
-	 * @param upperThreshold
-	 * 			The double value representing the upper Threshold.
-	 * @param lowerThreshold
-	 * 			The double value representing the lower Threshold.
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
-	public ModelBasedConsolidator(IaaSService toConsolidate, final double upperThreshold, final double lowerThreshold, long consFreq) {
+	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		
-		// save the thresholds
-		this.upperThreshold = upperThreshold;		
-		this.lowerThreshold = lowerThreshold;
 		
 		bins = new ArrayList<>();
 		items = new ArrayList<>();
@@ -72,9 +75,16 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		instantiate(pmList);
+		try {
+			loadProps();
+		} catch (InvalidPropertiesFormatException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		for(int i = 0; i < bins.size(); i++) {
-			bins.get(i).setLowerThreshold(lowerThreshold);
-			bins.get(i).setUpperThreshold(upperThreshold);
+			bins.get(i).setLowerThreshold(Double.parseDouble(props.getProperty("lowerThreshold")));
+			bins.get(i).setUpperThreshold(Double.parseDouble(props.getProperty("upperThreshold")));
 		}
 		optimize();
 		Logger.getGlobal().info("Optimized model: "+toString());
@@ -83,6 +93,36 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		createGraph(actions);
 		//printGraph(actions);
 		performActions(actions);
+		
+		callCounter++;
+		
+		int pms = 0;
+		
+		for(PhysicalMachine pm : pmList) {
+			if(pm.isRunning()) {
+				pms ++;
+				averagePmCounter++;
+				vmCounter += pm.publicVms.size();
+			}
+		}
+		if(pms > maxPmCounter)
+			maxPmCounter = pms;
+	}
+	
+	public static void clearStatics() {
+		averagePmCounter = 0;
+		callCounter = 0;
+		maxPmCounter = 0;
+		migrationCounter = 0;
+		vmCounter = 0;
+	}
+	
+	private void loadProps() throws InvalidPropertiesFormatException, IOException {
+		props = new Properties();
+		File file = new File("consolidationProperties.xml");
+		FileInputStream fileInput = new FileInputStream(file);
+		props.loadFromXML(fileInput);
+		fileInput.close();
 	}
 
 	/**
@@ -94,16 +134,19 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	private void instantiate(PhysicalMachine[] pmList) {
 		bins.clear();
+		items.clear();
+		int vmIndex=0;
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = pmList[i];
 			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(), 
 					pm.getCapacities().getRequiredProcessingPower(),pm.getCapacities().getRequiredMemory(), i + 1);
 			for(VirtualMachine vm : pm.publicVms) {
+				vmIndex++;
 				ModelVM item = new ModelVM(vm, bin, 
 						vm.getResourceAllocation().allocated.getRequiredCPUs(), 
 						vm.getResourceAllocation().allocated.getRequiredProcessingPower(), 
-						vm.getResourceAllocation().allocated.getRequiredMemory(), vm.getVa().id);
+						vm.getResourceAllocation().allocated.getRequiredMemory(), vmIndex);
 				bin.addVM(item);
 				items.add(item);
 			}
@@ -130,8 +173,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			if(bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
 				actions.add(new ShutDownAction(i++, bin));
 			for(ModelVM item : bin.getVMs()) {
-				if(item.gethostPM() != item.getInitialPm())
+				if(item.gethostPM() != item.getInitialPm()) {
 					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
+					migrationCounter ++;
+				}
 			}
 		}
 		return actions;
@@ -229,4 +274,5 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		shutDownEmptyPMs();
 		switchOnNonEmptyPMs();
 	}
+
 }

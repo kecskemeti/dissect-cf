@@ -1,6 +1,7 @@
 Anmerkungen:
 
-PSO weiter implementieren, bugs fixen
-C Code weiter implementieren
-eventuell weitere Testfälle einfügen, um die Ergänzungen zu testen
+ConsolidationController
+Simulationen durchf�hren
+vmmultialloctenant weiter implementieren
+eventuell weitere Testfaelle einfuegen, um die Ergaenzungen zu testen
 OnOffScheduler
