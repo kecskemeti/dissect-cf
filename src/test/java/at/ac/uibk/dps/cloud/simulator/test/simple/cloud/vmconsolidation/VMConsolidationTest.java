@@ -482,16 +482,4 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 		Assert.assertEquals(2, basic.runningMachines.size());
 	}
-	
-	@Test
-	public void ConsolidationControllerTestCaseOne() throws IOException {
-		ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
-		cc.runTestcaseOne(false);		
-	}
-	
-	@Test
-	public void ConsolidationControllerTestCaseTwo() throws IOException {
-		//ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
-		//cc.runTestcaseTwo();		
-	}
 }
