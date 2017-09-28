@@ -1,6 +1,5 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmconsolidation;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
@@ -13,7 +12,6 @@ import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.examples.jobhistoryprocessor.ConsolidationController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
@@ -481,17 +479,5 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(2, basic.runningMachines.size());
-	}
-	
-	@Test
-	public void ConsolidationControllerTestCaseOne() throws IOException {
-		ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
-		cc.runTestcaseOne(false);		
-	}
-	
-	@Test
-	public void ConsolidationControllerTestCaseTwo() throws IOException {
-		//ConsolidationController cc = new ConsolidationController("GWA-T-1-DAS2.gwf");
-		//cc.runTestcaseTwo();		
 	}
 }
