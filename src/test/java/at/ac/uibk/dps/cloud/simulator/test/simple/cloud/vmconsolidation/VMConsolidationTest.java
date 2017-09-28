@@ -8,6 +8,7 @@ import java.util.logging.SimpleFormatter;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
@@ -442,6 +443,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
+	@Ignore
 	@Test(timeout = 1000)
 	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
