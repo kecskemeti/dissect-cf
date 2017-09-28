@@ -1,10 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
@@ -13,24 +8,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 /**
  * VM consolidator using a genetic algorithm.
  * 
- * This is a fairly basic GA. Ideas for further improvement:
- * - Use a local search procedure to improve individuals
- * - Improve performance by caching fitness values (or their components)
- * - Make fitness more sophisticated, e.g. by incorporating the skewness of 
- * PMs' load
- * - Make fitness more sophisticated, e.g. by allowing a large decrease in the 
- * number of migrations to compensate for a small increase in the number of 
- * active PMs.
- * - Every time and again, introduce new random individuals into the population 
- * to increase diversity
- * - Use more sophisticated termination criteria
+ * This is a fairly basic GA. Ideas for further improvement: - Use a local
+ * search procedure to improve individuals - Improve performance by caching
+ * fitness values (or their components) - Make fitness more sophisticated, e.g.
+ * by incorporating the skewness of PMs' load - Make fitness more sophisticated,
+ * e.g. by allowing a large decrease in the number of migrations to compensate
+ * for a small increase in the number of active PMs. - Every time and again,
+ * introduce new random individuals into the population to increase diversity -
+ * Use more sophisticated termination criteria
  * 
  * @author Zoltan Mann
  */
-public class GaConsolidator extends ModelBasedConsolidator {
-	
-	/** The properties file for setting the constant values */
-	Properties props;
+public class GaConsolidator extends SolutionBasedConsolidator {
+
 	/** For generating random numbers */
 	private Random random;
 	/** Number of individuals in the population */
@@ -44,7 +34,6 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
 
-
 	/** Population for the GA, consisting of solutions=individuals */
 	private Vector<Solution> population;
 
@@ -53,8 +42,8 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 */
 	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		random=new Random();
-		population=new Vector<>();
+		random = new Random();
+		population = new Vector<>();
 	}
 
 	/**
@@ -62,32 +51,32 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 */
 	private void initializePopulation() {
 		population.clear();
-		for(int i=0;i<populationSize;i++) {
-			Solution s=new Solution(bins);
+		for (int i = 0; i < populationSize; i++) {
+			Solution s = new Solution(bins, mutationProb);
 			s.fillRandomly();
 			population.add(s);
 		}
 	}
 
 	/**
-	 * Take two random individuals of the population and let them recombinate
-	 * to create a new individual. If the new individual is better than one of
-	 * its parents, then it replaces that parent in the population, otherwise
-	 * it is discarded.
+	 * Take two random individuals of the population and let them recombinate to
+	 * create a new individual. If the new individual is better than one of its
+	 * parents, then it replaces that parent in the population, otherwise it is
+	 * discarded.
 	 */
 	private void crossover() {
-		int i1=random.nextInt(population.size());
-		int i2=random.nextInt(population.size());
-		Solution s1=population.get(i1);
-		Solution s2=population.get(i2);
-		Solution s3=s1.recombinate(s2);
-		Fitness f1=s1.evaluate();
-		Fitness f2=s2.evaluate();
-		Fitness f3=s3.evaluate();
-		if(f3.isBetterThan(f1))
-			population.set(i1,s3);
-		else if(f3.isBetterThan(f2))
-			population.set(i2,s3);
+		int i1 = random.nextInt(population.size());
+		int i2 = random.nextInt(population.size());
+		Solution s1 = population.get(i1);
+		Solution s2 = population.get(i2);
+		Solution s3 = s1.recombinate(s2);
+		Fitness f1 = s1.evaluate();
+		Fitness f2 = s2.evaluate();
+		Fitness f3 = s3.evaluate();
+		if (f3.isBetterThan(f1))
+			population.set(i1, s3);
+		else if (f3.isBetterThan(f2))
+			population.set(i2, s3);
 	}
 
 	/**
@@ -95,45 +84,29 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 * mapping corresponding to the best found solution.
 	 */
 	private void implementBestSolution() {
-		//Determine "best" solution (i.e. a solution, compared to which there is no better one)
-		bestSolution=population.get(0);
-		bestFitness=bestSolution.evaluate();
-		for(int i=1;i<populationSize;i++) {
-			Fitness fitness=population.get(i).evaluate();
-			if(fitness.isBetterThan(bestFitness)) {
-				bestSolution=population.get(i);
-				bestFitness=fitness;
+		// Determine "best" solution (i.e. a solution, compared to which there is no
+		// better one)
+		bestSolution = population.get(0);
+		bestFitness = bestSolution.evaluate();
+		for (int i = 1; i < populationSize; i++) {
+			Fitness fitness = population.get(i).evaluate();
+			if (fitness.isBetterThan(bestFitness)) {
+				bestSolution = population.get(i);
+				bestFitness = fitness;
 			}
 		}
-		//Implement solution in the model
+		// Implement solution in the model
 		bestSolution.implement();
 		adaptPmStates();
 	}
-	
+
 	/**
 	 * Reads the properties file and sets the constant values for consolidation.
 	 */
-	private void setValues() {
-		
-		props = new Properties();
-		File file = new File("consolidationProperties.xml");
-		FileInputStream fileInput = null;
-		try {
-			fileInput = new FileInputStream(file);
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			props.loadFromXML(fileInput);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			fileInput.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
+	@Override
+	protected void processProps() {
+		super.processProps();
+
 		this.populationSize = Integer.parseInt(props.getProperty("gaPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
 		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
@@ -144,24 +117,25 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 */
 	@Override
 	protected void optimize() {
-		setValues();
 		initializePopulation();
-		//Logger.getGlobal().info("Population after initialization: "+populationToString());
-		for(int iter=0;iter<nrIterations;iter++) {
-			//From each individual in the population, create an offspring using
-			//mutation. If the child is better than its parent, it replaces it
-			//in the population, otherwise it is discarded.
-			for(int i=0;i<populationSize;i++) {
-				Solution parent=population.get(i);
-				Solution child=parent.mutate();
-				if(child.evaluate().isBetterThan(parent.evaluate()))
-					population.set(i,child);
+		// Logger.getGlobal().info("Population after initialization:
+		// "+populationToString());
+		for (int iter = 0; iter < nrIterations; iter++) {
+			// From each individual in the population, create an offspring using
+			// mutation. If the child is better than its parent, it replaces it
+			// in the population, otherwise it is discarded.
+			for (int i = 0; i < populationSize; i++) {
+				Solution parent = population.get(i);
+				Solution child = parent.mutate();
+				if (child.evaluate().isBetterThan(parent.evaluate()))
+					population.set(i, child);
 			}
-			//Perform the given number of crossovers.
-			for(int i=0;i<nrCrossovers;i++) {
+			// Perform the given number of crossovers.
+			for (int i = 0; i < nrCrossovers; i++) {
 				crossover();
 			}
-			//Logger.getGlobal().info("Population after iteration "+iter+": "+populationToString());
+			// Logger.getGlobal().info("Population after iteration "+iter+":
+			// "+populationToString());
 		}
 		implementBestSolution();
 	}
@@ -170,21 +144,21 @@ public class GaConsolidator extends ModelBasedConsolidator {
 	 * String representation of the whole population (for debugging purposes).
 	 */
 	public String populationToString() {
-		String result="";
-		boolean first=true;
-		for(int i=0;i<populationSize;i++) {
-			if(!first)
-				result=result+" ";
-			result=result+population.get(i).toString();
-			first=false;
+		String result = "";
+		boolean first = true;
+		for (int i = 0; i < populationSize; i++) {
+			if (!first)
+				result = result + " ";
+			result = result + population.get(i).toString();
+			first = false;
 		}
 		return result;
 	}
-	
+
 	public Fitness getBestFitness() {
 		return bestFitness;
 	}
-	
+
 	public Solution getBestSolution() {
 		return bestSolution;
 	}

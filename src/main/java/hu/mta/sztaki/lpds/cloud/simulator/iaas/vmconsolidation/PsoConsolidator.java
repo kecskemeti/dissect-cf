@@ -1,10 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -21,8 +16,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 public class PsoConsolidator extends ModelBasedConsolidator {
 
-	Properties props;	// the properties file
-	
 	// constants for doing consolidation
 	private int swarmSize;		// defines the amount of particles
 	private int nrIterations;	// defines the amount of iterations
@@ -57,26 +50,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	/**
 	 * Reads the properties file and sets the constant values for consolidation.
 	 */
-	private void setValues(){
-		
-		props = new Properties();
-		File file = new File("consolidationProperties.xml");
-		FileInputStream fileInput = null;
-		try {
-			fileInput = new FileInputStream(file);
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			props.loadFromXML(fileInput);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			fileInput.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	@Override
+	protected void processProps() {
 		
 		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
@@ -152,7 +127,6 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	protected void optimize() {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
-		this.setValues();
 		initializeSwarm();
 		
 		for(int i = 0; i < swarmSize; i++) {

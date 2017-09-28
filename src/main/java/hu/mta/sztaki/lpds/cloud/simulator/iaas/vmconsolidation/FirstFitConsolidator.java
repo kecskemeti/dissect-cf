@@ -41,6 +41,11 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	public FirstFitConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
 	}
+	
+	@Override
+	protected void processProps() {
+		
+	}
 
 	/**
 	 * The method for doing the consolidation, which means start PMs, stop PMs, migrate VMs, ...
