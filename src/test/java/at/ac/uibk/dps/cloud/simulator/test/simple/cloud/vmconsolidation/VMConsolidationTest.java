@@ -443,7 +443,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
-	@Ignore
 	@Test(timeout = 1000)
 	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
