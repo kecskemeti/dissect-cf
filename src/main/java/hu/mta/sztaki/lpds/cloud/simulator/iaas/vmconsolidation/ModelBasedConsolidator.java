@@ -13,6 +13,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
@@ -43,9 +44,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	// Should be protected, but the Solution class also uses this...
 	public Properties props;
-
-	// counter for migrations etc.
-	public static long migrationCounter = 0;
 
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for
@@ -97,7 +95,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	public static void clearStatics() {
-		migrationCounter = 0;
+		SimpleConsolidator.migrationCount = 0;
 	}
 
 	private void loadProps() throws InvalidPropertiesFormatException, IOException {
@@ -169,7 +167,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			for (ModelVM item : bin.getVMs()) {
 				if (item.gethostPM() != item.getInitialPm()) {
 					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
-					migrationCounter++;
+					SimpleConsolidator.migrationCount++;
 				}
 			}
 		}
