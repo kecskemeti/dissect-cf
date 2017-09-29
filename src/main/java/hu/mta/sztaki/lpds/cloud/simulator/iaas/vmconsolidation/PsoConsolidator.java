@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.examples.jobhistoryprocessor.ConsolidationController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
@@ -33,6 +35,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
 	private int c1;				// learning factor one
 	private int c2;				// learning factor two
+	
+	private double w = 0.6;
 
 	public int count = 1;	// counter for the graph actions
 
@@ -58,6 +62,14 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		super(toConsolidate, consFreq);		
 	}
 	
+	public Fitness getGlobalBest() {
+		return globalBest;
+	}
+	
+	public ArithmeticVector getGlobalBestLocation() {
+		return globalBestLocation;
+	}
+	
 	/**
 	 * Reads the properties file and sets the constant values for consolidation.
 	 */
@@ -70,8 +82,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			fileInput = new FileInputStream(file);
 			props.loadFromXML(fileInput);
 			fileInput.close();
-		} catch (Exception e1) {
-			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
 		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
@@ -196,14 +208,22 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					
 					// step 3 - update velocity
 					
-					double w = 1 - (((double) t) / nrIterations) * (1 - 0);
+					/**
+					 * Comment on the function to update the velocity:
+					 * 
+					 * At first the actual Velocity of the Particle has to be multiplied with the user-supplied coefficient w,
+					 * which is called the inertiaComponent. After this the cognitiveComponent has to be added to the 
+					 * inertiaComponent, which inherits the multiplication of the coefficients c1 and r1, multiplied with the 
+					 * result of the personalBestLocation of the Particle minus the actual location of it. Afterwards the 
+					 * socialComponent also has to be added to the parts before. It inherits the multiplication of the
+					 * coefficients c2 and r2, multiplied with the result of the subtraction of the globalBestLocation with the
+					 * actual location of the Particle.
+					 */
 					
-					ArithmeticVector first = p.getVelocity().multiply(w);
-					ArithmeticVector second = p.getPBestLocation().subtract(p.getLocation().multiply(r1 * c1));
-					ArithmeticVector third = globalBestLocation.subtract(p.getLocation().multiply(r2 * c2));		
-					
-					ArithmeticVector newVel = first.addUp(second).addUp(third);				
-					p.setVelocity(newVel);
+					ArithmeticVector inertiaComponent = p.getVelocity().multiply(w);
+					ArithmeticVector cognitiveComponent = (p.getPBestLocation().subtract(p.getLocation()).multiply(c1 * r1));
+					ArithmeticVector socialComponent = (getGlobalBestLocation().subtract(p.getLocation()).multiply(c2 * r2));
+					ArithmeticVector newVel = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 					
 					Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
 					
@@ -257,14 +277,6 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			}
 		}		
 		return pos;
-	}
-	
-	public Fitness getGlobalBest() {
-		return globalBest;
-	}
-	
-	public ArithmeticVector getGlobalBestLocation() {
-		return globalBestLocation;
 	}
 	
 	/**
@@ -343,7 +355,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		 * Compute the number of migrations needed, given our mapping. This
 		 * can be used as a component of the fitness.
 		 */
-		int getNrMigrations() {
+		private int getNrMigrations() {
 			//Logger.getGlobal().info(this.toString());
 			int result = 0;
 			//See for each VM whether it must be migrated.
