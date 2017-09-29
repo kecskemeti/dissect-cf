@@ -2,14 +2,18 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 /**
  * @author Rene Ponto
@@ -64,18 +68,10 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		FileInputStream fileInput = null;
 		try {
 			fileInput = new FileInputStream(file);
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		try {
 			props.loadFromXML(fileInput);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
 			fileInput.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (Exception e1) {
+			e1.printStackTrace();
 		}
 		
 		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
@@ -100,8 +96,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		swarm.clear();
 		Particle p;
 		for(int i = 0; i < swarmSize; i++) {
-			p = new Particle(items, bins);
-			
+			p = new Particle(items, bins, i);			
 			
 			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
 			ArithmeticVector loc = new ArithmeticVector();
@@ -152,38 +147,28 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	protected void optimize() {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
-		this.setValues();
+		setValues();
 		initializeSwarm();
 		
-		for(int i = 0; i < swarmSize; i++) {
-			Particle p = swarm.get(i);
-			
-			//Logger.getGlobal().info("Before setting best values, Particle " + i + " " + p.toString());			
-			
-			// fitnessFunction has to be evaluated before setting best values
-			p.evaluateFitnessFunction();
-			
-			p.setPBest(p.getFitnessValue());
-			p.setPBestLocation(p.getLocation());		
-			
-			//Logger.getGlobal().info("After setting best values, but before starting iterations, Particle " + i + ", PBest: " + p.getPBest() 
-			//+ ", PBestLocation: " + p.getPBestLocation());			
-		}
 		int t = 0;		// counter for the iterations
 		
 		while(t < this.nrIterations) {
 			// step 1 - update pBest
-			for(int i = 0; i < swarmSize; i++) {				
-				Particle p = swarm.get(i);				
-				//Logger.getGlobal().info("Iteration " + t + ", Particle " + i + ", " + p.toString());	
+			for(Particle p : swarm) {
+				
+				//Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
 				
 				p.evaluateFitnessFunction();	
+				
+				p.setPBest(p.getFitnessValue());
+				p.setPBestLocation(p.getLocation());
 				
 				//the aim is to minimize the function
 				if(p.getFitnessValue().isBetterThan(p.getPBest())) {
 					p.setPBest(p.getFitnessValue());
 					p.setPBestLocation(p.getLocation());
 				}
+				//Logger.getGlobal().info("Iteration " + t + ", Particle " + p.getNumber() + ", " + p.toString());
 			}
 			
 			// step 2 - update gBest
@@ -220,15 +205,15 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					ArithmeticVector newVel = first.addUp(second).addUp(third);				
 					p.setVelocity(newVel);
 					
-					//Logger.getGlobal().info("Particle: " + i + ", new Velocity: " + newVel);
+					Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
 					
 					// step 4 - update location
 
 					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());				
 					p.setLocation(newLoc);
 					
-					//Logger.getGlobal().info("Particle: " + i + ", new Location: " + newLoc);					
-					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + i + System.getProperty("line.separator") + p.toString());
+					//Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Location: " + newLoc);					
+					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
 				}
 				
 			}
@@ -280,5 +265,173 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	
 	public ArithmeticVector getGlobalBestLocation() {
 		return globalBestLocation;
+	}
+	
+	/**
+	 * @author Rene Ponto
+	 *
+	 * The idea for particles is to have a list of double values where all hostPMs in Order of their hosted VMs are.
+	 * Therefore the id of the specific PM is used. On given list mathematical operations can be done, like additions
+	 * and substractions. For that list an ArithmeticVector is used.
+	 */
+
+	public class Particle {
+	
+		private int number;
+	
+		private Fitness fitnessValue;			// used to evaluate the quality of the solution
+		private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
+		private ArithmeticVector location;		// the actual location : possible solution
+	
+		List<ModelVM> items;	// contains all VMs of the abstract model
+		List<ModelPM> bins;		// contains all PMs of the abstract model
+	
+		private Fitness personalBest;	// the personal best Fitness so far
+		private ArithmeticVector personalBestLocation;	// the personal best location so far
+		
+		/**
+		 * Creates a new Particle and sets the bins and items lists with the values out of the model.
+	 	* @param items
+	 	* @param bins
+	 	*/
+		public Particle(List<ModelVM> items, List<ModelPM> bins, int number) {
+			this.items = items;
+			this.bins = bins;
+			this.number = number;
+		}
+	
+		/**
+		 * Computes the total of PM which are overallocated, aggregated over all PMs and all
+		 * resource types. This can be used as a component of the fitness.
+		 */
+		double getTotalOverAllocation() {
+			//Logger.getGlobal().info(this.toString());
+		
+			double result = 0;
+			//Now we determine the allocation of every PM
+			Map<Integer,ResourceVector> allocations = new HashMap<>();
+			for(ModelPM pm : bins) {
+				allocations.put(pm.getNumber(), new ResourceVector(0,0,0));
+			}
+			for(int i = 0; i < items.size(); i++) {
+				ModelPM pm = bins.get(location.get(i).intValue());
+				allocations.get(pm.getNumber()).add(items.get(i).getResources());
+			}
+			//For each PM, see if it is overallocated; if yes, increase the result accordingly.
+			for(ModelPM pm : bins) {
+				ResourceVector allocation = allocations.get(pm.getNumber());
+				ConstantConstraints cap = pm.getTotalResources();
+				if(allocation.getTotalProcessingPower() > cap.getTotalProcessingPower()*pm.getUpperThreshold())
+					result += allocation.getTotalProcessingPower() / (cap.getTotalProcessingPower()*pm.getUpperThreshold());
+				if(allocation.getRequiredMemory() > cap.getRequiredMemory()*pm.getUpperThreshold())
+					result += allocation.getRequiredMemory() / (cap.getRequiredMemory()*pm.getUpperThreshold());
+			}
+			return result;
+		}
+
+		/**
+		 * Compute the number of PMs that should be on, given our mapping. This
+		 * is a component of the fitness.
+		 */
+		private int getNrActivePms() {	
+			//clears the list so there is no pm more than once there
+			Set<Double> setItems = new LinkedHashSet<Double>(location);
+			return setItems.size();
+		}
+	
+		/**
+		 * Compute the number of migrations needed, given our mapping. This
+		 * can be used as a component of the fitness.
+		 */
+		int getNrMigrations() {
+			//Logger.getGlobal().info(this.toString());
+			int result = 0;
+			//See for each VM whether it must be migrated.
+			for(int i = 0; i < items.size(); i++) {
+				ModelPM oldPm = items.get(i).gethostPM();
+				ModelPM newPm = bins.get(location.get(i).intValue());		
+				if(newPm != oldPm)
+					result++;
+			}
+			return result;
+		}
+	
+		/**
+		 * Used to get the actual fitnessValue of this particle
+		 * @param location The actual result of this particle.
+		 * @return new fitnessValue
+		 */
+		public void evaluateFitnessFunction() {
+			roundValues();
+			Fitness result = new Fitness();
+		
+			result.totalOverAllocated = getTotalOverAllocation();			
+			result.nrActivePms = getNrActivePms();
+			result.nrMigrations = getNrMigrations();
+		
+			fitnessValue = result;
+		}
+	
+		public int getNumber() {
+			return number;
+		}
+	
+		public Fitness getPBest() {
+			return this.personalBest;
+		}
+	
+		public void setPBest(Fitness fitness) {
+			this.personalBest = fitness;
+		}
+	
+		public ArithmeticVector getPBestLocation() {
+			return this.personalBestLocation;
+		}
+	
+		public void setPBestLocation(ArithmeticVector loc) {		
+			this.personalBestLocation = loc;
+		}
+	
+		public ArithmeticVector getVelocity() {
+			return velocity;
+		}
+
+		public void setVelocity(ArithmeticVector velocity) {
+			this.velocity = velocity;
+		}
+
+		public ArithmeticVector getLocation() {
+			return location;
+		}
+
+		public void setLocation(ArithmeticVector location) {
+			this.location = location;
+		}
+
+		public Fitness getFitnessValue() {
+			//fitnessValue = evaluateFitnessFunction();
+			return fitnessValue;
+		}
+	
+		private void roundValues() {
+			for(int i = 0; i < location.size(); i++) {
+			
+				double value = location.get(i).intValue();
+				location.set(i, value);
+			}
+		}
+	
+		/**
+		 * The toString-method, used for debugging.
+		 */
+		public String toString() {
+			String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") 
+				+ "Velocity: " + this.getVelocity() + System.getProperty("line.separator") 
+				+ "FitnessValue: " + this.getFitnessValue() + ", PersonalBestFitness: " 
+				+ this.getPBest() + System.getProperty("line.separator")
+				+ "PersonalBestLocation: " + this.getPBestLocation() + System.getProperty("line.separator");
+		
+			return erg;
+		}
 	}
 }
