@@ -1,19 +1,14 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
-import hu.mta.sztaki.lpds.cloud.simulator.examples.jobhistoryprocessor.ConsolidationController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
@@ -27,8 +22,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
 public class PsoConsolidator extends ModelBasedConsolidator {
 
-	Properties props;	// the properties file
-	
 	// constants for doing consolidation
 	private int swarmSize;		// defines the amount of particles
 	private int nrIterations;	// defines the amount of iterations
@@ -73,19 +66,9 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	/**
 	 * Reads the properties file and sets the constant values for consolidation.
 	 */
-	private void setValues(){
-		
-		props = new Properties();
-		File file = new File("consolidationProperties.xml");
-		FileInputStream fileInput = null;
-		try {
-			fileInput = new FileInputStream(file);
-			props.loadFromXML(fileInput);
-			fileInput.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
+	@Override
+	protected void processProps() {
+	
 		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
 		this.c1 = Integer.parseInt(props.getProperty("psoC1"));
@@ -159,7 +142,6 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	protected void optimize() {
 		// get the dimension by getting the amount of VMs on the actual PMs
 		this.dimension = items.size();
-		setValues();
 		initializeSwarm();
 		
 		int t = 0;		// counter for the iterations

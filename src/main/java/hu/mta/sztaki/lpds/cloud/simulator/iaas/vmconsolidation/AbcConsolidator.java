@@ -1,10 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
@@ -15,17 +10,14 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * 
  * @author Zoltan Mann
  */
-public class AbcConsolidator extends ModelBasedConsolidator {
-	
-	/** For setting the constant values */
-	Properties props;
-	
+public class AbcConsolidator extends SolutionBasedConsolidator {
+
 	/** For generating random numbers */
 	private Random random;
 
 	/** Number of individuals in the population */
 	private int populationSize;
-	
+
 	/** Terminate the algorithm after this many generations */
 	private int nrIterations;
 
@@ -52,21 +44,21 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 	 */
 	public AbcConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		random=new Random();
-		population=new Vector<>();
-		numTrials=new Vector<>();
-		probabilities=new Vector<>();
+		random = new Random();
+		population = new Vector<>();
+		numTrials = new Vector<>();
+		probabilities = new Vector<>();
 	}
 
 	/**
-	 * If s is better than the best solution found so far, then bestSolution
-	 * and bestFitness are updated.
+	 * If s is better than the best solution found so far, then bestSolution and
+	 * bestFitness are updated.
 	 */
 	private void checkIfBest(Solution s) {
-		Fitness f=s.evaluate();
-		if(f.isBetterThan(bestFitness)) {
-			bestSolution=s;
-			bestFitness=f;
+		Fitness f = s.evaluate();
+		if (f.isBetterThan(bestFitness)) {
+			bestSolution = s;
+			bestFitness = f;
 		}
 	}
 
@@ -75,14 +67,14 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 	 */
 	private void initializePopulation() {
 		population.clear();
-		for(int i=0;i<populationSize;i++) {
-			Solution s=new Solution(bins);
+		for (int i = 0; i < populationSize; i++) {
+			Solution s = new Solution(bins, mutationProb);
 			s.fillRandomly();
 			population.add(s);
 			numTrials.add(0);
-			if(i==0) {
-				bestSolution=s;
-				bestFitness=s.evaluate();
+			if (i == 0) {
+				bestSolution = s;
+				bestFitness = s.evaluate();
 			} else {
 				checkIfBest(s);
 			}
@@ -90,73 +82,54 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 	}
 
 	/**
-	 * Determine the probabilities for the onlooker bees. For each member
-	 * of the population, the better its fitness, the higher the
-	 * probability should be.
-	 * Since our fitness values are not numeric, we employ the following
-	 * method. We compare each member of the population with 10 randomly
-	 * chosen other members and count the number of times this member
-	 * was better. This count divided by 10 will be used as probability.
+	 * Determine the probabilities for the onlooker bees. For each member of the
+	 * population, the better its fitness, the higher the probability should be.
+	 * Since our fitness values are not numeric, we employ the following method. We
+	 * compare each member of the population with 10 randomly chosen other members
+	 * and count the number of times this member was better. This count divided by
+	 * 10 will be used as probability.
 	 */
 	private void determineProbabilities() {
-		for(int i=0;i<populationSize;i++) {
-			Solution s=population.get(i);
-			Fitness f=s.evaluate();
-			int numWins=0;
-			for(int j=0;j<10;j++) {
-				Solution s2=population.get(random.nextInt(populationSize));
-				if(f.isBetterThan(s2.evaluate()))
+		for (int i = 0; i < populationSize; i++) {
+			Solution s = population.get(i);
+			Fitness f = s.evaluate();
+			int numWins = 0;
+			for (int j = 0; j < 10; j++) {
+				Solution s2 = population.get(random.nextInt(populationSize));
+				if (f.isBetterThan(s2.evaluate()))
 					numWins++;
 			}
-			double prob=(2.0+numWins)/12;
-			if(i<probabilities.size())
-				probabilities.set(i,prob);
+			double prob = (2.0 + numWins) / 12;
+			if (i < probabilities.size())
+				probabilities.set(i, prob);
 			else
 				probabilities.add(prob);
 		}
 	}
 
 	/**
-	 * Mutate the jth member of the population and check whether the
-	 * new solution is better than the old one. If it is better, it 
-	 * replaces the old one in the population, otherwise not.
+	 * Mutate the jth member of the population and check whether the new solution is
+	 * better than the old one. If it is better, it replaces the old one in the
+	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(int j) {
-		Solution s1=population.get(j);
-		Solution s2=s1.mutate();
-		if(s2.evaluate().isBetterThan(s1.evaluate())) {
-			population.set(j,s2);
-			numTrials.set(j,0);
+		Solution s1 = population.get(j);
+		Solution s2 = s1.mutate();
+		if (s2.evaluate().isBetterThan(s1.evaluate())) {
+			population.set(j, s2);
+			numTrials.set(j, 0);
 			checkIfBest(s2);
 		} else {
-			numTrials.set(j,numTrials.get(j)+1);
+			numTrials.set(j, numTrials.get(j) + 1);
 		}
 	}
-	
+
 	/**
 	 * Reads the properties file and sets the constant values for consolidation.
 	 */
-	private void setValues(){
-		
-		props = new Properties();
-		File file = new File("consolidationProperties.xml");
-		FileInputStream fileInput = null;
-		try {
-			fileInput = new FileInputStream(file);
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			props.loadFromXML(fileInput);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			fileInput.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
+	@Override
+	protected void processProps() {
+		super.processProps();
 		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
@@ -167,54 +140,53 @@ public class AbcConsolidator extends ModelBasedConsolidator {
 	 */
 	@Override
 	protected void optimize() {
-		setValues();
 		initializePopulation();
-		for(int iter=0;iter<nrIterations;iter++) {
-			//employed bees phase
-			for(int j=0;j<populationSize;j++) {
+		for (int iter = 0; iter < nrIterations; iter++) {
+			// employed bees phase
+			for (int j = 0; j < populationSize; j++) {
 				mutateAndCheck(j);
 			}
-			//onlooker bees phase
+			// onlooker bees phase
 			determineProbabilities();
-			int j=0;
-			int t=0;
-			while(t<populationSize) {
-				double r=random.nextDouble();
-				//Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
-				if(r<probabilities.get(j)) {
+			int j = 0;
+			int t = 0;
+			while (t < populationSize) {
+				double r = random.nextDouble();
+				// Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
+				if (r < probabilities.get(j)) {
 					t++;
 					mutateAndCheck(j);
 				}
 				j++;
-				if(j>populationSize-1)
-					j=0;
+				if (j > populationSize - 1)
+					j = 0;
 			}
-			//scout bee phase
-			int maxTrials=-1;
-			int maxTrialsIndex=0;
-			for(j=0;j<populationSize;j++) {
-				if(numTrials.get(j)>maxTrials) {
-					maxTrialsIndex=j;
-					maxTrials=numTrials.get(j);
+			// scout bee phase
+			int maxTrials = -1;
+			int maxTrialsIndex = 0;
+			for (j = 0; j < populationSize; j++) {
+				if (numTrials.get(j) > maxTrials) {
+					maxTrialsIndex = j;
+					maxTrials = numTrials.get(j);
 				}
 			}
-			if(maxTrials>=limitTrials) {
-				Solution s=new Solution(bins);
+			if (maxTrials >= limitTrials) {
+				Solution s = new Solution(bins, mutationProb);
 				s.fillRandomly();
-				population.set(maxTrialsIndex,s);
-				numTrials.set(maxTrialsIndex,0);
+				population.set(maxTrialsIndex, s);
+				numTrials.set(maxTrialsIndex, 0);
 				checkIfBest(s);
 			}
 		}
-		//Implement best solution in the model
+		// Implement best solution in the model
 		bestSolution.implement();
 		adaptPmStates();
 	}
-	
+
 	public Fitness getBestFitness() {
 		return bestFitness;
 	}
-	
+
 	public Solution getBestSolution() {
 		return bestSolution;
 	}

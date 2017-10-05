@@ -93,7 +93,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * 
 	 * It is specified in ticks.
 	 */
-	public static final int migrationAllocLen = 1000000;
+	public static final int migrationAllocLen = 1000000000;
 	/**
 	 * Amount of processing to be done if the PM need to be underutilized. This
 	 * constant is used for calculating the emulation of on and off operations if
