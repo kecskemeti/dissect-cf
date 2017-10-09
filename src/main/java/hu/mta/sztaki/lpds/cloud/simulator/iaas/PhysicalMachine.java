@@ -720,6 +720,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	private boolean directConsumerUsageMoratory = true;
 
+	private boolean secureExtensions = false;
+
 	/**
 	 * Defines a new physical machine, ensures that there are no VMs running so far
 	 * 
@@ -1518,5 +1520,25 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	public boolean isDirectConsumerUsageMoratory() {
 		return directConsumerUsageMoratory;
+	}
+
+	/**
+	 * Rudimentary api to query security related behaviour of the PM
+	 * 
+	 * @return if the PM supports secure VMs (e.g., via Intel SGX) then this returns
+	 *         true
+	 */
+	public boolean isSecure() {
+		return secureExtensions;
+	}
+
+	/**
+	 * Allows PM's secure behavior to be set. This is only recommended to be used
+	 * during PM setup.
+	 * 
+	 * @param secureExtensions
+	 */
+	public void setSecure(boolean secureExtensions) {
+		this.secureExtensions = secureExtensions;
 	}
 }
