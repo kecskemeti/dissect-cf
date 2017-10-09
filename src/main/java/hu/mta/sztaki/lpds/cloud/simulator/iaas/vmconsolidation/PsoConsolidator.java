@@ -39,7 +39,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	private Fitness globalBest;
 	private ArithmeticVector globalBestLocation;
 
-	Random generator = new Random();
+	Random generator;
 
 
 	/**
@@ -73,6 +73,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
 		this.c1 = Integer.parseInt(props.getProperty("psoC1"));
 		this.c2 = Integer.parseInt(props.getProperty("psoC2"));
+		this.generator = new Random(Long.parseLong(props.getProperty("seed")));
 	}
 	
 	/**

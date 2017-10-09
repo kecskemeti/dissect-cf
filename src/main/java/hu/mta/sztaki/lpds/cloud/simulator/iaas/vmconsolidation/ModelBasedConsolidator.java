@@ -42,8 +42,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected List<ModelVM> items;
 	protected double lowerThreshold, upperThreshold;
 
-	// Should be protected, but the Solution class also uses this...
-	public Properties props;
+	protected Properties props;
 
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for

@@ -8,7 +8,6 @@ import java.util.logging.SimpleFormatter;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
@@ -25,7 +24,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolida
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PsoConsolidator;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.NonQueueingScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
@@ -112,7 +111,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			System.exit(-1);
 		}
 
-		basic = new IaaSService(NonQueueingScheduler.class, OnOffScheduler.class);
+		basic = new IaaSService(FirstFitScheduler.class, OnOffScheduler.class);
 
 		//create central repository
 		long bandwidth=1000000;

@@ -42,7 +42,6 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 */
 	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		random = new Random();
 		population = new Vector<>();
 	}
 
@@ -110,6 +109,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		this.populationSize = Integer.parseInt(props.getProperty("gaPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
 		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
+		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 	}
 
 	/**

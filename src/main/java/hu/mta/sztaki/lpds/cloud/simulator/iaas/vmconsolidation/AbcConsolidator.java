@@ -44,7 +44,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	public AbcConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		random = new Random();
 		population = new Vector<>();
 		numTrials = new Vector<>();
 		probabilities = new Vector<>();
@@ -133,6 +132,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
+		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 	}
 
 	/**

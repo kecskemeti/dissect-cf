@@ -1,5 +1,8 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +37,18 @@ public class Solution {
 		this.bins = bins;
 		mutationProb = mp;
 		mapping = new HashMap<>();
-		random = new Random();
+		
+		props = new Properties();		
+		try {
+			File file = new File("consolidationProperties.xml");
+			FileInputStream fileInput = new FileInputStream(file);
+			props.loadFromXML(fileInput);
+			fileInput.close();
+			random = new Random(Long.parseLong(props.getProperty("seed")));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 	}
 
 	/**
