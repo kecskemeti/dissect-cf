@@ -43,6 +43,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected double lowerThreshold, upperThreshold;
 
 	protected Properties props;
+	
+	public static boolean doingConsolidation = false;
 
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for
@@ -79,6 +81,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 *            All PMs which are currently registered in the IaaS service.
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
+		doingConsolidation = true;
 		instantiate(pmList);
 		for (int i = 0; i < bins.size(); i++) {
 			bins.get(i).setLowerThreshold(lowerThreshold);
@@ -91,6 +94,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		createGraph(actions);
 		// printGraph(actions);
 		performActions(actions);
+		doingConsolidation = false;
 	}
 
 	public static void clearStatics() {

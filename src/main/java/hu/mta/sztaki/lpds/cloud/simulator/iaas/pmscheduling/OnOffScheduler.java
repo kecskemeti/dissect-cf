@@ -8,11 +8,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.CapacityChangeEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 public class OnOffScheduler extends PhysicalMachineController {
-
+	
 	public OnOffScheduler(IaaSService parent) {
 		super(parent);	
 	}
@@ -20,9 +21,9 @@ public class OnOffScheduler extends PhysicalMachineController {
 	/**
 	 * Defines to do the following when a new host is (de)registered to the
 	 * parent IaaSService:
-	 * 
-	 * For registration the host will turn on.
-	 * For deregistration the host will switch off.
+	 * TODO
+	 * For registration the pm will be started.
+	 * For deregistration the host will get switched off.
 	 */
 	@Override
 	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
@@ -39,15 +40,12 @@ public class OnOffScheduler extends PhysicalMachineController {
 							pm.turnon();
 						}
 					}
-				} else {
 					for (int i = 0; i < size; i++) {
 						PhysicalMachine pm = alteredPMs.get(i);
 						if (PhysicalMachine.ToOnorRunning.contains(pm.getState())) {
 							try {
 								pm.switchoff(null);
-							} catch (VMManagementException e) {
-								e.printStackTrace();
-							} catch (NetworkException e) {
+							} catch (VMManagementException | NetworkException e) {
 								e.printStackTrace();
 							}
 						}
@@ -58,34 +56,39 @@ public class OnOffScheduler extends PhysicalMachineController {
 	}
 	
 	/**
+	 * TODO
 	 * Method for starting a PM.
 	 * @param toStart
 	 * 			The PhysicalMachine which needs to start.
 	 */
-	public void startThis(PhysicalMachine toStart) {
-		toStart.turnon();
+	public void startOnePhysicalMachine() {
+		final int pmsize = parent.machines.size();
+		if (parent.runningMachines.size() != pmsize) {
+			for (int i = 0; i < pmsize; i++) {
+				final PhysicalMachine n = parent.machines.get(i);
+				if (PhysicalMachine.ToOfforOff.contains(n.getState())) {
+					n.turnon();
+					break;
+				}
+			}
+		}
 	}
 	
 	/**
-	 * Method for stopping a PM.
-	 * @param toStart
-	 * 			The PhysicalMachine which needs to stop.
-	 */
-	public void stopThis(PhysicalMachine toStop) throws VMManagementException, NetworkException {
-		toStop.switchoff(null);
-	}
-
-	/**
-	 * Describes an event handler that does nothing upon the start of VM
-	 * queueing. This PM controller has not anything to do anyway, becouse
-	 * it is normaly used with a consolidator, which manages everything else.
+	 * Describes an event handler that waits until a consolidation run is done. After that
+	 * it does the migrations etc. which are given by the consolidator and works itself through
+	 * the queue to handle the QueueingEvents.
 	 */
 	@Override
 	protected QueueingEvent getQueueingEvent() {
 		return new QueueingEvent() {
 			@Override
 			public void queueingStarted() {
-				// do nothing, we already have all the machines running
+				
+				//TODO after the scheduler receives the starting events from the consolidator, it shall start those PMs first.
+				
+				if(ModelBasedConsolidator.doingConsolidation == false)
+					startOnePhysicalMachine();
 			}
 		};
 	}
