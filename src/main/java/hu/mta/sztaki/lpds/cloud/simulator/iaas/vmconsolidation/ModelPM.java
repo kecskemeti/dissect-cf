@@ -74,16 +74,20 @@ public class ModelPM {
 	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
 	 */	
 	public String toString() {
-		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", VMs=";
+		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", state="+state+", VMs=";
 		boolean first=true;
 		for(ModelVM vm : vmList) {
 			if(!first)
 				result=result+" ";
-			result=result+vm.getResources().toString();
+			result=result+vm.toShortString()+vm.getResources().toString();
 			first=false;
 		}
 		//result=result+" (running="+pm.isRunning()+")";
 		return result;
+	}
+
+	public String toShortString() {
+		return "PM " + number;
 	}
 
 	/**

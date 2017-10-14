@@ -2,9 +2,11 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
 //import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
@@ -15,14 +17,19 @@ public class ShutDownAction extends Action {
 	//Reference to the model of the PM, which needs to shut down
 	ModelPM pmToShutDown;
 
+	/** PM scheduler */
+	IControllablePmScheduler pmScheduler;
+
 	/**
 	 * Constructor for an action to shut a PM down.
 	 * @param id The ID of this action.
 	 * @param pmToShutDown The reference to the PM inside the simulator to get shut down.
+	 * @param pmScheduler Reference to the PM scheduler of the IaaS service
 	 */
-	public ShutDownAction(int id, ModelPM pmToShutDown) {
+	public ShutDownAction(int id, ModelPM pmToShutDown, IControllablePmScheduler pmScheduler) {
 		super(id);
 		this.pmToShutDown = pmToShutDown;
+		this.pmScheduler = pmScheduler;
 		//Logger.getGlobal().info("ShutDownAction created");
 	}
 
@@ -53,7 +60,7 @@ public class ShutDownAction extends Action {
 
 	@Override
 	public String toString() {
-		return "Action: "+getType()+"  :"+getPmToShutDown().toString();
+		return "Action: "+getType()+"  :"+getPmToShutDown().toShortString();
 	}
 
 	/**
@@ -61,8 +68,9 @@ public class ShutDownAction extends Action {
 	 */
 	@Override
 	public void execute() {
-		//Logger.getGlobal().info("ShutDownAction starts to execute");
+		Logger.getGlobal().info("Executing: "+toString());
 		PhysicalMachine pm = this.getPmToShutDown().getPM();
+		pmScheduler.switchOff(pm);
 		try {
 			pm.switchoff(null);
 		} catch (VMManagementException e) {

@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
 //import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
@@ -94,7 +95,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 
 	@Override
 	public String toString() {
-		return "Action: "+getType()+" Source:  "+getSource().toString()+" Target: "+getTarget().toString()+" VM: "+getVm().toString();
+		return "Action: "+getType()+" Source:  "+getSource().toShortString()+" Target: "+getTarget().toShortString()+" VM: "+getVm().toShortString();
 	}
 
 	/**
@@ -102,7 +103,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 */
 	@Override
 	public void execute() {
-		//Logger.getGlobal().info("Migration action starts to execute");
+		Logger.getGlobal().info("Executing: "+toString());
 		vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
 		try {
 			source.getPM().migrateVM(vm.getVM(), target.getPM());

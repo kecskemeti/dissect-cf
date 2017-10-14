@@ -55,6 +55,10 @@ public class ModelVM {
 				+ getResources().getRequiredProcessingPower() + ", " + "Memory: " + getResources().getRequiredMemory();
 	}	
 	
+	public String toShortString() {
+		return "VM " + id;
+	}
+
 	/** Getter
 	 * @return the ResourceVector
 	 */

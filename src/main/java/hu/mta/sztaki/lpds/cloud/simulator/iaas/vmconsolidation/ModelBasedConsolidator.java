@@ -14,6 +14,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
@@ -90,6 +91,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		optimize();
 		Logger.getGlobal().info("Optimized model: " + toString());
 		List<Action> actions = modelDiff();
+		Logger.getGlobal().info(actionsToString(actions));
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
 		// printGraph(actions);
@@ -160,13 +162,17 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @return The list with all the actions.
 	 */
 	private List<Action> modelDiff() {
+		if(! (toConsolidate.pmcontroller instanceof IControllablePmScheduler)) {
+			System.err.println("The used PM scheduler must implement the IControllablePmScheduler interface, otherwise it cannot be used with this consolidator!");
+		}
+		IControllablePmScheduler pmScheduler=(IControllablePmScheduler) toConsolidate.pmcontroller;
 		List<Action> actions = new ArrayList<>();
 		int i = 0;
 		for (ModelPM bin : bins) {
 			if (bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
-				actions.add(new StartAction(i++, bin));
+				actions.add(new StartAction(i++, bin, pmScheduler));
 			if (bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
-				actions.add(new ShutDownAction(i++, bin));
+				actions.add(new ShutDownAction(i++, bin, pmScheduler));
 			for (ModelVM item : bin.getVMs()) {
 				if (item.gethostPM() != item.getInitialPm()) {
 					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
@@ -234,9 +240,26 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		String result = "";
 		boolean first = true;
 		for (ModelPM bin : bins) {
+			if(!bin.isHostingVMs())
+				continue;
 			if (!first)
 				result = result + "\n";
 			result = result + bin.toString();
+			first = false;
+		}
+		return result;
+	}
+
+	/**
+	 * The toString()-method for the list of actions, used for debugging.
+	 */
+	public String actionsToString(List<Action> actions) {
+		String result = "";
+		boolean first = true;
+		for (Action a : actions) {
+			if (!first)
+				result = result + "\n";
+			result = result + a.toString();
 			first = false;
 		}
 		return result;

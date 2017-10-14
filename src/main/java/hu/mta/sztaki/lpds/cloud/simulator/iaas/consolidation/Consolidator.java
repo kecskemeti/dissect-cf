@@ -44,7 +44,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  */
 public abstract class Consolidator extends Timed {
 	private final long consFreq;
-	private final IaaSService toConsolidate;
+	protected final IaaSService toConsolidate;
 	public static int consolidationRuns = 0;
 
 	/**
