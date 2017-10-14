@@ -706,7 +706,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				case RUNNING:
 					break;
 				default:
-					throw new StateChangeException("Invalid starting state for a VM migration");
+					throw new StateChangeException("Invalid starting state for a VM migration: "+currState);
 				}
 				migrationRa = newRa;
 				to = migrationRa.getHost().localDisk;

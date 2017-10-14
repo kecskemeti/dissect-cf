@@ -931,9 +931,13 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				}.tick(Timed.getFireCount());
 				break;
 			case OFF:
-			case SWITCHINGOFF:
 				// Nothing to do
 				System.err.println("WARNING: an already off PM was tasked to switch off!");
+				break;
+			case SWITCHINGOFF:
+				// Nothing to do
+				System.err.println("WARNING: an already switching-off PM was tasked to switch off!");
+				break;
 			}
 		} catch (NetworkException nex) {
 			// Should not happen as long as the network node don't have a SWITCHINGOFF state
