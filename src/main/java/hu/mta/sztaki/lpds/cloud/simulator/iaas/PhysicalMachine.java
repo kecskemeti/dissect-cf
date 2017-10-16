@@ -1005,18 +1005,27 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	@Override
 	public void migrateVM(final VirtualMachine vm, final PhysicalMachine target)
 			throws VMManagementException, NetworkNode.NetworkException {
+		vm.migrate(prepareMigration(vm, target));
+	}
+
+	private ResourceAllocation prepareMigration(final VirtualMachine vm, final PhysicalMachine target)
+			throws VMManagementException, NetworkNode.NetworkException {
 		if (vms.contains(vm)) {
-			vm.migrate(target.allocateResources(vm.getResourceAllocation().allocated, true, migrationAllocLen));
+			ResourceAllocation ra = target.allocateResources(vm.getResourceAllocation().allocated, true,
+					migrationAllocLen);
+			if (ra == null) {
+				throw new VMManagementException("Not enough resources on target host for migration");
+			}
+			return ra;
+		} else {
+			throw new VMManagementException("VM not hosted on source PM");
 		}
 
 	}
 
 	public void migrateVMLive(final VirtualMachine vm, final PhysicalMachine target)
 			throws VMManagementException, NetworkNode.NetworkException {
-		if (vms.contains(vm)) {
-			vm.migrateLive(target.allocateResources(vm.getResourceAllocation().allocated, true, migrationAllocLen));
-		}
-
+		vm.migrateLive(prepareMigration(vm, target));
 	}
 
 	/**
