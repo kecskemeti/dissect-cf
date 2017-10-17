@@ -3,6 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.util.List;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 
@@ -58,7 +59,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 */
 	@Override
 	public void execute() {
-		Logger.getGlobal().info("Executing: "+toString());
+		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString());
 		PhysicalMachine pm = this.getPmToStart().getPM();
 		pm.subscribeStateChangeEvents(this);		//observe the PM before turning it on
 		pmScheduler.switchOn(pm);

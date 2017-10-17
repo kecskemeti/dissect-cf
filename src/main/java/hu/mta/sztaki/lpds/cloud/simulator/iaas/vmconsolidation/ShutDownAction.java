@@ -4,6 +4,7 @@ import java.util.List;
 //import java.util.logging.Logger;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
@@ -68,16 +69,9 @@ public class ShutDownAction extends Action {
 	 */
 	@Override
 	public void execute() {
-		Logger.getGlobal().info("Executing: "+toString());
+		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString());
 		PhysicalMachine pm = this.getPmToShutDown().getPM();
 		pmScheduler.switchOff(pm);
-		try {
-			pm.switchoff(null);
-		} catch (VMManagementException e) {
-			e.printStackTrace();
-		} catch (NetworkException e) {
-			e.printStackTrace();
-		}
 	}
 
 }
