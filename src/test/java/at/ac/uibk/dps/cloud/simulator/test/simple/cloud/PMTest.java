@@ -701,4 +701,19 @@ public class PMTest extends IaaSRelatedFoundation {
 		ra.cancel();
 		Assert.assertEquals("Should have no free capacity change", 0, pm.getCapacities().compareTo(pm.freeCapacities));
 	}
+
+	@Test(timeout=100, expected=VMManager.VMManagementException.class)
+	public void explainMigrationFailure() throws VMManagementException, NetworkException {
+		PhysicalMachine firstPM=dummyPMcreator();
+		PhysicalMachine otherPM=dummyPMcreator();
+		firstPM.turnon();
+		otherPM.turnon();
+		Timed.simulateUntilLastEvent();
+		VirtualAppliance va=new VirtualAppliance("occupy", 1, 0,false, firstPM.localDisk.getMaxStorageCapacity()/10);
+		firstPM.localDisk.registerObject(va);
+		firstPM.requestVM(va, firstPM.getCapacities(), firstPM.localDisk, 1);
+		VirtualMachine vm=otherPM.requestVM(va, otherPM.getCapacities(), firstPM.localDisk, 1)[0];
+		Timed.simulateUntilLastEvent();
+		otherPM.migrateVM(vm, firstPM);
+	}
 }
