@@ -16,31 +16,46 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
  * @author Rene Ponto
  *
  * This class manages VM consolidation with a particle swarm optimization algorithm. For that, particles
- * are used to find the best solution (minimized fitness function) for consolidation. At the moment only
- * the amount of currently active PMs is used for the fitness.
+ * are used to find the best solution (minimized fitness function) for consolidation. At the moment the 
+ * amount of currently active PMs, the number of migrations and the amount of overAllocated PMs are used 
+ * for the fitness.
  */
 
 public class PsoConsolidator extends ModelBasedConsolidator {
 
-	// constants for doing consolidation
-	private int swarmSize;		// defines the amount of particles
-	private int nrIterations;	// defines the amount of iterations
-	private int dimension;					// the problem dimension, gets defined according to the amounts of VMs	
-	private int c1;				// learning factor one
-	private int c2;				// learning factor two
+	/** defines the amount of particles */
+	private int swarmSize;		
 	
-	private double w = 0.6;
+	/** defines the amount of iterations */
+	private int nrIterations;	
+	
+	/** the problem dimension, gets defined according to the amounts of VMs */
+	private int dimension;	
+	
+	/** learning factor one */
+	private int c1;		
+	
+	/** learning factor two */
+	private int c2;				
+	
+	/** used to get a new velocity for each particle */
+	private final double w = 0.6;
+	
+	/** For generating random numbers */
+	private Random generator;
 
-	public int count = 1;	// counter for the graph actions
+	/** counter for the graph actions */
+	public int count = 1;	
+	
+	/** counter for creating particles */
+	private int particleCounter = 1; 
 
-	// create and initialize all necessary components
+	/** the swarm with all created particles */
 	private Vector<Particle> swarm = new Vector<Particle>();
 
+	// the best values so far
 	private Fitness globalBest;
 	private ArithmeticVector globalBestLocation;
-
-	Random generator;
-
 
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model and work on the 
@@ -53,14 +68,6 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	 */
 	public PsoConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);		
-	}
-	
-	public Fitness getGlobalBest() {
-		return globalBest;
-	}
-	
-	public ArithmeticVector getGlobalBestLocation() {
-		return globalBestLocation;
 	}
 	
 	/**
@@ -83,57 +90,79 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		String erg = "Amount of VMs: " + dimension + ", GlobalBest: " + this.globalBest + ", GlobalBestLocation: " + this.globalBestLocation;		
 		return erg;
 	}
+	
+	/**
+	 * Creates a new Particle and adds it to the swarm. It is intended that its 
+	 * location and velocity do not change and represents the situation before
+	 * starting consolidating.
+	 */
+	private void createUnchangedParticle() {
+		Particle p = new Particle(items, bins, particleCounter);		
+		ArithmeticVector loc = new ArithmeticVector();
+		// do not change the actual location of VMs on PMs
+		for(ModelVM vm : items) {
+			loc.add((double)vm.gethostPM().getNumber() - 1);
+		}
+		ArithmeticVector vel = new ArithmeticVector();
+		// this location shall not change, so we set 0 as velocity
+		for(int i = 0; i < dimension; i++) {
+			vel.add(0.0);
+		}
+		p.setLocation(loc);
+		p.setVelocity(vel);
+		p.setPBestLocation(loc);		
+		swarm.add(p);
+		
+		// Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
+	}
+	
+	/**
+	 * Creates a new Particle with a random location and velocity and adds it to the 
+	 * swarm. 
+	 */
+	private void createParticleRandomly() {
+		Particle p = new Particle(items, bins, particleCounter);		
+		ArithmeticVector loc = new ArithmeticVector();
+		for(int j = 0; j < this.dimension; j++) {			
+			// create a new double to add random PMs to the list of the actual particle
+			double a = generator.nextInt(bins.size());			
+			loc.add(a); 	// add the random PM
+		}				
+		ArithmeticVector vel = new ArithmeticVector();
+		for(int j = 0; j < this.dimension; j++) {			
+			double a;			
+			// here we make a random chance of getting a lower id or a higher id
+			if(generator.nextBoolean()) {
+				a = + 1;
+			}				
+			else {
+				a = - 1;
+			}
+			vel.add(a); 	// add the random velocity
+		}		
+		p.setLocation(loc);
+		p.setVelocity(vel);
+		p.setPBestLocation(loc);		
+		swarm.add(p);
+		
+		// Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
+	}
 
 	/**
-	 * Method to create a swarm and the defined amount of particles. Each Particle gets a random
-	 * location and velocity.
+	 * Method to create a swarm and the defined amount of particles. Each Particle gets a 
+	 * random location and velocity except one, which represents the situation before 
+	 * starting consolidating.
 	 */
 	private void initializeSwarm() {
 		swarm.clear();
-		Particle p;
-		for(int i = 0; i < swarmSize; i++) {
-			p = new Particle(items, bins, i);			
-			
-			// randomize location (deployment of the VMs to PMs) inside a space defined in Problem Set
-			ArithmeticVector loc = new ArithmeticVector();
-			for(int j = 0; j < this.dimension; j++) {
-				
-				// create a new double to add random PMs to the list of the actual particle
-				double a = generator.nextInt(bins.size());
-				
-				loc.add(a); 	// add the random PM
-			}
-			
-			// randomize velocity in the range defined in Problem Set
-			ArithmeticVector vel = new ArithmeticVector();
-			for(int j = 0; j < this.dimension; j++) {
-				
-				// create a new double to add random PMs to the list of the actual particle
-				double a;
-				
-				// here we make a random chance of getting a PM with a lower id or a higher id
-				if(generator.nextBoolean())
-					a = + 1;
-				else
-					a = - 1;
-				
-				vel.add(a); 	// add the random PM
-			}
-			
-			p.setLocation(loc);
-			p.setVelocity(vel);
-			
-			//give every particle a negative pBestLocation to start
-			ArithmeticVector bestLoc = new ArithmeticVector();
-			for(int j = 0; j < this.dimension; j++) {
-				bestLoc.add(-1.0);
-			}
-			p.setPBestLocation(bestLoc);
-			
-			swarm.add(p);
-			
-			// Logger.getGlobal().info("Added Particle: " + i + ", " + p.toString());
-		}		
+		
+		// create n - 1 random particles and one unchanged particle
+		for(int i = 0; i < swarmSize - 1; i++) {
+			createParticleRandomly();
+			particleCounter++;	// increase counter
+		}
+		createUnchangedParticle();
+		particleCounter++;
 	}
 	
 	/**
@@ -151,7 +180,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			// step 1 - update pBest
 			for(Particle p : swarm) {
 				
-				//Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
+				Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
 				
 				p.evaluateFitnessFunction();	
 				
@@ -205,7 +234,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					
 					ArithmeticVector inertiaComponent = p.getVelocity().multiply(w);
 					ArithmeticVector cognitiveComponent = (p.getPBestLocation().subtract(p.getLocation()).multiply(c1 * r1));
-					ArithmeticVector socialComponent = (getGlobalBestLocation().subtract(p.getLocation()).multiply(c2 * r2));
+					ArithmeticVector socialComponent = (globalBestLocation.subtract(p.getLocation()).multiply(c2 * r2));
 					ArithmeticVector newVel = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 					
 					Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
@@ -265,9 +294,9 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 	/**
 	 * @author Rene Ponto
 	 *
-	 * The idea for particles is to have a list of double values where all hostPMs in Order of their hosted VMs are.
-	 * Therefore the id of the specific PM is used. On given list mathematical operations can be done, like additions
-	 * and substractions. For that list an ArithmeticVector is used.
+	 * The idea for particles is to have a list of double values where all hostPMs in order of their hosted VMs are.
+	 * Therefore the id of the specific PM is used. On the given list mathematical operations can be done, like addition
+	 * and substraction. For that list an ArithmeticVector is used.
 	 */
 
 	public class Particle {
@@ -352,7 +381,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 		}
 	
 		/**
-		 * Used to get the actual fitnessValue of this particle
+		 * Used to get the actual fitnessValue of this particle.
+		 * 
 		 * @param location The actual result of this particle.
 		 * @return new fitnessValue
 		 */
