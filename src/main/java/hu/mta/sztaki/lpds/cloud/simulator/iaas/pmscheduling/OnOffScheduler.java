@@ -12,7 +12,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsoli
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
-public class OnOffScheduler extends PhysicalMachineController {
+public class OnOffScheduler extends PhysicalMachineController implements IControllablePmScheduler {
 	
 	public OnOffScheduler(IaaSService parent) {
 		super(parent);	
@@ -91,5 +91,17 @@ public class OnOffScheduler extends PhysicalMachineController {
 					startOnePhysicalMachine();
 			}
 		};
+	}
+
+	@Override
+	public void switchOn(PhysicalMachine pm) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void switchOff(PhysicalMachine pm) {
+		// TODO Auto-generated method stub
+		
 	}
 }

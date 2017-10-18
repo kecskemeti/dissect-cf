@@ -18,7 +18,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.ConsolidationFriendlyPmScheduler;
+//import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
@@ -111,7 +112,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			System.exit(-1);
 		}
 
-		basic = new IaaSService(FirstFitScheduler.class, OnOffScheduler.class);
+		basic = new IaaSService(FirstFitScheduler.class, ConsolidationFriendlyPmScheduler.class);
+//		basic = new IaaSService(FirstFitScheduler.class, OnOffScheduler.class);
 
 		//create central repository
 		long bandwidth=1000000;
@@ -354,12 +356,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM2, mediumConstraints, testPM1, false);
 		Timed.simulateUntilLastEvent();
 
-		//Now, PM1 contains twoVM, making it overAllocated. If we turn on the consolidator, 
+		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
 		new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
+		Assert.assertEquals(1, testPM1.listVMs().size());
 		Assert.assertEquals(2, basic.runningMachines.size());
 	}
 	
