@@ -4,10 +4,9 @@ import java.util.List;
 //import java.util.logging.Logger;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
  * This class stores actions, which need to shut down a PM in the simulator.
@@ -68,16 +67,12 @@ public class ShutDownAction extends Action {
 	 */
 	@Override
 	public void execute() {
-		Logger.getGlobal().info("Executing: "+toString());
+		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString());
 		PhysicalMachine pm = this.getPmToShutDown().getPM();
-		pmScheduler.switchOff(pm);
-		try {
-			pm.switchoff(null);
-		} catch (VMManagementException e) {
-			e.printStackTrace();
-		} catch (NetworkException e) {
-			e.printStackTrace();
-		}
+		if(pm.isHostingVMs())
+			Logger.getGlobal().info("PM not empty -> nothing to do");
+		else
+			pmScheduler.switchOff(pm);
 	}
 
 }

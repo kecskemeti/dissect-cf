@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
@@ -147,7 +148,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			}
 			bins.add(bin);
 		}
-		Logger.getGlobal().info("Instantiated model: " + toString());
+		Logger.getGlobal().info("Instantiated model at "+Timed.getFireCount()+": " + toString());
 	}
 
 	/**

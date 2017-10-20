@@ -63,6 +63,18 @@ public class Solution {
 		}
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
+	
+	/**
+	 * Creates the same mapping as existing before consolidation has started.
+	 */
+	void createUnchangedSolution() {
+		for(ModelPM pm : bins) {
+			for(ModelVM vm : pm.getVMs()) {
+				mapping.put(vm, pm);
+			}
+		}
+		// System.err.println("createUnchangedSolution() -> mapping: "+mappingToString());
+	}
 
 	/**
 	 * Computes the total of PM which are overallocated, aggregated over all PMs and

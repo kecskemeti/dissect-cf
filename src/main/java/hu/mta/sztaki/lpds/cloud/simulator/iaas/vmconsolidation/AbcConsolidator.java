@@ -62,11 +62,13 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	}
 
 	/**
-	 * Initializes the population with populationSize random solutions.
+	 * Initializes the population with populationSize-1 random solutions. After
+	 * that the same mapping as existing before consolidation has started is
+	 * put inside a solution.
 	 */
 	private void initializePopulation() {
 		population.clear();
-		for (int i = 0; i < populationSize; i++) {
+		for (int i = 0; i < populationSize-1; i++) {
 			Solution s = new Solution(bins, mutationProb);
 			s.fillRandomly();
 			population.add(s);
@@ -78,6 +80,12 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				checkIfBest(s);
 			}
 		}
+		
+		Solution s = new Solution(bins, mutationProb);
+		s.createUnchangedSolution();
+		population.add(s);
+		numTrials.add(0);
+		checkIfBest(s);
 	}
 
 	/**

@@ -4,6 +4,7 @@ import java.util.List;
 //import java.util.logging.Logger;
 import java.util.logging.Logger;
 
+import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
@@ -103,14 +104,26 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 */
 	@Override
 	public void execute() {
-		Logger.getGlobal().info("Executing: "+toString());
-		vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
-		try {
-			source.getPM().migrateVM(vm.getVM(), target.getPM());
-		} catch (VMManagementException e) {
-			e.printStackTrace();
-		} catch (NetworkException e) { 
-			e.printStackTrace();
+		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString()+", hash="+Integer.toHexString(System.identityHashCode(this)));
+		if(! source.getPM().publicVms.contains(vm.getVM())) {
+			Logger.getGlobal().info("VM is not on the source PM anymore -> there is nothing to do");
+			finished();
+		} else if(vm.getVM().getMemSize()>target.getPM().freeCapacities.getRequiredMemory()
+		|| vm.getVM().getPerTickProcessingPower()>target.getPM().freeCapacities.getTotalProcessingPower()) {
+			Logger.getGlobal().info("Target PM does not have sufficient capacity anymore -> there is nothing to do");
+			finished();
+		} else if(vm.getVM().getState()!=VirtualMachine.State.RUNNING && vm.getVM().getState()!=VirtualMachine.State.SUSPENDED) {
+			Logger.getGlobal().info("State of the VM inappropriate for migration ("+vm.getVM().getState()+") -> there is nothing to do");
+			finished();
+		} else {
+			vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
+			try {
+				source.getPM().migrateVM(vm.getVM(), target.getPM());
+			} catch (VMManagementException e) {
+				e.printStackTrace();
+			} catch (NetworkException e) { 
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -123,6 +136,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 		if(newState.equals(VirtualMachine.State.RUNNING)){
 			vm.unsubscribeStateChange(this);
 			//Logger.getGlobal().info("Migration action finished");
+			//Logger.getGlobal().info("Finished at "+Timed.getFireCount()+": "+toString()+", hash="+Integer.toHexString(System.identityHashCode(this)));
 			finished();
 		}
 	}
