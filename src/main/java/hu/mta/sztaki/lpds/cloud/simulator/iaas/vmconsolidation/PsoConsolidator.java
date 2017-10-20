@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
@@ -180,7 +179,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			// step 1 - update pBest
 			for(Particle p : swarm) {
 				
-				Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
+				//Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
 				
 				p.evaluateFitnessFunction();	
 				
@@ -197,7 +196,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 			
 			// step 2 - update gBest
 			int bestParticleIndex = getMinPos();	// get the position of the minimum fitness value			
-			Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
+			//Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
 			// set the new global best fitness / location
 			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue().isBetterThan(globalBest)) {
@@ -237,7 +236,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					ArithmeticVector socialComponent = (globalBestLocation.subtract(p.getLocation()).multiply(c2 * r2));
 					ArithmeticVector newVel = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 					
-					Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
+					//Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
 					
 					// step 4 - update location
 
@@ -250,7 +249,7 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 				
 			}
 			
-			Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
+			//Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
 			// increase counter for the iterations
 			t++;
