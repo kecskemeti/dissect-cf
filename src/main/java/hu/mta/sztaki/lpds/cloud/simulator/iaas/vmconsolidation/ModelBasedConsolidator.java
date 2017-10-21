@@ -85,10 +85,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		doingConsolidation = true;
 		instantiate(pmList);
-		for (int i = 0; i < bins.size(); i++) {
-			bins.get(i).setLowerThreshold(lowerThreshold);
-			bins.get(i).setUpperThreshold(upperThreshold);
-		}
 		optimize();
 		Logger.getGlobal().info("Optimized model: " + toString());
 		List<Action> actions = modelDiff();
@@ -137,7 +133,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = pmList[i];
 			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(),
-					pm.getCapacities().getRequiredProcessingPower(), pm.getCapacities().getRequiredMemory(), i + 1);
+					pm.getCapacities().getRequiredProcessingPower(), pm.getCapacities().getRequiredMemory(), i + 1, upperThreshold, lowerThreshold);
 			for (VirtualMachine vm : pm.publicVms) {
 				vmIndex++;
 				ModelVM item = new ModelVM(vm, bin, vm.getResourceAllocation().allocated.getRequiredCPUs(),
@@ -148,6 +144,13 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			}
 			bins.add(bin);
 		}
+		
+		// set the thresholds		
+//		for (int i = 0; i < bins.size(); i++) {
+//			bins.get(i).setLowerThreshold(lowerThreshold);
+//			bins.get(i).setUpperThreshold(upperThreshold);
+//		}
+		
 		Logger.getGlobal().info("Instantiated model at "+Timed.getFireCount()+": " + toString());
 	}
 

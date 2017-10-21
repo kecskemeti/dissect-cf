@@ -35,6 +35,10 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * @return true if the pm is overAllocated.
 	 */
 	public boolean isOverAllocated(ResourceConstraints total, double upperThreshold) {	
+		
+//		System.err.println(consumedThresholdToString(this, upperThreshold));
+//		System.err.println(totalThresholdToString(total, upperThreshold));
+		
 		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * upperThreshold || this.getRequiredMemory() > total.getRequiredMemory() * upperThreshold) {
 			return true;
 		}
@@ -79,6 +83,28 @@ public class ResourceVector extends AlterableResourceConstraints {
 	 * The toString()-method.
 	 */
 	public String toString() {
-		return "["+getRequiredCPUs()+","+getRequiredProcessingPower()+","+getRequiredMemory()+"]";
+		return "["+ getRequiredCPUs() + "," + getRequiredProcessingPower() + ","+ getRequiredMemory() + "]";
+	}
+	
+	/**
+	 * Used for debugging.
+	 * @param cons
+	 * @param upperThreshold
+	 * @return
+	 */
+	public String consumedThresholdToString(ResourceConstraints cons, double upperThreshold) {
+		return "consumed: TotalProcessingPower: "+ cons.getTotalProcessingPower() +", upperThreshold: " + upperThreshold + 
+				", combined: " + cons.getTotalProcessingPower() * upperThreshold + ".";
+	}
+	
+	/**
+	 * Used for debugging.
+	 * @param cons
+	 * @param upperThreshold
+	 * @return
+	 */
+	public String totalThresholdToString(ResourceConstraints total, double upperThreshold) {
+		return "total: TotalProcessingPower: "+ total.getTotalProcessingPower() +", upperThreshold: " + upperThreshold + 
+				", combined: " + total.getTotalProcessingPower() * upperThreshold + ".";
 	}
 }

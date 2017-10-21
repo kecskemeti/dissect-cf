@@ -22,10 +22,9 @@ public class ModelPM {
 
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
+	private ResourceVector reserved;		// the reserved resources
 
-	private double lowerThreshold;
-	private double upperThreshold;
+	private double lowerThreshold, upperThreshold;
 
 	private State state;
 
@@ -47,11 +46,17 @@ public class ModelPM {
 	 * 			The memory of this PM.
 	 * @param number
 	 * 			The number of the PM in its IaaS, used for debugging.
+	 * @param upperThreshold
+	 * 			The upperThreshold out of the properties.
+	 * @param lowerThreshold
+	 * 			The lowerThreshold out of the properties.
 	 */
-	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number) {
+	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number, double upperThreshold, double lowerThreshold) {
 		this.pm = pm;
 		vmList = new ArrayList<>();
 		this.number = number;
+		this.upperThreshold = upperThreshold;
+		this.lowerThreshold = lowerThreshold;
 
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			changeState(State.EMPTY_OFF);
@@ -67,6 +72,7 @@ public class ModelPM {
 
 		totalResources = new ConstantConstraints(cores, pCP, mem);
 		consumedResources = new ResourceVector(0, pCP, 0);
+		reserved = new ResourceVector(0,0,0);
 		//Logger.getGlobal().info("Created PM: "+toString());
 	}
 
@@ -436,7 +442,9 @@ public class ModelPM {
 	}
 
 	public void setLowerThreshold(double lowerThreshold) {
+//		System.err.println("lowerThreshold: " + lowerThreshold);
 		this.lowerThreshold = lowerThreshold;
+//		System.err.println("After setting the threshold: " + this.lowerThreshold);		
 	}
 
 	public double getUpperThreshold() {
@@ -444,7 +452,9 @@ public class ModelPM {
 	}
 
 	public void setUpperThreshold(double upperThreshold) {
+//		System.err.println("upperThreshold: " + upperThreshold);
 		this.upperThreshold = upperThreshold;
+//		System.err.println("After setting the threshold: " + this.upperThreshold);	
 	}
 
 	public int getNumber() {
