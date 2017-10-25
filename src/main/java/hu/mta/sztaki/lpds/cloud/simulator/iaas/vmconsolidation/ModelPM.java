@@ -165,15 +165,12 @@ public class ModelPM {
 	 * State because the check of the allocation can only occur if the PM is running, otherwise it 
 	 * would be empty.
 	 * 
-	 * Additionally we have two other States for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
-	 * STILL_OVERALLOCATED / UNCHANGEABLE_OVERALLOCATED and STILL_UNDERALLOCATED and 
-	 * UNCHANGEABLE_UNDERALLOCATED.
+	 * Additionally we have one other State for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
+	 * UNCHANGEABLE_OVERALLOCATED and UNCHANGEABLE_UNDERALLOCATED.
 	 * This is important becouse of the possibility to determine how often it has been tried
-	 * to migrate this PM or VMs of this PM without success. So the State STILL_x shows that
-	 * it was not possible to migrate VMs of this PM once and the UNCHANGEABLE_x stands for
-	 * two failures in a row, which symbolizes that it will not be possible to get a succesful
-	 * migration in the future. In that case the UNCHANGEABLE_x PM will be skipped inside the
-	 * algorithm for now. 
+	 * to migrate this PM or VMs of this PM without success. So the State UNCHANGEABLE_x symbolizes 
+	 * that it will not be possible to get a succesful migration in the future. In that case the 
+	 * UNCHANGEABLE_x PM will be skipped inside the algorithm for now. 
 	 */	
 	public static enum State {
 		
@@ -203,26 +200,12 @@ public class ModelPM {
 		OVERALLOCATED_RUNNING,
 		
 		/**
-		 * at the moment nothing can be done to handle the overallocation,
-		 * but there will be another try for it
-		 */
-		STILL_OVERALLOCATED,
-		
-		/**
-		 * at the moment nothing can be done to handle the underallocation,
-		 * but there will be another try for it
-		 */
-		STILL_UNDERALLOCATED,
-		
-		/**
-		 * after a second time STILL_OVERALLOCATED. This means, the allocation
-		 * cannot be changed in any way and no migrations are possible anymore.
+		 * allocation cannot be changed in any way and no migrations are possible anymore.
 		 */
 		UNCHANGEABLE_OVERALLOCATED,
 		
 		/**
-		 * after a second time STILL_UNDERALLOCATED. This means, the allocation
-		 * cannot be changed in any way and no migrations are possible anymore.
+		 * allocation cannot be changed in any way and no migrations are possible anymore.
 		 */
 		UNCHANGEABLE_UNDERALLOCATED
 	};
@@ -261,11 +244,11 @@ public class ModelPM {
 		if(isHostingVMs() == false) {
 			changeState(State.EMPTY_RUNNING);
 		}
-		if((isUnderAllocated() && getState().equals(State.STILL_UNDERALLOCATED)) || (isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) ) {
+		if(isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) {
 			
 		}
 		else {
-			if((isOverAllocated() && getState().equals(State.STILL_OVERALLOCATED)) || (isOverAllocated() && getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) ) {
+			if(isOverAllocated() && getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) {
 				
 			}
 			else {

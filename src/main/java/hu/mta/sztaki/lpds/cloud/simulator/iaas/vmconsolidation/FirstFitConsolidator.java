@@ -78,12 +78,12 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	}
 
 	/**
-	 * Identifies PMs of the bins-ArrayList with the State OVERALLOCATED_RUNNING and STILL_OVERALLOCATED.
+	 * Identifies PMs of the bins-ArrayList with the State OVERALLOCATED_RUNNING.
 	 * @return true, if there is an overAllocated PM.
 	 */
 	private boolean isOverAllocated() {
 		for(ModelPM pm : getBins()) {
-			if(pm.getState().equals(State.OVERALLOCATED_RUNNING) || pm.getState().equals(State.STILL_OVERALLOCATED) ) {
+			if(pm.getState().equals(State.OVERALLOCATED_RUNNING)) {
 				return true;
 			}
 		}
@@ -91,12 +91,12 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	}
 
 	/**
-	 * Identifies PMs of the bins-ArrayList with the State UNDERALLOCATED_RUNNING and STILL_UNDERALLOCATED.
+	 * Identifies PMs of the bins-ArrayList with the State UNDERALLOCATED_RUNNING.
 	 * @return true, if there is an underAllocated PM.
 	 */
 	private boolean isUnderAllocated() {
 		for(ModelPM pm : getBins()) {
-			if(pm.getState().equals(State.UNDERALLOCATED_RUNNING) || pm.getState().equals(State.STILL_UNDERALLOCATED) ) {
+			if(pm.getState().equals(State.UNDERALLOCATED_RUNNING)) {
 				return true;
 			}
 		}
@@ -118,10 +118,9 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		//now we have to search for a fitting pm
 		for(ModelPM actualPM : getBins()) {		
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			if(actualPM == toMig.gethostPM() 
-					|| actualPM.getState().equals(State.EMPTY_RUNNING) 
-					|| actualPM.getState().equals(State.EMPTY_OFF) || actualPM.getState().equals(State.OVERALLOCATED_RUNNING) 
-					|| actualPM.getState().equals(State.STILL_OVERALLOCATED) || actualPM.getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) {
+			State state = actualPM.getState();
+			if(actualPM == toMig.gethostPM() || state.equals(State.EMPTY_RUNNING) || state.equals(State.EMPTY_OFF) 
+					|| state.equals(State.OVERALLOCATED_RUNNING) || state.equals(State.UNCHANGEABLE_OVERALLOCATED)) {
 				// do nothing, this PM shall not host this VM
 			}
 			else {				
@@ -135,17 +134,21 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		for(int j = 0; j < bins.size(); j++) {
 			ModelPM actualPM = getBins().get(j);
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			if(actualPM != toMig.gethostPM() || actualPM.getState().equals(State.EMPTY_RUNNING)) {
+			State state = actualPM.getState();
+			if(actualPM != toMig.gethostPM() || state.equals(State.EMPTY_RUNNING)) {
 				
 				if(actualPM.isMigrationPossible(toMig)) {					
 					return actualPM;
 				}
 			}
 			else {
-				// do nothing, get the next one
+				if(state.equals(State.EMPTY_OFF)) {
+					return startPM(toMig.getResources());	//start an empty_off PM
+				}
 			}	
 		}
-		return startPM(toMig.getResources());	//start an empty_off PM
+		Logger.getGlobal().warning("No appropriate PM found as migPM");
+		return null;
 	}
 	
 	/**
@@ -172,7 +175,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * This method handles the migration of all VMs of an OverAllocated PM, till the state changes to 
 	 * NORMAL_RUNNING. To do that, a targetPM will be found for every VM on this PM and then the migrations 
 	 * will be performed. If not enough VMs can be migrated, the state of this PM will be changed to
-	 * STILL_OVERALLOCATED, so there will be another try to migrate the surplus VMs.
+	 * UNCHANGEABLE_OVERALLOCATED.
 	 * 
 	 * @param source
 	 * 			The source PM which host the VMs to migrate.
@@ -190,13 +193,9 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			ModelPM pm = getMigPm(actual);
 			// if there is no PM to host the actual VM of the source PM, change the state depending on its acutal state
 			if(pm == null) {
-				if(state.equals(State.OVERALLOCATED_RUNNING)) {					
-					source.changeState(State.STILL_OVERALLOCATED);
-					return; // no migration possible anymore
-				}
-				else {					
+				if(state.equals(State.OVERALLOCATED_RUNNING)) {	
 					source.changeState(State.UNCHANGEABLE_OVERALLOCATED);
-					return; // no migration possible anymore, second try
+					return; // no migration possible anymore
 				}
 			}	
 			else {
@@ -235,12 +234,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			else {				
 				if(migPMs.isEmpty()) {
 					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
-						source.changeState(State.STILL_UNDERALLOCATED);
-						return; // no migration possible and no one has been done previously
-					}
-					else if(state.equals(State.STILL_UNDERALLOCATED)) {
 						source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
-						return; // no migration possible and no one has been done previously, second try
+						return; // no migration possible
 					}
 				}	
 				else {
