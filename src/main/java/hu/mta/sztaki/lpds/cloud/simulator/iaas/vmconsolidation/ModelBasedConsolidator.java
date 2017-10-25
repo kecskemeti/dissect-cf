@@ -145,12 +145,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			bins.add(bin);
 		}
 		
-		// set the thresholds		
-//		for (int i = 0; i < bins.size(); i++) {
-//			bins.get(i).setLowerThreshold(lowerThreshold);
-//			bins.get(i).setUpperThreshold(upperThreshold);
-//		}
-		
 		Logger.getGlobal().info("Instantiated model at "+Timed.getFireCount()+": " + toString());
 	}
 
@@ -300,6 +294,14 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected void adaptPmStates() {
 		shutDownEmptyPMs();
 		switchOnNonEmptyPMs();
+	}
+	
+	public double getUpperThreshold() {
+		return upperThreshold;
+	}
+	
+	public double getLowerThreshold() {
+		return lowerThreshold;
 	}
 
 }

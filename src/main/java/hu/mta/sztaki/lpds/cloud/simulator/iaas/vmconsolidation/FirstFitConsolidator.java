@@ -31,10 +31,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @param parent
 	 * 			The IaaSService of the superclass Consolidator.
-	 * @param upperThreshold
-	 * 			The double value representing the upper Threshold.
-	 * @param lowerThreshold
-	 * 			The double value representing the lower Threshold.
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
 	 */
@@ -44,7 +40,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	
 	@Override
 	protected void processProps() {
-		
+		// since the properties are not needed, nothing has to be done here.
 	}
 
 	/**
@@ -55,30 +51,22 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	@Override
 	public void optimize() {
 		while(isOverAllocated() || isUnderAllocated()) {
-			for(ModelPM pm : this.getBins()) {				
+			for(ModelPM pm : getBins()) {				
 				if(pm.isNothingToChange()) {
+					continue;
 					// do nothing
+				}				
+				if(pm.isUnderAllocated()) {
+					migrateUnderAllocatedPM(pm);
 				}
-				else {					
-					if(pm.isUnderAllocatedChangeable()) {						
-						if(pm.isHostingVMs() != true) {
-							pm.changeState(State.EMPTY_RUNNING);
-						}
-						else {
-							migrateUnderAllocatedPM(pm);
-						}
-					}
-					else {
-						if(pm.isOverAllocatedChangeable()) {
-							migrateOverAllocatedPM(pm);
-						}
-					}
+				if(pm.isOverAllocated()) {
+					migrateOverAllocatedPM(pm);
 				}
 			}
 		}
 
 		//clears the VMlist of each PM, so no VM is in the list more than once
-		for(ModelPM pm : this.getBins()) {
+		for(ModelPM pm : getBins()) {
 			List<ModelVM> allVMsOnPM = pm.getVMs();			
 			Set<ModelVM> setItems = new LinkedHashSet<ModelVM>(allVMsOnPM);
 			allVMsOnPM.clear();
@@ -128,8 +116,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	public ModelPM getMigPm(ModelVM toMig) {
 		//Logger.getGlobal().info("vm="+toMig.toString());
 		//now we have to search for a fitting pm
-		for(int i = 0; i < bins.size(); i++) {		
-			ModelPM actualPM = getBins().get(i);
+		for(ModelPM actualPM : getBins()) {		
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			if(actualPM == toMig.gethostPM() 
 					|| actualPM.getState().equals(State.EMPTY_RUNNING) 
@@ -181,17 +168,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		return null;
 	}
 
-	/**
-	 * This method is created to get the first VM on a PM. Caution: the PM must
-	 * contain at least one VM.
-	 * @param x
-	 * 			The PM that has to be used.
-	 * @return first VM on this PM.
-	 */
-	private ModelVM getFirstVM(ModelPM x) {
-		return x.getVM(0);
-	}
-
 	/** 
 	 * This method handles the migration of all VMs of an OverAllocated PM, till the state changes to 
 	 * NORMAL_RUNNING. To do that, a targetPM will be found for every VM on this PM and then the migrations 
@@ -204,13 +180,13 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	private void migrateOverAllocatedPM(ModelPM source) {
 		//Logger.getGlobal().info("source="+source.toString());
 		State state = source.getState();
-		while(source.isOverAllocatedChangeable()) {
+		while(source.isOverAllocated() && !source.isNothingToChange()) {
 			if(source.getVMs().isEmpty()) {
 				// check the allocation again and do nothing else
 				source.checkAllocation();
 				return;
 			}
-			ModelVM actual = getFirstVM(source);	//now taking the first VM on this PM and try to migrate it to a target			
+			ModelVM actual = source.getVM(0);	//now taking the first VM on this PM and try to migrate it to a target			
 			ModelPM pm = getMigPm(actual);
 			// if there is no PM to host the actual VM of the source PM, change the state depending on its acutal state
 			if(pm == null) {
@@ -240,23 +216,24 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 			The source PM which host the VMs to migrate.
 	 */	
 	private void migrateUnderAllocatedPM(ModelPM source) {
-		int x = 0;		//variable for getting VM		
+		
+		if(!source.isHostingVMs()) {
+			source.switchOff();
+			return;		// if there are no VMs, we cannot migrate anything
+		}
+		
 		State state = source.getState();
-		ArrayList <Action> migrationActions = new ArrayList <Action>();		//save all actions in this list before 
 		ArrayList <ModelPM> migPMs = new ArrayList <ModelPM>();				//save all PMs for hosting VMs depending on their order
 
-		for(int j = 0; j < source.getVMs().size(); j++){
-			ModelVM actual = source.getVM(x);	//now taking the next VM on this PM and try to migrate it to a target			
+		for(ModelVM actual : source.getVMs()){
 			ModelPM pm = getMigPm(actual); 
 			// if there is a PM which could host the actual VM, save it
 			if(pm != null) {
 				pm.reserveResources(actual);		//reserve the resource for the possible migration
 				migPMs.add(pm);
-				migrationActions.add(new MigrationAction(count++, source, pm, actual));
-				x++;
 			}
 			else {				
-				if(migrationActions.isEmpty()) {
+				if(migPMs.isEmpty()) {
 					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
 						source.changeState(State.STILL_UNDERALLOCATED);
 						return; // no migration possible and no one has been done previously
@@ -267,16 +244,17 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 					}
 				}	
 				else {
-					for(int a = 0; a < migPMs.size(); a++) {
-						migPMs.get(a).setResourcesFree();
+					for(ModelPM act : migPMs) {
+						act.setResourcesFree();
 					}
 				}
 			}				
 			state = source.getState();		//set the actual State
 		}
 
-		for(int i = 0; i < migrationActions.size(); i++) {
+		for(int i = 0; i < migPMs.size(); i++) {
 			source.migrateVM(source.getVM(i), migPMs.get(i));
+			migPMs.get(i).setResourcesFree();
 		}
 	}
 }

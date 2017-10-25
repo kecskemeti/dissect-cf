@@ -23,7 +23,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.ConsolidationFriendl
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PsoConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -43,8 +42,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 	// Creation of all necessary objects and variables
 
-	IaaSService basic;
-	ModelBasedConsolidator ffc;
+	IaaSService basic;	
 	PhysicalMachine testPM1;
 	PhysicalMachine testPM2;
 	PhysicalMachine testPM3;
@@ -113,7 +111,6 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		}
 
 		basic = new IaaSService(FirstFitScheduler.class, ConsolidationFriendlyPmScheduler.class);
-//		basic = new IaaSService(FirstFitScheduler.class, OnOffScheduler.class);
 
 		//create central repository
 		long bandwidth=1000000;
@@ -178,11 +175,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//empty. If we turn on the consolidator, we expect it to move one of the
 		//VMs from PM1 to PM2
 
-		ffc = new FirstFitConsolidator(basic, 600);
+		FirstFitConsolidator ffc = new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
-
-		Assert.assertEquals(1, testPM1.publicVms.size());
-		Assert.assertEquals(1, testPM2.publicVms.size());
+		
+		if(ffc.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(1, testPM1.publicVms.size());
+			Assert.assertEquals(1, testPM2.publicVms.size());
+		}		
 	}
 	
 	@Test(timeout = 1000)
@@ -204,13 +203,15 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();		
 		//Now, PM1 contains 6 VMs and PM2 one VM. If we turn on the consolidator,
-		//we expect only two running machines.
+		//we expect moving some of the VMs of PM1 to PM2.
 		
-		ffc = new FirstFitConsolidator(basic, 600);
+		FirstFitConsolidator ffc = new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
-		Assert.assertEquals(2, basic.runningMachines.size());
-		Assert.assertNotEquals(6, testPM1.publicVms.size());
+		if(ffc.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(2, basic.runningMachines.size());
+			Assert.assertNotEquals(6, testPM1.publicVms.size());
+		}		
 	}
 
 	@Test(timeout = 1000)
@@ -223,9 +224,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 
 		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-		//we expect it to consolidate the two VMs to a single VM.
+		//we expect it to consolidate the two VMs to a single PM.
 
-		ffc = new FirstFitConsolidator(basic, 600);
+		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		Assert.assertEquals(1, basic.runningMachines.size());
@@ -241,19 +242,17 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		
 		switchOnVM(VM1, this.smallConstraints, testPM1, true);
-		switchOnVM(VM2, this.smallConstraints, testPM1, true);
 		switchOnVM(VM3, this.smallConstraints, testPM2, true);
 		switchOnVM(VM4, this.smallConstraints, testPM2, true);
 		
 		Timed.simulateUntilLastEvent();
+		//Now, PM1 contains one VM and PM2 two VMs. If we turn on the consolidator, 
+		//we expect only one running machine.
 		
-		ffc = new FirstFitConsolidator(basic, 600);
+		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(4, testPM1.publicVms.size());
-		Assert.assertEquals(0, testPM2.publicVms.size());
-		Assert.assertEquals(0, testPM3.publicVms.size());
-		Assert.assertEquals(0, testPM4.publicVms.size());
+		Assert.assertEquals(1, basic.runningMachines.size());
 		
 	}
 	
@@ -271,8 +270,10 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM3, this.smallConstraints, testPM4, true);
 		
 		Timed.simulateUntilLastEvent();
+		//Now,we have three PMs containing one VM each. If we turn on the consolidator, 
+		//we expect it to consolidate all VMs to a single PM.
 		
-		ffc = new FirstFitConsolidator(basic, 600);
+		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
 		Assert.assertEquals(1, basic.runningMachines.size());
@@ -291,13 +292,12 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		switchOnVM(VM1, this.smallConstraints, testPM1, true);
 		switchOnVM(VM2, this.smallConstraints, testPM2, true);
 		
-		Timed.simulateUntilLastEvent();
-		
-		//ffc = new FirstFitConsolidator(basic, upperThreshold, lowerThreshold, 600);
-		//Timed.simulateUntil(Timed.getFireCount()+1000);
-		
+		Timed.simulateUntilLastEvent();		
 		testPM1.migrateVM(VM1, testPM2);
 		testPM2.migrateVM(VM2, testPM1);
+		
+		//Testing if mutual placement is possible by migrating the VM of PM1 to PM2 and
+		//vice versa.
 		
 		Timed.simulateUntilLastEvent();
 		
@@ -318,7 +318,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 
 		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-		//we expect it to consolidate the two VMs to a single VM.
+		//we expect it to consolidate the two VMs to a single PM.
 
 		new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
@@ -340,7 +340,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 
 		//Now, all four PMs contain one VM each. After turning on the consolidator,
-		//there should be only one PM running, hosting all four VMs.
+		//there should be only one running PM, hosting all four VMs.
 
 		new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
@@ -359,11 +359,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
-		new GaConsolidator(basic, 600);
+		GaConsolidator ga = new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, testPM1.listVMs().size());
-		Assert.assertEquals(2, basic.runningMachines.size());
+		if(ga.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(1, testPM1.listVMs().size());
+			Assert.assertEquals(2, basic.runningMachines.size());
+		}		
 	}
 	
 	// VM consolidator using artificial bee colony algorithm
@@ -378,7 +380,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 
 		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-		//we expect it to consolidate the two VMs to a single VM.
+		//we expect it to consolidate the two VMs to a single PM.
 
 		new AbcConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
@@ -419,10 +421,12 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//Now, PM1 contains twoVM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
-		new AbcConsolidator(basic, 600);
+		AbcConsolidator abc = new AbcConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(2, basic.runningMachines.size());
+		if(abc.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(2, basic.runningMachines.size());
+		}		
 	}
 	
 	// VM consolidator using a particle swarm optimization algorithm
@@ -437,7 +441,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 
 		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-		//we expect it to consolidate the two VMs to a single VM.
+		//we expect it to consolidate the two VMs to a single PM.
 
 		new PsoConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
@@ -478,9 +482,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
 		//we expect it to consolidate one VM to another PM.
 
-		new PsoConsolidator(basic, 600);
+		PsoConsolidator pso = new PsoConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(2, basic.runningMachines.size());
+		if(pso.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(2, basic.runningMachines.size());
+		}		
 	}
 }

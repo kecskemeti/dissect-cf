@@ -236,6 +236,8 @@ public class PsoConsolidator extends ModelBasedConsolidator {
 					ArithmeticVector socialComponent = (globalBestLocation.subtract(p.getLocation()).multiply(c2 * r2));
 					ArithmeticVector newVel = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 					
+					p.setVelocity(newVel);
+					
 					//Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " + newVel);
 					
 					// step 4 - update location

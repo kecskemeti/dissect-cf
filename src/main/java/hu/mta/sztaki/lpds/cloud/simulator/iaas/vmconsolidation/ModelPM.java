@@ -287,7 +287,7 @@ public class ModelPM {
 	 * Method for checking if the actual PM is overAllocated.
 	 * @return true if overloaded, false otherwise
 	 */	
-	private boolean isOverAllocated() {
+	public boolean isOverAllocated() {
 		
 		if(consumedResources.isOverAllocated(totalResources,upperThreshold)) {
 			return true;
@@ -300,7 +300,7 @@ public class ModelPM {
 	 * Method for checking if the actual PM is underAllocated.
 	 * @return true if underloaded, false otherwise	  
 	 */	
-	private boolean isUnderAllocated() {
+	public boolean isUnderAllocated() {
 		
 		if(consumedResources.isUnderAllocated(totalResources,lowerThreshold)) {
 			return true;
@@ -317,32 +317,6 @@ public class ModelPM {
 	public boolean isNothingToChange() {
 		
 		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is UnderAllocated and shall be migrated.
-	 * @return
-	 * 			True if the State is UNDERALLOCATED_RUNNING or STILL_UNDERALLOCATED
-	 */
-	public boolean isUnderAllocatedChangeable() {
-		if(getState() == State.UNDERALLOCATED_RUNNING || getState() == State.STILL_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is OverAllocated and VMs have to be migrated.
-	 * @return
-	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
-	 */
-	public boolean isOverAllocatedChangeable() {
-		if(getState() ==  State.OVERALLOCATED_RUNNING || getState() == State.STILL_OVERALLOCATED) {
 			return true;
 		}
 		else
@@ -441,20 +415,8 @@ public class ModelPM {
 		return lowerThreshold;
 	}
 
-	public void setLowerThreshold(double lowerThreshold) {
-//		System.err.println("lowerThreshold: " + lowerThreshold);
-		this.lowerThreshold = lowerThreshold;
-//		System.err.println("After setting the threshold: " + this.lowerThreshold);		
-	}
-
 	public double getUpperThreshold() {
 		return upperThreshold;
-	}
-
-	public void setUpperThreshold(double upperThreshold) {
-//		System.err.println("upperThreshold: " + upperThreshold);
-		this.upperThreshold = upperThreshold;
-//		System.err.println("After setting the threshold: " + this.upperThreshold);	
 	}
 
 	public int getNumber() {
