@@ -39,6 +39,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
 
+	/** True if at least one solution has improved during the current iteration */
+	private boolean improved;
+
 	/**
 	 * Creates AbcConsolidator with empty population.
 	 */
@@ -125,6 +128,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		if (s2.evaluate().isBetterThan(s1.evaluate())) {
 			population.set(j, s2);
 			numTrials.set(j, 0);
+			improved=true;
 			checkIfBest(s2);
 		} else {
 			numTrials.set(j, numTrials.get(j) + 1);
@@ -148,8 +152,10 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	@Override
 	protected void optimize() {
+		//System.err.println("ABC nrIterations="+nrIterations+", populationSize="+populationSize);
 		initializePopulation();
 		for (int iter = 0; iter < nrIterations; iter++) {
+			improved=false;
 			// employed bees phase
 			for (int j = 0; j < populationSize; j++) {
 				mutateAndCheck(j);
@@ -185,6 +191,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				numTrials.set(maxTrialsIndex, 0);
 				checkIfBest(s);
 			}
+			//System.err.println("ABC iteration carried out: "+iter);
+			if(!improved)
+				break;
 		}
 		// Implement best solution in the model
 		bestSolution.implement();

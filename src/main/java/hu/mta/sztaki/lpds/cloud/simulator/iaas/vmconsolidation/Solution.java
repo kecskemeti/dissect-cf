@@ -26,6 +26,8 @@ public class Solution {
 	 * Each gene is replaced by a random value with this probability during mutation
 	 */
 	private double mutationProb;
+	/** Cached value of the fitness */
+	private Fitness fitness;
 
 	Properties props;
 
@@ -37,6 +39,7 @@ public class Solution {
 		this.bins = bins;
 		mutationProb = mp;
 		mapping = new HashMap<>();
+		fitness=null;
 		
 		props = new Properties();		
 		try {
@@ -61,6 +64,7 @@ public class Solution {
 				mapping.put(vm, randPm);
 			}
 		}
+		fitness=null;
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 	
@@ -73,6 +77,7 @@ public class Solution {
 				mapping.put(vm, pm);
 			}
 		}
+		fitness=null;
 		// System.err.println("createUnchangedSolution() -> mapping: "+mappingToString());
 	}
 
@@ -150,11 +155,13 @@ public class Solution {
 	 * rather computation-intensive operation.
 	 */
 	public Fitness evaluate() {
-		Fitness result = new Fitness();
-		result.totalOverAllocated = getTotalOverAllocated();
-		result.nrActivePms = getNrActivePms();
-		result.nrMigrations = getNrMigrations();
-		return result;
+		if(fitness==null) {
+			fitness = new Fitness();
+			fitness.totalOverAllocated = getTotalOverAllocated();
+			fitness.nrActivePms = getNrActivePms();
+			fitness.nrMigrations = getNrMigrations();
+		}
+		return fitness;
 	}
 
 	/**

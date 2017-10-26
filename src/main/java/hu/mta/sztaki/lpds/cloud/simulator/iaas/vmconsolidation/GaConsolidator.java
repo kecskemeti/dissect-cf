@@ -36,6 +36,8 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 
 	/** Population for the GA, consisting of solutions=individuals */
 	private Vector<Solution> population;
+	/** True if at least one individual has improved during the current generation */
+	private boolean improved;
 
 	/**
 	 * Creates GaConsolidator with empty population.
@@ -78,10 +80,14 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		Fitness f1 = s1.evaluate();
 		Fitness f2 = s2.evaluate();
 		Fitness f3 = s3.evaluate();
-		if (f3.isBetterThan(f1))
+		if (f3.isBetterThan(f1)) {
 			population.set(i1, s3);
-		else if (f3.isBetterThan(f2))
+			improved=true;
+		}
+		else if (f3.isBetterThan(f2)) {
 			population.set(i2, s3);
+			improved=true;
+		}
 	}
 
 	/**
@@ -123,18 +129,22 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 */
 	@Override
 	protected void optimize() {
+		//System.err.println("GA nrIterations="+nrIterations+", populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
 		initializePopulation();
 		// Logger.getGlobal().info("Population after initialization:
 		// "+populationToString());
 		for (int iter = 0; iter < nrIterations; iter++) {
+			improved=false;
 			// From each individual in the population, create an offspring using
 			// mutation. If the child is better than its parent, it replaces it
 			// in the population, otherwise it is discarded.
 			for (int i = 0; i < populationSize; i++) {
 				Solution parent = population.get(i);
 				Solution child = parent.mutate();
-				if (child.evaluate().isBetterThan(parent.evaluate()))
+				if (child.evaluate().isBetterThan(parent.evaluate())) {
 					population.set(i, child);
+					improved=true;
+				}
 			}
 			// Perform the given number of crossovers.
 			for (int i = 0; i < nrCrossovers; i++) {
@@ -142,6 +152,9 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			}
 			// Logger.getGlobal().info("Population after iteration "+iter+":
 			// "+populationToString());
+			//System.err.println("GA iteration carried out: "+iter);
+			if(!improved)
+				break;
 		}
 		implementBestSolution();
 	}
