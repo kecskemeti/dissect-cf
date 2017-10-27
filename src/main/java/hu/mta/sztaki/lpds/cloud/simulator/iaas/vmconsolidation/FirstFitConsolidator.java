@@ -116,7 +116,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	private ModelPM getMigPm(ModelVM toMig) {
 		//Logger.getGlobal().info("vm="+toMig.toString());
 		//now we have to search for a fitting pm
-		for(ModelPM actualPM : getBins()) {		
+		for(int i = 0; i < bins.size(); i++) {		
+			ModelPM actualPM = getBins().get(i);	
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			State state = actualPM.getState();
 			if(actualPM == toMig.gethostPM() || state.equals(State.EMPTY_RUNNING) || state.equals(State.EMPTY_OFF) 
