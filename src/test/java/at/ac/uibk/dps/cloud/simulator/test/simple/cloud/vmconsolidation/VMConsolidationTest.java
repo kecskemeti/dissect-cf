@@ -212,6 +212,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			Assert.assertEquals(2, basic.runningMachines.size());
 			Assert.assertNotEquals(6, testPM1.publicVms.size());
 		}		
+		else {
+			Assert.assertEquals(2, basic.runningMachines.size());
+			Assert.assertEquals(6, testPM1.listVMs().size());
+			Assert.assertEquals(1, testPM2.listVMs().size());
+		}
 	}
 
 	@Test(timeout = 1000)

@@ -101,10 +101,13 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be put on this PM.
 	 */
-	public void addVM(ModelVM vm) {
+	public boolean addVM(ModelVM vm) {		
 		vmList.add(vm);
 		consumedResources.add(vm.getResources());		
 		checkAllocation();
+		
+		// adding was succesful
+		return true;
 	}
 
 	/**
@@ -112,11 +115,14 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be removed of this PM.
 	 */
-	public void removeVM(ModelVM vm) {
+	private boolean removeVM(ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
 		consumedResources.subtract(vm.getResources());		
 		checkAllocation();
+		
+		// removing was succesful
+		return true;
 	}
 
 	/**
@@ -127,7 +133,7 @@ public class ModelPM {
 	 * 			The target PM where to migrate.
 	 */	
 	public void migrateVM(ModelVM vm, ModelPM target) {
-		target.addVM(vm);
+		target.addVM(vm);		
 		this.removeVM(vm);
 		vm.sethostPM(target);
 	}

@@ -50,7 +50,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 */
 	@Override
 	public void optimize() {
-		while(isOverAllocated() || isUnderAllocated()) {
+		if(isOverAllocated() || isUnderAllocated()) {
 			for(ModelPM pm : getBins()) {				
 				if(pm.isNothingToChange()) {
 					continue;
@@ -63,7 +63,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 					migrateOverAllocatedPM(pm);
 				}
 			}
-		}
+		}		
 
 		//clears the VMlist of each PM, so no VM is in the list more than once
 		for(ModelPM pm : getBins()) {
@@ -113,7 +113,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 		   starts a new PM if there is no running VM with the needed resources;
 	 * 		   null is returned if no appropriate PM was found.
 	 */
-	public ModelPM getMigPm(ModelVM toMig) {
+	private ModelPM getMigPm(ModelVM toMig) {
 		//Logger.getGlobal().info("vm="+toMig.toString());
 		//now we have to search for a fitting pm
 		for(ModelPM actualPM : getBins()) {		
@@ -248,6 +248,11 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		}
 
 		for(int i = 0; i < migPMs.size(); i++) {
+			if(source.getVM(i) == null) {
+				Logger.getGlobal().warning("The " + i + ". VM on this PM is not here anymore, so we cannot migrate it.");
+				migPMs.get(i).setResourcesFree();
+				continue;
+			}
 			source.migrateVM(source.getVM(i), migPMs.get(i));
 			migPMs.get(i).setResourcesFree();
 		}
