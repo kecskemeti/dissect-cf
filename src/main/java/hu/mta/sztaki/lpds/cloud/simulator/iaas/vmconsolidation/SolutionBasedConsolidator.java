@@ -34,6 +34,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  */
 public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 	protected double mutationProb;
+	
+	protected int randomCreations;
+	protected int unchangedCreations;
+	protected int firstFitCreations;
 
 	public SolutionBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
@@ -41,7 +45,18 @@ public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 
 	@Override
 	protected void processProps() {
-		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
+		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));		
 	}
-
+	
+	/**
+	 * We have to determine how to fill the population/swarm. For that, this method gets
+	 * implemented by the respective consolidator based on the value of the populationSize/
+	 * swarmSize. At the moment there is going to be one unchanged solution, size * 0.25 
+	 * first fit solutions and the rest of the creations is made randomly.
+	 * 
+	 * @param numberOfCreations
+	 * 			The swarmSize/populationSize.
+	 */
+	protected abstract void determineCreations(int numberOfCreations);
+	
 }

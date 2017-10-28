@@ -80,6 +80,24 @@ public class Solution {
 		fitness=null;
 		// System.err.println("createUnchangedSolution() -> mapping: "+mappingToString());
 	}
+	
+	/**
+	 * Creates a mapping based on FirstFit. TODO
+	 */
+	void createFirstFitSolution() {		
+		for(ModelPM pm : bins) {
+			for(ModelVM vm : pm.getVMs()) {
+				for(int i = 0; i < bins.size(); i++) {
+					if(bins.get(i).isMigrationPossible(vm)) {
+						mapping.put(vm, pm);
+						continue;
+					}
+				}
+			}
+		}
+		fitness=null;
+		 System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
+	}
 
 	/**
 	 * Computes the total of PM which are overallocated, aggregated over all PMs and

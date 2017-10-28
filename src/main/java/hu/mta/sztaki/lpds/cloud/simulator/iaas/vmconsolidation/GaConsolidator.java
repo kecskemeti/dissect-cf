@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Random;
 import java.util.Vector;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -54,15 +55,22 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 */
 	private void initializePopulation() {
 		population.clear();
-		for (int i = 0; i < populationSize - 1; i++) {
+		for (int i = 0; i < randomCreations; i++) {
 			Solution s = new Solution(bins, mutationProb);
 			s.fillRandomly();
 			population.add(s);
 		}
-		
-		Solution s = new Solution(bins, mutationProb);
-		s.createUnchangedSolution();
-		population.add(s);
+		for(int i = 0; i < firstFitCreations; i++) {
+			Solution s = new Solution(bins, mutationProb);
+			//s.createFirstFitSolution();	TODO bug here, at the moment we use fillRandomly() instead
+			s.fillRandomly();
+			population.add(s);
+		}
+		for(int i = 0; i < unchangedCreations; i++) {
+			Solution s = new Solution(bins, mutationProb);			
+			s.createUnchangedSolution();
+			population.add(s);
+		}
 	}
 
 	/**
@@ -122,7 +130,28 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
 		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
 		this.random = new Random(Long.parseLong(props.getProperty("seed")));
-	}
+		
+		determineCreations(populationSize);
+		}
+			
+			@Override
+			protected void determineCreations(int numberOfCreations) {
+				if(numberOfCreations < 3) {
+					Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
+					return;
+				}			
+				if(numberOfCreations == 3) {
+					randomCreations = 1;
+					unchangedCreations = 1;
+					firstFitCreations = 1;
+				}
+				else {
+					unchangedCreations = 1;
+					Double randoms = numberOfCreations * 0.25;
+					firstFitCreations = randoms.intValue();
+					randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
+				}
+			}
 
 	/**
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
@@ -150,8 +179,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			for (int i = 0; i < nrCrossovers; i++) {
 				crossover();
 			}
-			// Logger.getGlobal().info("Population after iteration "+iter+":
-			// "+populationToString());
+//			 Logger.getGlobal().info("Population after iteration "+iter+":"+populationToString());
 			//System.err.println("GA iteration carried out: "+iter);
 			if(!improved)
 				break;
