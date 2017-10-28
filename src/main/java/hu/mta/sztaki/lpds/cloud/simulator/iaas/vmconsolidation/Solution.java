@@ -20,13 +20,15 @@ public class Solution {
 	private List<ModelPM> bins;
 	/** Mapping of VMs to PMs */
 	private Map<ModelVM, ModelPM> mapping;
+	/** Current resource use of the PMs */
+	private Map<ModelPM, ResourceVector> loads;
+	/** Flags for each PM whether it is in use */
+	private Map<ModelPM, Boolean> used;
 	/** For generating random numbers */
 	private Random random;
-	/**
-	 * Each gene is replaced by a random value with this probability during mutation
-	 */
+	/** Each gene is replaced by a random value with this probability during mutation */
 	private double mutationProb;
-	/** Cached value of the fitness */
+	/** Fitness of the solution */
 	private Fitness fitness;
 
 	Properties props;
@@ -39,7 +41,14 @@ public class Solution {
 		this.bins = bins;
 		mutationProb = mp;
 		mapping = new HashMap<>();
-		fitness=null;
+		loads=new HashMap<>();
+		used=new HashMap<>();
+		fitness=new Fitness();
+
+		for (ModelPM pm : bins) {
+			loads.put(pm, new ResourceVector(0, 0, 0));
+			used.put(pm, false);
+		}
 		
 		props = new Properties();		
 		try {
@@ -55,80 +64,81 @@ public class Solution {
 	}
 
 	/**
+	 * Auxiliary method.
+	 * PRE: the maps #loads and #used are already filled
+	 * POST: fitness.nrActivePms and fitness.totalOverAllocated are correct
+	 */
+	private void countActivePmsAndOverloads() {
+		fitness.nrActivePms=0;
+		fitness.totalOverAllocated=0;
+		for (ModelPM pm : bins) {
+			if(used.get(pm))
+				fitness.nrActivePms++;
+			ResourceVector allocation = loads.get(pm);
+			ConstantConstraints cap = pm.getTotalResources();
+			if (allocation.getTotalProcessingPower() > cap.getTotalProcessingPower() * pm.getUpperThreshold())
+				fitness.totalOverAllocated += allocation.getTotalProcessingPower()
+						/ (cap.getTotalProcessingPower() * pm.getUpperThreshold());
+			if (allocation.getRequiredMemory() > cap.getRequiredMemory() * pm.getUpperThreshold())
+				fitness.totalOverAllocated += allocation.getRequiredMemory() / (cap.getRequiredMemory() * pm.getUpperThreshold());
+		}
+	}
+
+	/**
 	 * Creates a random mapping: for each VM, one PM is chosen uniformly randomly.
 	 */
 	void fillRandomly() {
+		fitness.nrMigrations=0;
 		for (ModelPM pm : bins) {
 			for (ModelVM vm : pm.getVMs()) {
 				ModelPM randPm = bins.get(random.nextInt(bins.size()));
 				mapping.put(vm, randPm);
+				loads.get(randPm).singleAdd(vm.getResources());
+				used.put(randPm,true);
+				if(pm!=randPm)
+					fitness.nrMigrations++;
 			}
 		}
-		fitness=null;
+		countActivePmsAndOverloads();
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
-	
+
 	/**
 	 * Creates the same mapping as existing before consolidation has started.
 	 */
 	void createUnchangedSolution() {
+		fitness.nrMigrations=0;
 		for(ModelPM pm : bins) {
 			for(ModelVM vm : pm.getVMs()) {
 				mapping.put(vm, pm);
+				loads.get(pm).singleAdd(vm.getResources());
+				used.put(pm,true);
 			}
 		}
-		fitness=null;
+		countActivePmsAndOverloads();
 		// System.err.println("createUnchangedSolution() -> mapping: "+mappingToString());
 	}
-	
+
 	/**
 	 * Creates a mapping based on FirstFit. TODO
 	 */
 	void createFirstFitSolution() {		
+		fitness.nrMigrations=0;
 		for(ModelPM pm : bins) {
 			for(ModelVM vm : pm.getVMs()) {
 				for(int i = 0; i < bins.size(); i++) {
-					if(bins.get(i).isMigrationPossible(vm)) {
-						mapping.put(vm, pm);
+					ModelPM targetPm=bins.get(i);
+					if(targetPm.isMigrationPossible(vm)) {
+						mapping.put(vm, targetPm);
+						loads.get(targetPm).singleAdd(vm.getResources());
+						used.put(targetPm,true);
 						continue;
 					}
 				}
 			}
 		}
-		fitness=null;
-		 System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
-	}
-
-	/**
-	 * Computes the total of PM which are overallocated, aggregated over all PMs and
-	 * all resource types. This can be used as a component of the fitness.
-	 */
-	double getTotalOverAllocated() {
-		// System.err.println("getTotalOverAllocated() -> mapping: "+mappingToString());
-		double result = 0;
-		// First determine the allocation of each PM under our mapping.
-		Map<Integer, ResourceVector> allocations = new HashMap<>();
-		for (ModelPM pm : bins) {
-			allocations.put(pm.getNumber(), new ResourceVector(0, 0, 0));
-		}
-		for (ModelVM vm : mapping.keySet()) {
-			ModelPM pm = mapping.get(vm);
-			ResourceVector pmLoad = allocations.get(pm.getNumber());
-			ResourceVector vmLoad = vm.getResources();
-			pmLoad.add(vmLoad);
-		}
-		// For each PM, see if it is overallocated; if yes, increase the result
-		// accordingly.
-		for (ModelPM pm : bins) {
-			ResourceVector allocation = allocations.get(pm.getNumber());
-			ConstantConstraints cap = pm.getTotalResources();
-			if (allocation.getTotalProcessingPower() > cap.getTotalProcessingPower() * pm.getUpperThreshold())
-				result += allocation.getTotalProcessingPower()
-						/ (cap.getTotalProcessingPower() * pm.getUpperThreshold());
-			if (allocation.getRequiredMemory() > cap.getRequiredMemory() * pm.getUpperThreshold())
-				result += allocation.getRequiredMemory() / (cap.getRequiredMemory() * pm.getUpperThreshold());
-		}
-		return result;
+		countActivePmsAndOverloads();
+		System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
 	}
 
 	/**
@@ -155,30 +165,9 @@ public class Solution {
 	}
 
 	/**
-	 * Compute the number of migrations needed, given our mapping. This can be used
-	 * as a component of the fitness.
-	 */
-	int getNrMigrations() {
-		int result = 0;
-		// See for each VM whether it must be migrated.
-		for (ModelVM vm : mapping.keySet()) {
-			if (mapping.get(vm) != vm.gethostPM())
-				result++;
-		}
-		return result;
-	}
-
-	/**
-	 * Compute the fitness value belonging to this solution. Note that this is a
-	 * rather computation-intensive operation.
+	 * Get the fitness value belonging to this solution.
 	 */
 	public Fitness evaluate() {
-		if(fitness==null) {
-			fitness = new Fitness();
-			fitness.totalOverAllocated = getTotalOverAllocated();
-			fitness.nrActivePms = getNrActivePms();
-			fitness.nrMigrations = getNrMigrations();
-		}
 		return fitness;
 	}
 
@@ -190,6 +179,7 @@ public class Solution {
 	 */
 	Solution mutate() {
 		Solution result = new Solution(bins, mutationProb);
+		result.fitness.nrMigrations=0;
 		for (ModelVM vm : mapping.keySet()) {
 			ModelPM pm;
 			if (random.nextDouble() < mutationProb)
@@ -197,7 +187,12 @@ public class Solution {
 			else
 				pm = mapping.get(vm);
 			result.mapping.put(vm, pm);
+			result.loads.get(pm).singleAdd(vm.getResources());
+			result.used.put(pm,true);
+			if(pm!=vm.getInitialPm())
+				result.fitness.nrMigrations++;
 		}
+		result.countActivePmsAndOverloads();
 		return result;
 	}
 
@@ -212,6 +207,7 @@ public class Solution {
 	 */
 	Solution recombinate(Solution other) {
 		Solution result = new Solution(bins, mutationProb);
+		result.fitness.nrMigrations=0;
 		for (ModelVM vm : mapping.keySet()) {
 			ModelPM pm;
 			if (random.nextBoolean())
@@ -219,7 +215,12 @@ public class Solution {
 			else
 				pm = this.mapping.get(vm);
 			result.mapping.put(vm, pm);
+			result.loads.get(pm).singleAdd(vm.getResources());
+			result.used.put(pm,true);
+			if(pm!=vm.getInitialPm())
+				result.fitness.nrMigrations++;
 		}
+		result.countActivePmsAndOverloads();
 		return result;
 	}
 
@@ -248,7 +249,7 @@ public class Solution {
 			result = result + vm.id + "->" + mapping.get(vm).getNumber();
 			first = false;
 		}
-		result = result + "),f=" + evaluate().toString() + "]";
+		result = result + "),f=" + fitness.toString() + "]";
 		return result;
 	}
 
