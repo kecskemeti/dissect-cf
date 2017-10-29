@@ -120,25 +120,34 @@ public class Solution {
 	}
 
 	/**
-	 * Creates a mapping based on FirstFit. TODO
+	 * Creates a mapping based on FirstFit. 
 	 */
 	void createFirstFitSolution() {		
 		fitness.nrMigrations=0;
-		for(ModelPM pm : bins) {
-			for(ModelVM vm : pm.getVMs()) {
+		for(int a = 0; a < bins.size(); a++) {
+			ModelPM pm = bins.get(a);
+			if(!pm.isHostingVMs())
+				continue;
+			
+			List<ModelVM> vmsOnPm = pm.getVMs();
+			for(int b = 0; b < vmsOnPm.size(); b++) {
+				ModelVM vm = vmsOnPm.get(b);
 				for(int i = 0; i < bins.size(); i++) {
 					ModelPM targetPm=bins.get(i);
 					if(targetPm.isMigrationPossible(vm)) {
+						if(vm == null) {
+							System.err.println("VM is null at firstfit creation.");
+							continue;
+						}
 						mapping.put(vm, targetPm);
 						loads.get(targetPm).singleAdd(vm.getResources());
 						used.put(targetPm,true);
-						continue;
 					}
 				}
 			}
 		}
 		countActivePmsAndOverloads();
-		System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
+		// System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
 	}
 
 	/**
@@ -215,7 +224,7 @@ public class Solution {
 			else
 				pm = this.mapping.get(vm);
 			result.mapping.put(vm, pm);
-			result.loads.get(pm).singleAdd(vm.getResources());
+			result.loads.get(pm).singleAdd(vm.getResources());	//FIXME bug, sometimes vm is null at this point with first fit
 			result.used.put(pm,true);
 			if(pm!=vm.getInitialPm())
 				result.fitness.nrMigrations++;

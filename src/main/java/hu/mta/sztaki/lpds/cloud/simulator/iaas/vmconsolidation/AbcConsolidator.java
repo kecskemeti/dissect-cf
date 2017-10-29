@@ -86,8 +86,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		}
 		for(int i = 0; i < firstFitCreations; i++) {
 			Solution s = new Solution(bins, mutationProb);
-			//s.createFirstFitSolution();	TODO bug here, at the moment we use fillRandomly() instead
-			s.fillRandomly();
+			s.createFirstFitSolution();
 			population.add(s);
 			numTrials.add(0);
 			checkIfBest(s);
