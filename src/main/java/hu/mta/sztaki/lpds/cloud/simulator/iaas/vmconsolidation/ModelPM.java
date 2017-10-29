@@ -22,10 +22,9 @@ public class ModelPM {
 
 	private ConstantConstraints totalResources;
 	private ResourceVector consumedResources;
-	private ResourceVector reserved = new ResourceVector(0,0,0);		// the reserved resources
+	private ResourceVector reserved;		// the reserved resources
 
-	private double lowerThreshold;
-	private double upperThreshold;
+	private double lowerThreshold, upperThreshold;
 
 	private State state;
 
@@ -47,11 +46,17 @@ public class ModelPM {
 	 * 			The memory of this PM.
 	 * @param number
 	 * 			The number of the PM in its IaaS, used for debugging.
+	 * @param upperThreshold
+	 * 			The upperThreshold out of the properties.
+	 * @param lowerThreshold
+	 * 			The lowerThreshold out of the properties.
 	 */
-	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number) {
+	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number, double upperThreshold, double lowerThreshold) {
 		this.pm = pm;
 		vmList = new ArrayList<>();
 		this.number = number;
+		this.upperThreshold = upperThreshold;
+		this.lowerThreshold = lowerThreshold;
 
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			changeState(State.EMPTY_OFF);
@@ -67,6 +72,7 @@ public class ModelPM {
 
 		totalResources = new ConstantConstraints(cores, pCP, mem);
 		consumedResources = new ResourceVector(0, pCP, 0);
+		reserved = new ResourceVector(0,0,0);
 		//Logger.getGlobal().info("Created PM: "+toString());
 	}
 
@@ -95,10 +101,13 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be put on this PM.
 	 */
-	public void addVM(ModelVM vm) {
+	public boolean addVM(ModelVM vm) {		
 		vmList.add(vm);
 		consumedResources.add(vm.getResources());		
 		checkAllocation();
+		
+		// adding was succesful
+		return true;
 	}
 
 	/**
@@ -106,11 +115,14 @@ public class ModelPM {
 	 * @param vm
 	 * 			The VM which is going to be removed of this PM.
 	 */
-	public void removeVM(ModelVM vm) {
+	private boolean removeVM(ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
 		consumedResources.subtract(vm.getResources());		
 		checkAllocation();
+		
+		// removing was succesful
+		return true;
 	}
 
 	/**
@@ -121,7 +133,7 @@ public class ModelPM {
 	 * 			The target PM where to migrate.
 	 */	
 	public void migrateVM(ModelVM vm, ModelPM target) {
-		target.addVM(vm);
+		target.addVM(vm);		
 		this.removeVM(vm);
 		vm.sethostPM(target);
 	}
@@ -159,15 +171,12 @@ public class ModelPM {
 	 * State because the check of the allocation can only occur if the PM is running, otherwise it 
 	 * would be empty.
 	 * 
-	 * Additionally we have two other States for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
-	 * STILL_OVERALLOCATED / UNCHANGEABLE_OVERALLOCATED and STILL_UNDERALLOCATED and 
-	 * UNCHANGEABLE_UNDERALLOCATED.
+	 * Additionally we have one other State for OVERALLOCATED_RUNNING and UNDERALLOCATED_RUNNING,
+	 * UNCHANGEABLE_OVERALLOCATED and UNCHANGEABLE_UNDERALLOCATED.
 	 * This is important becouse of the possibility to determine how often it has been tried
-	 * to migrate this PM or VMs of this PM without success. So the State STILL_x shows that
-	 * it was not possible to migrate VMs of this PM once and the UNCHANGEABLE_x stands for
-	 * two failures in a row, which symbolizes that it will not be possible to get a succesful
-	 * migration in the future. In that case the UNCHANGEABLE_x PM will be skipped inside the
-	 * algorithm for now. 
+	 * to migrate this PM or VMs of this PM without success. So the State UNCHANGEABLE_x symbolizes 
+	 * that it will not be possible to get a succesful migration in the future. In that case the 
+	 * UNCHANGEABLE_x PM will be skipped inside the algorithm for now. 
 	 */	
 	public static enum State {
 		
@@ -197,26 +206,12 @@ public class ModelPM {
 		OVERALLOCATED_RUNNING,
 		
 		/**
-		 * at the moment nothing can be done to handle the overallocation,
-		 * but there will be another try for it
-		 */
-		STILL_OVERALLOCATED,
-		
-		/**
-		 * at the moment nothing can be done to handle the underallocation,
-		 * but there will be another try for it
-		 */
-		STILL_UNDERALLOCATED,
-		
-		/**
-		 * after a second time STILL_OVERALLOCATED. This means, the allocation
-		 * cannot be changed in any way and no migrations are possible anymore.
+		 * allocation cannot be changed in any way and no migrations are possible anymore.
 		 */
 		UNCHANGEABLE_OVERALLOCATED,
 		
 		/**
-		 * after a second time STILL_UNDERALLOCATED. This means, the allocation
-		 * cannot be changed in any way and no migrations are possible anymore.
+		 * allocation cannot be changed in any way and no migrations are possible anymore.
 		 */
 		UNCHANGEABLE_UNDERALLOCATED
 	};
@@ -255,11 +250,11 @@ public class ModelPM {
 		if(isHostingVMs() == false) {
 			changeState(State.EMPTY_RUNNING);
 		}
-		if((isUnderAllocated() && getState().equals(State.STILL_UNDERALLOCATED)) || (isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) ) {
+		if(isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) {
 			
 		}
 		else {
-			if((isOverAllocated() && getState().equals(State.STILL_OVERALLOCATED)) || (isOverAllocated() && getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) ) {
+			if(isOverAllocated() && getState().equals(State.UNCHANGEABLE_OVERALLOCATED)) {
 				
 			}
 			else {
@@ -281,7 +276,7 @@ public class ModelPM {
 	 * Method for checking if the actual PM is overAllocated.
 	 * @return true if overloaded, false otherwise
 	 */	
-	private boolean isOverAllocated() {
+	public boolean isOverAllocated() {
 		
 		if(consumedResources.isOverAllocated(totalResources,upperThreshold)) {
 			return true;
@@ -294,7 +289,7 @@ public class ModelPM {
 	 * Method for checking if the actual PM is underAllocated.
 	 * @return true if underloaded, false otherwise	  
 	 */	
-	private boolean isUnderAllocated() {
+	public boolean isUnderAllocated() {
 		
 		if(consumedResources.isUnderAllocated(totalResources,lowerThreshold)) {
 			return true;
@@ -311,32 +306,6 @@ public class ModelPM {
 	public boolean isNothingToChange() {
 		
 		if(getState() == State.NORMAL_RUNNING || getState() == State.UNCHANGEABLE_OVERALLOCATED || getState() == State.UNCHANGEABLE_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is UnderAllocated and shall be migrated.
-	 * @return
-	 * 			True if the State is UNDERALLOCATED_RUNNING or STILL_UNDERALLOCATED
-	 */
-	public boolean isUnderAllocatedChangeable() {
-		if(getState() == State.UNDERALLOCATED_RUNNING || getState() == State.STILL_UNDERALLOCATED) {
-			return true;
-		}
-		else
-			return false;
-	}
-	
-	/**
-	 * Checks if the PM is OverAllocated and VMs have to be migrated.
-	 * @return
-	 * 			True if the State is OVERALLOCATED_RUNNING or STILL_OVERALLOCATED
-	 */
-	public boolean isOverAllocatedChangeable() {
-		if(getState() ==  State.OVERALLOCATED_RUNNING || getState() == State.STILL_OVERALLOCATED) {
 			return true;
 		}
 		else
@@ -435,16 +404,8 @@ public class ModelPM {
 		return lowerThreshold;
 	}
 
-	public void setLowerThreshold(double lowerThreshold) {
-		this.lowerThreshold = lowerThreshold;
-	}
-
 	public double getUpperThreshold() {
 		return upperThreshold;
-	}
-
-	public void setUpperThreshold(double upperThreshold) {
-		this.upperThreshold = upperThreshold;
 	}
 
 	public int getNumber() {

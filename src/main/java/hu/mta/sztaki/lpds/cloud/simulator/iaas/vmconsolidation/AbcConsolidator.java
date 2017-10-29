@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Random;
 import java.util.Vector;
+import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -39,6 +40,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
 
+	/** True if at least one solution has improved during the current iteration */
+	private boolean improved;
+
 	/**
 	 * Creates AbcConsolidator with empty population.
 	 */
@@ -68,7 +72,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	private void initializePopulation() {
 		population.clear();
-		for (int i = 0; i < populationSize-1; i++) {
+		for(int i = 0; i < randomCreations; i++) {
 			Solution s = new Solution(bins, mutationProb);
 			s.fillRandomly();
 			population.add(s);
@@ -80,12 +84,21 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				checkIfBest(s);
 			}
 		}
+		for(int i = 0; i < firstFitCreations; i++) {
+			Solution s = new Solution(bins, mutationProb);
+			s.createFirstFitSolution();
+			population.add(s);
+			numTrials.add(0);
+			checkIfBest(s);
+		}
+		for(int i = 0; i < unchangedCreations; i++) {
+			Solution s = new Solution(bins, mutationProb);
+			s.createUnchangedSolution();
+			population.add(s);
+			numTrials.add(0);
+			checkIfBest(s);
+		}
 		
-		Solution s = new Solution(bins, mutationProb);
-		s.createUnchangedSolution();
-		population.add(s);
-		numTrials.add(0);
-		checkIfBest(s);
 	}
 
 	/**
@@ -125,6 +138,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		if (s2.evaluate().isBetterThan(s1.evaluate())) {
 			population.set(j, s2);
 			numTrials.set(j, 0);
+			improved=true;
 			checkIfBest(s2);
 		} else {
 			numTrials.set(j, numTrials.get(j) + 1);
@@ -141,6 +155,27 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
 		this.random = new Random(Long.parseLong(props.getProperty("seed")));
+		
+		determineCreations(populationSize);
+	}
+	
+	@Override
+	protected void determineCreations(int numberOfCreations) {
+		if(numberOfCreations < 3) {
+			Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
+			return;
+		}			
+		if(numberOfCreations == 3) {
+			randomCreations = 1;
+			unchangedCreations = 1;
+			firstFitCreations = 1;
+		}
+		else {
+			unchangedCreations = 1;
+			Double randoms = numberOfCreations * 0.25;
+			firstFitCreations = randoms.intValue();
+			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
+		}
 	}
 
 	/**
@@ -148,8 +183,10 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	@Override
 	protected void optimize() {
+		//System.err.println("ABC nrIterations="+nrIterations+", populationSize="+populationSize);
 		initializePopulation();
 		for (int iter = 0; iter < nrIterations; iter++) {
+			improved=false;
 			// employed bees phase
 			for (int j = 0; j < populationSize; j++) {
 				mutateAndCheck(j);
@@ -185,6 +222,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				numTrials.set(maxTrialsIndex, 0);
 				checkIfBest(s);
 			}
+			//System.err.println("ABC iteration carried out: "+iter);
+			if(!improved)
+				break;
 		}
 		// Implement best solution in the model
 		bestSolution.implement();
