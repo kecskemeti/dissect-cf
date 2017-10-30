@@ -62,8 +62,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		}
 		for(int i = 0; i < firstFitCreations; i++) {
 			Solution s = new Solution(bins, mutationProb);
-//			s.createFirstFitSolution();		//FIXME at the moment random fill is used because of a bug
-			s.fillRandomly();
+			s.createFirstFitSolution();
 			population.add(s);
 		}
 		for(int i = 0; i < unchangedCreations; i++) {
