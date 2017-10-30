@@ -26,6 +26,8 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
+import java.util.PriorityQueue;
+
 import org.apache.commons.lang3.tuple.MutablePair;
 
 import gnu.trove.map.hash.TLongObjectHashMap;
@@ -61,6 +63,7 @@ public abstract class DeferredEvent {
 	 * the aggregator that handles the event list stored in toSweep.
 	 */
 	private static final AggregatedEventDispatcher dispatcherSingleton = new AggregatedEventDispatcher();
+	private static final PriorityQueue<Long> keyList = new PriorityQueue<Long>();
 
 	/**
 	 * handles the event aggregations, actual subscriptions to timed events and
@@ -93,13 +96,14 @@ public abstract class DeferredEvent {
 					simultaneousReceivers[i].received = true;
 				}
 			}
+			keyList.remove(fires);
 			updateDispatcher();
 		}
 
 		@Override
 		protected void skip() {
 			super.skip();
-			MutablePair<Integer, DeferredEvent[]> cancelledlist = toSweep.remove(getMinKey());
+			MutablePair<Integer, DeferredEvent[]> cancelledlist = toSweep.remove(keyList.poll());
 			for (int i = 0; i < cancelledlist.left; i++) {
 				cancelledlist.right[i].cancelled = true;
 			}
@@ -116,18 +120,7 @@ public abstract class DeferredEvent {
 				unsubscribe();
 				return;
 			}
-			updateFrequency(getMinKey() - getFireCount());
-		}
-
-		private long getMinKey() {
-			final long[] keys = toSweep.keys();
-			long minkey = Long.MAX_VALUE;
-			for (long key : keys) {
-				if (key < minkey) {
-					minkey = key;
-				}
-			}
-			return minkey;
+			updateFrequency(keyList.peek() - getFireCount());
 		}
 	}
 
@@ -164,6 +157,7 @@ public abstract class DeferredEvent {
 		if (simultaneousReceiverPairs == null) {
 			simultaneousReceiverPairs = new MutablePair<Integer, DeferredEvent[]>(0, new DeferredEvent[5]);
 			toSweep.put(eventArrival, simultaneousReceiverPairs);
+			keyList.add(eventArrival);
 		}
 		int len = simultaneousReceiverPairs.getLeft();
 		DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
@@ -211,6 +205,7 @@ public abstract class DeferredEvent {
 				}
 				if (len == 0) {
 					toSweep.remove(eventArrival);
+					keyList.remove(eventArrival);
 					dispatcherSingleton.updateDispatcher();
 				} else {
 					simultaneousReceiverPairs.setLeft(len);
@@ -246,5 +241,6 @@ public abstract class DeferredEvent {
 	 */
 	static void reset() {
 		toSweep.clear();
+		keyList.clear();
 	}
 }
