@@ -15,4 +15,5 @@
 <entry key="psoC2">2</entry>
 <entry key="psoC1">2</entry>
 <entry key="seed">50</entry>
+<entry key="doLocalSearch">true</entry>
 </properties>

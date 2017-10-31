@@ -34,6 +34,8 @@ public class Solution {
 	private double mutationProb;
 	/** Fitness of the solution */
 	private Fitness fitness;
+	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
+	private boolean doLocalSearch=false;
 
 	Properties props;
 
@@ -61,10 +63,22 @@ public class Solution {
 			props.loadFromXML(fileInput);
 			fileInput.close();
 			random = new Random(Long.parseLong(props.getProperty("seed")));
+			doLocalSearch=Boolean.parseBoolean(props.getProperty("doLocalSearch"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
+	}
+
+	public Solution clone() {
+		Solution newSol=new Solution(bins, mutationProb);
+		newSol.mapping.putAll(this.mapping);
+		newSol.loads.putAll(this.loads);
+		newSol.used.putAll(this.used);
+		newSol.fitness.nrActivePms=this.fitness.nrActivePms;
+		newSol.fitness.nrMigrations=this.fitness.nrMigrations;
+		newSol.fitness.totalOverAllocated=this.fitness.totalOverAllocated;
+		return newSol;
 	}
 
 	/**
@@ -104,6 +118,8 @@ public class Solution {
 			}
 		}
 		countActivePmsAndOverloads();
+		if(doLocalSearch)
+			improve();
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 
@@ -263,6 +279,8 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
+		if(doLocalSearch)
+			result.improve();
 		return result;
 	}
 
@@ -285,12 +303,14 @@ public class Solution {
 			else
 				pm = this.mapping.get(vm);
 			result.mapping.put(vm, pm);
-			result.loads.get(pm).singleAdd(vm.getResources());	//FIXME bug, sometimes vm is null at this point with first fit
+			result.loads.get(pm).singleAdd(vm.getResources());
 			result.used.put(pm,true);
 			if(pm!=vm.getInitialPm())
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
+		if(doLocalSearch)
+			result.improve();
 		return result;
 	}
 
