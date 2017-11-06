@@ -3,11 +3,15 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 
@@ -30,6 +34,8 @@ public class Solution {
 	private double mutationProb;
 	/** Fitness of the solution */
 	private Fitness fitness;
+	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
+	private boolean doLocalSearch=false;
 
 	Properties props;
 
@@ -57,10 +63,22 @@ public class Solution {
 			props.loadFromXML(fileInput);
 			fileInput.close();
 			random = new Random(Long.parseLong(props.getProperty("seed")));
+			doLocalSearch=Boolean.parseBoolean(props.getProperty("doLocalSearch"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
+	}
+
+	public Solution clone() {
+		Solution newSol=new Solution(bins, mutationProb);
+		newSol.mapping.putAll(this.mapping);
+		newSol.loads.putAll(this.loads);
+		newSol.used.putAll(this.used);
+		newSol.fitness.nrActivePms=this.fitness.nrActivePms;
+		newSol.fitness.nrMigrations=this.fitness.nrMigrations;
+		newSol.fitness.totalOverAllocated=this.fitness.totalOverAllocated;
+		return newSol;
 	}
 
 	/**
@@ -100,6 +118,8 @@ public class Solution {
 			}
 		}
 		countActivePmsAndOverloads();
+		if(doLocalSearch)
+			improve();
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 
@@ -120,9 +140,88 @@ public class Solution {
 	}
 
 	/**
+	 * Improving a solution by relieving overloaded PMs, emptying underloaded
+	 * PMs, and finding new hosts for the thus removed VMs using BFD.
+	 */
+	private void improve() {
+		List<ModelVM> vmsToMigrate=new ArrayList<>();
+		//create inverse mapping
+		Map<ModelPM,Vector<ModelVM>> vmsOfPms=new HashMap<>();
+		for(ModelPM pm : bins) {
+			vmsOfPms.put(pm, new Vector<>());
+		}
+		for(ModelVM vm : mapping.keySet()) {
+			vmsOfPms.get(mapping.get(vm)).add(vm);
+		}
+		//relieve overloaded PMs + empty underloaded PMs
+		for(ModelPM pm : bins) {
+			ConstantConstraints cap=pm.getTotalResources();
+			while(loads.get(pm).getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold()
+					|| loads.get(pm).getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold()) {
+				//PM is overloaded
+				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				ModelVM vm=vmsOfPm.remove(vmsOfPm.size()-1);
+				vmsToMigrate.add(vm);
+				loads.get(pm).subtract(vm.getResources());
+				if(vmsOfPm.isEmpty())
+					used.put(pm, false);
+			}
+			if(loads.get(pm).getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getLowerThreshold()
+					&& loads.get(pm).getRequiredMemory()<=cap.getRequiredMemory()*pm.getLowerThreshold()) {
+				//PM is underloaded
+				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				for(ModelVM vm : vmsOfPm) {
+					vmsToMigrate.add(vm);
+					loads.get(pm).subtract(vm.getResources());
+				}
+				vmsOfPm.removeAllElements();
+				used.put(pm, false);
+			}
+		}
+		//find new host for the VMs to migrate using BFD
+		Collections.sort(vmsToMigrate, new Comparator<ModelVM>() {
+			@Override
+			public int compare(ModelVM vm1, ModelVM vm2) {
+				return Double.compare(vm2.getResources().getTotalProcessingPower(), vm1.getResources().getTotalProcessingPower());
+			}
+		});
+		List<ModelPM> binsToTry=new ArrayList<>(bins);
+		Collections.sort(binsToTry, new Comparator<ModelPM>() {
+			@Override
+			public int compare(ModelPM pm1, ModelPM pm2) {
+				return Double.compare(loads.get(pm2).getTotalProcessingPower(), loads.get(pm1).getTotalProcessingPower());
+			}
+		});
+		for(ModelVM vm : vmsToMigrate) {
+			ModelPM targetPm=null;
+			for(ModelPM pm : binsToTry) {
+				ResourceVector newLoad=loads.get(pm);
+				newLoad.singleAdd(vm.getResources());
+				ConstantConstraints cap=pm.getTotalResources();
+				if(newLoad.getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getUpperThreshold()
+						&& newLoad.getRequiredMemory()<=cap.getRequiredMemory()*pm.getUpperThreshold()) {
+					targetPm=pm;
+					break;
+				}
+			}
+			if(targetPm==null)
+				targetPm=vm.getInitialPm();
+			mapping.put(vm, targetPm);
+			loads.get(targetPm).singleAdd(vm.getResources());
+			used.put(targetPm, true);
+			if(targetPm!=vm.getInitialPm())
+				fitness.nrMigrations++;
+		}
+		countActivePmsAndOverloads();
+	}
+
+	/**
 	 * Creates a mapping based on FirstFit. 
 	 */
-	void createFirstFitSolution() {		
+	void createFirstFitSolution() {
+		createUnchangedSolution();
+		improve();
+/*		
 		fitness.nrMigrations=0;
 		for(int a = 0; a < bins.size(); a++) {
 			ModelPM pm = bins.get(a);
@@ -148,29 +247,7 @@ public class Solution {
 		}
 		countActivePmsAndOverloads();
 		// System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
-	}
-
-	/**
-	 * Compute the number of PMs that should be on, given our mapping. This can be
-	 * used as a component of the fitness.
-	 */
-	int getNrActivePms() {
-		int result = 0;
-		// Decide for each PM whether it is used by at least one VM.
-		Map<ModelPM, Boolean> used = new HashMap<>();
-		for (ModelPM pm : bins) {
-			used.put(pm, false);
-		}
-		for (ModelVM vm : mapping.keySet()) {
-			ModelPM pm = mapping.get(vm);
-			used.put(pm, true);
-		}
-		// Count the number of PMs that are in use.
-		for (ModelPM pm : bins) {
-			if (used.get(pm))
-				result++;
-		}
-		return result;
+*/
 	}
 
 	/**
@@ -202,6 +279,8 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
+		if(doLocalSearch)
+			result.improve();
 		return result;
 	}
 
@@ -224,12 +303,14 @@ public class Solution {
 			else
 				pm = this.mapping.get(vm);
 			result.mapping.put(vm, pm);
-			result.loads.get(pm).singleAdd(vm.getResources());	//FIXME bug, sometimes vm is null at this point with first fit
+			result.loads.get(pm).singleAdd(vm.getResources());
 			result.used.put(pm,true);
 			if(pm!=vm.getInitialPm())
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
+		if(doLocalSearch)
+			result.improve();
 		return result;
 	}
 
