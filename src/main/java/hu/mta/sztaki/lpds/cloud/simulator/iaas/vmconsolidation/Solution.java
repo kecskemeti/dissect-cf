@@ -21,21 +21,21 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
  */
 public class Solution {
 	/** List of all available bins */
-	private List<ModelPM> bins;
+	protected List<ModelPM> bins;
 	/** Mapping of VMs to PMs */
-	private Map<ModelVM, ModelPM> mapping;
+	protected Map<ModelVM, ModelPM> mapping;
 	/** Current resource use of the PMs */
-	private Map<ModelPM, ResourceVector> loads;
+	protected Map<ModelPM, ResourceVector> loads;
 	/** Flags for each PM whether it is in use */
-	private Map<ModelPM, Boolean> used;
+	protected Map<ModelPM, Boolean> used;
 	/** For generating random numbers */
-	private Random random;
+	protected Random random;
 	/** Each gene is replaced by a random value with this probability during mutation */
 	private double mutationProb;
 	/** Fitness of the solution */
-	private Fitness fitness;
+	protected Fitness fitness;
 	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
-	private boolean doLocalSearch=false;
+	protected boolean doLocalSearch=false;
 
 	Properties props;
 
@@ -86,7 +86,7 @@ public class Solution {
 	 * PRE: the maps #loads and #used are already filled
 	 * POST: fitness.nrActivePms and fitness.totalOverAllocated are correct
 	 */
-	private void countActivePmsAndOverloads() {
+	protected void countActivePmsAndOverloads() {
 		fitness.nrActivePms=0;
 		fitness.totalOverAllocated=0;
 		for (ModelPM pm : bins) {
@@ -143,7 +143,7 @@ public class Solution {
 	 * Improving a solution by relieving overloaded PMs, emptying underloaded
 	 * PMs, and finding new hosts for the thus removed VMs using BFD.
 	 */
-	private void improve() {
+	protected void improve() {
 		List<ModelVM> vmsToMigrate=new ArrayList<>();
 		//create inverse mapping
 		Map<ModelPM,Vector<ModelVM>> vmsOfPms=new HashMap<>();
@@ -153,13 +153,19 @@ public class Solution {
 		for(ModelVM vm : mapping.keySet()) {
 			vmsOfPms.get(mapping.get(vm)).add(vm);
 		}
+		
 		//relieve overloaded PMs + empty underloaded PMs
 		for(ModelPM pm : bins) {
 			ConstantConstraints cap=pm.getTotalResources();
+//			Logger.getGlobal().info("ConstantConstraints: " + cap.getTotalProcessingPower() + ", " + cap.getRequiredMemory() + 
+//					", loads: " + loads.get(pm).getTotalProcessingPower() + ", " + loads.get(pm).getRequiredMemory());
 			while(loads.get(pm).getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold()
 					|| loads.get(pm).getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold()) {
 				//PM is overloaded
 				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				
+				//Logger.getGlobal().info("overloaded, vmsOfPm, size: " + vmsOfPm.size() + ", " + vmsOfPm.toString());
+				
 				ModelVM vm=vmsOfPm.remove(vmsOfPm.size()-1);
 				vmsToMigrate.add(vm);
 				loads.get(pm).subtract(vm.getResources());
@@ -170,6 +176,9 @@ public class Solution {
 					&& loads.get(pm).getRequiredMemory()<=cap.getRequiredMemory()*pm.getLowerThreshold()) {
 				//PM is underloaded
 				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				
+				//Logger.getGlobal().info("underloaded, vmsOfPm, size: " + vmsOfPm.size());
+				
 				for(ModelVM vm : vmsOfPm) {
 					vmsToMigrate.add(vm);
 					loads.get(pm).subtract(vm.getResources());
@@ -221,33 +230,7 @@ public class Solution {
 	void createFirstFitSolution() {
 		createUnchangedSolution();
 		improve();
-/*		
-		fitness.nrMigrations=0;
-		for(int a = 0; a < bins.size(); a++) {
-			ModelPM pm = bins.get(a);
-			if(!pm.isHostingVMs())
-				continue;
-			
-			List<ModelVM> vmsOnPm = pm.getVMs();
-			for(int b = 0; b < vmsOnPm.size(); b++) {
-				ModelVM vm = vmsOnPm.get(b);
-				for(int i = 0; i < bins.size(); i++) {
-					ModelPM targetPm=bins.get(i);
-					if(targetPm.isMigrationPossible(vm)) {
-						if(vm == null) {
-							System.err.println("VM is null at firstfit creation.");
-							continue;
-						}
-						mapping.put(vm, targetPm);
-						loads.get(targetPm).singleAdd(vm.getResources());
-						used.put(targetPm,true);
-					}
-				}
-			}
-		}
-		countActivePmsAndOverloads();
 		// System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
-*/
 	}
 
 	/**
@@ -336,7 +319,7 @@ public class Solution {
 		for (ModelVM vm : mapping.keySet()) {
 			if (!first)
 				result = result + ",";
-			result = result + vm.id + "->" + mapping.get(vm).getNumber();
+			result = result + vm.getId() + "->" + mapping.get(vm).getNumber();
 			first = false;
 		}
 		result = result + "),f=" + fitness.toString() + "]";
@@ -347,13 +330,57 @@ public class Solution {
 	 * String representation of the mapping of the given solution.
 	 */
 	public String mappingToString() {
-		String result = "[m=(";
+		String result = "[mapping=(";
 		boolean first = true;
 		for (ModelVM vm : mapping.keySet()) {
 			if (!first)
 				result = result + ",";
-			result = result + vm.id + "->" + mapping.get(vm).getNumber();
+			result = result + vm.getId() + "->" + mapping.get(vm).getNumber();
 			first = false;
+		}
+		result = result + ")]";
+		return result;
+	}
+	
+	/**
+	 * String representation of the loads of each pm of the current mapping.
+	 */
+	public String loadsToString() {
+		String result = "[loads=(";
+		boolean first = true;
+		for (ModelPM pm : loads.keySet()) {
+			
+			
+			if(!loads.get(pm).isEmpty()) {
+				if (!first)
+					result = result + ",";
+				
+				result = result + pm.getNumber() + "::" + loads.get(pm).toString();
+				first = false;
+			}
+		}
+		result = result + ")]";
+		return result;
+	}
+	
+	/**
+	 * String representation of the used-mapping of the given solution.
+	 */
+	public String usedToString() {
+		String result = "[used=(";
+		boolean first = true;
+		for (ModelPM pm : used.keySet()) {
+			
+			if(!used.get(pm))
+				continue;
+			else {
+				if (!first)
+					result = result + ", ";
+				
+				result = result + pm.getNumber();
+				first = false;
+			}			
+			
 		}
 		result = result + ")]";
 		return result;

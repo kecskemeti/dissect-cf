@@ -16,8 +16,7 @@ public class ModelVM {
 	private VirtualMachine vm;
 	private ModelPM hostPM;
 	private ModelPM initialHost;
-	//String id;
-	int id;
+	private int id;
 	private ResourceVector neededResources;
 
 	/**

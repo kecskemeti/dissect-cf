@@ -28,17 +28,13 @@ public class ResourceVector extends AlterableResourceConstraints {
 		
 	/**
 	 * Comparison for checking if the PM is overAllocated.
-	 * @param total
-	 * 			The total resources as ResourceConstraints.
-	 * @param upperThreshold
-	 * 			The defined upper Threshold.
-	 * @return true if the pm is overAllocated.
+	 * 
+	 * @param total The total resources as ResourceConstraints.
+	 * @param upperThreshold The defined upper Threshold.
+	 * 
+	 * @return True if the pm is overAllocated.
 	 */
 	public boolean isOverAllocated(ResourceConstraints total, double upperThreshold) {	
-		
-//		System.err.println(consumedThresholdToString(this, upperThreshold));
-//		System.err.println(totalThresholdToString(total, upperThreshold));
-		
 		if(this.getTotalProcessingPower() > total.getTotalProcessingPower() * upperThreshold || this.getRequiredMemory() > total.getRequiredMemory() * upperThreshold) {
 			return true;
 		}
@@ -48,11 +44,11 @@ public class ResourceVector extends AlterableResourceConstraints {
 	
 	/**
 	 * Comparison for checking if the PM is underAllocated.
-	 * @param total
-	 * 			The total resources as ResourceConstraints.
-	 * @param lowerThreshold
-	 * 			The defined lower Threshold.
-	 * @return true if the pm is underAllocated.
+	 * 
+	 * @param total The total resources as ResourceConstraints.	
+	 * @param lowerThreshold The defined lower Threshold.
+	 * 
+	 * @return True if the pm is underAllocated.
 	 */
 	public boolean isUnderAllocated(ResourceConstraints total, double lowerThreshold) {
 		if(this.getTotalProcessingPower() < total.getTotalProcessingPower() * lowerThreshold && this.getRequiredMemory() < total.getRequiredMemory() * lowerThreshold) {
@@ -65,9 +61,11 @@ public class ResourceVector extends AlterableResourceConstraints {
 	/**
 	 * Compares the allocation of two ResourceVectors to verify that the VM which calls this methods on its resources can be 
 	 * added to the available resources of the PM in the parameter.
+	 * 
 	 * @param availablePMResources
 	 * 			The resources of the possible host PM as ResourceConstraints.
-	 * @return true if all values are greater.
+	 * 
+	 * @return True if all values are greater.
 	 */
 	public boolean canBeAdded(ResourceConstraints availablePMResources) {
 		
@@ -80,10 +78,24 @@ public class ResourceVector extends AlterableResourceConstraints {
 	}
 
 	/**
-	 * The toString()-method.
+	 * Creates a string out of this ResourceVector.
+	 * 
+	 * @return The totalProcessingPower and the requiredMemory of this instance.
 	 */
 	public String toString() {
-		return "["+ getRequiredCPUs() + "," + getRequiredProcessingPower() + ","+ getRequiredMemory() + "]";
+		return "["+ getTotalProcessingPower() + ","+ getRequiredMemory() + "]";
+	}
+	
+	/**
+	 * Checks this instance of a ResourceVector in case of emptyness.
+	 * 
+	 * @return True, if the totalProcessingPower and the requiredMemory are zero.
+	 */
+	public boolean isEmpty() {
+		if(getTotalProcessingPower() == 0.0 && getRequiredMemory() == 0) {
+			return true;
+		}
+		return false;
 	}
 	
 	/**

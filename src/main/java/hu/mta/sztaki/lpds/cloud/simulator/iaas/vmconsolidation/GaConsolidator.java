@@ -139,26 +139,26 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 		
 		determineCreations(populationSize);
-		}
+	}
 			
-			@Override
-			protected void determineCreations(int numberOfCreations) {
-				if(numberOfCreations < 3) {
-					Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
-					return;
-				}			
-				if(numberOfCreations == 3) {
-					randomCreations = 1;
-					unchangedCreations = 1;
-					firstFitCreations = 1;
-				}
-				else {
-					unchangedCreations = 1;
-					Double randoms = numberOfCreations * 0.25;
-					firstFitCreations = randoms.intValue();
-					randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
-				}
-			}
+	@Override
+	protected void determineCreations(int numberOfCreations) {
+		if(numberOfCreations < 3) {
+			Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
+			return;
+		}			
+		if(numberOfCreations == 3) {
+			randomCreations = 1;
+			unchangedCreations = 1;
+			firstFitCreations = 1;
+		}
+		else {
+			unchangedCreations = 1;
+			Double randoms = numberOfCreations * 0.25;
+			firstFitCreations = randoms.intValue();
+			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
+		}
+	}
 
 	/**
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
