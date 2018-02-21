@@ -3,15 +3,14 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
-	/**
-	 * @author Rene Ponto
-	 * 
-	 * This class manages the resources of the modeled VMs and PMs as an extension of 'AlterableResourceConstraints'.
-	 * The additional functions are comparisons of the resources (cores, perCoreProcessing and memory) between a ConstantConstraint
-	 * and a ResourceVector to look if a PM is overAllocated or underAllocated with the actual placed VMs and a method to compare two
-	 * ResourceVectors.
-	 */
-
+/**
+ * @author Rene Ponto
+ * 
+ * This class manages the resources of the modeled VMs and PMs as an extension of 'AlterableResourceConstraints'.
+ * The additional functions are comparisons of the resources (cores, perCoreProcessing and memory) between a ConstantConstraint
+ * and a ResourceVector to look if a PM is overAllocated or underAllocated with the actual placed VMs and a method to compare two
+ * ResourceVectors.
+ */
 public class ResourceVector extends AlterableResourceConstraints {	
 	
 	/**
@@ -56,6 +55,15 @@ public class ResourceVector extends AlterableResourceConstraints {
 		}
 		else
 			return false;
+	}
+	
+	/**
+	 * Clones the current ResourceVector.
+	 * 
+	 * @return A new ResourceVector object containing the same values.
+	 */
+	public ResourceVector clone() {
+        return new ResourceVector(getRequiredCPUs(), getRequiredProcessingPower(), getRequiredMemory());
 	}
 
 	/**

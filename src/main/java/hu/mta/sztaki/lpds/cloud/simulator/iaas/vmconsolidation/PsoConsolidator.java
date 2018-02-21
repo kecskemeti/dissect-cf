@@ -111,8 +111,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
 		}
 		
-		Logger.getGlobal().info("random creations: " + randomCreations + ", unchanged creations: " + 
-				unchangedCreations + ", first fit creations: " + firstFitCreations);
+//		Logger.getGlobal().info("random creations: " + randomCreations + ", unchanged creations: " + 
+//				unchangedCreations + ", first fit creations: " + firstFitCreations);
 		
 	}
 
@@ -169,13 +169,13 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 				//p.evaluateFitnessFunction();	
 				
 				if(t == 0) {
-					p.setPBest(p.getFitnessValue());
+					p.setPBest(p.evaluateFitnessFunction());
 					p.setPBestLocation(p.getLocation());
 				}				
 				
 				//the aim is to minimize the function
-				if(p.getFitnessValue().isBetterThan(p.getPBest())) {
-					p.setPBest(p.getFitnessValue());
+				if(p.evaluateFitnessFunction().isBetterThan(p.getPBest())) {
+					p.setPBest(p.evaluateFitnessFunction());
 					p.setPBestLocation(p.getLocation());
 				}
 				//Logger.getGlobal().info("Iteration " + t + ", Particle " + p.getNumber() + ", " + p.toString());
@@ -186,8 +186,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			//Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
 			// set the new global best fitness / location
-			if(t == 0 || swarm.get(bestParticleIndex).getFitnessValue().isBetterThan(globalBest)) {
-				globalBest = swarm.get(bestParticleIndex).getFitnessValue();
+			if(t == 0 || swarm.get(bestParticleIndex).evaluateFitnessFunction().isBetterThan(globalBest)) {
+				globalBest = swarm.get(bestParticleIndex).evaluateFitnessFunction();
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();		
 			}
 			
@@ -238,12 +238,12 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					p.updateMappings();   	// adjusts the mappings with the new location
 										
 					if(p.doLocalSearch) {
-						Logger.getGlobal().info("For particle " + p.getNumber() + ", starting local search");
+						//Logger.getGlobal().info("For particle " + p.getNumber() + ", starting local search");
 						p.improve();
 						p.updateLocation();	// we have to update the location afterwards
 					}
 					
-					Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
+					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
 				}
 				
 			}
@@ -277,12 +277,12 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 * @return The position where the value is in the vector.
 	 */
 	private int getMinPos() {		
-		Fitness minValue = swarm.get(0).getFitnessValue();
+		Fitness minValue = swarm.get(0).evaluateFitnessFunction();
 		int pos = 0;
 		
 		for(int i = 0; i < swarm.size(); i++) {
-			if(swarm.get(i).getFitnessValue().isBetterThan(minValue)) {
-				minValue = swarm.get(i).getFitnessValue();
+			if(swarm.get(i).evaluateFitnessFunction().isBetterThan(minValue)) {
+				minValue = swarm.get(i).evaluateFitnessFunction();
 				pos = i;
 			}
 		}		
@@ -329,7 +329,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		 */
 		public void updateLocation() {
 
-			Logger.getGlobal().info("Before updateLocation(), new location: " + location + ", mapping: " + mappingToString());
+			//Logger.getGlobal().info("Before updateLocation(), new location: " + location + ", mapping: " + mappingToString());
 			
 			// clear the location
 			location.clear();
@@ -344,7 +344,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			
 			while(x < items.size()) {
 				for (ModelVM vm : mapping.keySet()) {
-					if(vm.getId() == items.get(x).getId()) {
+					if(vm.hashCode() == items.get(x).hashCode()) {
 						newMapping.put(vm, mapping.get(vm));
 						++x;
 					}
@@ -353,10 +353,10 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			
 			// now fill the location
 			for (ModelVM vm : newMapping.keySet()) {
-				location.add( (double) mapping.get(vm).getNumber() );	// save the id of the pm
+				location.add( (double) mapping.get(vm).hashCode() );	// save the id of the pm
 			}
 			
-			Logger.getGlobal().info("After updateLocation(), new location: " + location + ", mapping: " + mappingToString());
+			//Logger.getGlobal().info("After updateLocation(), new location: " + location + ", mapping: " + mappingToString());
 		}
 		
 		/**
@@ -369,7 +369,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			
 			roundValues();			
 			
-			Logger.getGlobal().info("Before updateMappings(), location: " + location + ", mapping: " + mappingToString());	
+			//Logger.getGlobal().info("Before updateMappings(), location: " + location + ", mapping: " + mappingToString());	
 			
 			// check if the mappings and the location are different, then adjust the mappings
 			for (int i = 0; i < location.size(); i++) {
@@ -389,7 +389,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					fitness.nrMigrations++;
 					mapping.put(currentVm, currentPm);	//put the new pm
 					
-					// FIXME error with the loads sometimes, which seems to be the problem causing an exception
 					loads.get(mappedPm).subtract(currentVm.getResources());
 					loads.get(currentPm).singleAdd(currentVm.getResources());
 					
@@ -407,11 +406,11 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			this.countActivePmsAndOverloads();
 			
 			// the actual mappings
-			Logger.getGlobal().info("mapping: " + mappingToString());
-			Logger.getGlobal().info("loads: " + loadsToString());
-			Logger.getGlobal().info("used: " + usedToString());
+			//Logger.getGlobal().info("mapping: " + mappingToString());
+			//Logger.getGlobal().info("loads: " + loadsToString());
+			//Logger.getGlobal().info("used: " + usedToString());
 			
-			Logger.getGlobal().info("After updateMappings(), location: " + location + ", mapping: " + mappingToString());
+			//Logger.getGlobal().info("After updateMappings(), location: " + location + ", mapping: " + mappingToString());
 			
 		}
 		
@@ -494,56 +493,46 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		/**
 		 * Sets the personal best location with the parametrized ArithmeticVector.
 		 * 
-		 * @param loc The new location.
+		 * @param loc The new best location.
 		 */
 		public void setPBestLocation(ArithmeticVector loc) {		
 			this.personalBestLocation = loc;
 		}
 	
 		/**
+		 * Getter for the current velocity.
 		 * 
-		 * 
-		 * @return
+		 * @return The current velocity of this particle.
 		 */
 		public ArithmeticVector getVelocity() {
 			return velocity;
 		}
 
 		/**
+		 * Sets the velocity of this particle with the parametrized ArithmeticVector.
 		 * 
-		 * 
-		 * @param velocity
+		 * @param velocity The new velocity.
 		 */
 		public void setVelocity(ArithmeticVector velocity) {
 			this.velocity = velocity;
 		}
 
 		/**
+		 * Getter for the current location.
 		 * 
-		 * 
-		 * @return
+		 * @return The current location of this particle.
 		 */
 		public ArithmeticVector getLocation() {
 			return location;
 		}
 
 		/**
+		 * Sets the location of this particle with the parametrized ArithmeticVector.
 		 * 
-		 * 
-		 * @param location
+		 * @param location The new location.
 		 */
 		public void setLocation(ArithmeticVector location) {
 			this.location = location;
-		}
-
-		/**
-		 * 
-		 * 
-		 * @return
-		 */
-		public Fitness getFitnessValue() {
-			//fitnessValue = evaluateFitnessFunction();
-			return fitness;
 		}
 	
 		/**
@@ -567,7 +556,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		public String toString() {
 			String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") 
 				+ "Velocity: " + this.getVelocity() + System.getProperty("line.separator") 
-				+ "FitnessValue: " + this.getFitnessValue() + ", PersonalBestFitness: " 
+				+ "FitnessValue: " + this.evaluateFitnessFunction() + ", PersonalBestFitness: " 
 				+ this.getPBest() + System.getProperty("line.separator")
 				+ "PersonalBestLocation: " + this.getPBestLocation() + System.getProperty("line.separator");
 		

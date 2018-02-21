@@ -3,14 +3,13 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 
 
-	/**
-	 * @author Julian Bellendorf, Rene Ponto
-	 * 
-	 * This class represents a VM in this abstract model. It has only the necessary things for consolidation which
-	 * means the hosting PM, its needed resources and the id of the original VM.
-	 * The resource consumption happens inside the ModelPM class.
-	 */
-
+/**
+ * @author Julian Bellendorf, Rene Ponto
+ * 
+ * This class represents a VM in this abstract model. It has only the necessary things for consolidation which
+ * means the hosting PM, its needed resources and the id of the original VM.
+ * The resource consumption happens inside the ModelPM class.
+ */
 public class ModelVM {
 	
 	private VirtualMachine vm;
@@ -54,6 +53,11 @@ public class ModelVM {
 				+ getResources().getRequiredProcessingPower() + ", " + "Memory: " + getResources().getRequiredMemory();
 	}	
 	
+	/**
+	 * A small representation to get the id of this vm.
+	 * 
+	 * @return The id of this vm.
+	 */
 	public String toShortString() {
 		return "VM " + id;
 	}
@@ -95,10 +99,11 @@ public class ModelVM {
 		return initialHost;
 	}
 
-	public int getId() {
-		return id;
-	}
-
+	/**
+	 * Getter.
+	 * 
+	 * @return The id of this vm.
+	 */
 	@Override
 	public int hashCode() {
 		return id;

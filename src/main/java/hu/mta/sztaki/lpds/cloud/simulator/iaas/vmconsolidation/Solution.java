@@ -70,14 +70,27 @@ public class Solution {
 		
 	}
 
+	/**
+	 * Creates a clone of this solution with the same mappings.
+	 * 
+	 * @return A new object containing the same mappings as this solution.
+	 */
 	public Solution clone() {
 		Solution newSol=new Solution(bins, mutationProb);
+		
+		//TODO maybe we have to make a deep copy for the mappings
 		newSol.mapping.putAll(this.mapping);
-		newSol.loads.putAll(this.loads);
-		newSol.used.putAll(this.used);
-		newSol.fitness.nrActivePms=this.fitness.nrActivePms;
+		
+		// clone all ResourceVectors for each pm and put it inside the used-mapping
+		for(ModelPM pm : loads.keySet()) {
+			newSol.loads.put(pm, loads.get(pm).clone());
+			newSol.used.put(pm,true);
+		}
+		
 		newSol.fitness.nrMigrations=this.fitness.nrMigrations;
-		newSol.fitness.totalOverAllocated=this.fitness.totalOverAllocated;
+		
+		// after cloning everything else we can determine the missing fitness values
+		newSol.countActivePmsAndOverloads();
 		return newSol;
 	}
 
@@ -204,7 +217,7 @@ public class Solution {
 		for(ModelVM vm : vmsToMigrate) {
 			ModelPM targetPm=null;
 			for(ModelPM pm : binsToTry) {
-				ResourceVector newLoad=loads.get(pm);
+				ResourceVector newLoad=loads.get(pm).clone();
 				newLoad.singleAdd(vm.getResources());
 				ConstantConstraints cap=pm.getTotalResources();
 				if(newLoad.getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getUpperThreshold()
@@ -319,7 +332,7 @@ public class Solution {
 		for (ModelVM vm : mapping.keySet()) {
 			if (!first)
 				result = result + ",";
-			result = result + vm.getId() + "->" + mapping.get(vm).getNumber();
+			result = result + vm.hashCode() + "->" + mapping.get(vm).hashCode();
 			first = false;
 		}
 		result = result + "),f=" + fitness.toString() + "]";
@@ -335,7 +348,7 @@ public class Solution {
 		for (ModelVM vm : mapping.keySet()) {
 			if (!first)
 				result = result + ",";
-			result = result + vm.getId() + "->" + mapping.get(vm).getNumber();
+			result = result + vm.hashCode() + "->" + mapping.get(vm).hashCode();
 			first = false;
 		}
 		result = result + ")]";
@@ -355,7 +368,7 @@ public class Solution {
 				if (!first)
 					result = result + ",";
 				
-				result = result + pm.getNumber() + "::" + loads.get(pm).toString();
+				result = result + pm.hashCode() + "::" + loads.get(pm).toString();
 				first = false;
 			}
 		}
@@ -377,7 +390,7 @@ public class Solution {
 				if (!first)
 					result = result + ", ";
 				
-				result = result + pm.getNumber();
+				result = result + pm.hashCode();
 				first = false;
 			}			
 			
