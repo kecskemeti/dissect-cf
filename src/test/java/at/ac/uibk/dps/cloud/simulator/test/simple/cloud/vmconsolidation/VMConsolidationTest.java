@@ -438,7 +438,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	// VM consolidator using a particle swarm optimization algorithm
 	
-	@Test(timeout = 1000)
+	@Test(timeout = 2000)
 	public void psoUnderAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM2.turnon();
 		testPM3.turnon();
@@ -456,7 +456,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
-	@Test(timeout = 1000)
+	@Test(timeout = 2000)
 	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -478,7 +478,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Assert.assertEquals(1, basic.runningMachines.size());
 	}
 	
-	@Test(timeout = 1000)
+	@Test(timeout = 2000)
 	public void psoOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		Timed.simulateUntilLastEvent();

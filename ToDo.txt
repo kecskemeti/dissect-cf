@@ -1,7 +1,0 @@
-Anmerkungen:
-
-ConsolidationController
-Simulationen durchführen
-vmmultialloctenant weiter implementieren
-eventuell weitere Testfaelle einfuegen, um die Ergaenzungen zu testen
-OnOffScheduler

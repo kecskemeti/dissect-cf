@@ -77,7 +77,9 @@ public class ModelPM {
 	}
 
 	/**
-	 * toString() is used for debugging and contains the number of the PM in the IaaS and its actual VMs.
+	 * toString() is used for debugging and contains the number of the pm in the IaaS and its actual vms.
+	 * 
+	 * @return A string containing the pms number, the resources (cap and load), the state and its vms.
 	 */	
 	public String toString() {
 		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", state="+state+", VMs=";
@@ -92,14 +94,19 @@ public class ModelPM {
 		return result;
 	}
 
+	/**
+	 * A small representation to get the id of this pm.
+	 * 
+	 * @return The id of this pm.
+	 */
 	public String toShortString() {
 		return "PM " + number;
 	}
 
 	/**
 	 * Adds a given VM to this PM.
-	 * @param vm
-	 * 			The VM which is going to be put on this PM.
+	 * 
+	 * @param vm The VM which is going to be put on this PM.
 	 */
 	public boolean addVM(ModelVM vm) {		
 		vmList.add(vm);
@@ -112,8 +119,8 @@ public class ModelPM {
 
 	/**
 	 * Removes a given VM of this PM.
-	 * @param vm
-	 * 			The VM which is going to be removed of this PM.
+	 * 
+	 * @param vm The VM which is going to be removed of this PM.
 	 */
 	private boolean removeVM(ModelVM vm) {
 		vmList.remove(vm);
@@ -127,10 +134,10 @@ public class ModelPM {
 
 	/**
 	 * Migration of a VM from this PM to another.
-	 * @param vm
-	 * 			The VM which is going to be migrated.
-	 * @param target
-	 * 			The target PM where to migrate.
+	 * 
+	 * @param vm The VM which is going to be migrated.
+	 * 
+	 * @param target The target PM where to migrate.
 	 */	
 	public void migrateVM(ModelVM vm, ModelPM target) {
 		target.addVM(vm);		
@@ -140,15 +147,15 @@ public class ModelPM {
 
 	/**
 	 * Reserves resources for possible migrations. 
-	 * @param vm
-	 * 			The Virtual Machine which could be migrated.
+	 * 
+	 * @param vm The Virtual Machine which could be migrated.
 	 */
 	public void reserveResources(ModelVM vm) {
 		this.reserved.add(vm.getResources());
 	}
 	
 	/**
-	 * Resets the resources.
+	 * Resets the reserved resources.
 	 */
 	public void setResourcesFree() {
 		this.reserved.subtract(reserved);
@@ -156,6 +163,7 @@ public class ModelPM {
 
 	/**
 	 * Checks if there are any VMs on this PM.
+	 * 
 	 * @return true if VMs are running on this PM.
 	 */
 	public boolean isHostingVMs() {
@@ -181,27 +189,27 @@ public class ModelPM {
 	public static enum State {
 		
 		/**
-		 * There are actually no VMs on this PM, PM is not running
+		 * There are actually no vms on this pm, pm is not running
 		 */
 		EMPTY_OFF,
 		
 		/**
-		 * PM is running and empty
+		 * pm is running and empty
 		 */
 		EMPTY_RUNNING,
 		
 		/**
-		 * allocation is between the upper and lower threshold, PM is running
+		 * allocation is between the upper and lower threshold, pm is running
 		 */
 		NORMAL_RUNNING,
 		
 		/**
-		 * allocation is lower than the lower threshold, PM is running
+		 * allocation is lower than the lower threshold, pm is running
 		 */
 		UNDERALLOCATED_RUNNING,
 		
 		/**
-		 * allocation is higher than the upper threshold, PM is running
+		 * allocation is higher than the upper threshold, pm is running
 		 */
 		OVERALLOCATED_RUNNING,
 		
@@ -217,31 +225,31 @@ public class ModelPM {
 	};
 	
 	/**
-	 * changes the state of the PM so the graph can give the switch off information
-	 * later to the real simulation
+	 * Changes the state of the pm so the graph can give the switch off information
+	 * later to the simulation.
 	 */	
 	protected void switchOff() {
 		this.changeState(State.EMPTY_OFF);
 	}	
 	/**
-	 * changes the state of the PM so the graph can give the switch on information
-	 * later to the real simulation
+	 * Changes the state of the pm so the graph can give the switch on information
+	 * later to the simulation.
 	 */	
 	protected void switchOn() {
 		this.changeState(State.EMPTY_RUNNING);
 	}
 	
 	/**
-	 * Setter for the state of the PM
-	 * @param state
-	 * 			the wanted state
+	 * Setter for the state of this pm.
+	 * 
+	 * @param state The new state for this pm.
 	 */	
 	protected void changeState(State state) {
 		this.state = state;
 	}
 	
 	/**
-	 * In this method the status of this PM is considered. For that, the methods
+	 * In this method the status of this pm is considered. For that, the methods
 	 * underAllocated() and overAllocated() are written. It is recognized if the last
 	 * migration on this PM was not succesful and in case of that the state remains
 	 * unchanged.
@@ -250,7 +258,7 @@ public class ModelPM {
 		if(isHostingVMs() == false) {
 			changeState(State.EMPTY_RUNNING);
 		}
-		if(isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) {
+		else if(isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) {
 			
 		}
 		else {
@@ -273,8 +281,9 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Method for checking if the actual PM is overAllocated.
-	 * @return true if overloaded, false otherwise
+	 * Method for checking if the actual pm is overAllocated.
+	 * 
+	 * @return True if overAllocated, false otherwise.
 	 */	
 	public boolean isOverAllocated() {
 		
@@ -286,8 +295,9 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Method for checking if the actual PM is underAllocated.
-	 * @return true if underloaded, false otherwise	  
+	 * Method for checking if the current pm is underAllocated.
+	 * 
+	 * @return True if it is underAllocated, false otherwise.
 	 */	
 	public boolean isUnderAllocated() {
 		
@@ -299,9 +309,9 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Checks if the PM is in a state where nothing has to be changed.
-	 * @return
-	 * 			True if the State is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED
+	 * Checks if the pm is in a state where nothing has to be changed.
+	 * 
+	 * @return True if the state is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or UNCHANGEABLE_UNDERALLOCATED, false otherwise.
 	 */
 	public boolean isNothingToChange() {
 		
@@ -313,12 +323,11 @@ public class ModelPM {
 	}
 	
 	/**
-	 * This method checks if a given VM can be hosted on this PM without changing the State to overAllocated.
+	 * This method checks if a given vm can be hosted on this pm without changing the state to overAllocated.
 	 * 
-	 * @param toAdd
-	 * 			The VM which shall be added.
-	 * @return
-	 * 			True if the VM can be added.
+	 * @param toAdd The vm which shall be added.
+	 * 
+	 * @return True if the vm can be added.
 	 */
 	public boolean isMigrationPossible(ModelVM toAdd) {
 		
@@ -349,8 +358,10 @@ public class ModelPM {
 	
 	/**
 	 * Getter for a specific VM.
+	 * 
 	 * @param position
 	 * 			The desired position where the VM is.
+	 * 
 	 * @return The VM on this position, null if there is none.
 	 */	
 	public ModelVM getVM(int position) {
@@ -362,23 +373,27 @@ public class ModelPM {
 	}
 	
 	/**
-	 * Get the list which contains all actual running VMs on this PM.
-	 * @return vmList
+	 * Getter.
+	 * 
+	 * @return The list which contains all actual running vms on this PM.
 	 */
 	public List <ModelVM> getVMs() {
 		return vmList;		
 	}
 	
 	/**
-	 * @return The matching PM inside the simulator.
+	 * Getter for the non-abstract version of this pm.
+	 * 
+	 * @return The matching pm inside the simulator.
 	 */
 	public PhysicalMachine getPM() {
 		return pm;
 	}
 	
 	/**
-	 * Getter for the State.
-	 * @return actual State.
+	 * Getter for the state.
+	 * 
+	 * @return The current state of this pm.
 	 */	
 	public State getState() {
 		return this.state;
@@ -386,6 +401,7 @@ public class ModelPM {
 	
 	/**
 	 * This class represents the consumed resources of this PM.
+	 * 
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */	
 	public ResourceVector getConsumedResources() {
@@ -394,24 +410,47 @@ public class ModelPM {
 	
 	/**
 	 * This class represents the total resources of this PM.
+	 * 
 	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
 	 */	
 	public ConstantConstraints getTotalResources() {
 		return this.totalResources;
 	}
 	
+	/**
+	 * Subtracts the occupied resources with the total resources.
+	 * 
+	 * @return The free resources of this ModelPM without the reserved ones.
+	 */
+	public ResourceVector getFreeResources() {
+		return new ResourceVector(totalResources.getRequiredCPUs() - consumedResources.getRequiredCPUs(), 
+				totalResources.getRequiredProcessingPower() - consumedResources.getRequiredProcessingPower(), 
+				totalResources.getRequiredMemory() - consumedResources.getRequiredMemory());
+	}
+	
+	/**
+	 * Getter.
+	 * 
+	 * @return The lower threshold for the pms.
+	 */
 	public double getLowerThreshold() {
 		return lowerThreshold;
 	}
 
+	/**
+	 * Getter.
+	 * 
+	 * @return The upper threshold for the pms.
+	 */
 	public double getUpperThreshold() {
 		return upperThreshold;
 	}
 
-	public int getNumber() {
-		return number;
-	}
-
+	/**
+	 * Getter.
+	 * 
+	 * @return The id of this pm.
+	 */
 	@Override
 	public int hashCode() {
 		return number;
