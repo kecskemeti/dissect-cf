@@ -9,11 +9,12 @@
 <entry key="abcNrIterations">50</entry>
 <entry key="gaNrIterations">50</entry>
 <entry key="abcPopulationSize">10</entry>
+<entry key="seed">50</entry>
 <entry key="abcLimitTrials">5</entry>
 <entry key="psoSwarmSize">20</entry>
+<entry key="doLocalSearch2">false</entry>
+<entry key="doLocalSearch1">true</entry>
 <entry key="gaNrCrossovers">10</entry>
 <entry key="psoC2">2</entry>
 <entry key="psoC1">2</entry>
-<entry key="seed">50</entry>
-<entry key="doLocalSearch">true</entry>
 </properties>

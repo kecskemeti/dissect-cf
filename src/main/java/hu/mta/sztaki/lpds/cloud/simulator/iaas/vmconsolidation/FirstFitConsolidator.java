@@ -195,7 +195,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			// if there is no PM to host the actual VM of the source PM, change the state depending on its acutal state
 			if(pm == null) {
 				if(state.equals(State.OVERALLOCATED_RUNNING)) {	
-					source.changeState(State.UNCHANGEABLE_OVERALLOCATED);
+					source.setState(State.UNCHANGEABLE_OVERALLOCATED);
 					return; // no migration possible anymore
 				}
 			}	
@@ -235,7 +235,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			else {				
 				if(migPMs.isEmpty()) {
 					if(state.equals(State.UNDERALLOCATED_RUNNING)) {
-						source.changeState(State.UNCHANGEABLE_UNDERALLOCATED);
+						source.setState(State.UNCHANGEABLE_UNDERALLOCATED);
 						return; // no migration possible
 					}
 				}	

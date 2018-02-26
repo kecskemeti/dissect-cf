@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,7 +36,9 @@ public class Solution {
 	/** Fitness of the solution */
 	protected Fitness fitness;
 	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
-	protected boolean doLocalSearch=false;
+	protected boolean doLocalSearch1=false;
+	/** simple consolidator local search */
+	protected boolean doLocalSearch2=false;
 
 	Properties props;
 
@@ -63,7 +66,8 @@ public class Solution {
 			props.loadFromXML(fileInput);
 			fileInput.close();
 			random = new Random(Long.parseLong(props.getProperty("seed")));
-			doLocalSearch=Boolean.parseBoolean(props.getProperty("doLocalSearch"));
+			doLocalSearch1=Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
+			doLocalSearch2=Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -131,8 +135,11 @@ public class Solution {
 			}
 		}
 		countActivePmsAndOverloads();
-		if(doLocalSearch)
+		if(doLocalSearch1) {
 			improve();
+		} else if(doLocalSearch2){
+			simpleConsolidatorImprove();
+		}
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 
@@ -236,6 +243,83 @@ public class Solution {
 		}
 		countActivePmsAndOverloads();
 	}
+	
+	/**
+	 * The algorithm out of the simple consolidator, adjusted to work with the abstract model.
+	 */
+	protected void simpleConsolidatorImprove() {
+//		Logger.getGlobal().info("starting to improve with second local search");
+		
+		// create an array out of the bins
+		ModelPM[] arr = new ModelPM[bins.size()];
+		for(int i = 0; i < bins.size(); i++) {			
+			arr[i] = bins.get(i);
+		}
+		
+		// now filter out the not running machines
+		int runningLen = 0;
+		for (int i = 0; i < arr.length; i++) {
+			if (arr[i].isRunning()) {
+				arr[runningLen++] =arr[i];
+			}
+		}
+		ModelPM[] pmList = new ModelPM[runningLen];
+		System.arraycopy(arr, 0, pmList, 0, runningLen);		
+		
+//		Logger.getGlobal().info("size of the pmList: " + pmList.length);
+
+		boolean didMove;
+		do {
+			didMove = false;
+			
+			// sort the array from highest to lowest free capacity with an adjusted version of the fitting pm comparator
+			Arrays.sort(pmList, new Comparator<ModelPM>() {
+				@Override
+				public int compare(ModelPM pm1, ModelPM pm2) {
+					return -pm1.getFreeResources().compareTo(pm2.getFreeResources());
+				}
+			});
+			
+			int lastItem = runningLen - 1;
+			
+//			Logger.getGlobal().info("filtered array: " + Arrays.toString(pmList));
+			
+			for(int i = 0; i < pmList.length; i++) {
+				ModelPM source = pmList[i];
+				if( source.isHostingVMs() ) {
+					ModelVM[] vmList = source.getVMs().toArray(new ModelVM[source.getVMs().size()]);
+					
+					for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
+						ModelVM vm = vmList[vmidx];
+						// ModelVMs can only run, so we need not to check the state (there is none either)
+						for (int j = lastItem; j > i; j--) {
+							ModelPM target = pmList[j];
+							if (target.getFreeResources().getTotalProcessingPower() < 0.00000001) {
+								// Ensures that those PMs that barely have resources will not be 
+								// considered in future runs of this loop
+								
+								lastItem = j;
+								continue;
+							}
+							
+							if(target.isMigrationPossible(vm)) {
+								mapping.put(vm, target);
+								loads.get(target).singleAdd(vm.getResources());
+								used.put(target, true);
+								
+								if(target!=vm.getInitialPm())
+									fitness.nrMigrations++;
+								
+								didMove = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		} while (didMove);
+		countActivePmsAndOverloads();
+	}
 
 	/**
 	 * Creates a mapping based on FirstFit. 
@@ -275,8 +359,11 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
-		if(doLocalSearch)
+		if(doLocalSearch1) {
 			result.improve();
+		} else if(doLocalSearch2){
+			result.simpleConsolidatorImprove();
+		}
 		return result;
 	}
 
@@ -305,8 +392,11 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
-		if(doLocalSearch)
+		if(doLocalSearch1) {
 			result.improve();
+		} else if(doLocalSearch2){
+			result.simpleConsolidatorImprove();
+		}
 		return result;
 	}
 

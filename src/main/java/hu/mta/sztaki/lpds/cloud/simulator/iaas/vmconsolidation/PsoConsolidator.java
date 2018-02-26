@@ -237,10 +237,13 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					p.setLocation(newLoc);		
 					p.updateMappings();   	// adjusts the mappings with the new location
 										
-					if(p.doLocalSearch) {
+					if(p.doLocalSearch1) {
 						//Logger.getGlobal().info("For particle " + p.getNumber() + ", starting local search");
 						p.improve();
 						p.updateLocation();	// we have to update the location afterwards
+					}
+					else if(p.doLocalSearch2){
+						p.simpleConsolidatorImprove();
 					}
 					
 					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());

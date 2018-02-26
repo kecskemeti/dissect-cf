@@ -1,6 +1,12 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmconsolidation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.InvalidPropertiesFormatException;
+import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
@@ -16,10 +22,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.ConsolidationFriendlyPmScheduler;
-//import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.OnOffScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
@@ -494,4 +500,109 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			Assert.assertEquals(2, basic.runningMachines.size());
 		}		
 	}
+	
+	@Test(timeout = 1000)
+	public void localSearchTest() throws VMManagementException, NetworkException, InterruptedException, 
+		InvalidPropertiesFormatException, IOException {
+		
+		boolean finished = false;	// used to check if the test was succesful
+		
+		// we have to set the local search related props
+		Properties props1 = new Properties();
+		File file1 = new File("consolidationProperties.xml");
+		FileInputStream fileInput1 = new FileInputStream(file1);
+		props1.loadFromXML(fileInput1);
+		fileInput1.close();
+		
+		props1.setProperty("doLocalSearch1", "false");
+		props1.setProperty("doLocalSearch2", "true");
+		
+		FileOutputStream fileOutput1 = new FileOutputStream(file1);
+		props1.storeToXML(fileOutput1, null);
+		fileOutput1.close();
+		
+		try {
+			testPM1.turnon();
+			testPM2.turnon();
+			Timed.simulateUntilLastEvent();
+			// switch on two vms
+			switchOnVM(VM1, smallConstraints, testPM1, false);
+			switchOnVM(VM2, smallConstraints, testPM2, false);
+			
+			// the aim is to compare the results of the simple consolidator with the results of
+			// either the abc, ga or pso to see whether they are identical
+			
+			@SuppressWarnings("unused")
+			SimpleConsolidator sc = new SimpleConsolidator(basic, 600);
+			Timed.simulateUntil(Timed.getFireCount() + 1000);
+			
+			// now we have to save the situation and compare it later with the following one
+			PhysicalMachine vm1host1 = VM1.getResourceAllocation().getHost();
+			PhysicalMachine vm2host1 = VM2.getResourceAllocation().getHost();
+			
+			VM1.destroy(true);
+			VM2.destroy(true);
+			Assert.assertEquals(0, testPM1.numofCurrentVMs());
+			Assert.assertEquals(0, testPM2.numofCurrentVMs());
+			sc = null;
+			
+			// switch on another two vms
+			switchOnVM(VM1, smallConstraints, testPM1, false);
+			switchOnVM(VM2, smallConstraints, testPM2, false);
+			
+			
+			@SuppressWarnings("unused")
+			GaConsolidator ga = new GaConsolidator(basic, 600);
+			Timed.simulateUntil(Timed.getFireCount() + 1000);
+			
+			// now we have to save the situation and compare it later with the previous one
+			PhysicalMachine vm1host2 = VM1.getResourceAllocation().getHost();
+			PhysicalMachine vm2host2 = VM2.getResourceAllocation().getHost();
+			
+			ga = null;
+			
+			// if the assertions fail, we have to reset the properties at this point
+			Properties props2 = new Properties();
+			File file2 = new File("consolidationProperties.xml");
+			FileInputStream fileInput2 = new FileInputStream(file2);
+			props2.loadFromXML(fileInput2);
+			fileInput2.close();
+			
+			props2.setProperty("doLocalSearch1", "true");
+			props2.setProperty("doLocalSearch2", "false");
+			
+			FileOutputStream fileOutput2 = new FileOutputStream(file2);
+			props2.storeToXML(fileOutput2, null);
+			fileOutput2.close();
+			
+			finished = true;
+			
+			// compare the results
+			Assert.assertEquals(vm1host1, vm1host2);
+			Assert.assertEquals(vm2host1, vm2host2);
+			
+			
+			
+		} catch(Exception e) {
+			
+		}
+		
+		// reset the local search values
+		Properties props2 = new Properties();
+		File file2 = new File("consolidationProperties.xml");
+		FileInputStream fileInput2 = new FileInputStream(file2);
+		props2.loadFromXML(fileInput2);
+		fileInput2.close();
+		
+		props2.setProperty("doLocalSearch1", "true");
+		props2.setProperty("doLocalSearch2", "false");
+		
+		FileOutputStream fileOutput2 = new FileOutputStream(file2);
+		props2.storeToXML(fileOutput2, null);
+		fileOutput2.close();
+		
+		Assert.assertTrue("Test has not been finished correctly.", finished);
+		
+	}
+	
 }
