@@ -59,14 +59,14 @@ public class ModelPM {
 		this.lowerThreshold = lowerThreshold;
 
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
-			changeState(State.EMPTY_OFF);
+			setState(State.EMPTY_OFF);
 		}
 		else {
 			if(pm.getState() == PhysicalMachine.State.RUNNING) {
-				changeState(State.NORMAL_RUNNING);
+				setState(State.NORMAL_RUNNING);
 			}
 			else if(pm.getState() == PhysicalMachine.State.SWITCHINGON) {
-				changeState(State.EMPTY_RUNNING);
+				setState(State.EMPTY_RUNNING);
 			}
 		}
 
@@ -225,18 +225,27 @@ public class ModelPM {
 	};
 	
 	/**
+	 * Checks if this pm is currently running.
+	 * 
+	 * @return True, if the state of this pm is not EMPTY_OFF, false otherwise.
+	 */
+	public boolean isRunning() {
+		return !getState().equals(ModelPM.State.EMPTY_OFF);
+	}
+	
+	/**
 	 * Changes the state of the pm so the graph can give the switch off information
 	 * later to the simulation.
 	 */	
 	protected void switchOff() {
-		this.changeState(State.EMPTY_OFF);
+		this.setState(State.EMPTY_OFF);
 	}	
 	/**
 	 * Changes the state of the pm so the graph can give the switch on information
 	 * later to the simulation.
 	 */	
 	protected void switchOn() {
-		this.changeState(State.EMPTY_RUNNING);
+		this.setState(State.EMPTY_RUNNING);
 	}
 	
 	/**
@@ -244,7 +253,7 @@ public class ModelPM {
 	 * 
 	 * @param state The new state for this pm.
 	 */	
-	protected void changeState(State state) {
+	public void setState(State state) {
 		this.state = state;
 	}
 	
@@ -256,7 +265,7 @@ public class ModelPM {
 	 */	
 	protected void checkAllocation() {
 		if(isHostingVMs() == false) {
-			changeState(State.EMPTY_RUNNING);
+			setState(State.EMPTY_RUNNING);
 		}
 		else if(isUnderAllocated() && getState().equals(State.UNCHANGEABLE_UNDERALLOCATED)) {
 			
@@ -267,14 +276,14 @@ public class ModelPM {
 			}
 			else {
 				if(isUnderAllocated())  {
-					changeState(State.UNDERALLOCATED_RUNNING);
+					setState(State.UNDERALLOCATED_RUNNING);
 				}
 				else {
 					if(isOverAllocated()) {
-							changeState(State.OVERALLOCATED_RUNNING);
+							setState(State.OVERALLOCATED_RUNNING);
 					}
 					else
-						changeState(State.NORMAL_RUNNING);
+						setState(State.NORMAL_RUNNING);
 					}	
 				}
 		}
