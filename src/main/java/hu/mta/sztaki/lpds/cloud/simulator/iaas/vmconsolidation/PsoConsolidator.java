@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Vector;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -91,29 +90,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	public String toString() {
 		String erg = "Amount of VMs: " + dimension + ", GlobalBest: " + this.globalBest + ", GlobalBestLocation: " + this.globalBestLocation;		
 		return erg;
-	}
-	
-	@Override
-	protected void determineCreations(int numberOfCreations) {
-		if(numberOfCreations < 3) {
-			Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
-			return;
-		}			
-		if(numberOfCreations == 3) {
-			randomCreations = 1;
-			unchangedCreations = 1;
-			firstFitCreations = 1;
-		}
-		else {
-			unchangedCreations = 1;
-			Double randoms = numberOfCreations * 0.25;
-			firstFitCreations = randoms.intValue();
-			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
-		}
-		
-//		Logger.getGlobal().info("random creations: " + randomCreations + ", unchanged creations: " + 
-//				unchangedCreations + ", first fit creations: " + firstFitCreations);
-		
 	}
 
 	/**

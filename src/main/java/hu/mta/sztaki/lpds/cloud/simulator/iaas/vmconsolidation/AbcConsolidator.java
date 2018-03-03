@@ -2,7 +2,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Random;
 import java.util.Vector;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -66,7 +65,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	}
 
 	/**
-	 * Initializes the population with populationSize-1 random solutions. After
+	 * Initializes the population with the previously determined solutions. After
 	 * that the same mapping as existing before consolidation has started is
 	 * put inside a solution.
 	 */
@@ -84,7 +83,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				checkIfBest(s);
 			}
 		}
-		if(firstFitCreations>0) {
+		if(firstFitCreations != 0) {
 			Solution s0 = new Solution(bins, mutationProb);
 			s0.createFirstFitSolution();
 			population.add(s0);
@@ -97,8 +96,8 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				checkIfBest(s);
 			}
 		}
-		if(unchangedCreations>0) {
-			Solution s0 = new Solution(bins, mutationProb);			
+		if(unchangedCreations != 0) {
+			Solution s0 = new Solution(bins, mutationProb);
 			s0.createUnchangedSolution();
 			population.add(s0);
 			numTrials.add(0);
@@ -110,14 +109,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				checkIfBest(s);
 			}
 		}
-		for(int i = 0; i < unchangedCreations; i++) {
-			Solution s = new Solution(bins, mutationProb);
-			s.createUnchangedSolution();
-			population.add(s);
-			numTrials.add(0);
-			checkIfBest(s);
-		}
-		
 	}
 
 	/**
@@ -177,25 +168,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		
 		determineCreations(populationSize);
 	}
-	
-	@Override
-	protected void determineCreations(int numberOfCreations) {
-		if(numberOfCreations < 3) {
-			Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
-			return;
-		}			
-		if(numberOfCreations == 3) {
-			randomCreations = 1;
-			unchangedCreations = 1;
-			firstFitCreations = 1;
-		}
-		else {
-			unchangedCreations = 1;
-			Double randoms = numberOfCreations * 0.25;
-			firstFitCreations = randoms.intValue();
-			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
-		}
-	}
 
 	/**
 	 * The actual ABC algorithm.
@@ -208,6 +180,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 			improved=false;
 			// employed bees phase
 			for (int j = 0; j < populationSize; j++) {
+//				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
 				mutateAndCheck(j);
 			}
 			// onlooker bees phase
