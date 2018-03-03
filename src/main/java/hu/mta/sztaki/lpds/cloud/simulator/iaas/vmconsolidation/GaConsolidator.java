@@ -2,7 +2,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Random;
 import java.util.Vector;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -49,7 +48,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	}
 
 	/**
-	 * Initializes the population with populationSize-1 random solutions. After
+	 * Initializes the population with the previously determined solutions. After
 	 * that the same mapping as existing before consolidation has started is
 	 * put inside a solution.
 	 */
@@ -60,7 +59,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			s.fillRandomly();
 			population.add(s);
 		}
-		if(firstFitCreations>0) {
+		if(firstFitCreations != 0) {
 			Solution s0 = new Solution(bins, mutationProb);
 			s0.createFirstFitSolution();
 			population.add(s0);
@@ -69,8 +68,8 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 				population.add(s);
 			}
 		}
-		if(unchangedCreations>0) {
-			Solution s0 = new Solution(bins, mutationProb);			
+		if(unchangedCreations != 0) {
+			Solution s0 = new Solution(bins, mutationProb);
 			s0.createUnchangedSolution();
 			population.add(s0);
 			for(int i = 1; i < unchangedCreations; i++) {
@@ -139,25 +138,6 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 		
 		determineCreations(populationSize);
-	}
-			
-	@Override
-	protected void determineCreations(int numberOfCreations) {
-		if(numberOfCreations < 3) {
-			Logger.getGlobal().warning("Inappropriate size for the swarm/population.");
-			return;
-		}			
-		if(numberOfCreations == 3) {
-			randomCreations = 1;
-			unchangedCreations = 1;
-			firstFitCreations = 1;
-		}
-		else {
-			unchangedCreations = 1;
-			Double randoms = numberOfCreations * 0.25;
-			firstFitCreations = randoms.intValue();
-			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
-		}
 	}
 
 	/**

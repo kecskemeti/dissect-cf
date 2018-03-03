@@ -23,6 +23,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.logging.Logger;
+
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 /**
@@ -49,14 +51,36 @@ public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 	}
 	
 	/**
-	 * We have to determine how to fill the population/swarm. For that, this method gets
-	 * implemented by the respective consolidator based on the value of the populationSize/
-	 * swarmSize. At the moment there is going to be one unchanged solution, size * 0.25 
-	 * first fit solutions and the rest of the creations is made randomly.
+	 * We have to determine how to fill the population/swarm. At the moment there is 
+	 * going to be one unchanged solution, size * 0.25 first fit solutions and the 
+	 * rest of the creations is made randomly.
+	 * 
+	 * Note that there will be only random creations if the populationSize/swarmSize
+	 * is less than three.
 	 * 
 	 * @param numberOfCreations
 	 * 			The swarmSize/populationSize.
 	 */
-	protected abstract void determineCreations(int numberOfCreations);
+	protected void determineCreations(int numberOfCreations) {
+		// if the populationSize is less than 3, we only use random creations
+		if(numberOfCreations < 3) {
+			randomCreations = numberOfCreations;
+			unchangedCreations = 0;
+			firstFitCreations = 0;
+		}			
+		else if(numberOfCreations == 3) {
+			randomCreations = 1;
+			unchangedCreations = 1;
+			firstFitCreations = 1;
+		}
+		else {
+			unchangedCreations = 1;
+			Double randoms = numberOfCreations * 0.25;
+			firstFitCreations = randoms.intValue();
+			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
+		}
+		Logger.getGlobal().info("Creations: " + numberOfCreations + ", random: " + randomCreations + ", first fit: "
+				+ firstFitCreations + ", unchanged: " + unchangedCreations);
+	}
 	
 }
