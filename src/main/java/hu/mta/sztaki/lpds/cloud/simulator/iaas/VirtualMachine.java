@@ -878,24 +878,25 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (!currentVMMOperations.isEmpty()) {
 			ResourceConsumption[] rcList = currentVMMOperations.values()
 					.toArray(new ResourceConsumption[currentVMMOperations.size()]);
+			boolean wasRegistered=false;
 			for (ResourceConsumption currentVMMOperation : rcList) {
-				boolean wasRegistered = currentVMMOperation.isRegistered();
+				wasRegistered |= currentVMMOperation.isRegistered();
 				currentVMMOperation.cancel();
-				if (wasRegistered) {
-					// Wait until the cancel takes effect - registration cleanup
-					new DeferredEvent(1) {
-						@Override
-						protected void eventAction() {
-							try {
-								finalizeDestroy(killTasks);
-							} catch (VMManagementException e) {
-								// TODO: allow more graceful exception handling
-								throw new RuntimeException(e);
-							}
+			}
+			if (wasRegistered) {
+				// Wait until the cancel takes effect - registration cleanup
+				new DeferredEvent(1) {
+					@Override
+					protected void eventAction() {
+						try {
+							destroy(killTasks);
+						} catch (VMManagementException e) {
+							// TODO: allow more graceful exception handling
+							throw new RuntimeException(e);
 						}
-					};
-					return;
-				}
+					}
+				};
+				return;
 			}
 		}
 		finalizeDestroy(killTasks);
