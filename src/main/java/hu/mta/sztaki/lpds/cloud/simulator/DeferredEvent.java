@@ -26,6 +26,8 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.PriorityQueue;
 
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -58,12 +60,10 @@ public abstract class DeferredEvent {
 	 * item (which is actually the list of events that should be delivered at the
 	 * particular time instance identified by the key of the map).
 	 */
-	private static final TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>> toSweep = new TLongObjectHashMap<MutablePair<Integer, DeferredEvent[]>>();
 	/**
 	 * the aggregator that handles the event list stored in toSweep.
 	 */
-	private static final AggregatedEventDispatcher dispatcherSingleton = new AggregatedEventDispatcher();
-	private static final PriorityQueue<Long> keyList = new PriorityQueue<Long>();
+	private static final TLongObjectHashMap<AggregatedEventDispatcher> dispatchers = new TLongObjectHashMap<AggregatedEventDispatcher>();
 
 	/**
 	 * handles the event aggregations, actual subscriptions to timed events and
@@ -78,6 +78,14 @@ public abstract class DeferredEvent {
 	 *
 	 */
 	private static class AggregatedEventDispatcher extends Timed {
+		private ArrayList<DeferredEvent> simultaneouslyOccurringDEs = new ArrayList<DeferredEvent>();
+		private final long myEv;
+
+		private AggregatedEventDispatcher(long event) {
+			subscribe(event - Timed.getFireCount());
+			myEv=event;
+		}
+
 		/**
 		 * The actual event dispatcher. This function is called by Timed on the time
 		 * instance when the first not yet dispatched deferred event is due.
@@ -87,41 +95,39 @@ public abstract class DeferredEvent {
 		 */
 		@Override
 		public void tick(long fires) {
-			final MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.remove(fires);
-			if (simultaneousReceiverPairs != null) {
-				final int len = simultaneousReceiverPairs.getLeft();
-				final DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
-				for (int i = 0; i < len; i++) {
-					simultaneousReceivers[i].eventAction();
-					simultaneousReceivers[i].received = true;
-				}
+			int len = simultaneouslyOccurringDEs.size();
+			for (int i = 0; i < len; i++) {
+				DeferredEvent underDelivery = simultaneouslyOccurringDEs.get(i);
+				underDelivery.eventAction();
+				underDelivery.received = true;
 			}
-			keyList.remove(fires);
-			updateDispatcher();
+			terminate();
 		}
 
 		@Override
 		protected void skip() {
 			super.skip();
-			MutablePair<Integer, DeferredEvent[]> cancelledlist = toSweep.remove(keyList.poll());
-			for (int i = 0; i < cancelledlist.left; i++) {
-				cancelledlist.right[i].cancelled = true;
+			int len = simultaneouslyOccurringDEs.size();
+			for (int i = 0; i < len; i++) {
+				simultaneouslyOccurringDEs.get(i).cancelled = true;
+			}
+			simultaneouslyOccurringDEs.clear();
+			terminate();
+		}
+		
+		private void remove(DeferredEvent de) {
+			simultaneouslyOccurringDEs.remove(de);
+			de.cancelled=true;
+			if(simultaneouslyOccurringDEs.isEmpty()) {
+				terminate();
 			}
 		}
-
-		/**
-		 * after some deferred events are dispatched, this function actually determines
-		 * the next occurrence of a deferred event (and readjusts the notification
-		 * frequency for Timed) or if there are no further events registered, the
-		 * function cancels the notifications
-		 */
-		private void updateDispatcher() {
-			if (toSweep.isEmpty()) {
-				unsubscribe();
-				return;
-			}
-			updateFrequency(keyList.peek() - getFireCount());
+		
+		private void terminate() {
+			dispatchers.remove(myEv);
+			unsubscribe();
 		}
+				
 	}
 
 	/**
@@ -153,25 +159,12 @@ public abstract class DeferredEvent {
 			return;
 		}
 		eventArrival = Timed.calcTimeJump(delay);
-		MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
-		if (simultaneousReceiverPairs == null) {
-			simultaneousReceiverPairs = new MutablePair<Integer, DeferredEvent[]>(0, new DeferredEvent[5]);
-			toSweep.put(eventArrival, simultaneousReceiverPairs);
-			keyList.add(eventArrival);
+		AggregatedEventDispatcher aed=dispatchers.get(eventArrival);
+		if(aed==null) {
+			aed=new AggregatedEventDispatcher(eventArrival);
+			dispatchers.put(eventArrival,aed);
 		}
-		int len = simultaneousReceiverPairs.getLeft();
-		DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
-		if (len == simultaneousReceivers.length) {
-			DeferredEvent[] temp = new DeferredEvent[simultaneousReceivers.length * 2];
-			System.arraycopy(simultaneousReceivers, 0, temp, 0, len);
-			simultaneousReceivers = temp;
-			simultaneousReceiverPairs.setRight(temp);
-		}
-		simultaneousReceivers[len++] = this;
-		simultaneousReceiverPairs.setLeft(len);
-		if (!dispatcherSingleton.isSubscribed() || dispatcherSingleton.getNextEvent() > eventArrival) {
-			dispatcherSingleton.updateDispatcher();
-		}
+		aed.simultaneouslyOccurringDEs.add(this);
 	}
 
 	/**
@@ -186,31 +179,7 @@ public abstract class DeferredEvent {
 		if (received)
 			return;
 		if (!cancelled) {
-			cancelled = true;
-			MutablePair<Integer, DeferredEvent[]> simultaneousReceiverPairs = toSweep.get(eventArrival);
-			if (simultaneousReceiverPairs != null) {
-				int len = simultaneousReceiverPairs.getLeft();
-				DeferredEvent[] simultaneousReceivers = simultaneousReceiverPairs.getRight();
-				// For performance reasons this removal operation does not keep
-				// the order of the array entries
-				for (int i = 0; i < len; i++) {
-					if (simultaneousReceivers[i] == this) {
-						len--;
-						if (len > i) {
-							simultaneousReceivers[i] = simultaneousReceivers[len];
-						}
-						simultaneousReceivers[len] = null;
-						break;
-					}
-				}
-				if (len == 0) {
-					toSweep.remove(eventArrival);
-					keyList.remove(eventArrival);
-					dispatcherSingleton.updateDispatcher();
-				} else {
-					simultaneousReceiverPairs.setLeft(len);
-				}
-			}
+			dispatchers.get(eventArrival).remove(this);;
 		}
 	}
 
@@ -240,7 +209,6 @@ public abstract class DeferredEvent {
 	 * WARNING: This is not supposed to be called by user code directly.
 	 */
 	static void reset() {
-		toSweep.clear();
-		keyList.clear();
+		dispatchers.clear();
 	}
 }
