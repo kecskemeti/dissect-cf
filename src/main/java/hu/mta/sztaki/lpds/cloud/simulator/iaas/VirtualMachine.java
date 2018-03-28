@@ -194,20 +194,28 @@ public class VirtualMachine extends MaxMinConsumer {
 		public void changeEvents(final VirtualMachine onMe) {
 			final State preEventState = onMe.currState;
 			super.changeEvents(onMe);
-			try {
-				onMe.newComputeTask(onMe.va.getStartupProcessing(), onMe.ra.allocated.getRequiredProcessingPower(),
-						new ConsumptionEventAdapter() {
-							/**
-							 * Once the startup process is complete we set the VM's state to running
-							 */
-							@Override
-							public void conComplete() {
-								super.conComplete();
-								onMe.setState(State.RUNNING);
-							}
-						});
-			} catch (NetworkException e) {
+			if (onMe.ra != null) {
+				try {
+					onMe.newComputeTask(onMe.va.getStartupProcessing(), onMe.ra.allocated.getRequiredProcessingPower(),
+							new ConsumptionEventAdapter() {
+								/**
+								 * Once the startup process is complete we set the VM's state to running
+								 */
+								@Override
+								public void conComplete() {
+									super.conComplete();
+									onMe.setState(State.RUNNING);
+								}
+							});
+					return;
+				} catch (NetworkException e) {
+					// Ignore and allow state to be changed back
+				}
+			}
+			if (expectedState.equals(onMe.currState)) {
+				// If the failure is caused by us we set the state back
 				onMe.setState(preEventState);
+				// Otherwise we leave it as any other part of the simulation required it
 			}
 		}
 	};
@@ -878,24 +886,25 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (!currentVMMOperations.isEmpty()) {
 			ResourceConsumption[] rcList = currentVMMOperations.values()
 					.toArray(new ResourceConsumption[currentVMMOperations.size()]);
+			boolean wasRegistered = false;
 			for (ResourceConsumption currentVMMOperation : rcList) {
-				boolean wasRegistered = currentVMMOperation.isRegistered();
+				wasRegistered |= currentVMMOperation.isRegistered();
 				currentVMMOperation.cancel();
-				if (wasRegistered) {
-					// Wait until the cancel takes effect - registration cleanup
-					new DeferredEvent(1) {
-						@Override
-						protected void eventAction() {
-							try {
-								finalizeDestroy(killTasks);
-							} catch (VMManagementException e) {
-								// TODO: allow more graceful exception handling
-								throw new RuntimeException(e);
-							}
+			}
+			if (wasRegistered) {
+				// Wait until the cancel takes effect - registration cleanup
+				new DeferredEvent(1) {
+					@Override
+					protected void eventAction() {
+						try {
+							destroy(killTasks);
+						} catch (VMManagementException e) {
+							// TODO: allow more graceful exception handling
+							throw new RuntimeException(e);
 						}
-					};
-					return;
-				}
+					}
+				};
+				return;
 			}
 		}
 		finalizeDestroy(killTasks);
@@ -927,7 +936,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *             if is not running currently
 	 */
 	public void switchoff(final boolean killTasks) throws StateChangeException {
-		if (currState != State.RUNNING) {
+		if (currState != State.RUNNING && currState != State.STARTUP) {
 			throw new StateChangeException("Cannot switch off a not running machine");
 		}
 		if (killTasks) {

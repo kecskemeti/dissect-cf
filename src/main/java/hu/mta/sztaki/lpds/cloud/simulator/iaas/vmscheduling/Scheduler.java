@@ -364,6 +364,7 @@ public abstract class Scheduler {
 	private void updateTotalQueuedAfterRemoval(final QueueingData qd) {
 		if (queue.isEmpty()) {
 			totalQueued.subtract(totalQueued);
+			totalQueued.subtract(totalQueued);
 			minimumSchedulerRequirement = ConstantConstraints.noResources;
 		} else {
 			totalQueued.subtract(qd.cumulativeRC);
