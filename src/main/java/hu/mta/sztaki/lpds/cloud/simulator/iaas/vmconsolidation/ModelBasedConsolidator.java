@@ -25,18 +25,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  *         consolidation. The main idea is to make an abstract model out of the
  *         given PMs and its VMs with the original properties and let an
  *         algorithm (optimize) do the new placement of the VMs in order to save
- *         power by shutting down unused PMs. Therefore a threshold is made to
- *         set the states where migrations are needed of the PMs.
- * 
- *         During this process one graph gets created inside the superclass
- *         ModelBasedConsolidator with the following information: 1. Which PMs
- *         shall start? 2. Which VMs on which PMs shall be migrated to target
- *         PMs? 3. Which PMs shall be shut down?
- * 
- *         At last the changes have to get delivered to the simulator. The
- *         created graph has all changes saved in nodes (actions) which are
- *         going to be done inside the simulator when there is nothing to be
- *         done before doing the action on the actual node.
+ *         power by shutting down unused PMs. 
+ *         
+ *         After the optimization is done the differences of the ModelPMs / ModelVMs
+ *         are calculated and the necessary respective changes are saved inside Action-
+ *         Classes. Afterwards a graph is created with an ordered list of all actions.
+ *         At last the graph is being executed and the changes are made to the non-
+ *         abstract IaaS-System.
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
 
@@ -73,11 +68,13 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * This is the method where the order for consolidation is defined. At first the
-	 * abstract model gets created, then the thresholds are set for each PM,
-	 * afterwards the optimize()-method is called (which is individualized by each
-	 * specific consolidator) and the graph gets created out of the action-list. At
-	 * last the changes get done inside the simulator.
+	 * This is the method where the order for consolidation is defined. Before the 
+	 * consolidation starts, we create a model of the current situation of the IaaS. 
+	 * Then the consolidation-algorithm is invoked. After the optimization is done 
+	 * the differences of the ModelPMs / ModelVMs are calculated and the necessary 
+	 * respective changes are saved inside Action-Classes. Afterwards a graph is 
+	 * created with an ordered list of all actions. At last the graph is being 
+	 * executed and the changes are made to the non-abstract IaaS-System.
 	 * 
 	 * @param pmList
 	 *            All PMs which are currently registered in the IaaS service.
@@ -296,10 +293,20 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		switchOnNonEmptyPMs();
 	}
 	
+	/**
+	 * Getter for the upper Threshold of each PM.
+	 * 
+	 * @return The upperThreshold.
+	 */
 	public double getUpperThreshold() {
 		return upperThreshold;
 	}
-	
+
+	/**
+	 * Getter for the lower Threshold of each PM.
+	 * 
+	 * @return The lowerThreshold.
+	 */
 	public double getLowerThreshold() {
 		return lowerThreshold;
 	}

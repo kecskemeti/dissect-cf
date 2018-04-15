@@ -15,8 +15,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  */
 public class FirstFitConsolidator extends ModelBasedConsolidator {
 
-	int count = 1;	// Counter for the graph actions
-
 	/**
 	 * The constructor for the First-Fit-Consolidator. Only the consolidation has to be done. 
 	 * All things like creating the model, doing the changes in the simulator etc are done by 
@@ -68,7 +66,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		}
 		*/
 
-		shutDownEmptyPMs();		//at the end all empty PMs have to be shut down		
+		adaptPmStates();
 		Logger.getGlobal().info("At end of optimization: "+toString());
 	}
 
