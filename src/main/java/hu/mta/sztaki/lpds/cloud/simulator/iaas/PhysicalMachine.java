@@ -193,7 +193,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		public final ResourceConstraints allocated;
 		/**
 		 * The resource set that is actually reserved on the PM. If
-		 * allocated>realAllocated, then the VM might get resources up to allocated but
+		 * allocated&gt;realAllocated, then the VM might get resources up to allocated but
 		 * only when the PM is not over-committed.
 		 */
 		private final ResourceConstraints realAllocated;
@@ -734,7 +734,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            defines the total physical memory this machine has under control
 	 *            (in bytes)
 	 * @param disk
-	 *            defines the local physical disk & networking this machine has
+	 *            defines the local physical disk &amp; networking this machine has
 	 *            under control
 	 * @param onD
 	 *            defines the time delay between the machine's switch on and the
@@ -742,10 +742,10 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * @param offD
 	 *            defines the time delay the machine needs to shut down all of its
 	 *            operations while it does not serve any more VMs
-	 * @param powerTransitions
+	 * @param cpuPowerTransitions
 	 *            determines the applied power state transitions while the physical
 	 *            machine state changes. This is the principal way to alter a PM's
-	 *            energy consumption behavior.
+	 *            energy consumption behaviour.
 	 */
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk, int onD, int offD,
 			Map<String, PowerState> cpuPowerTransitions) {
@@ -787,7 +787,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            defines the total physical memory this machine has under control
 	 *            (in bytes)
 	 * @param disk
-	 *            defines the local physical disk & networking this machine has
+	 *            defines the local physical disk &amp; networking this machine has
 	 *            under control
 	 * @param turnonOperations
 	 *            defines the tasks to execute before the PM can be turned on - this
@@ -799,10 +799,10 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            this can be considered as the simulation of the shutdown process.
 	 *            for the complete definition of this array have a look at the
 	 *            powerstatedelayer class.
-	 * @param powerTransitions
+	 * @param cpuPowerTransitions
 	 *            determines the applied power state transitions while the physical
 	 *            machine state changes. This is the principal way to alter a PM's
-	 *            energy consumption behavior.
+	 *            energy consumption behaviour.
 	 */
 
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk,

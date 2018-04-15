@@ -63,7 +63,7 @@ public class PowerState {
 	/**
 	 * allows notifications before the consumption characteristics would change.
 	 * Useful to update instantaneous power draw values before a power
-	 * characteristic change (like going from turboboost->using all cpu cores in
+	 * characteristic change (like going from turboboost-&gt;using all cpu cores in
 	 * modern processors)
 	 * 
 	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2014"

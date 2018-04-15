@@ -30,6 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.ResourceAllocation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.helpers.PMComparators;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
@@ -38,14 +39,23 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
  * allocating VMs to more heavily allocated PMs.
  * 
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
- *         Moores University, (c) 2017"
+ *         Moores University, (c) 2017-8"
  */
 public class SimpleConsolidator extends Consolidator {
+
 	/**
-	 * This is a simple counter that one can query to determine how many
-	 * migrations this algorithm ordered.
+	 * This is a simple counter that one can query to determine how many migrations
+	 * this algorithm ordered.
 	 */
 	public static long migrationCount = 0;
+
+	/**
+	 * The maximum free processing capacity needed to consider a PM fully loaded.
+	 * 
+	 * This might need to be updated if the per core performance of a PM is
+	 * expressed in a different unit.
+	 */
+	public static double pmFullLimit = 0.00000001;
 
 	/**
 	 * Just passes its parameters to the superclass's constructor
@@ -58,71 +68,81 @@ public class SimpleConsolidator extends Consolidator {
 	}
 
 	/**
-	 * The actual consolidation algorithm, note this is rather computational
-	 * heavy, and still provides just minimal gains over not consolidating at
-	 * all. This is just offered as an example implementation of a consolidator.
+	 * The actual consolidation algorithm, note this is rather computational heavy,
+	 * and still provides just minimal gains over not consolidating at all. This is
+	 * just offered as an example implementation of a consolidator.
 	 */
 	@Override
 	protected void doConsolidation(PhysicalMachine[] pmList) {
-		// Filters out the running machines and ignores the rest
-		int runningLen = 0;
+		int lastItem = 0;
+		// Keeps the machines from/to one can move a VM
 		for (int i = 0; i < pmList.length; i++) {
-			if (pmList[i].isRunning()) {
-				pmList[runningLen++] = pmList[i];
+			if (pmList[i].isHostingVMs() && pmList[i].freeCapacities.getTotalProcessingPower() > pmFullLimit) {
+				pmList[lastItem++] = pmList[i];
 			}
 		}
-		PhysicalMachine[] newList = new PhysicalMachine[runningLen];
-		System.arraycopy(pmList, 0, newList, 0, runningLen);
-		pmList = newList;
 		boolean didMove;
-		int firstIndexHoldingAVM = 0;
+		lastItem--;
+		int beginIndex = 0;
 		do {
 			didMove = false;
-			Arrays.sort(pmList, PMComparators.highestToLowestFreeCapacity);
-			int lastItem = runningLen - 1;
-			for (int i = firstIndexHoldingAVM; i < lastItem; i++) {
+			// Reorders the machine array so it has the heaviest loaded machines last
+			Arrays.sort(pmList, beginIndex, lastItem + 1, PMComparators.highestToLowestFreeCapacity);
+			for (int i = beginIndex; i < lastItem; i++) {
+				// Tries to move VMs from the lightest loaded PMs
 				PhysicalMachine source = pmList[i];
-				if (source.isHostingVMs()) {
-					VirtualMachine[] vmList = source.publicVms.toArray(new VirtualMachine[source.publicVms.size()]);
-					for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-						VirtualMachine vm = vmList[vmidx];
-						if (!VirtualMachine.State.RUNNING.equals(vm.getState())) {
-							continue;
-						}
-						for (int j = lastItem; j > i; j--) {
-							PhysicalMachine target = pmList[j];
-							if (target.freeCapacities.getTotalProcessingPower() < 0.00000001) {
-								// Ensures that those PMs that barely have
-								// resources will not be considered in future
-								// runs of this loop
-								lastItem = j;
-								continue;
+				VirtualMachine[] vmList = source.publicVms.toArray(new VirtualMachine[source.publicVms.size()]);
+				int vmc = 0;
+				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
+					VirtualMachine vm = vmList[vmidx];
+					if (!VirtualMachine.State.RUNNING.equals(vm.getState())) {
+						continue;
+					}
+					ResourceConstraints allocation = vm.getResourceAllocation().allocated;
+					for (int j = lastItem; j > i; j--) {
+						// to the heaviest loaded ones that can still accommodate the VMs in question
+						PhysicalMachine target = pmList[j];
+						ResourceAllocation alloc = null;
+						try {
+							// TODO: we do not keep the possibility of underprovisioning with strict
+							// allocation = true
+							alloc = target.allocateResources(allocation, true, PhysicalMachine.migrationAllocLen);
+							if (alloc != null) {
+								// A move is possible, migration is requested
+								vm.migrate(alloc);
+								if (target.freeCapacities.getTotalProcessingPower() < pmFullLimit) {
+									// If the PM became heavily loaded because of the newly migrated VM, then it is
+									// ignored for the rest of this consolidation run
+									if (j != lastItem) {
+										if (j == lastItem - 1) {
+											pmList[j] = pmList[lastItem];
+										} else {
+											System.arraycopy(pmList, j + 1, pmList, j, lastItem - j);
+										}
+									}
+									lastItem--;
+								}
+								migrationCount++;
+								vmc++;
+								didMove = true;
+								break;
 							}
-							ResourceAllocation alloc = null;
-							try {
-								// TODO: we do not keep the possibility of
-								// underprovisioning with
-								// strict allocation = true
-								alloc = target.allocateResources(vm.getResourceAllocation().allocated, true,
-										PhysicalMachine.migrationAllocLen * 100);
-								if (alloc != null) {
-									vm.migrate(alloc);
-									migrationCount++;
-									didMove = true;
-									break;
-								}
-							} catch (VMManagementException pmNotRunning) {
-								System.err.println("Error while handling vm " + vm.hashCode() + " === "
-										+ pmNotRunning.getMessage());
-							} catch (NetworkException nex) {
-								System.err.println(
-										"NW Error while handling vm " + vm.hashCode() + " === " + nex.getMessage());
-								if (alloc != null) {
-									alloc.cancel();
-								}
+						} catch (VMManagementException pmNotRunning) {
+							System.err.println(
+									"Error while handling vm " + vm.hashCode() + " === " + pmNotRunning.getMessage());
+						} catch (NetworkException nex) {
+							System.err.println(
+									"NW Error while handling vm " + vm.hashCode() + " === " + nex.getMessage());
+							if (alloc != null) {
+								alloc.cancel();
 							}
 						}
 					}
+				}
+				if (vmc == vmList.length) {
+					// If all VMs were removed from the current PM, then the PM is free we don't
+					// need to do anything with it (we assume the PM scheduler will take care of it)
+					pmList[i] = pmList[beginIndex++];
 				}
 			}
 		} while (didMove);
