@@ -1,9 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -21,15 +18,11 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	int count = 1;	// Counter for the graph actions
 
 	/**
-	 * The constructor for the First-Fit-Consolidator. This class uses the methods out of the superclass, for example
-	 * instantiate() is used to create the ModelPMs and ModelVMs, createGraph() is used to get a graph with nodes which has got
-	 * the information, what shall be done in which order inside the simulator for migration and starting / shut down PMs. The 
-	 * methods which do the changes inside the simulator also are in the super class ModelBasedConsolidation.
+	 * The constructor for the First-Fit-Consolidator. Only the consolidation has to be done. 
+	 * All things like creating the model, doing the changes in the simulator etc are done by 
+	 * the ModelBasedConsolidator.
 	 * 
-	 * So the superclass is implemented in that way, that here only the consolidation has to be done. All things like
-	 * creating the model, doing the changes in the simulator etc are done by ModelBasedConsolidator.
-	 * 
-	 * @param parent
+	 * @param toConsolidate
 	 * 			The IaaSService of the superclass Consolidator.
 	 * @param consFreq
 	 * 			This value determines, how often the consolidation should run.
@@ -65,6 +58,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			}
 		}		
 
+		/*
 		//clears the VMlist of each PM, so no VM is in the list more than once
 		for(ModelPM pm : getBins()) {
 			List<ModelVM> allVMsOnPM = pm.getVMs();			
@@ -72,6 +66,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			allVMsOnPM.clear();
 			allVMsOnPM.addAll(setItems);
 		}
+		*/
 
 		shutDownEmptyPMs();		//at the end all empty PMs have to be shut down		
 		Logger.getGlobal().info("At end of optimization: "+toString());
@@ -105,9 +100,10 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 
 	/**
 	 * This method is written to get a PM where a given VM can be migrated without changing the
-	 * status of the PM to 'overAllocated'. This is done by first fit.
+	 * status of the PM to 'overAllocated'. This is done by first fit. We focus first on reusing 
+	 * an existing PM rather than starting a new one.
 	 * 
-	 * @param VM
+	 * @param toMig
 	 * 			The VM which shall be migrated.
 	 * @return A PM where the given VM can be migrated;
 	 * 		   starts a new PM if there is no running VM with the needed resources;
