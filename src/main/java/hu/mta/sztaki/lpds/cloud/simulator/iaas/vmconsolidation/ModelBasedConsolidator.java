@@ -129,6 +129,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = pmList[i];
+			//If using a non-externally-controlled PM scheduler, consider only non-empty PMs for consolidation
+			if(!(pm.isHostingVMs()) && !(toConsolidate.pmcontroller instanceof IControllablePmScheduler))
+				continue;
 			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(),
 					pm.getCapacities().getRequiredProcessingPower(), pm.getCapacities().getRequiredMemory(), i + 1, upperThreshold, lowerThreshold);
 			for (VirtualMachine vm : pm.publicVms) {
@@ -157,17 +160,20 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @return The list with all the actions.
 	 */
 	private List<Action> modelDiff() {
-		if(! (toConsolidate.pmcontroller instanceof IControllablePmScheduler)) {
-			System.err.println("The used PM scheduler must implement the IControllablePmScheduler interface, otherwise it cannot be used with this consolidator!");
+		//If we have an externally controllable PM scheduler, then we also create start-up and shut-down actions, otherwise only migration actions
+		IControllablePmScheduler controllablePmScheduler=null;
+		if(toConsolidate.pmcontroller instanceof IControllablePmScheduler) {
+			controllablePmScheduler=(IControllablePmScheduler) toConsolidate.pmcontroller;
 		}
-		IControllablePmScheduler pmScheduler=(IControllablePmScheduler) toConsolidate.pmcontroller;
 		List<Action> actions = new ArrayList<>();
 		int i = 0;
 		for (ModelPM bin : bins) {
-			if (bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
-				actions.add(new StartAction(i++, bin, pmScheduler));
-			if (bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
-				actions.add(new ShutDownAction(i++, bin, pmScheduler));
+			if(controllablePmScheduler!=null) {
+				if (bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
+					actions.add(new StartAction(i++, bin, controllablePmScheduler));
+				if (bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
+					actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
+			}
 			for (ModelVM item : bin.getVMs()) {
 				if (item.gethostPM() != item.getInitialPm()) {
 					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
