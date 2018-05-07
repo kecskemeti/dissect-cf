@@ -39,9 +39,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	
 	/** For generating random numbers */
 	private Random generator;
-
-	/** counter for the graph actions */
-	public int count = 1;	
 	
 	/** counter for creating particles */
 	private int particleCounter = 1; 
@@ -134,9 +131,9 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		this.dimension = items.size();
 		initializeSwarm();
 		
-		int t = 0;		// counter for the iterations
+		int iterations = 0;
 		
-		while(t < this.nrIterations) {
+		while(iterations < this.nrIterations) {
 			// step 1 - update pBest
 			for(Particle p : swarm) {
 				
@@ -144,7 +141,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 				
 				//p.evaluateFitnessFunction();	
 				
-				if(t == 0) {
+				if(iterations == 0) {
 					p.setPBest(p.evaluateFitnessFunction());
 					p.setPBestLocation(p.getLocation());
 				}				
@@ -162,7 +159,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			//Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
 			// set the new global best fitness / location
-			if(t == 0 || swarm.get(bestParticleIndex).evaluateFitnessFunction().isBetterThan(globalBest)) {
+			if(iterations == 0 || swarm.get(bestParticleIndex).evaluateFitnessFunction().isBetterThan(globalBest)) {
 				globalBest = swarm.get(bestParticleIndex).evaluateFitnessFunction();
 				globalBestLocation = swarm.get(bestParticleIndex).getLocation();		
 			}
@@ -172,7 +169,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			for(int i = 0; i < swarmSize; i++) {
 				Particle p = swarm.get(i);
 				
-				if(t == 0) {
+				if(iterations == 0) {
 					p.updateLocation();		// creates an ArithmeticVector out of the initial mapping
 					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());	// adds up the velocity to create the updated location
 					p.setLocation(newLoc);		
@@ -214,7 +211,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					p.updateMappings();   	// adjusts the mappings with the new location
 										
 					if(p.doLocalSearch1) {
-						//Logger.getGlobal().info("For particle " + p.getNumber() + ", starting local search");
 						p.improve();
 						p.updateLocation();	// we have to update the location afterwards
 					}
@@ -225,12 +221,9 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
 				}
 				
-			}
-			
+			}			
 			//Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
-			
-			// increase counter for the iterations
-			t++;
+			iterations++;
 		}				
 		implementSolution();
 	}	
@@ -383,11 +376,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			
 			// determine the fitness
 			this.countActivePmsAndOverloads();
-			
-			// the actual mappings
-			//Logger.getGlobal().info("mapping: " + mappingToString());
-			//Logger.getGlobal().info("loads: " + loadsToString());
-			//Logger.getGlobal().info("used: " + usedToString());
 			
 			//Logger.getGlobal().info("After updateMappings(), location: " + location + ", mapping: " + mappingToString());
 			

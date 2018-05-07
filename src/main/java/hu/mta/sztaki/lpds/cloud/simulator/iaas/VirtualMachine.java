@@ -73,7 +73,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
  * immediately because there is no transfers are required.
  * <li>Execution: Local and Mixed approaches execute without any disruptions,
  * while the Remote approach continuously uses the network for its disk
- * operations, thus disk&network intensive VMs will suffer significantly.
+ * operations, thus disk&amp;network intensive VMs will suffer significantly.
  * 
  * WARNING: the current implementation does not really reduce the processing
  * speed of a Remote storage based VM. This is future work.
