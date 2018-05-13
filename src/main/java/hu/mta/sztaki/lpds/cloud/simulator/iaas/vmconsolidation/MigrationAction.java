@@ -115,6 +115,9 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 		} else if(vm.getVM().getState()!=VirtualMachine.State.RUNNING && vm.getVM().getState()!=VirtualMachine.State.SUSPENDED) {
 			Logger.getGlobal().info("State of the VM inappropriate for migration ("+vm.getVM().getState()+") -> there is nothing to do");
 			finished();
+		} else if(!(target.getPM().isRunning())) {
+			Logger.getGlobal().info("Target PM not running -> there is nothing to do");
+			finished();
 		} else {
 			vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
 			try {
