@@ -303,29 +303,16 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 
 			//Logger.getGlobal().info("Before updateLocation(), new location: " + location + ", mapping: " + mappingToString());
 			
-			// clear the location
 			location.clear();
-			
-			// we have to save the mapping in the order of the vms, which means that we have to add at first the
-			// host pm for vm1, then the host pm for vm2 and so on
-			
-			// TODO use comparator
-			// sort the map
-			int x = 0;
-			Map<ModelVM, ModelPM> newMapping = new HashMap<>();
-			
-			while(x < items.size()) {
-				for (ModelVM vm : mapping.keySet()) {
-					if(vm.hashCode() == items.get(x).hashCode()) {
-						newMapping.put(vm, mapping.get(vm));
-						++x;
+
+			for(ModelVM v : items) {
+				ModelPM p=mapping.get(v);
+				for(int i=0;i<bins.size();i++) {
+					if(bins.get(i)==p) {
+						location.add((double)i+1);
+						break;
 					}
 				}
-			}			
-			
-			// now fill the location
-			for (ModelVM vm : newMapping.keySet()) {
-				location.add( (double) mapping.get(vm).hashCode() );	// save the id of the pm
 			}
 			
 			//Logger.getGlobal().info("After updateLocation(), new location: " + location + ", mapping: " + mappingToString());
@@ -347,6 +334,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			for (int i = 0; i < location.size(); i++) {
 				
 				ModelVM currentVm = items.get(i);	// the first vm of the location
+				//System.out.println("bins.size="+bins.size()+", location[i]="+location.get(i));
 				ModelPM currentPm = bins.get( location.get(i).intValue() - 1 );	// the host of this vm, has to be done 
 																				// because the ids start at one
 				
