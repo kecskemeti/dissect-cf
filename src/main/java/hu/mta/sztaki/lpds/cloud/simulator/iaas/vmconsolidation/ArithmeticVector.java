@@ -18,8 +18,8 @@ public class ArithmeticVector extends ArrayList<Double>{
 	 * Empty constructor, because all values of this class are created randomly at the beginning of the PSO
 	 * and get added to this.
 	 */
-	public ArithmeticVector() {
-		
+	public ArithmeticVector(double highestID) {
+		this.highestID = highestID;
 	}
 	
 	/**
@@ -58,9 +58,7 @@ public class ArithmeticVector extends ArrayList<Double>{
 	 */
 	public ArithmeticVector addUp(ArithmeticVector second) {
 		
-		highestID = getHighest();		// the defined border
-		
-		ArithmeticVector erg = new ArithmeticVector();
+		ArithmeticVector erg = new ArithmeticVector(highestID);
 		for(int i = 0; i < this.size(); i++) {
 			if(this.get(i) + second.get(i) > highestID)		
 				erg.add(highestID);
@@ -83,7 +81,7 @@ public class ArithmeticVector extends ArrayList<Double>{
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector subtract(ArithmeticVector second) {
-		ArithmeticVector erg = new ArithmeticVector();
+		ArithmeticVector erg = new ArithmeticVector(highestID);
 		for(int i = 0; i < this.size(); i++) {
 			if(this.get(i) - second.get(i) < 1)
 				erg.add(1.0);	// if the value would be lower than 1, 1 is set because there is no lower id than 1.
@@ -101,25 +99,10 @@ public class ArithmeticVector extends ArrayList<Double>{
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector multiply(double constant) {
-		ArithmeticVector erg = new ArithmeticVector();
+		ArithmeticVector erg = new ArithmeticVector(highestID);
 		for(int i = 0; i < this.size(); i++) {
 			erg.add(this.get(i) * constant);
 		}
 		return erg;		
-	}
-	
-	/**
-	 * Method for getting the PM with the highest ID.
-	 * 
-	 * @return The highest ID of all PMs.
-	 */
-	private double getHighest() {
-		double highest = 0;
-		for(int i = 0; i < this.size(); i++) {
-			if(highest < this.get(i))
-				highest = this.get(i);
-		}
-		
-		return highest;
 	}
 }

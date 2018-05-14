@@ -1,8 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Vector;
 
@@ -105,19 +103,22 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		for(int i = 0; i < randomCreations; i++) {
 			Particle p = swarm.get(i);
 			p.fillRandomly();
-			p.initVelocity(false);
+			p.updateLocation();
+			p.initVelocity();
 		}
 		//create firstfit solutions
 		for(int i = randomCreations; i < firstFitCreations + randomCreations; i++) {
 			Particle p = swarm.get(i);
 			p.createFirstFitSolution();
-			p.initVelocity(false);
+			p.updateLocation();
+			p.initVelocity();
 		}
 		//create unchanged solutions
 		for(int i = firstFitCreations + randomCreations; i < firstFitCreations + randomCreations + unchangedCreations; i++) {
 			Particle p = swarm.get(i);
 			p.createUnchangedSolution();
-			p.initVelocity(true);
+			p.updateLocation();
+			p.initVelocity();
 		}
 		
 	}
@@ -133,8 +134,9 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		
 		int iterations = 0;
 		
+		// it is assured that the mappings and the location of each Particle are in sync at the start of the loop
 		while(iterations < this.nrIterations) {
-			// step 1 - update pBest
+			// step 1 - update pBest			
 			for(Particle p : swarm) {
 				
 				//Logger.getGlobal().info("Before setting best values, Particle " + p.getNumber() + ", " + p.toString());
@@ -170,10 +172,11 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 				Particle p = swarm.get(i);
 				
 				if(iterations == 0) {
-					p.updateLocation();		// creates an ArithmeticVector out of the initial mapping
 					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());	// adds up the velocity to create the updated location
 					p.setLocation(newLoc);		
 					p.updateMappings();   	// adjusts the mappings with the new location
+					
+					// we do not have to update the velocity, because it is updated before updating the location in the loop
 				}
 				else {
 					double r1 = generator.nextDouble();
@@ -216,6 +219,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					}
 					else if(p.doLocalSearch2){
 						p.simpleConsolidatorImprove();
+						p.updateLocation();	// we have to update the location afterwards
 					}
 					
 					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
@@ -292,7 +296,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		public Particle(List<ModelPM> bins, int number) {
 			super(bins, 0);
 			this.number = number;
-			this.location = new ArithmeticVector();
+			this.location = new ArithmeticVector(bins.size());
 		}
 		
 		/**
@@ -303,29 +307,16 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 
 			//Logger.getGlobal().info("Before updateLocation(), new location: " + location + ", mapping: " + mappingToString());
 			
-			// clear the location
 			location.clear();
-			
-			// we have to save the mapping in the order of the vms, which means that we have to add at first the
-			// host pm for vm1, then the host pm for vm2 and so on
-			
-			// TODO use comparator
-			// sort the map
-			int x = 0;
-			Map<ModelVM, ModelPM> newMapping = new HashMap<>();
-			
-			while(x < items.size()) {
-				for (ModelVM vm : mapping.keySet()) {
-					if(vm.hashCode() == items.get(x).hashCode()) {
-						newMapping.put(vm, mapping.get(vm));
-						++x;
+
+			for(ModelVM v : items) {
+				ModelPM p=mapping.get(v);
+				for(int i=0;i<bins.size();i++) {
+					if(bins.get(i)==p) {
+						location.add((double)i+1);
+						break;
 					}
 				}
-			}			
-			
-			// now fill the location
-			for (ModelVM vm : newMapping.keySet()) {
-				location.add( (double) mapping.get(vm).hashCode() );	// save the id of the pm
 			}
 			
 			//Logger.getGlobal().info("After updateLocation(), new location: " + location + ", mapping: " + mappingToString());
@@ -347,30 +338,32 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			for (int i = 0; i < location.size(); i++) {
 				
 				ModelVM currentVm = items.get(i);	// the first vm of the location
-				ModelPM currentPm = bins.get( location.get(i).intValue() - 1 );	// the host of this vm, has to be done 
+				//System.out.println("bins.size="+bins.size()+", location[i]="+location.get(i));
+				ModelPM locPm = bins.get( location.get(i).intValue() - 1 );	// the host of this vm, has to be done 
 																				// because the ids start at one
 				
 				ModelPM mappedPm = mapping.get(currentVm);
 				
 				// now we have to check if both hosts are similar, then we can move on with the next.
 				// Otherwise we have to adjust the mappings
-				if(currentPm == mappedPm) {
+				if(locPm == mappedPm) {
 					continue;	// pms are the same
 				}
 				else {
+					// pms are not the same
 					fitness.nrMigrations++;
-					mapping.put(currentVm, currentPm);	//put the new pm
+					mapping.put(currentVm, locPm);	//put the new pm
 					
 					loads.get(mappedPm).subtract(currentVm.getResources());
-					loads.get(currentPm).singleAdd(currentVm.getResources());
+					loads.get(locPm).singleAdd(currentVm.getResources());
 					
-					// check if the pm is still used
-					if(used.containsKey(mappedPm)) {
-						used.put(mappedPm, true);
-					}
-					else {
+					// mark the pm out of the location as "used", after that check
+					// if the mappedPm is still used/hosting vms, if not, mark it
+					// as "unused"
+					used.put(locPm, true);
+					if(!mappedPm.isHostingVMs())
 						used.put(mappedPm, false);
-					}
+					
 				}
 			}
 			
@@ -382,31 +375,22 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		}
 		
 		/**
-		 * Creates the initial velocity of a particle. If the solution is unchanged, the velocity is 
-		 * initializes with '0', otherwise it points randomly in a positive or negative direction.
-		 * 
-		 * @param unchanged Determines if this is an unchanged solution.
+		 * Creates the initial velocity of a particle. The velocity points randomly in a 
+		 * positive or negative direction.
 		 */
-		public void initVelocity(boolean unchanged) {
-			ArithmeticVector vel = new ArithmeticVector();
+		public void initVelocity() {
+			ArithmeticVector vel = new ArithmeticVector(bins.size());
 			
-			if(unchanged) {
-				for(int j = 0; j < mapping.keySet().size(); j++) {
-					vel.add(0.0);
+			for(int j = 0; j < mapping.keySet().size(); j++) {			
+				double a;			
+				// here we make a random chance of getting a lower id or a higher id
+				if(generator.nextBoolean()) {
+					a = + 1;
 				}				
-			}
-			else {
-				for(int j = 0; j < mapping.keySet().size(); j++) {			
-					double a;			
-					// here we make a random chance of getting a lower id or a higher id
-					if(generator.nextBoolean()) {
-						a = + 1;
-					}				
-					else {
-						a = - 1;
-					}
-					vel.add(a); 	// add the random velocity
+				else {
+					a = - 1;
 				}
+				vel.add(a); 	// add the random velocity				
 			}
 			
 			this.setVelocity(vel);
