@@ -65,6 +65,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 */
 	@Override
 	protected void processProps() {
+		super.processProps();
 	
 		this.swarmSize = Integer.parseInt(props.getProperty("psoSwarmSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
