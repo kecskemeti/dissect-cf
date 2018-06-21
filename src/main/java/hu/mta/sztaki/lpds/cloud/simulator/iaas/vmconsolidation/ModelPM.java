@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 /**
  * @author Julian Bellendorf, Rene Ponto
@@ -20,9 +22,9 @@ public class ModelPM {
 	private List<ModelVM> vmList;
 	private int number;
 
-	private ConstantConstraints totalResources;
-	private ResourceVector consumedResources;
-	private ResourceVector reserved;		// the reserved resources
+	private AlterableResourceConstraints consumedResources;
+	private AlterableResourceConstraints reserved;		// the reserved resources
+	private ConstantConstraints lowerThrResources, upperThrResources;
 
 	private double lowerThreshold, upperThreshold;
 
@@ -51,12 +53,16 @@ public class ModelPM {
 	 * @param lowerThreshold
 	 * 			The lowerThreshold out of the properties.
 	 */
-	public ModelPM(PhysicalMachine pm, double cores, double pCP, long mem, int number, double upperThreshold, double lowerThreshold) {
+	public ModelPM(PhysicalMachine pm, int number, double upperThreshold, double lowerThreshold) {
 		this.pm = pm;
 		vmList = new ArrayList<>();
 		this.number = number;
-		this.upperThreshold = upperThreshold;
-		this.lowerThreshold = lowerThreshold;
+		AlterableResourceConstraints rc=new AlterableResourceConstraints(pm.getCapacities());
+		rc.multiply(lowerThreshold);
+		this.lowerThrResources=new ConstantConstraints(rc);
+		rc=new AlterableResourceConstraints(pm.getCapacities());
+		rc.multiply(upperThreshold);
+		this.upperThrResources=new ConstantConstraints(rc);
 
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
 			setState(State.EMPTY_OFF);
@@ -70,9 +76,8 @@ public class ModelPM {
 			}
 		}
 
-		totalResources = new ConstantConstraints(cores, pCP, mem);
-		consumedResources = new ResourceVector(0, pCP, 0);
-		reserved = new ResourceVector(0,0,0);
+		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
+		reserved = new AlterableResourceConstraints(ConstantConstraints.noResources);
 		//Logger.getGlobal().info("Created PM: "+toString());
 	}
 
@@ -82,7 +87,7 @@ public class ModelPM {
 	 * @return A string containing the pms number, the resources (cap and load), the state and its vms.
 	 */	
 	public String toString() {
-		String result="PM " + number + ", cap="+totalResources.toString()+", curr="+consumedResources.toString()+", state="+state+", VMs=";
+		String result="PM " + number + ", cap="+pm.getCapacities().toString()+", curr="+consumedResources.toString()+", state="+state+", VMs=";
 		boolean first=true;
 		for(ModelVM vm : vmList) {
 			if(!first)
@@ -295,12 +300,7 @@ public class ModelPM {
 	 * @return True if overAllocated, false otherwise.
 	 */	
 	public boolean isOverAllocated() {
-		
-		if(consumedResources.isOverAllocated(totalResources,upperThreshold)) {
-			return true;
-		}
-		else
-			return false;
+		return consumedResources.getTotalProcessingPower() > upperThrResources.getTotalProcessingPower() || consumedResources.getRequiredMemory() > upperThrResources.getRequiredMemory();
 	}
 	
 	/**
@@ -309,12 +309,7 @@ public class ModelPM {
 	 * @return True if it is underAllocated, false otherwise.
 	 */	
 	public boolean isUnderAllocated() {
-		
-		if(consumedResources.isUnderAllocated(totalResources,lowerThreshold)) {
-			return true;
-		}
-		else
-			return false;
+		return consumedResources.compareTo(lowerThrResources)==-1;
 	}
 	
 	/**
@@ -341,11 +336,11 @@ public class ModelPM {
 	public boolean isMigrationPossible(ModelVM toAdd) {
 		
 		checkAllocation();
-		ResourceVector available = new ResourceVector(totalResources.getRequiredCPUs(), totalResources.getRequiredProcessingPower(), totalResources.getRequiredMemory());
+		AlterableResourceConstraints available = new AlterableResourceConstraints(pm.getCapacities());
 		available.subtract(consumedResources);
 		available.subtract(reserved);
 		//Logger.getGlobal().info("available: "+available.toString());
-		if(toAdd.getResources().canBeAdded(available)) {
+		if(toAdd.getResources().getTotalProcessingPower() <= available.getTotalProcessingPower() && toAdd.getResources().getRequiredMemory() <= available.getRequiredMemory()) {
 			//Logger.getGlobal().info("canbeadded");
 
 			addVM(toAdd);
@@ -413,8 +408,8 @@ public class ModelPM {
 	 * 
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */	
-	public ResourceVector getConsumedResources() {
-		return this.consumedResources;
+	public ConstantConstraints getConsumedResources() {
+		return new ConstantConstraints(consumedResources);
 	}	
 	
 	/**
@@ -422,8 +417,8 @@ public class ModelPM {
 	 * 
 	 * @return cores, perCoreProcessing and memory of the PM as ConstantConstraints.
 	 */	
-	public ConstantConstraints getTotalResources() {
-		return this.totalResources;
+	public ResourceConstraints getTotalResources() {
+		return pm.getCapacities();
 	}
 	
 	/**
@@ -431,10 +426,10 @@ public class ModelPM {
 	 * 
 	 * @return The free resources of this ModelPM without the reserved ones.
 	 */
-	public ResourceVector getFreeResources() {
-		return new ResourceVector(totalResources.getRequiredCPUs() - consumedResources.getRequiredCPUs(), 
-				totalResources.getRequiredProcessingPower() - consumedResources.getRequiredProcessingPower(), 
-				totalResources.getRequiredMemory() - consumedResources.getRequiredMemory());
+	public ResourceConstraints getFreeResources() {
+		AlterableResourceConstraints r=new AlterableResourceConstraints(pm.getCapacities());
+		r.subtract(consumedResources);
+		return r;
 	}
 	
 	/**

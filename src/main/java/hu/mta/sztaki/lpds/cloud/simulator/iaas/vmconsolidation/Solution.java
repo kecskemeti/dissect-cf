@@ -14,7 +14,9 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 /**
  * Represents a possible solution of the VM consolidation problem, i.e., a
@@ -26,7 +28,7 @@ public class Solution {
 	/** Mapping of VMs to PMs */
 	protected Map<ModelVM, ModelPM> mapping;
 	/** Current resource use of the PMs */
-	protected Map<ModelPM, ResourceVector> loads;
+	protected Map<ModelPM, AlterableResourceConstraints> loads;
 	/** Flags for each PM whether it is in use */
 	protected Map<ModelPM, Boolean> used;
 	/** For generating random numbers */
@@ -55,7 +57,7 @@ public class Solution {
 		fitness=new Fitness();
 
 		for (ModelPM pm : bins) {
-			loads.put(pm, new ResourceVector(0, 0, 0));
+			loads.put(pm, new AlterableResourceConstraints(ConstantConstraints.noResources));
 			used.put(pm, false);
 		}
 		
@@ -87,7 +89,7 @@ public class Solution {
 		
 		// clone all ResourceVectors for each pm and put it inside the used-mapping
 		for(ModelPM pm : loads.keySet()) {
-			newSol.loads.put(pm, loads.get(pm).clone());
+			newSol.loads.put(pm, new AlterableResourceConstraints(loads.get(pm)));
 			newSol.used.put(pm,true);
 		}
 		
@@ -109,8 +111,8 @@ public class Solution {
 		for (ModelPM pm : bins) {
 			if(used.get(pm))
 				fitness.nrActivePms++;
-			ResourceVector allocation = loads.get(pm);
-			ConstantConstraints cap = pm.getTotalResources();
+			AlterableResourceConstraints allocation = loads.get(pm);
+			ResourceConstraints cap = pm.getTotalResources();
 			if (allocation.getTotalProcessingPower() > cap.getTotalProcessingPower() * pm.getUpperThreshold())
 				fitness.totalOverAllocated += allocation.getTotalProcessingPower()
 						/ (cap.getTotalProcessingPower() * pm.getUpperThreshold());
@@ -176,7 +178,7 @@ public class Solution {
 		
 		//relieve overloaded PMs + empty underloaded PMs
 		for(ModelPM pm : bins) {
-			ConstantConstraints cap=pm.getTotalResources();
+			ResourceConstraints cap=pm.getTotalResources();
 //			Logger.getGlobal().info("ConstantConstraints: " + cap.getTotalProcessingPower() + ", " + cap.getRequiredMemory() + 
 //					", loads: " + loads.get(pm).getTotalProcessingPower() + ", " + loads.get(pm).getRequiredMemory());
 			while(loads.get(pm).getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold()
@@ -224,9 +226,9 @@ public class Solution {
 		for(ModelVM vm : vmsToMigrate) {
 			ModelPM targetPm=null;
 			for(ModelPM pm : binsToTry) {
-				ResourceVector newLoad=loads.get(pm).clone();
+				AlterableResourceConstraints newLoad=new AlterableResourceConstraints(loads.get(pm));
 				newLoad.singleAdd(vm.getResources());
-				ConstantConstraints cap=pm.getTotalResources();
+				ResourceConstraints cap=pm.getTotalResources();
 				if(newLoad.getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getUpperThreshold()
 						&& newLoad.getRequiredMemory()<=cap.getRequiredMemory()*pm.getUpperThreshold()) {
 					targetPm=pm;
@@ -454,7 +456,7 @@ public class Solution {
 		for (ModelPM pm : loads.keySet()) {
 			
 			
-			if(!loads.get(pm).isEmpty()) {
+			if(loads.get(pm).compareTo(ConstantConstraints.noResources)!=0) {
 				if (!first)
 					result = result + ",";
 				

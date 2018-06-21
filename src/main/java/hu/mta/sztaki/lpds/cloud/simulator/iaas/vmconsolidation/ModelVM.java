@@ -1,6 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 
 /**
@@ -16,7 +17,6 @@ public class ModelVM {
 	private ModelPM hostPM;
 	private ModelPM initialHost;
 	private int id;
-	private ResourceVector neededResources;
 
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
@@ -36,13 +36,12 @@ public class ModelVM {
 	 * @param id
 	 * 			The ID of the original VM.
 	 */	
-	public ModelVM(VirtualMachine vm, ModelPM pm, double cores, double pCP, long mem, int id) {
+	public ModelVM(VirtualMachine vm, ModelPM pm, int id) {
 		
 		this.vm = vm;
 		hostPM = pm;		// save the host PM
 		initialHost = pm;	// save the host as the first host PM
 		this.id = id;
-		neededResources = new ResourceVector(cores, pCP, mem);		// create the ResourceVector
 	}
 
 	/**
@@ -65,8 +64,8 @@ public class ModelVM {
 	/** Getter
 	 * @return the ResourceVector
 	 */
-	public ResourceVector getResources() {
-		return neededResources;
+	public ResourceConstraints getResources() {
+		return vm.getResourceAllocation().allocated;
 	}
 	
 	/** Getter

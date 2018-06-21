@@ -132,13 +132,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			//If using a non-externally-controlled PM scheduler, consider only non-empty PMs for consolidation
 			if(!(pm.isHostingVMs()) && !(toConsolidate.pmcontroller instanceof IControllablePmScheduler))
 				continue;
-			ModelPM bin = new ModelPM(pm, pm.getCapacities().getRequiredCPUs(),
-					pm.getCapacities().getRequiredProcessingPower(), pm.getCapacities().getRequiredMemory(), i + 1, upperThreshold, lowerThreshold);
+			ModelPM bin = new ModelPM(pm, i + 1, upperThreshold, lowerThreshold);
 			for (VirtualMachine vm : pm.publicVms) {
 				vmIndex++;
-				ModelVM item = new ModelVM(vm, bin, vm.getResourceAllocation().allocated.getRequiredCPUs(),
-						vm.getResourceAllocation().allocated.getRequiredProcessingPower(),
-						vm.getResourceAllocation().allocated.getRequiredMemory(), vmIndex);
+				ModelVM item = new ModelVM(vm, bin, vmIndex);
 				bin.addVM(item);
 				items.add(item);
 			}
