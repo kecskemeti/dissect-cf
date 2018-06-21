@@ -26,7 +26,6 @@ public class ModelPM {
 	private AlterableResourceConstraints reserved;		// the reserved resources
 	private ConstantConstraints lowerThrResources, upperThrResources;
 
-	private double lowerThreshold, upperThreshold;
 
 	private State state;
 
@@ -437,8 +436,8 @@ public class ModelPM {
 	 * 
 	 * @return The lower threshold for the pms.
 	 */
-	public double getLowerThreshold() {
-		return lowerThreshold;
+	public ConstantConstraints getLowerThreshold() {
+		return lowerThrResources;
 	}
 
 	/**
@@ -446,8 +445,8 @@ public class ModelPM {
 	 * 
 	 * @return The upper threshold for the pms.
 	 */
-	public double getUpperThreshold() {
-		return upperThreshold;
+	public ConstantConstraints getUpperThreshold() {
+		return upperThrResources;
 	}
 
 	/**

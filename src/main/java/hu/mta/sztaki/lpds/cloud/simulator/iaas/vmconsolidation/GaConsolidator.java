@@ -1,7 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.Random;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -21,8 +20,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  */
 public class GaConsolidator extends SolutionBasedConsolidator {
 
-	/** For generating random numbers */
-	private Random random;
 	/** Number of individuals in the population */
 	private int populationSize;
 	/** Terminate the GA after this many generations */
@@ -35,7 +32,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	private Fitness bestFitness;
 
 	/** Population for the GA, consisting of solutions=individuals */
-	private Vector<Solution> population;
+	private ArrayList<Solution> population;
 	/** True if at least one individual has improved during the current generation */
 	private boolean improved;
 
@@ -44,7 +41,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 */
 	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		population = new Vector<>();
+		population = new ArrayList<>();
 	}
 
 	/**
@@ -135,7 +132,6 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		this.populationSize = Integer.parseInt(props.getProperty("gaPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
 		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
-		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 		
 		determineCreations(populationSize);
 	}

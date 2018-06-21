@@ -1,7 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
-import java.util.Random;
 import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -34,9 +33,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	
 	/** used to get a new velocity for each particle */
 	private final double w = 0.6;
-	
-	/** For generating random numbers */
-	private Random generator;
 	
 	/** counter for creating particles */
 	private int particleCounter = 1; 
@@ -74,7 +70,6 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		this.nrIterations = Integer.parseInt(props.getProperty("psoNrIterations"));
 		this.c1 = Integer.parseInt(props.getProperty("psoC1"));
 		this.c2 = Integer.parseInt(props.getProperty("psoC2"));
-		this.generator = new Random(Long.parseLong(props.getProperty("seed")));
 		
 		determineCreations(swarmSize);
 	}
@@ -179,8 +174,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					// we do not have to update the velocity, because it is updated before updating the location in the loop
 				}
 				else {
-					double r1 = generator.nextDouble();
-					double r2 = generator.nextDouble();
+					double r1 = random.nextDouble();
+					double r2 = random.nextDouble();
 					
 					// step 3 - update velocity
 					
@@ -213,11 +208,11 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					p.setLocation(newLoc);		
 					p.updateMappings();   	// adjusts the mappings with the new location
 										
-					if(p.doLocalSearch1) {
+					if(doLocalSearch1) {
 						p.improve();
 						p.updateLocation();	// we have to update the location afterwards
 					}
-					else if(p.doLocalSearch2){
+					else if(doLocalSearch2){
 						p.simpleConsolidatorImprove();
 						p.updateLocation();	// we have to update the location afterwards
 					}
@@ -384,7 +379,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			for(int j = 0; j < mapping.keySet().size(); j++) {			
 				double a;			
 				// here we make a random chance of getting a lower id or a higher id
-				if(generator.nextBoolean()) {
+				if(random.nextBoolean()) {
 					a = + 1;
 				}				
 				else {

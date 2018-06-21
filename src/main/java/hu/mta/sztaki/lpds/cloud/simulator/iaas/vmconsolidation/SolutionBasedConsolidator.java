@@ -23,6 +23,7 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.Random;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -40,6 +41,12 @@ public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 	protected int randomCreations;
 	protected int unchangedCreations;
 	protected int firstFitCreations;
+	/** For generating random numbers */
+	static protected Random random;
+	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
+	static protected boolean doLocalSearch1=false;
+	/** simple consolidator local search */
+	static protected boolean doLocalSearch2=false;
 
 	public SolutionBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
@@ -47,7 +54,10 @@ public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 
 	@Override
 	protected void processProps() {
-		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));		
+		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
+		random = new Random(Long.parseLong(props.getProperty("seed")));
+		doLocalSearch1=Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
+		doLocalSearch2=Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
 	}
 	
 	/**

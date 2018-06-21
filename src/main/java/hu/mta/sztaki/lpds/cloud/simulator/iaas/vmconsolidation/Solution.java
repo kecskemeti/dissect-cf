@@ -1,8 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,9 +7,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
@@ -31,19 +25,26 @@ public class Solution {
 	protected Map<ModelPM, AlterableResourceConstraints> loads;
 	/** Flags for each PM whether it is in use */
 	protected Map<ModelPM, Boolean> used;
-	/** For generating random numbers */
-	protected Random random;
 	/** Each gene is replaced by a random value with this probability during mutation */
 	private double mutationProb;
 	/** Fitness of the solution */
 	protected Fitness fitness;
-	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
-	protected boolean doLocalSearch1=false;
-	/** simple consolidator local search */
-	protected boolean doLocalSearch2=false;
 
-	Properties props;
-
+	private static Comparator<ModelVM> mvmComp=new Comparator<ModelVM>() {
+		@Override
+		public int compare(ModelVM vm1, ModelVM vm2) {
+			return Double.compare(vm2.getResources().getTotalProcessingPower(), vm1.getResources().getTotalProcessingPower());
+		}
+	};
+	
+	private Comparator<ModelPM> mpmComp=new Comparator<ModelPM>() {
+		@Override
+		public int compare(ModelPM pm1, ModelPM pm2) {
+			return Double.compare(loads.get(pm2).getTotalProcessingPower(), loads.get(pm1).getTotalProcessingPower());
+		}
+	};
+	
+	
 	/**
 	 * Creates a solution with an empty mapping that will need to be filled somehow,
 	 * e.g., using #fillRandomly().
@@ -61,18 +62,6 @@ public class Solution {
 			used.put(pm, false);
 		}
 		
-		props = new Properties();		
-		try {
-			File file = new File("consolidationProperties.xml");
-			FileInputStream fileInput = new FileInputStream(file);
-			props.loadFromXML(fileInput);
-			fileInput.close();
-			random = new Random(Long.parseLong(props.getProperty("seed")));
-			doLocalSearch1=Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
-			doLocalSearch2=Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		
 	}
 
@@ -113,11 +102,11 @@ public class Solution {
 				fitness.nrActivePms++;
 			AlterableResourceConstraints allocation = loads.get(pm);
 			ResourceConstraints cap = pm.getTotalResources();
-			if (allocation.getTotalProcessingPower() > cap.getTotalProcessingPower() * pm.getUpperThreshold())
+			if (allocation.getTotalProcessingPower() > pm.getUpperThreshold().getTotalProcessingPower() )
 				fitness.totalOverAllocated += allocation.getTotalProcessingPower()
-						/ (cap.getTotalProcessingPower() * pm.getUpperThreshold());
-			if (allocation.getRequiredMemory() > cap.getRequiredMemory() * pm.getUpperThreshold())
-				fitness.totalOverAllocated += allocation.getRequiredMemory() / (cap.getRequiredMemory() * pm.getUpperThreshold());
+						/ (pm.getUpperThreshold().getTotalProcessingPower());
+			if (allocation.getRequiredMemory() > pm.getUpperThreshold().getRequiredMemory())
+				fitness.totalOverAllocated += allocation.getRequiredMemory() / pm.getUpperThreshold().getRequiredMemory();
 		}
 	}
 
@@ -128,7 +117,7 @@ public class Solution {
 		fitness.nrMigrations=0;
 		for (ModelPM pm : bins) {
 			for (ModelVM vm : pm.getVMs()) {
-				ModelPM randPm = bins.get(random.nextInt(bins.size()));
+				ModelPM randPm = bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
 				mapping.put(vm, randPm);
 				loads.get(randPm).singleAdd(vm.getResources());
 				used.put(randPm,true);
@@ -137,14 +126,18 @@ public class Solution {
 			}
 		}
 		countActivePmsAndOverloads();
-		if(doLocalSearch1) {
-			improve();
-		} else if(doLocalSearch2){
-			simpleConsolidatorImprove();
-		}
+		useLocalSearch();
 		// System.err.println("fillRandomly() -> mapping: "+mappingToString());
 	}
 
+	private void useLocalSearch() {
+		if(SolutionBasedConsolidator.doLocalSearch1) {
+			improve();
+		} else if(SolutionBasedConsolidator.doLocalSearch2){
+			simpleConsolidatorImprove();
+		}
+	}
+	
 	/**
 	 * Creates the same mapping as existing before consolidation has started.
 	 */
@@ -168,9 +161,9 @@ public class Solution {
 	protected void improve() {
 		List<ModelVM> vmsToMigrate=new ArrayList<>();
 		//create inverse mapping
-		Map<ModelPM,Vector<ModelVM>> vmsOfPms=new HashMap<>();
+		Map<ModelPM,ArrayList<ModelVM>> vmsOfPms=new HashMap<>();
 		for(ModelPM pm : bins) {
-			vmsOfPms.put(pm, new Vector<>());
+			vmsOfPms.put(pm, new ArrayList<>());
 		}
 		for(ModelVM vm : mapping.keySet()) {
 			vmsOfPms.get(mapping.get(vm)).add(vm);
@@ -178,59 +171,48 @@ public class Solution {
 		
 		//relieve overloaded PMs + empty underloaded PMs
 		for(ModelPM pm : bins) {
-			ResourceConstraints cap=pm.getTotalResources();
 //			Logger.getGlobal().info("ConstantConstraints: " + cap.getTotalProcessingPower() + ", " + cap.getRequiredMemory() + 
 //					", loads: " + loads.get(pm).getTotalProcessingPower() + ", " + loads.get(pm).getRequiredMemory());
-			while(loads.get(pm).getTotalProcessingPower()>cap.getTotalProcessingPower()*pm.getUpperThreshold()
-					|| loads.get(pm).getRequiredMemory()>cap.getRequiredMemory()*pm.getUpperThreshold()) {
+			AlterableResourceConstraints currLoad=loads.get(pm);
+			while(currLoad.getTotalProcessingPower()>pm.getUpperThreshold().getTotalProcessingPower()
+					|| currLoad.getRequiredMemory()>pm.getUpperThreshold().getRequiredMemory()) {
 				//PM is overloaded
-				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
 				
 				//Logger.getGlobal().info("overloaded, vmsOfPm, size: " + vmsOfPm.size() + ", " + vmsOfPm.toString());
 				
 				ModelVM vm=vmsOfPm.remove(vmsOfPm.size()-1);
 				vmsToMigrate.add(vm);
-				loads.get(pm).subtract(vm.getResources());
-				if(vmsOfPm.isEmpty())
+				currLoad.subtract(vm.getResources());
+				if(vmsOfPm.isEmpty()) {
 					used.put(pm, false);
+				}
 			}
-			if(loads.get(pm).getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getLowerThreshold()
-					&& loads.get(pm).getRequiredMemory()<=cap.getRequiredMemory()*pm.getLowerThreshold()) {
+			if(currLoad.getTotalProcessingPower()<=pm.getLowerThreshold().getTotalProcessingPower()&&currLoad.getRequiredMemory()<=pm.getLowerThreshold().getRequiredMemory()) {
 				//PM is underloaded
-				Vector<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
 				
 				//Logger.getGlobal().info("underloaded, vmsOfPm, size: " + vmsOfPm.size());
 				
 				for(ModelVM vm : vmsOfPm) {
 					vmsToMigrate.add(vm);
-					loads.get(pm).subtract(vm.getResources());
+					currLoad.subtract(vm.getResources());
 				}
-				vmsOfPm.removeAllElements();
+				vmsOfPm.clear();
 				used.put(pm, false);
 			}
 		}
 		//find new host for the VMs to migrate using BFD
-		Collections.sort(vmsToMigrate, new Comparator<ModelVM>() {
-			@Override
-			public int compare(ModelVM vm1, ModelVM vm2) {
-				return Double.compare(vm2.getResources().getTotalProcessingPower(), vm1.getResources().getTotalProcessingPower());
-			}
-		});
+		Collections.sort(vmsToMigrate, mvmComp);
 		List<ModelPM> binsToTry=new ArrayList<>(bins);
-		Collections.sort(binsToTry, new Comparator<ModelPM>() {
-			@Override
-			public int compare(ModelPM pm1, ModelPM pm2) {
-				return Double.compare(loads.get(pm2).getTotalProcessingPower(), loads.get(pm1).getTotalProcessingPower());
-			}
-		});
+		Collections.sort(binsToTry, mpmComp);
 		for(ModelVM vm : vmsToMigrate) {
 			ModelPM targetPm=null;
 			for(ModelPM pm : binsToTry) {
 				AlterableResourceConstraints newLoad=new AlterableResourceConstraints(loads.get(pm));
 				newLoad.singleAdd(vm.getResources());
 				ResourceConstraints cap=pm.getTotalResources();
-				if(newLoad.getTotalProcessingPower()<=cap.getTotalProcessingPower()*pm.getUpperThreshold()
-						&& newLoad.getRequiredMemory()<=cap.getRequiredMemory()*pm.getUpperThreshold()) {
+				if(newLoad.getTotalProcessingPower()<=pm.getUpperThreshold().getTotalProcessingPower()&&newLoad.getRequiredMemory()<=pm.getUpperThreshold().getRequiredMemory()) {
 					targetPm=pm;
 					break;
 				}
@@ -350,8 +332,8 @@ public class Solution {
 		result.fitness.nrMigrations=0;
 		for (ModelVM vm : mapping.keySet()) {
 			ModelPM pm;
-			if (random.nextDouble() < mutationProb)
-				pm = bins.get(random.nextInt(bins.size()));
+			if (SolutionBasedConsolidator.random.nextDouble() < mutationProb)
+				pm = bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
 			else
 				pm = mapping.get(vm);
 			result.mapping.put(vm, pm);
@@ -361,11 +343,7 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
-		if(doLocalSearch1) {
-			result.improve();
-		} else if(doLocalSearch2){
-			result.simpleConsolidatorImprove();
-		}
+		result.useLocalSearch();
 		return result;
 	}
 
@@ -383,7 +361,7 @@ public class Solution {
 		result.fitness.nrMigrations=0;
 		for (ModelVM vm : mapping.keySet()) {
 			ModelPM pm;
-			if (random.nextBoolean())
+			if (SolutionBasedConsolidator.random.nextBoolean())
 				pm = other.mapping.get(vm);
 			else
 				pm = this.mapping.get(vm);
@@ -394,11 +372,7 @@ public class Solution {
 				result.fitness.nrMigrations++;
 		}
 		result.countActivePmsAndOverloads();
-		if(doLocalSearch1) {
-			result.improve();
-		} else if(doLocalSearch2){
-			result.simpleConsolidatorImprove();
-		}
+		result.useLocalSearch();
 		return result;
 	}
 

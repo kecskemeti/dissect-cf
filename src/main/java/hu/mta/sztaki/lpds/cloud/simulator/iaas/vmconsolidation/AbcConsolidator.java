@@ -1,6 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.Random;
+import java.util.ArrayList;
 import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -12,9 +12,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  */
 public class AbcConsolidator extends SolutionBasedConsolidator {
 
-	/** For generating random numbers */
-	private Random random;
-
 	/** Number of individuals in the population */
 	private int populationSize;
 
@@ -25,13 +22,13 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	private int limitTrials;
 
 	/** Population, consisting of solutions for each employed bee */
-	private Vector<Solution> population;
+	private ArrayList<Solution> population;
 
 	/** For each employed bee, number of trials since last improvement */
-	private Vector<Integer> numTrials;
+	private ArrayList<Integer> numTrials;
 
 	/** Probabilities for the onlooker bees */
-	private Vector<Double> probabilities;
+	private ArrayList<Double> probabilities;
 
 	/** Best solution found so far */
 	private Solution bestSolution;
@@ -47,9 +44,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	public AbcConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		population = new Vector<>();
-		numTrials = new Vector<>();
-		probabilities = new Vector<>();
+		population = new ArrayList<>();
+		numTrials = new ArrayList<>();
+		probabilities = new ArrayList<>();
 	}
 
 	/**
@@ -164,7 +161,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
-		this.random = new Random(Long.parseLong(props.getProperty("seed")));
 		
 		determineCreations(populationSize);
 	}
