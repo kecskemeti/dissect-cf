@@ -5,9 +5,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
@@ -41,6 +43,13 @@ public class Solution {
 		@Override
 		public int compare(ModelPM pm1, ModelPM pm2) {
 			return Double.compare(loads.get(pm2).getTotalProcessingPower(), loads.get(pm1).getTotalProcessingPower());
+		}
+	};
+	
+	private Comparator<ModelPM> mpmFreeComp=new Comparator<ModelPM>() {
+		@Override
+		public int compare(ModelPM pm1, ModelPM pm2) {
+			return -pm1.getFreeResources().compareTo(pm2.getFreeResources());
 		}
 	};
 	
@@ -235,70 +244,68 @@ public class Solution {
 //		Logger.getGlobal().info("starting to improve with second local search");
 		
 		// create an array out of the bins
-		ModelPM[] arr = new ModelPM[bins.size()];
-		for(int i = 0; i < bins.size(); i++) {			
-			arr[i] = bins.get(i);
-		}
-		
-		// now filter out the not running machines
+		ModelPM[] pmList = new ModelPM[bins.size()];
 		int runningLen = 0;
-		for (int i = 0; i < arr.length; i++) {
-			if (arr[i].isRunning()) {
-				arr[runningLen++] =arr[i];
+		for(int i = 0; i < pmList.length; i++) {
+			ModelPM curr=bins.get(i);
+			if (curr.isHostingVMs() && curr.getFreeResources().getTotalProcessingPower()>SimpleConsolidator.pmFullLimit) {
+				pmList[runningLen++]=curr;
 			}
 		}
-		ModelPM[] pmList = new ModelPM[runningLen];
-		System.arraycopy(arr, 0, pmList, 0, runningLen);		
 		
 //		Logger.getGlobal().info("size of the pmList: " + pmList.length);
 
 		boolean didMove;
+		runningLen--;
+		int beginIndex=0;
+		HashSet<ModelVM> alreadyMoved=new HashSet<>();
 		do {
 			didMove = false;
 			
 			// sort the array from highest to lowest free capacity with an adjusted version of the fitting pm comparator
-			Arrays.sort(pmList, new Comparator<ModelPM>() {
-				@Override
-				public int compare(ModelPM pm1, ModelPM pm2) {
-					return -pm1.getFreeResources().compareTo(pm2.getFreeResources());
-				}
-			});
-			
-			int lastItem = runningLen - 1;
+			Arrays.sort(pmList, beginIndex, runningLen+1, mpmFreeComp);
 			
 //			Logger.getGlobal().info("filtered array: " + Arrays.toString(pmList));
 			
-			for(int i = 0; i < pmList.length; i++) {
+			for(int i = beginIndex; i < runningLen; i++) {
 				ModelPM source = pmList[i];
-				if( source.isHostingVMs() ) {
-					ModelVM[] vmList = source.getVMs().toArray(new ModelVM[source.getVMs().size()]);
-					
-					for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-						ModelVM vm = vmList[vmidx];
-						// ModelVMs can only run, so we need not to check the state (there is none either)
-						for (int j = lastItem; j > i; j--) {
-							ModelPM target = pmList[j];
-							if (target.getFreeResources().getTotalProcessingPower() < 0.00000001) {
+				ModelVM[] vmList = source.getVMs().toArray(new ModelVM[source.getVMs().size()]);
+				int vmc=0;
+				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
+					ModelVM vm = vmList[vmidx];
+					if(alreadyMoved.contains(vm)) continue;
+					// ModelVMs can only run, so we need not to check the state (there is none either)
+					for (int j = runningLen; j > i; j--) {
+						ModelPM target = pmList[j];
+							
+						if(target.isMigrationPossible(vm)) {
+							mapping.put(vm, target);
+							loads.get(target).singleAdd(vm.getResources());
+							used.put(target, true);
+							alreadyMoved.add(vm);
+							
+							if(target!=vm.getInitialPm())
+								fitness.nrMigrations++;
+							if (target.getFreeResources().getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
 								// Ensures that those PMs that barely have resources will not be 
 								// considered in future runs of this loop
-								
-								lastItem = j;
-								continue;
+								if(j!=runningLen) {
+									if(j==runningLen-1) {
+										pmList[j]=pmList[runningLen];
+									} else {
+										System.arraycopy(pmList, j+1, pmList, j, runningLen -j);
+									}
+								}
+								runningLen --;
 							}
-							
-							if(target.isMigrationPossible(vm)) {
-								mapping.put(vm, target);
-								loads.get(target).singleAdd(vm.getResources());
-								used.put(target, true);
-								
-								if(target!=vm.getInitialPm())
-									fitness.nrMigrations++;
-								
-								didMove = true;
-								break;
-							}
+							vmc++;
+							didMove = true;
+							break;
 						}
 					}
+				}
+				if(vmc==vmList.length) {
+					pmList[i]=pmList[beginIndex++];
 				}
 			}
 		} while (didMove);
