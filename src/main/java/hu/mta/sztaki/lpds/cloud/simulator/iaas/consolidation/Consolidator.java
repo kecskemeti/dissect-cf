@@ -45,10 +45,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 public abstract class Consolidator extends Timed {
 	private final long consFreq;
 	private final IaaSService toConsolidate;
+	private boolean resourceAllocationChange = false;
+	private boolean omitAllocationCheck = false;
 
 	/**
-	 * This inner class ensures that the consolidator receives its periodic
-	 * events if new VMs were just added to the IaaS under consolidation.
+	 * This inner class ensures that the consolidator receives its periodic events
+	 * if new VMs were just added to the IaaS under consolidation.
 	 * 
 	 * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
 	 *         Moores University, (c) 2016"
@@ -64,51 +66,53 @@ public abstract class Consolidator extends Timed {
 		 */
 		public VMListObserver(PhysicalMachine forMe) {
 			forMe.subscribeToDecreasingFreeapacityChanges(this);
+			forMe.subscribeToIncreasingFreeapacityChanges(this);
 			pm = forMe;
 			capacityChanged(null, null);
 		}
 
 		/**
-		 * Receives the usage related notifications from the observed physical
-		 * machine and ensures the subscription of the consolidator in case this
-		 * is teh first VM the consolidator should know about.
+		 * Receives the usage related notifications from the observed physical machine
+		 * and ensures the subscription of the consolidator in case this is the first VM
+		 * the consolidator should know about.
 		 */
 		@Override
 		public void capacityChanged(ResourceConstraints newCapacity, List<ResourceConstraints> affectedCapacity) {
 			if (pm.isHostingVMs() && !isSubscribed()) {
 				subscribe(consFreq);
 			}
+			resourceAllocationChange = true;
 		}
 
 		/**
-		 * To be called so we don't keep the observer object in the pm's
-		 * subscriber list if there is no need for observing anymore.
+		 * To be called so we don't keep the observer object in the pm's subscriber list
+		 * if there is no need for observing anymore.
 		 */
 		public void cancelSubscriptions() {
 			pm.unsubscribeFromDecreasingFreeCapacityChanges(this);
+			pm.unsubscribeFromIncreasingFreeCapacityChanges(this);
 		}
 	}
 
 	/**
-	 * All PMs in the to be consolidated IaaSService are observed by these
-	 * observer objects.
+	 * All PMs in the to be consolidated IaaSService are observed by these observer
+	 * objects.
 	 */
 	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<PhysicalMachine, VMListObserver>();
 
 	/**
-	 * This constructor ensures the proper maintenance of the observer list -
-	 * ie., the list of objects that ensure we start to receive periodic events
-	 * for consolidation as soon as we have some VMs running on the
-	 * infrastructure.
+	 * This constructor ensures the proper maintenance of the observer list - ie.,
+	 * the list of objects that ensure we start to receive periodic events for
+	 * consolidation as soon as we have some VMs running on the infrastructure.
 	 * 
 	 * @param toConsolidate
 	 *            The cloud infrastructure to be continuously consolidated
 	 * @param consFreq
-	 *            The frequency with which the actual consolidator algorithm
-	 *            should be called. Note: this class does not necessarily hold
-	 *            on to this frequency. But guarantees there will be no more
-	 *            frequent events. In cases when the infrastructure is not used,
-	 *            the actual applied frequency could be dramatically lengthened.
+	 *            The frequency with which the actual consolidator algorithm should
+	 *            be called. Note: this class does not necessarily hold on to this
+	 *            frequency. But guarantees there will be no more frequent events.
+	 *            In cases when the infrastructure is not used, the actual applied
+	 *            frequency could be dramatically lengthened.
 	 */
 	public Consolidator(IaaSService toConsolidate, long consFreq) {
 		// TODO: merge some of the below functionality with several similar
@@ -147,40 +151,70 @@ public abstract class Consolidator extends Timed {
 	}
 
 	/**
-	 * This function checks the PM list of the IaaS service under consolidation
-	 * and ensures that the consolidation algorithm only runs if there are VMs
-	 * in the system. If it does not find any VMs, then it actually cancels
-	 * further periodic events, and waits for the help of the VM observers to
-	 * get a subscription again.
+	 * This function checks the PM list of the IaaS service under consolidation and
+	 * ensures that the consolidation algorithm only runs if there are VMs in the
+	 * system. If it does not find any VMs, then it actually cancels further
+	 * periodic events, and waits for the help of the VM observers to get a
+	 * subscription again.
+	 * 
+	 * If allocation checks are not omitted then the consolidation algorithm is only
+	 * called when VM allocation changes were made. Notice that this is not
+	 * necessarily related to the VM's workload or its impact on the PM's actual
+	 * resource utilisation. Thus consolidators which want to take into account
+	 * actual resource usage for their decisions should always set the allocation
+	 * check omission to true!
 	 */
 	@Override
 	public void tick(long fires) {
-		// Make a copy as machines could be sold if they are not used because of
-		// consolidation...
-		PhysicalMachine[] pmList = toConsolidate.machines.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
-		// Should we consolidate?
-		boolean thereAreVMs = false;
-		for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
-			thereAreVMs |= pmList[i].isHostingVMs();
-		}
-		if (thereAreVMs) {
-			// Yes we should
-			doConsolidation(pmList);
-		} else {
-			// No we should not
-			unsubscribe();
+		if (resourceAllocationChange || omitAllocationCheck) {
+			// Make a copy as machines could be sold/removed if they are not used because of
+			// consolidation...
+			PhysicalMachine[] pmList = toConsolidate.machines
+					.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
+			// Should we consolidate?
+			boolean thereAreVMs = false;
+			for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
+				thereAreVMs |= pmList[i].isHostingVMs();
+			}
+			if (thereAreVMs) {
+				// Yes we should
+				doConsolidation(pmList);
+			} else {
+				// No we should not
+				unsubscribe();
+			}
+			resourceAllocationChange = false;
 		}
 	}
 
 	/**
-	 * The implementations of this function should provide the actual
-	 * consolidation algorithm.
+	 * Allows to query if allocation checks could limit consolidator calls
+	 * 
+	 * @return
+	 */
+	public boolean isOmitAllocationCheck() {
+		return omitAllocationCheck;
+	}
+
+	/**
+	 * Subclasses can influence their invocations by disabling the effect of
+	 * allocation change based consolidator calls
+	 * 
+	 * @param omitAllocationCheck
+	 */
+	protected void setOmitAllocationCheck(boolean omitAllocationCheck) {
+		this.omitAllocationCheck = omitAllocationCheck;
+	}
+
+	/**
+	 * The implementations of this function should provide the actual consolidation
+	 * algorithm.
 	 * 
 	 * @param pmList
-	 *            the list of PMs that are currently in the IaaS service. The
-	 *            list can be modified at the will of the consolidator
-	 *            algorithm, as it is a copy of the state of the machine list
-	 *            before the consolidation was invoked.
+	 *            the list of PMs that are currently in the IaaS service. The list
+	 *            can be modified at the will of the consolidator algorithm, as it
+	 *            is a copy of the state of the machine list before the
+	 *            consolidation was invoked.
 	 */
 	protected abstract void doConsolidation(PhysicalMachine[] pmList);
 }
