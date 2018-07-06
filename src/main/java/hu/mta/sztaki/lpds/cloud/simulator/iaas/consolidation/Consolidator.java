@@ -44,8 +44,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  */
 public abstract class Consolidator extends Timed {
 	private final long consFreq;
-	protected final IaaSService toConsolidate;
 	public static int consolidationRuns = 0;
+	protected final IaaSService toConsolidate;
+	private boolean resourceAllocationChange = false;
+	private boolean omitAllocationCheck = false;
 
 	/**
 	 * This inner class ensures that the consolidator receives its periodic events
@@ -65,13 +67,14 @@ public abstract class Consolidator extends Timed {
 		 */
 		public VMListObserver(PhysicalMachine forMe) {
 			forMe.subscribeToDecreasingFreeapacityChanges(this);
+			forMe.subscribeToIncreasingFreeapacityChanges(this);
 			pm = forMe;
 			capacityChanged(null, null);
 		}
 
 		/**
 		 * Receives the usage related notifications from the observed physical machine
-		 * and ensures the subscription of the consolidator in case this is teh first VM
+		 * and ensures the subscription of the consolidator in case this is the first VM
 		 * the consolidator should know about.
 		 */
 		@Override
@@ -79,6 +82,7 @@ public abstract class Consolidator extends Timed {
 			if (pm.isHostingVMs() && !isSubscribed()) {
 				subscribe(consFreq);
 			}
+			resourceAllocationChange = true;
 		}
 
 		/**
@@ -87,6 +91,7 @@ public abstract class Consolidator extends Timed {
 		 */
 		public void cancelSubscriptions() {
 			pm.unsubscribeFromDecreasingFreeCapacityChanges(this);
+			pm.unsubscribeFromIncreasingFreeCapacityChanges(this);
 		}
 	}
 
@@ -152,25 +157,55 @@ public abstract class Consolidator extends Timed {
 	 * system. If it does not find any VMs, then it actually cancels further
 	 * periodic events, and waits for the help of the VM observers to get a
 	 * subscription again.
+	 * 
+	 * If allocation checks are not omitted then the consolidation algorithm is only
+	 * called when VM allocation changes were made. Notice that this is not
+	 * necessarily related to the VM's workload or its impact on the PM's actual
+	 * resource utilisation. Thus consolidators which want to take into account
+	 * actual resource usage for their decisions should always set the allocation
+	 * check omission to true!
 	 */
 	@Override
 	public void tick(long fires) {
-		// Make a copy as machines could be sold if they are not used because of
-		// consolidation...
-		PhysicalMachine[] pmList = toConsolidate.machines.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
-		// Should we consolidate?
-		boolean thereAreVMs = false;
-		for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
-			thereAreVMs |= pmList[i].isHostingVMs();
+		if (resourceAllocationChange || omitAllocationCheck) {
+			// Make a copy as machines could be sold/removed if they are not used because of
+			// consolidation...
+			PhysicalMachine[] pmList = toConsolidate.machines
+					.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
+			// Should we consolidate?
+			boolean thereAreVMs = false;
+			for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
+				thereAreVMs |= pmList[i].isHostingVMs();
+			}
+			if (thereAreVMs) {
+				// Yes we should
+				consolidationRuns++;
+				doConsolidation(pmList);
+			} else {
+				// No we should not
+				unsubscribe();
+			}
+			resourceAllocationChange = false;
 		}
-		if (thereAreVMs) {
-			// Yes we should
-			consolidationRuns++;
-			doConsolidation(pmList);
-		} else {
-			// No we should not
-			unsubscribe();
-		}
+	}
+
+	/**
+	 * Allows to query if allocation checks could limit consolidator calls
+	 * 
+	 * @return
+	 */
+	public boolean isOmitAllocationCheck() {
+		return omitAllocationCheck;
+	}
+
+	/**
+	 * Subclasses can influence their invocations by disabling the effect of
+	 * allocation change based consolidator calls
+	 * 
+	 * @param omitAllocationCheck
+	 */
+	protected void setOmitAllocationCheck(boolean omitAllocationCheck) {
+		this.omitAllocationCheck = omitAllocationCheck;
 	}
 
 	/**
