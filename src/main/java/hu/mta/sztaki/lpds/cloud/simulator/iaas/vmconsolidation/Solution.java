@@ -28,27 +28,27 @@ public class Solution {
 	/** Flags for each PM whether it is in use */
 	protected Map<ModelPM, Boolean> used;
 	/** Each gene is replaced by a random value with this probability during mutation */
-	private double mutationProb;
+	final double mutationProb;
 	/** Fitness of the solution */
 	protected Fitness fitness;
 
-	private static Comparator<ModelVM> mvmComp=new Comparator<ModelVM>() {
+	final private static Comparator<ModelVM> mvmComp=new Comparator<ModelVM>() {
 		@Override
-		public int compare(ModelVM vm1, ModelVM vm2) {
+		public int compare(final ModelVM vm1, final ModelVM vm2) {
 			return Double.compare(vm2.getResources().getTotalProcessingPower(), vm1.getResources().getTotalProcessingPower());
 		}
 	};
 	
-	private Comparator<ModelPM> mpmComp=new Comparator<ModelPM>() {
+	final private Comparator<ModelPM> mpmComp=new Comparator<ModelPM>() {
 		@Override
-		public int compare(ModelPM pm1, ModelPM pm2) {
+		public int compare(final ModelPM pm1, final ModelPM pm2) {
 			return Double.compare(loads.get(pm2).getTotalProcessingPower(), loads.get(pm1).getTotalProcessingPower());
 		}
 	};
 	
-	private Comparator<ModelPM> mpmFreeComp=new Comparator<ModelPM>() {
+	final private Comparator<ModelPM> mpmFreeComp=new Comparator<ModelPM>() {
 		@Override
-		public int compare(ModelPM pm1, ModelPM pm2) {
+		public int compare(final ModelPM pm1, final ModelPM pm2) {
 			return -pm1.getFreeResources().compareTo(pm2.getFreeResources());
 		}
 	};
@@ -58,7 +58,7 @@ public class Solution {
 	 * Creates a solution with an empty mapping that will need to be filled somehow,
 	 * e.g., using #fillRandomly().
 	 */
-	public Solution(List<ModelPM> bins, double mp) {
+	public Solution(final List<ModelPM> bins, final double mp) {
 		this.bins = bins;
 		mutationProb = mp;
 		mapping = new HashMap<>();
@@ -66,7 +66,7 @@ public class Solution {
 		used=new HashMap<>();
 		fitness=new Fitness();
 
-		for (ModelPM pm : bins) {
+		for (final ModelPM pm : bins) {
 			loads.put(pm, new AlterableResourceConstraints(ConstantConstraints.noResources));
 			used.put(pm, false);
 		}
@@ -80,13 +80,13 @@ public class Solution {
 	 * @return A new object containing the same mappings as this solution.
 	 */
 	public Solution clone() {
-		Solution newSol=new Solution(bins, mutationProb);
+		final Solution newSol=new Solution(bins, mutationProb);
 		
 		//TODO maybe we have to make a deep copy for the mappings
 		newSol.mapping.putAll(this.mapping);
 		
 		// clone all ResourceVectors for each pm and put it inside the used-mapping
-		for(ModelPM pm : loads.keySet()) {
+		for(final ModelPM pm : loads.keySet()) {
 			newSol.loads.put(pm, new AlterableResourceConstraints(loads.get(pm)));
 			newSol.used.put(pm,true);
 		}
@@ -106,11 +106,11 @@ public class Solution {
 	protected void countActivePmsAndOverloads() {
 		fitness.nrActivePms=0;
 		fitness.totalOverAllocated=0;
-		for (ModelPM pm : bins) {
+		for (final ModelPM pm : bins) {
 			if(used.get(pm))
 				fitness.nrActivePms++;
-			AlterableResourceConstraints allocation = loads.get(pm);
-			ResourceConstraints cap = pm.getTotalResources();
+			final AlterableResourceConstraints allocation = loads.get(pm);
+			final ResourceConstraints cap = pm.getTotalResources();
 			if (allocation.getTotalProcessingPower() > pm.getUpperThreshold().getTotalProcessingPower() )
 				fitness.totalOverAllocated += allocation.getTotalProcessingPower()
 						/ (pm.getUpperThreshold().getTotalProcessingPower());
@@ -124,9 +124,9 @@ public class Solution {
 	 */
 	void fillRandomly() {
 		fitness.nrMigrations=0;
-		for (ModelPM pm : bins) {
-			for (ModelVM vm : pm.getVMs()) {
-				ModelPM randPm = bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
+		for (final ModelPM pm : bins) {
+			for (final ModelVM vm : pm.getVMs()) {
+				final ModelPM randPm = bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
 				mapping.put(vm, randPm);
 				loads.get(randPm).singleAdd(vm.getResources());
 				used.put(randPm,true);
@@ -152,8 +152,8 @@ public class Solution {
 	 */
 	void createUnchangedSolution() {
 		fitness.nrMigrations=0;
-		for(ModelPM pm : bins) {
-			for(ModelVM vm : pm.getVMs()) {
+		for(final ModelPM pm : bins) {
+			for(final ModelVM vm : pm.getVMs()) {
 				mapping.put(vm, pm);
 				loads.get(pm).singleAdd(vm.getResources());
 				used.put(pm,true);
@@ -168,29 +168,29 @@ public class Solution {
 	 * PMs, and finding new hosts for the thus removed VMs using BFD.
 	 */
 	protected void improve() {
-		List<ModelVM> vmsToMigrate=new ArrayList<>();
+		final List<ModelVM> vmsToMigrate=new ArrayList<>();
 		//create inverse mapping
-		Map<ModelPM,ArrayList<ModelVM>> vmsOfPms=new HashMap<>();
-		for(ModelPM pm : bins) {
+		final Map<ModelPM,ArrayList<ModelVM>> vmsOfPms=new HashMap<>();
+		for(final ModelPM pm : bins) {
 			vmsOfPms.put(pm, new ArrayList<>());
 		}
-		for(ModelVM vm : mapping.keySet()) {
+		for(final ModelVM vm : mapping.keySet()) {
 			vmsOfPms.get(mapping.get(vm)).add(vm);
 		}
 		
 		//relieve overloaded PMs + empty underloaded PMs
-		for(ModelPM pm : bins) {
+		for(final ModelPM pm : bins) {
 //			Logger.getGlobal().info("ConstantConstraints: " + cap.getTotalProcessingPower() + ", " + cap.getRequiredMemory() + 
 //					", loads: " + loads.get(pm).getTotalProcessingPower() + ", " + loads.get(pm).getRequiredMemory());
-			AlterableResourceConstraints currLoad=loads.get(pm);
+			final AlterableResourceConstraints currLoad=loads.get(pm);
 			while(currLoad.getTotalProcessingPower()>pm.getUpperThreshold().getTotalProcessingPower()
 					|| currLoad.getRequiredMemory()>pm.getUpperThreshold().getRequiredMemory()) {
 				//PM is overloaded
-				ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				final ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
 				
 				//Logger.getGlobal().info("overloaded, vmsOfPm, size: " + vmsOfPm.size() + ", " + vmsOfPm.toString());
 				
-				ModelVM vm=vmsOfPm.remove(vmsOfPm.size()-1);
+				final ModelVM vm=vmsOfPm.remove(vmsOfPm.size()-1);
 				vmsToMigrate.add(vm);
 				currLoad.subtract(vm.getResources());
 				if(vmsOfPm.isEmpty()) {
@@ -199,11 +199,11 @@ public class Solution {
 			}
 			if(currLoad.getTotalProcessingPower()<=pm.getLowerThreshold().getTotalProcessingPower()&&currLoad.getRequiredMemory()<=pm.getLowerThreshold().getRequiredMemory()) {
 				//PM is underloaded
-				ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
+				final ArrayList<ModelVM> vmsOfPm=vmsOfPms.get(pm);
 				
 				//Logger.getGlobal().info("underloaded, vmsOfPm, size: " + vmsOfPm.size());
 				
-				for(ModelVM vm : vmsOfPm) {
+				for(final ModelVM vm : vmsOfPm) {
 					vmsToMigrate.add(vm);
 					currLoad.subtract(vm.getResources());
 				}
@@ -213,14 +213,13 @@ public class Solution {
 		}
 		//find new host for the VMs to migrate using BFD
 		Collections.sort(vmsToMigrate, mvmComp);
-		List<ModelPM> binsToTry=new ArrayList<>(bins);
+		final List<ModelPM> binsToTry=new ArrayList<>(bins);
 		Collections.sort(binsToTry, mpmComp);
-		for(ModelVM vm : vmsToMigrate) {
+		for(final ModelVM vm : vmsToMigrate) {
 			ModelPM targetPm=null;
-			for(ModelPM pm : binsToTry) {
-				AlterableResourceConstraints newLoad=new AlterableResourceConstraints(loads.get(pm));
+			for(final ModelPM pm : binsToTry) {
+				final AlterableResourceConstraints newLoad=new AlterableResourceConstraints(loads.get(pm));
 				newLoad.singleAdd(vm.getResources());
-				ResourceConstraints cap=pm.getTotalResources();
 				if(newLoad.getTotalProcessingPower()<=pm.getUpperThreshold().getTotalProcessingPower()&&newLoad.getRequiredMemory()<=pm.getUpperThreshold().getRequiredMemory()) {
 					targetPm=pm;
 					break;
@@ -247,7 +246,7 @@ public class Solution {
 		ModelPM[] pmList = new ModelPM[bins.size()];
 		int runningLen = 0;
 		for(int i = 0; i < pmList.length; i++) {
-			ModelPM curr=bins.get(i);
+			final ModelPM curr=bins.get(i);
 			if (curr.isHostingVMs() && curr.getFreeResources().getTotalProcessingPower()>SimpleConsolidator.pmFullLimit) {
 				pmList[runningLen++]=curr;
 			}
@@ -258,7 +257,7 @@ public class Solution {
 		boolean didMove;
 		runningLen--;
 		int beginIndex=0;
-		HashSet<ModelVM> alreadyMoved=new HashSet<>();
+		final HashSet<ModelVM> alreadyMoved=new HashSet<>();
 		do {
 			didMove = false;
 			
@@ -268,15 +267,15 @@ public class Solution {
 //			Logger.getGlobal().info("filtered array: " + Arrays.toString(pmList));
 			
 			for(int i = beginIndex; i < runningLen; i++) {
-				ModelPM source = pmList[i];
-				ModelVM[] vmList = source.getVMs().toArray(new ModelVM[source.getVMs().size()]);
+				final ModelPM source = pmList[i];
+				final ModelVM[] vmList = source.getVMs().toArray(new ModelVM[source.getVMs().size()]);
 				int vmc=0;
 				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-					ModelVM vm = vmList[vmidx];
+					final ModelVM vm = vmList[vmidx];
 					if(alreadyMoved.contains(vm)) continue;
 					// ModelVMs can only run, so we need not to check the state (there is none either)
 					for (int j = runningLen; j > i; j--) {
-						ModelPM target = pmList[j];
+						final ModelPM target = pmList[j];
 							
 						if(target.isMigrationPossible(vm)) {
 							mapping.put(vm, target);
@@ -328,19 +327,31 @@ public class Solution {
 		return fitness;
 	}
 
-	/**
-	 * Create a new solution by mutating the current one. Each gene (i.e., the
-	 * mapping of each VM) is replaced by a random one with probability mutationProb
-	 * and simply copied otherwise. Note that the current solution (this) is not
-	 * changed.
-	 */
-	Solution mutate() {
+	interface GenHelper {
+		boolean shouldUseDifferent();
+		ModelPM whatShouldWeUse(ModelVM vm);
+	}
+	
+	GenHelper mutator=new GenHelper() {
+
+		@Override
+		public ModelPM whatShouldWeUse(final ModelVM vm) {
+			return bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
+		}
+		
+		@Override
+		public boolean shouldUseDifferent() {
+			return SolutionBasedConsolidator.random.nextDouble() < mutationProb;
+		}
+	};
+	
+	private Solution genNew(final GenHelper helper) {
 		Solution result = new Solution(bins, mutationProb);
 		result.fitness.nrMigrations=0;
-		for (ModelVM vm : mapping.keySet()) {
+		for (final ModelVM vm : mapping.keySet()) {
 			ModelPM pm;
-			if (SolutionBasedConsolidator.random.nextDouble() < mutationProb)
-				pm = bins.get(SolutionBasedConsolidator.random.nextInt(bins.size()));
+			if (helper.shouldUseDifferent())
+				pm = helper.whatShouldWeUse(vm);
 			else
 				pm = mapping.get(vm);
 			result.mapping.put(vm, pm);
@@ -353,6 +364,16 @@ public class Solution {
 		result.useLocalSearch();
 		return result;
 	}
+	
+	/**
+	 * Create a new solution by mutating the current one. Each gene (i.e., the
+	 * mapping of each VM) is replaced by a random one with probability mutationProb
+	 * and simply copied otherwise. Note that the current solution (this) is not
+	 * changed.
+	 */
+	Solution mutate() {
+		return genNew(mutator);
+	}
 
 	/**
 	 * Create a new solution by recombinating this solution with another. Each gene
@@ -363,33 +384,26 @@ public class Solution {
 	 *            The other parent for the recombination
 	 * @return A new solution resulting from the recombination
 	 */
-	Solution recombinate(Solution other) {
-		Solution result = new Solution(bins, mutationProb);
-		result.fitness.nrMigrations=0;
-		for (ModelVM vm : mapping.keySet()) {
-			ModelPM pm;
-			if (SolutionBasedConsolidator.random.nextBoolean())
-				pm = other.mapping.get(vm);
-			else
-				pm = this.mapping.get(vm);
-			result.mapping.put(vm, pm);
-			result.loads.get(pm).singleAdd(vm.getResources());
-			result.used.put(pm,true);
-			if(pm!=vm.getInitialPm())
-				result.fitness.nrMigrations++;
-		}
-		result.countActivePmsAndOverloads();
-		result.useLocalSearch();
-		return result;
+	Solution recombinate(final Solution other) {
+		return genNew(new GenHelper() {
+		@Override
+			public boolean shouldUseDifferent() {
+				return SolutionBasedConsolidator.random.nextBoolean();
+			}
+		@Override
+			public ModelPM whatShouldWeUse(final ModelVM vm) {
+				return other.mapping.get(vm);
+			}
+		});
 	}
 
 	/**
 	 * Implement solution in the model by performing the necessary migrations.
 	 */
 	public void implement() {
-		for (ModelVM vm : mapping.keySet()) {
-			ModelPM oldPm = vm.gethostPM();
-			ModelPM newPm = mapping.get(vm);
+		for (final ModelVM vm : mapping.keySet()) {
+			final ModelPM oldPm = vm.gethostPM();
+			final ModelPM newPm = mapping.get(vm);
 			if (newPm != oldPm)
 				oldPm.migrateVM(vm, newPm);
 		}
@@ -399,76 +413,17 @@ public class Solution {
 	 * String representation of both the mapping and the fitness of the given
 	 * solution.
 	 */
+	@Override
 	public String toString() {
-		String result = "[m=(";
+		final StringBuilder result = new StringBuilder("[m=(");
 		boolean first = true;
-		for (ModelVM vm : mapping.keySet()) {
+		for (final ModelVM vm : mapping.keySet()) {
 			if (!first)
-				result = result + ",";
-			result = result + vm.hashCode() + "->" + mapping.get(vm).hashCode();
+				result.append(',');
+			result.append(vm.hashCode()).append("->").append(mapping.get(vm).hashCode());
 			first = false;
 		}
-		result = result + "),f=" + fitness.toString() + "]";
-		return result;
-	}
-
-	/**
-	 * String representation of the mapping of the given solution.
-	 */
-	public String mappingToString() {
-		String result = "[mapping=(";
-		boolean first = true;
-		for (ModelVM vm : mapping.keySet()) {
-			if (!first)
-				result = result + ",";
-			result = result + vm.hashCode() + "->" + mapping.get(vm).hashCode();
-			first = false;
-		}
-		result = result + ")]";
-		return result;
-	}
-	
-	/**
-	 * String representation of the loads of each pm of the current mapping.
-	 */
-	public String loadsToString() {
-		String result = "[loads=(";
-		boolean first = true;
-		for (ModelPM pm : loads.keySet()) {
-			
-			
-			if(loads.get(pm).compareTo(ConstantConstraints.noResources)!=0) {
-				if (!first)
-					result = result + ",";
-				
-				result = result + pm.hashCode() + "::" + loads.get(pm).toString();
-				first = false;
-			}
-		}
-		result = result + ")]";
-		return result;
-	}
-	
-	/**
-	 * String representation of the used-mapping of the given solution.
-	 */
-	public String usedToString() {
-		String result = "[used=(";
-		boolean first = true;
-		for (ModelPM pm : used.keySet()) {
-			
-			if(!used.get(pm))
-				continue;
-			else {
-				if (!first)
-					result = result + ", ";
-				
-				result = result + pm.hashCode();
-				first = false;
-			}			
-			
-		}
-		result = result + ")]";
-		return result;
+		result.append("),f=").append(fitness.toString()).append(']');
+		return result.toString();
 	}
 }
