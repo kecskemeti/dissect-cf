@@ -7,6 +7,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 
 /**
  * @author Julian Bellendorf, Rene Ponto
@@ -23,6 +24,9 @@ public class ModelPM {
 	private final int number;
 
 	private final AlterableResourceConstraints consumedResources;
+	private final AlterableResourceConstraints freeResources;
+	public final UnalterableConstraintsPropagator consumed;
+	public final UnalterableConstraintsPropagator free;
 	private final AlterableResourceConstraints reserved;		// the reserved resources
 	private final ConstantConstraints lowerThrResources, upperThrResources;
 
@@ -74,6 +78,9 @@ public class ModelPM {
 		}
 
 		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
+		freeResources=new AlterableResourceConstraints(pm.getCapacities());
+		consumed=new UnalterableConstraintsPropagator(consumedResources);
+		free=new UnalterableConstraintsPropagator(freeResources);
 		reserved = new AlterableResourceConstraints(ConstantConstraints.noResources);
 		//Logger.getGlobal().info("Created PM: "+toString());
 	}
@@ -112,7 +119,9 @@ public class ModelPM {
 	 */
 	public boolean addVM(ModelVM vm) {		
 		vmList.add(vm);
-		consumedResources.add(vm.getResources());		
+		ResourceConstraints rc=vm.getResources();
+		consumedResources.singleAdd(rc);
+		freeResources.subtract(rc);
 		checkAllocation();
 		
 		// adding was succesful
@@ -127,7 +136,9 @@ public class ModelPM {
 	private boolean removeVM(ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
-		consumedResources.subtract(vm.getResources());		
+		ResourceConstraints rc=vm.getResources();
+		consumedResources.subtract(rc);
+		freeResources.singleAdd(rc);
 		checkAllocation();
 		
 		// removing was succesful
@@ -391,8 +402,8 @@ public class ModelPM {
 	 * 
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
 	 */	
-	public ConstantConstraints getConsumedResources() {
-		return new ConstantConstraints(consumedResources);
+	public ResourceConstraints getConsumedResources() {
+		return consumed;
 	}	
 	
 	/**
@@ -410,9 +421,7 @@ public class ModelPM {
 	 * @return The free resources of this ModelPM without the reserved ones.
 	 */
 	public ResourceConstraints getFreeResources() {
-		AlterableResourceConstraints r=new AlterableResourceConstraints(pm.getCapacities());
-		r.subtract(consumedResources);
-		return r;
+		return free;
 	}
 	
 	/**

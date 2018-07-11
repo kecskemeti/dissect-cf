@@ -116,7 +116,15 @@ public class Solution {
 				fitness.totalOverAllocated += allocation.getRequiredMemory() / pm.getUpperThreshold().getRequiredMemory();
 		}
 	}
-
+	
+	void updateMapping(ModelVM v, ModelPM p) {
+		mapping.put(v, p);
+		loads.get(p).singleAdd(v.getResources());
+		used.put(p,true);
+		if(p!=v.initialHost) {
+			fitness.nrMigrations++;
+		}
+	}
 	/**
 	 * Creates a random mapping: for each VM, one PM is chosen uniformly randomly.
 	 */
@@ -124,12 +132,7 @@ public class Solution {
 		fitness.nrMigrations=0;
 		for (final ModelPM pm : bins) {
 			for (final ModelVM vm : pm.getVMs()) {
-				final ModelPM randPm = bins[SolutionBasedConsolidator.random.nextInt(bins.length)];
-				mapping.put(vm, randPm);
-				loads.get(randPm).singleAdd(vm.getResources());
-				used.put(randPm,true);
-				if(pm!=randPm)
-					fitness.nrMigrations++;
+				updateMapping(vm,bins[SolutionBasedConsolidator.random.nextInt(bins.length)]);
 			}
 		}
 		useLocalSearch();
@@ -142,6 +145,7 @@ public class Solution {
 		} else if(SolutionBasedConsolidator.doLocalSearch2){
 			simpleConsolidatorImprove();
 		}
+		countActivePmsAndOverloads();
 	}
 	
 	/**
@@ -234,7 +238,6 @@ public class Solution {
 			if(targetPm!=vm.initialHost)
 				fitness.nrMigrations++;
 		}
-		countActivePmsAndOverloads();
 	}
 	
 	/**
@@ -309,7 +312,6 @@ public class Solution {
 				}
 			}
 		} while (didMove);
-		countActivePmsAndOverloads();
 	}
 
 	/**
@@ -317,7 +319,7 @@ public class Solution {
 	 */
 	void createFirstFitSolution() {
 		createUnchangedSolution();
-		improve();
+		useLocalSearch();
 		// System.err.println("createFirstFitSolution() -> mapping: "+mappingToString());
 	}
 
@@ -351,12 +353,7 @@ public class Solution {
 		result.fitness.nrMigrations=0;
 		final ModelVM[] vms=mapping.keySet().toArray(new ModelVM[mapping.size()]);
 		for (final ModelVM vm : vms) {
-			final ModelPM pm=helper.shouldUseDifferent()?helper.whatShouldWeUse(vm):mapping.get(vm);
-			result.mapping.put(vm, pm);
-			result.loads.get(pm).singleAdd(vm.getResources());
-			result.used.put(pm,true);
-			if(pm!=vm.initialHost)
-				result.fitness.nrMigrations++;
+			updateMapping(vm,helper.shouldUseDifferent()?helper.whatShouldWeUse(vm):mapping.get(vm));
 		}
 		result.useLocalSearch();
 		return result;
