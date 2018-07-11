@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eclipse-pmd xmlns="http://acanda.ch/eclipse-pmd/0.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://acanda.ch/eclipse-pmd/0.8 http://acanda.ch/eclipse-pmd/eclipse-pmd-0.8.xsd">
+  <analysis enabled="true" />
+  <rulesets>
+    <ruleset name="Basic" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/basic.xml" refcontext="filesystem" />
+    <ruleset name="Code Size" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/codesize.xml" refcontext="filesystem" />
+    <ruleset name="Design" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/design.xml" refcontext="filesystem" />
+    <ruleset name="Empty Code" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/empty.xml" refcontext="filesystem" />
+    <ruleset name="Optimization" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/optimizations.xml" refcontext="filesystem" />
+    <ruleset name="String and StringBuffer" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/strings.xml" refcontext="filesystem" />
+    <ruleset name="Unnecessary" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/unnecessary.xml" refcontext="filesystem" />
+    <ruleset name="Unused Code" ref="/home/gabor/git/DISSECT-CF/student/RenePronto/workspace/unusedcode.xml" refcontext="filesystem" />
+  </rulesets>
+</eclipse-pmd>
