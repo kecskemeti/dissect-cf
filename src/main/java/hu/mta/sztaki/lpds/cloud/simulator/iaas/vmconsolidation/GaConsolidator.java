@@ -42,6 +42,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
 		population = new ArrayList<>();
+		setOmitAllocationCheck(true);
 	}
 
 	/**

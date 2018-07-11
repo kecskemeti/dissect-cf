@@ -47,6 +47,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		population = new ArrayList<>();
 		numTrials = new ArrayList<>();
 		probabilities = new ArrayList<>();
+		setOmitAllocationCheck(true);
 	}
 
 	/**

@@ -58,6 +58,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 */
 	public PsoConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);		
+		setOmitAllocationCheck(true);
 	}
 	
 	/**
