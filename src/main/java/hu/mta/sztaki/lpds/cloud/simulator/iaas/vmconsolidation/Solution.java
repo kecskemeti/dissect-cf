@@ -48,7 +48,7 @@ public class Solution {
 	final private Comparator<ModelPM> mpmFreeComp=new Comparator<ModelPM>() {
 		@Override
 		public int compare(final ModelPM pm1, final ModelPM pm2) {
-			return -pm1.getFreeResources().compareTo(pm2.getFreeResources());
+			return -pm1.free.compareTo(pm2.free);
 		}
 	};
 	
@@ -251,7 +251,7 @@ public class Solution {
 		int runningLen = 0;
 		for(int i = 0; i < pmList.length; i++) {
 			final ModelPM curr=bins[i];
-			if (curr.isHostingVMs() && curr.getFreeResources().getTotalProcessingPower()>SimpleConsolidator.pmFullLimit) {
+			if (curr.isHostingVMs() && curr.free.getTotalProcessingPower()>SimpleConsolidator.pmFullLimit) {
 				pmList[runningLen++]=curr;
 			}
 		}
@@ -289,7 +289,7 @@ public class Solution {
 							
 							if(target!=vm.initialHost)
 								fitness.nrMigrations++;
-							if (target.getFreeResources().getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
+							if (target.free.getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
 								// Ensures that those PMs that barely have resources will not be 
 								// considered in future runs of this loop
 								if(j!=runningLen) {

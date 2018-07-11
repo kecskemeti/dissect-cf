@@ -414,16 +414,7 @@ public class ModelPM {
 	public ResourceConstraints getTotalResources() {
 		return pm.getCapacities();
 	}
-	
-	/**
-	 * Subtracts the occupied resources with the total resources.
-	 * 
-	 * @return The free resources of this ModelPM without the reserved ones.
-	 */
-	public ResourceConstraints getFreeResources() {
-		return free;
-	}
-	
+
 	/**
 	 * Getter.
 	 * 
