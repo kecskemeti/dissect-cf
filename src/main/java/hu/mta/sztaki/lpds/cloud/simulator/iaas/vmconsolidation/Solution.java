@@ -353,7 +353,7 @@ public class Solution {
 		result.fitness.nrMigrations=0;
 		final ModelVM[] vms=mapping.keySet().toArray(new ModelVM[mapping.size()]);
 		for (final ModelVM vm : vms) {
-			updateMapping(vm,helper.shouldUseDifferent()?helper.whatShouldWeUse(vm):mapping.get(vm));
+			result.updateMapping(vm,helper.shouldUseDifferent()?helper.whatShouldWeUse(vm):mapping.get(vm));
 		}
 		result.useLocalSearch();
 		return result;
