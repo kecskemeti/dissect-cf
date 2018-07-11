@@ -34,9 +34,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  *         abstract IaaS-System.
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
+	
+	private static final ModelPM[] binsample=new ModelPM[0];
+	private static final ModelVM[] itemsample=new ModelVM[0];
 
-	protected List<ModelPM> bins;
-	protected List<ModelVM> items;
+	protected ModelPM[] bins;
+	protected ModelVM[] items;
 	protected double lowerThreshold, upperThreshold;
 
 	protected Properties props;
@@ -56,8 +59,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
 
-		bins = new ArrayList<>();
-		items = new ArrayList<>();
 		try {
 			loadProps();
 		} catch (InvalidPropertiesFormatException e) {
@@ -123,9 +124,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 *            All PMs which are currently registered in the IaaS service.
 	 */
 	private void instantiate(PhysicalMachine[] pmList) {
-		bins.clear();
-		items.clear();
-		int vmIndex = 0;
+		final ArrayList<ModelPM> pminit=new ArrayList<>(pmList.length);
+		final ArrayList<ModelVM> vminit=new ArrayList<>();
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			PhysicalMachine pm = pmList[i];
@@ -134,13 +134,14 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 				continue;
 			ModelPM bin = new ModelPM(pm, i + 1, upperThreshold, lowerThreshold);
 			for (VirtualMachine vm : pm.publicVms) {
-				vmIndex++;
-				ModelVM item = new ModelVM(vm, bin, vmIndex);
+				ModelVM item = new ModelVM(vm, bin, vminit.size());
 				bin.addVM(item);
-				items.add(item);
+				vminit.add(item);
 			}
-			bins.add(bin);
+			pminit.add(bin);
 		}
+		bins=pminit.toArray(binsample);
+		items=vminit.toArray(itemsample);
 		
 		Logger.getGlobal().info("Instantiated model at "+Timed.getFireCount()+": " + toString());
 	}
@@ -172,8 +173,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 					actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
 			}
 			for (ModelVM item : bin.getVMs()) {
-				if (item.gethostPM() != item.getInitialPm()) {
-					actions.add(new MigrationAction(i++, item.getInitialPm(), item.gethostPM(), item));
+				if (item.gethostPM() != item.initialHost) {
+					actions.add(new MigrationAction(i++, item.initialHost, item.gethostPM(), item));
 					SimpleConsolidator.migrationCount++;
 				}
 			}
@@ -227,10 +228,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		Logger.getGlobal().info(s);
 	}
 
-	public List<ModelPM> getBins() {
-		return bins;
-	}
-
 	/**
 	 * The toString()-method, used for debugging.
 	 */
@@ -269,7 +266,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * created to add this information to the graph.
 	 */
 	protected void shutDownEmptyPMs() {
-		for (ModelPM pm : getBins()) {
+		for (ModelPM pm : bins) {
 			if (!pm.isHostingVMs() && pm.getState() != State.EMPTY_OFF) {
 				pm.switchOff(); // shut down this PM
 			}
@@ -280,7 +277,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * PMs that should host at least one VM are switched on.
 	 */
 	protected void switchOnNonEmptyPMs() {
-		for (ModelPM pm : getBins()) {
+		for (ModelPM pm : bins) {
 			if (pm.isHostingVMs() && pm.getState() == State.EMPTY_OFF) {
 				pm.switchOn();
 			}

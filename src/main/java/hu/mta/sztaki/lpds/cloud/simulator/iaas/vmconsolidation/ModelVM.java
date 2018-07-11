@@ -13,10 +13,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  */
 public class ModelVM {
 	
-	private VirtualMachine vm;
+	final public VirtualMachine vm;
 	private ModelPM hostPM;
-	private ModelPM initialHost;
-	private int id;
+	final public ModelPM initialHost;
+	final public int id;
 
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
@@ -36,7 +36,7 @@ public class ModelVM {
 	 * @param id
 	 * 			The ID of the original VM.
 	 */	
-	public ModelVM(VirtualMachine vm, ModelPM pm, int id) {
+	public ModelVM(final VirtualMachine vm, final ModelPM pm, final int id) {
 		
 		this.vm = vm;
 		hostPM = pm;		// save the host PM
@@ -69,13 +69,6 @@ public class ModelVM {
 	}
 	
 	/** Getter
-	 * @return The matching VM out of the real Simulator.	
-	 */
-	public VirtualMachine getVM() {
-		return vm;
-	}
-	
-	/** Getter
 	 * @return The actual host of this VM.	 
 	 */
 	public ModelPM gethostPM() {
@@ -89,13 +82,6 @@ public class ModelVM {
 	 */
 	public void sethostPM(ModelPM bin) {
 		this.hostPM = bin;
-	}
-
-	/** Getter
-	 * @return initialHost PM.
-	 */
-	public ModelPM getInitialPm() {
-		return initialHost;
 	}
 
 	/**

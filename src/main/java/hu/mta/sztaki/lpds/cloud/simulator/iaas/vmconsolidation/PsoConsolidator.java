@@ -1,5 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -38,7 +39,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	private int particleCounter = 1; 
 
 	/** the swarm with all created particles */
-	private Vector<Particle> swarm = new Vector<Particle>();
+	private ArrayList<Particle> swarm = new ArrayList<Particle>();
 
 	/** the best fitness values so far */
 	private Fitness globalBest;
@@ -126,7 +127,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	@Override
 	protected void optimize() {
 		// get the dimension by getting the amount of VMs on the actual PMs
-		this.dimension = items.size();
+		this.dimension = items.length;
 		initializeSwarm();
 		
 		int iterations = 0;
@@ -236,10 +237,10 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	private void implementSolution() {
 		//Implement solution in the model
 		for(int i = 0; i < dimension; i++) {					
-			ModelPM oldPm = items.get(i).gethostPM();
-			ModelPM newPm = bins.get(globalBestLocation.get(i).intValue() - 1);		// has to be done because the ids start at one
+			ModelPM oldPm = items[i].gethostPM();
+			ModelPM newPm = bins[globalBestLocation.get(i).intValue() - 1];		// has to be done because the ids start at one
 			if(newPm != oldPm)
-				oldPm.migrateVM(items.get(i), newPm);
+				oldPm.migrateVM(items[i], newPm);
 		}
 		adaptPmStates();
 }
@@ -290,10 +291,10 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 	 * @param bins The currently existing pms.
 	 	 * @param number The id of this particle.
 	 	 */
-		public Particle(List<ModelPM> bins, int number) {
+		public Particle(ModelPM[] bins, int number) {
 			super(bins, 0);
 			this.number = number;
-			this.location = new ArithmeticVector(bins.size());
+			this.location = new ArithmeticVector(bins.length);
 		}
 		
 		/**
@@ -308,8 +309,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 
 			for(ModelVM v : items) {
 				ModelPM p=mapping.get(v);
-				for(int i=0;i<bins.size();i++) {
-					if(bins.get(i)==p) {
+				for(int i=0;i<bins.length;i++) {
+					if(bins[i]==p) {
 						location.add((double)i+1);
 						break;
 					}
@@ -334,12 +335,11 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			// check if the mappings and the location are different, then adjust the mappings
 			for (int i = 0; i < location.size(); i++) {
 				
-				ModelVM currentVm = items.get(i);	// the first vm of the location
 				//System.out.println("bins.size="+bins.size()+", location[i]="+location.get(i));
-				ModelPM locPm = bins.get( location.get(i).intValue() - 1 );	// the host of this vm, has to be done 
+				ModelPM locPm = bins[location.get(i).intValue() - 1 ];	// the host of this vm, has to be done 
 																				// because the ids start at one
 				
-				ModelPM mappedPm = mapping.get(currentVm);
+				ModelPM mappedPm = mapping.get(items[i]);
 				
 				// now we have to check if both hosts are similar, then we can move on with the next.
 				// Otherwise we have to adjust the mappings
@@ -349,10 +349,10 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 				else {
 					// pms are not the same
 					fitness.nrMigrations++;
-					mapping.put(currentVm, locPm);	//put the new pm
+					mapping.put(items[i], locPm);	//put the new pm
 					
-					loads.get(mappedPm).subtract(currentVm.getResources());
-					loads.get(locPm).singleAdd(currentVm.getResources());
+					loads.get(mappedPm).subtract(items[i].getResources());
+					loads.get(locPm).singleAdd(items[i].getResources());
 					
 					// mark the pm out of the location as "used", after that check
 					// if the mappedPm is still used/hosting vms, if not, mark it
@@ -376,7 +376,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		 * positive or negative direction.
 		 */
 		public void initVelocity() {
-			ArithmeticVector vel = new ArithmeticVector(bins.size());
+			ArithmeticVector vel = new ArithmeticVector(bins.length);
 			
 			for(int j = 0; j < mapping.keySet().size(); j++) {			
 				double a;			

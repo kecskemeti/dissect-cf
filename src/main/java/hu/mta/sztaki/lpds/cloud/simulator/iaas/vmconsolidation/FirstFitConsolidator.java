@@ -42,7 +42,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	@Override
 	public void optimize() {
 		if(isOverAllocated() || isUnderAllocated()) {
-			for(ModelPM pm : getBins()) {				
+			for(ModelPM pm : bins) {				
 				if(pm.isNothingToChange()) {
 					continue;
 					// do nothing
@@ -70,17 +70,21 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		Logger.getGlobal().info("At end of optimization: "+toString());
 	}
 
+	private boolean checkifStateExists(final State st) {
+		for(final ModelPM pm : bins) {
+			if(pm.getState().equals(st)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	/**
 	 * Identifies PMs of the bins-ArrayList with the State OVERALLOCATED_RUNNING.
 	 * @return true, if there is an overAllocated PM.
 	 */
 	private boolean isOverAllocated() {
-		for(ModelPM pm : getBins()) {
-			if(pm.getState().equals(State.OVERALLOCATED_RUNNING)) {
-				return true;
-			}
-		}
-		return false;
+		return checkifStateExists(State.OVERALLOCATED_RUNNING);
 	}
 
 	/**
@@ -88,12 +92,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @return true, if there is an underAllocated PM.
 	 */
 	private boolean isUnderAllocated() {
-		for(ModelPM pm : getBins()) {
-			if(pm.getState().equals(State.UNDERALLOCATED_RUNNING)) {
-				return true;
-			}
-		}
-		return false;
+		return checkifStateExists(State.UNDERALLOCATED_RUNNING);
 	}
 
 	/**
@@ -110,8 +109,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	private ModelPM getMigPm(ModelVM toMig) {
 		//Logger.getGlobal().info("vm="+toMig.toString());
 		//now we have to search for a fitting pm
-		for(int i = 0; i < bins.size(); i++) {		
-			ModelPM actualPM = getBins().get(i);	
+		for(int i = 0; i < bins.length; i++) {		
+			ModelPM actualPM = bins[i];	
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			State state = actualPM.getState();
 			if(actualPM == toMig.gethostPM() || state.equals(State.EMPTY_RUNNING) || state.equals(State.EMPTY_OFF) 
@@ -126,8 +125,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		}	
 
 		//now we have to take an empty PM if possible, because no running PM is possible to take the load of the VM		
-		for(int j = 0; j < bins.size(); j++) {
-			ModelPM actualPM = getBins().get(j);
+		for(int j = 0; j < bins.length; j++) {
+			ModelPM actualPM = bins[j];
 			//Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			State state = actualPM.getState();
 			if(actualPM != toMig.gethostPM() || state.equals(State.EMPTY_RUNNING)) {
@@ -156,7 +155,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @return A PM with the needed resources or null if no appropriate PM was found.
 	 */
 	private ModelPM startPM(ResourceConstraints VMConstraints) {
-		for(ModelPM pm : getBins()){
+		for(ModelPM pm : bins){
 			if(pm.getState().equals(State.EMPTY_OFF) && VMConstraints.compareTo(pm.getTotalResources()) <= 0){
 				pm.switchOn();		//start this PM
 				return pm;

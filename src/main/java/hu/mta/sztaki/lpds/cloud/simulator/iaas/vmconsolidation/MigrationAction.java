@@ -22,7 +22,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	ModelPM target;
 
 	//Reference to the model of the VM, which needs be migrated
-	ModelVM vm;
+	ModelVM mvm;
 
 	/**
 	 * Constructor for an action which shall migrate a VM inside the simulator.
@@ -35,7 +35,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 		super(id);
 		this.source = source;
 		this.target = target;
-		this.vm = vm;
+		this.mvm = vm;
 	}
 
 	/**
@@ -59,7 +59,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * @return Reference to the model of the VM, which needs be migrated
 	 */
 	public ModelVM getVm(){
-		return vm;
+		return mvm;
 	}
 
 	/**
@@ -105,23 +105,23 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	@Override
 	public void execute() {
 		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString()+", hash="+Integer.toHexString(System.identityHashCode(this)));
-		if(! source.getPM().publicVms.contains(vm.getVM())) {
+		if(! source.getPM().publicVms.contains(mvm.vm)) {
 			Logger.getGlobal().info("VM is not on the source PM anymore -> there is nothing to do");
 			finished();
-		} else if(vm.getVM().getMemSize()>target.getPM().freeCapacities.getRequiredMemory()
-		|| vm.getVM().getPerTickProcessingPower()>target.getPM().freeCapacities.getTotalProcessingPower()) {
+		} else if(mvm.vm.getMemSize()>target.getPM().freeCapacities.getRequiredMemory()
+		|| mvm.vm.getPerTickProcessingPower()>target.getPM().freeCapacities.getTotalProcessingPower()) {
 			Logger.getGlobal().info("Target PM does not have sufficient capacity anymore -> there is nothing to do");
 			finished();
-		} else if(vm.getVM().getState()!=VirtualMachine.State.RUNNING && vm.getVM().getState()!=VirtualMachine.State.SUSPENDED) {
-			Logger.getGlobal().info("State of the VM inappropriate for migration ("+vm.getVM().getState()+") -> there is nothing to do");
+		} else if(mvm.vm.getState()!=VirtualMachine.State.RUNNING && mvm.vm.getState()!=VirtualMachine.State.SUSPENDED) {
+			Logger.getGlobal().info("State of the VM inappropriate for migration ("+mvm.vm.getState()+") -> there is nothing to do");
 			finished();
 		} else if(!(target.getPM().isRunning())) {
 			Logger.getGlobal().info("Target PM not running -> there is nothing to do");
 			finished();
 		} else {
-			vm.getVM().subscribeStateChange(this);		// observe the VM which shall be migrated
+			mvm.vm.subscribeStateChange(this);		// observe the VM which shall be migrated
 			try {
-				source.getPM().migrateVM(vm.getVM(), target.getPM());
+				source.getPM().migrateVM(mvm.vm, target.getPM());
 			} catch (VMManagementException e) {
 				e.printStackTrace();
 			} catch (NetworkException e) { 

@@ -18,13 +18,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  */
 public class ModelPM {
 
-	private PhysicalMachine pm;		// the real PM inside the simulator
-	private List<ModelVM> vmList;
-	private int number;
+	private final PhysicalMachine pm;		// the real PM inside the simulator
+	private final List<ModelVM> vmList=new ArrayList<>();
+	private final int number;
 
-	private AlterableResourceConstraints consumedResources;
-	private AlterableResourceConstraints reserved;		// the reserved resources
-	private ConstantConstraints lowerThrResources, upperThrResources;
+	private final AlterableResourceConstraints consumedResources;
+	private final AlterableResourceConstraints reserved;		// the reserved resources
+	private final ConstantConstraints lowerThrResources, upperThrResources;
 
 
 	private State state;
@@ -37,7 +37,7 @@ public class ModelPM {
 	 * 
 	 * @param pm
 	 * 			The real Physical Machine in the Simulator.
-	 * @param vm
+	 * @param mvm
 	 * 			An array which contains all VMs running on this PM.
 	 * @param cores
 	 * 			The cores of the PM.
@@ -52,15 +52,13 @@ public class ModelPM {
 	 * @param lowerThreshold
 	 * 			The lowerThreshold out of the properties.
 	 */
-	public ModelPM(PhysicalMachine pm, int number, double upperThreshold, double lowerThreshold) {
+	public ModelPM(final PhysicalMachine pm, final int number, final double upperThreshold, final double lowerThreshold) {
 		this.pm = pm;
-		vmList = new ArrayList<>();
 		this.number = number;
 		AlterableResourceConstraints rc=new AlterableResourceConstraints(pm.getCapacities());
 		rc.multiply(lowerThreshold);
 		this.lowerThrResources=new ConstantConstraints(rc);
-		rc=new AlterableResourceConstraints(pm.getCapacities());
-		rc.multiply(upperThreshold);
+		rc.multiply(upperThreshold/lowerThreshold);
 		this.upperThrResources=new ConstantConstraints(rc);
 
 		if(pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
@@ -332,30 +330,16 @@ public class ModelPM {
 	 * 
 	 * @return True if the vm can be added.
 	 */
-	public boolean isMigrationPossible(ModelVM toAdd) {
-		
-		checkAllocation();
-		AlterableResourceConstraints available = new AlterableResourceConstraints(pm.getCapacities());
+	public boolean isMigrationPossible(final ModelVM toAdd) {
+		boolean ret=false;
+		final AlterableResourceConstraints available = new AlterableResourceConstraints(upperThrResources);
 		available.subtract(consumedResources);
 		available.subtract(reserved);
 		//Logger.getGlobal().info("available: "+available.toString());
 		if(toAdd.getResources().getTotalProcessingPower() <= available.getTotalProcessingPower() && toAdd.getResources().getRequiredMemory() <= available.getRequiredMemory()) {
-			//Logger.getGlobal().info("canbeadded");
-
-			addVM(toAdd);
-			checkAllocation();
-			
-			if(this.getState().equals(State.OVERALLOCATED_RUNNING)) {
-				removeVM(toAdd);
-				return false;
-			}
-			else {
-				removeVM(toAdd);
-				return true;
-			}
+				ret=true;
 		}
-		else
-			return false;
+		return ret;
 	}
 	
 	
