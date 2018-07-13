@@ -23,6 +23,7 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -35,12 +36,18 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
  *         Moores University, (c) 2017"
  */
-public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
+public abstract class MachineLearningConsolidator<T extends InfrastructureModel> extends ModelBasedConsolidator {
 	protected double mutationProb;
 	
 	protected int randomCreations;
 	protected int unchangedCreations;
 	protected int firstFitCreations;
+	/** Number of individuals in the population */
+	protected int populationSize;
+	/** Terminate the GA after this many generations */
+	protected int nrIterations;
+	/** Population for the GA, consisting of solutions=individuals */
+	protected ArrayList<T> population=new ArrayList<>();
 	/** For generating random numbers */
 	static protected Random random;
 	/** Controls whether new solutions (created by mutation or recombination) should be improved with a local search */
@@ -48,16 +55,53 @@ public abstract class SolutionBasedConsolidator extends ModelBasedConsolidator {
 	/** simple consolidator local search */
 	static protected boolean doLocalSearch2=false;
 
-	public SolutionBasedConsolidator(IaaSService toConsolidate, long consFreq) {
+	public MachineLearningConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
+		population = new ArrayList<>();
 	}
 
+	protected abstract T modelFactory(T input, boolean original, boolean localsearch); 
+	
+	/**
+	 * Initializes the population with the previously determined solutions. After
+	 * that the same mapping as existing before consolidation has started is
+	 * put inside a solution.
+	 */
+	protected void initializePopulation(final T input) {
+		population.clear();
+		for (int i = 0; i < randomCreations; i++) {
+			regSolution(modelFactory(input, false, true));
+		}
+		if(firstFitCreations != 0) {
+			produceClonesOf(regSolution(modelFactory(input, true, true)), firstFitCreations - 1);
+		}
+		if(unchangedCreations != 0) {
+			produceClonesOf(regSolution(modelFactory(input, true, false)), unchangedCreations - 1);
+		}
+	}
+	
+	protected T regSolution(final T toReg) {
+		population.add(toReg);
+		return toReg;
+	}
+	
+	protected void produceClonesOf(final T s0, int clonecount) {
+		while (clonecount >= 0) {
+			regSolution(modelFactory(s0, true, false));
+			clonecount--;
+		}
+	}
+
+	
 	@Override
 	protected void processProps() {
 		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
 		random = new Random(Long.parseLong(props.getProperty("seed")));
 		doLocalSearch1=Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
 		doLocalSearch2=Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
+		this.populationSize = Integer.parseInt(props.getProperty("populationSize"));
+		this.nrIterations = Integer.parseInt(props.getProperty("nrIterations"));
+		determineCreations(populationSize);
 	}
 	
 	/**

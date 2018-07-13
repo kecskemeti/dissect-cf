@@ -35,7 +35,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
 	
-	private Solution baseSolution;
+	private InfrastructureModel baseSolution;
 	
 	protected double lowerThreshold, upperThreshold;
 
@@ -79,7 +79,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		doingConsolidation = true;
-		baseSolution=optimize(new Solution(pmList, !(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
+		baseSolution=optimize(new InfrastructureModel(pmList, !(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
 		adaptPmStates();
 		Logger.getGlobal().info("Optimized model: " + toString());
 		final List<Action> actions = modelDiff();
@@ -117,7 +117,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * consolidator.
 	 * 
 	 */
-	protected abstract Solution optimize(Solution initial);
+	protected abstract InfrastructureModel optimize(InfrastructureModel initial);
 
 	/**
 	 * Creates the actions-list with migration-/start- and shutdown-actions.

@@ -17,7 +17,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
  * Represents a possible solution of the VM consolidation problem, i.e., a
  * mapping of VMs to PMs. Can be used as an individual in the population.
  */
-public class Solution {
+public class InfrastructureModel {
 	private final ArrayList<ModelVM> tempvmlist=new ArrayList<>();
 	/** List of all available bins */
 	protected ModelPM[] bins;
@@ -59,12 +59,12 @@ public class Solution {
 	 * Creates a solution with an empty mapping that will need to be filled somehow,
 	 * e.g., using #fillRandomly().
 	 */
-	public Solution(final Solution base, final boolean original, final boolean applylocalsearch) {
+	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
 		this(base);
 		fitness.nrMigrations = 0;
 		if (!original) {
 			for (final ModelVM vm : items) {
-				updateMapping(vm, bins[SolutionBasedConsolidator.random.nextInt(bins.length)]);
+				updateMapping(vm, bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
 			}
 		}
 		if (applylocalsearch) {
@@ -73,7 +73,7 @@ public class Solution {
 		countActivePmsAndOverloads();
 	}
 
-	private Solution(final Solution toCopy) {
+	private InfrastructureModel(final InfrastructureModel toCopy) {
 		bins = new ModelPM[toCopy.bins.length];
 		final List<ModelVM> mvms = new ArrayList<>();
 		for (int i = 0; i < bins.length; i++) {
@@ -96,7 +96,7 @@ public class Solution {
 	 * 
 	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
-	public Solution(final PhysicalMachine[] pmList, final boolean onlyNonEmpty, final double upperThreshold,
+	public InfrastructureModel(final PhysicalMachine[] pmList, final boolean onlyNonEmpty, final double upperThreshold,
 			final double lowerThreshold) {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
 		final List<ModelVM> vminit = new ArrayList<>();
@@ -152,9 +152,9 @@ public class Solution {
 	}
 
 	protected void useLocalSearch() {
-		if (SolutionBasedConsolidator.doLocalSearch1) {
+		if (MachineLearningConsolidator.doLocalSearch1) {
 			improve();
-		} else if (SolutionBasedConsolidator.doLocalSearch2) {
+		} else if (MachineLearningConsolidator.doLocalSearch2) {
 			simpleConsolidatorImprove();
 		}
 	}
@@ -288,8 +288,8 @@ public class Solution {
 		ModelPM whatShouldWeUse(int vm);
 	}
 
-	private Solution genNew(final GenHelper helper) {
-		final Solution result = new Solution(this);
+	private InfrastructureModel genNew(final GenHelper helper) {
+		final InfrastructureModel result = new InfrastructureModel(this);
 		for (int i=0;i<items.length;i++) {
 			if(helper.shouldUseDifferent()) {
 				result.updateMapping(items[i], helper.whatShouldWeUse(i));
@@ -306,17 +306,17 @@ public class Solution {
 	 * and simply copied otherwise. Note that the current solution (this) is not
 	 * changed.
 	 */
-	Solution mutate(final double mutationProb) {
+	InfrastructureModel mutate(final double mutationProb) {
 		return genNew(new GenHelper() {
 
 			@Override
 			public ModelPM whatShouldWeUse(final int vm) {
-				return bins[SolutionBasedConsolidator.random.nextInt(bins.length)];
+				return bins[MachineLearningConsolidator.random.nextInt(bins.length)];
 			}
 
 			@Override
 			public boolean shouldUseDifferent() {
-				return SolutionBasedConsolidator.random.nextDouble() < mutationProb;
+				return MachineLearningConsolidator.random.nextDouble() < mutationProb;
 			}
 		});
 	}
@@ -329,11 +329,11 @@ public class Solution {
 	 * @param other The other parent for the recombination
 	 * @return A new solution resulting from the recombination
 	 */
-	Solution recombinate(final Solution other) {
+	InfrastructureModel recombinate(final InfrastructureModel other) {
 		return genNew(new GenHelper() {
 			@Override
 			public boolean shouldUseDifferent() {
-				return SolutionBasedConsolidator.random.nextBoolean();
+				return MachineLearningConsolidator.random.nextBoolean();
 			}
 
 			@Override
@@ -346,7 +346,7 @@ public class Solution {
 	/**
 	 * Implement solution in the model by performing the necessary migrations.
 	 */
-	public void implement(final Solution target) {
+	public void implement(final InfrastructureModel target) {
 		for(int i=0;i<items.length;i++) {
 			final ModelPM oldPm = target.items[i].gethostPM();
 			final ModelPM newPm = items[i].gethostPM();

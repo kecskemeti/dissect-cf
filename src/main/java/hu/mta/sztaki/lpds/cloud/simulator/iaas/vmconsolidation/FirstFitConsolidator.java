@@ -40,7 +40,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * inside the simulator.
 	 */
 	@Override
-	public Solution optimize(Solution sol) {
+	public InfrastructureModel optimize(InfrastructureModel sol) {
 		if(isOverAllocated(sol) || isUnderAllocated(sol)) {
 			for(ModelPM pm : sol.bins) {				
 				if(pm.isNothingToChange()) {
@@ -69,7 +69,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		return sol;
 	}
 
-	private boolean checkifStateExists(final State st, Solution sol) {
+	private boolean checkifStateExists(final State st, InfrastructureModel sol) {
 		for(final ModelPM pm : sol.bins) {
 			if(pm.getState().equals(st)) {
 				return true;
@@ -82,7 +82,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * Identifies PMs of the bins-ArrayList with the State OVERALLOCATED_RUNNING.
 	 * @return true, if there is an overAllocated PM.
 	 */
-	private boolean isOverAllocated(Solution sol) {
+	private boolean isOverAllocated(InfrastructureModel sol) {
 		return checkifStateExists(State.OVERALLOCATED_RUNNING, sol);
 	}
 
@@ -90,7 +90,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * Identifies PMs of the bins-ArrayList with the State UNDERALLOCATED_RUNNING.
 	 * @return true, if there is an underAllocated PM.
 	 */
-	private boolean isUnderAllocated(Solution sol) {
+	private boolean isUnderAllocated(InfrastructureModel sol) {
 		return checkifStateExists(State.UNDERALLOCATED_RUNNING, sol);
 	}
 
@@ -105,7 +105,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 		   starts a new PM if there is no running VM with the needed resources;
 	 * 		   null is returned if no appropriate PM was found.
 	 */
-	private ModelPM getMigPm(ModelVM toMig, Solution sol) {
+	private ModelPM getMigPm(ModelVM toMig, InfrastructureModel sol) {
 		//Logger.getGlobal().info("vm="+toMig.toString());
 		//now we have to search for a fitting pm
 		for(int i = 0; i < sol.bins.length; i++) {		
@@ -153,7 +153,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 			The ResourceConstraints of the VM, which shall be hosted on a not running PM 
 	 * @return A PM with the needed resources or null if no appropriate PM was found.
 	 */
-	private ModelPM startPM(ResourceConstraints VMConstraints, Solution sol) {
+	private ModelPM startPM(ResourceConstraints VMConstraints, InfrastructureModel sol) {
 		for(ModelPM pm : sol.bins){
 			if(pm.getState().equals(State.EMPTY_OFF) && VMConstraints.compareTo(pm.getTotalResources()) <= 0){
 				pm.switchOn();		//start this PM
@@ -173,7 +173,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @param source
 	 * 			The source PM which host the VMs to migrate.
 	 */
-	private void migrateOverAllocatedPM(ModelPM source, Solution sol) {
+	private void migrateOverAllocatedPM(ModelPM source, InfrastructureModel sol) {
 		//Logger.getGlobal().info("source="+source.toString());
 		State state = source.getState();
 		while(source.isOverAllocated() && !source.isNothingToChange()) {
@@ -207,7 +207,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @param source
 	 * 			The source PM which host the VMs to migrate.
 	 */	
-	private void migrateUnderAllocatedPM(ModelPM source, Solution sol) {
+	private void migrateUnderAllocatedPM(ModelPM source, InfrastructureModel sol) {
 		
 		if(!source.isHostingVMs()) {
 			source.switchOff();

@@ -18,21 +18,14 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * 
  * @author Zoltan Mann
  */
-public class GaConsolidator extends SolutionBasedConsolidator {
+public class GaConsolidator extends IM_ML_Consolidator {
 
-	/** Number of individuals in the population */
-	private int populationSize;
-	/** Terminate the GA after this many generations */
-	private int nrIterations;
 	/** Number of recombinations to perform in each generation */
 	private int nrCrossovers;
 	/** Best solution found so far */
-	private Solution bestSolution;
+	private InfrastructureModel bestSolution;
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
-
-	/** Population for the GA, consisting of solutions=individuals */
-	private ArrayList<Solution> population;
 	/** True if at least one individual has improved during the current generation */
 	private boolean improved;
 
@@ -41,39 +34,9 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 */
 	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		population = new ArrayList<>();
 		setOmitAllocationCheck(true);
 	}
 
-	/**
-	 * Initializes the population with the previously determined solutions. After
-	 * that the same mapping as existing before consolidation has started is
-	 * put inside a solution.
-	 */
-	private void initializePopulation(final Solution input) {
-		population.clear();
-		for (int i = 0; i < randomCreations; i++) {
-			regSolution(new Solution(input, false, true));
-		}
-		if(firstFitCreations != 0) {
-			produceClonesOf(regSolution(new Solution(input, true, true)), firstFitCreations - 1);
-		}
-		if(unchangedCreations != 0) {
-			produceClonesOf(regSolution(new Solution(input, true, false)), unchangedCreations - 1);
-		}
-	}
-	
-	private Solution regSolution(final Solution toReg) {
-		population.add(toReg);
-		return toReg;
-	}
-	
-	private void produceClonesOf(final Solution s0, int clonecount) {
-		while (clonecount >= 0) {
-			regSolution(new Solution(s0, true, false));
-			clonecount--;
-		}
-	}
 	/**
 	 * Take two random individuals of the population and let them recombinate to
 	 * create a new individual. If the new individual is better than one of its
@@ -83,9 +46,9 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	private void crossover() {
 		int i1 = random.nextInt(population.size());
 		int i2 = random.nextInt(population.size());
-		Solution s1 = population.get(i1);
-		Solution s2 = population.get(i2);
-		Solution s3 = s1.recombinate(s2);
+		InfrastructureModel s1 = population.get(i1);
+		InfrastructureModel s2 = population.get(i2);
+		InfrastructureModel s3 = s1.recombinate(s2);
 		Fitness f1 = s1.evaluate();
 		Fitness f2 = s2.evaluate();
 		Fitness f3 = s3.evaluate();
@@ -124,19 +87,14 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	@Override
 	protected void processProps() {
 		super.processProps();
-
-		this.populationSize = Integer.parseInt(props.getProperty("gaPopulationSize"));
-		this.nrIterations = Integer.parseInt(props.getProperty("gaNrIterations"));
 		this.nrCrossovers = Integer.parseInt(props.getProperty("gaNrCrossovers"));
-		
-		determineCreations(populationSize);
 	}
 
 	/**
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
-	protected Solution optimize(Solution input) {
+	protected InfrastructureModel optimize(InfrastructureModel input) {
 		//System.err.println("GA nrIterations="+nrIterations+", populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
 		initializePopulation(input);
 		// Logger.getGlobal().info("Population after initialization:
@@ -147,8 +105,8 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			// mutation. If the child is better than its parent, it replaces it
 			// in the population, otherwise it is discarded.
 			for (int i = 0; i < populationSize; i++) {
-				Solution parent = population.get(i);
-				Solution child = parent.mutate(mutationProb);
+				InfrastructureModel parent = population.get(i);
+				InfrastructureModel child = parent.mutate(mutationProb);
 				if (child.evaluate().isBetterThan(parent.evaluate())) {
 					population.set(i, child);
 					improved=true;
@@ -186,7 +144,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 		return bestFitness;
 	}
 
-	public Solution getBestSolution() {
+	public InfrastructureModel getBestSolution() {
 		return bestSolution;
 	}
 }

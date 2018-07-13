@@ -1,7 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -10,19 +9,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * 
  * @author Zoltan Mann
  */
-public class AbcConsolidator extends SolutionBasedConsolidator {
-
-	/** Number of individuals in the population */
-	private int populationSize;
-
-	/** Terminate the algorithm after this many generations */
-	private int nrIterations;
+public class AbcConsolidator extends IM_ML_Consolidator {
 
 	/** Maximum number of trials for improvement before a solution is abandoned */
 	private int limitTrials;
-
-	/** Population, consisting of solutions for each employed bee */
-	private ArrayList<Solution> population;
 
 	/** For each employed bee, number of trials since last improvement */
 	private ArrayList<Integer> numTrials;
@@ -31,7 +21,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	private ArrayList<Double> probabilities;
 
 	/** Best solution found so far */
-	private Solution bestSolution;
+	private InfrastructureModel bestSolution;
 
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
@@ -44,7 +34,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	public AbcConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
-		population = new ArrayList<>();
 		numTrials = new ArrayList<>();
 		probabilities = new ArrayList<>();
 		setOmitAllocationCheck(true);
@@ -54,7 +43,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 * If s is better than the best solution found so far, then bestSolution and
 	 * bestFitness are updated.
 	 */
-	private void checkIfBest(Solution s) {
+	private void checkIfBest(final InfrastructureModel s) {
 		if (bestSolution == null) {
 			bestSolution = s;
 			bestFitness = s.evaluate();
@@ -72,32 +61,16 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 * that the same mapping as existing before consolidation has started is put
 	 * inside a solution.
 	 */
-	private void initializePopulation(final Solution input) {
-		population.clear();
+	protected void initializePopulation(final InfrastructureModel input) {
 		bestSolution = null;
-		for (int i = 0; i < randomCreations; i++) {
-			regSolution(new Solution(input,false,true));
-		}
-		if (firstFitCreations != 0) {
-			produceClonesOf(regSolution(new Solution(input, true, true)), firstFitCreations - 1);
-		}
-		if (unchangedCreations != 0) {
-			produceClonesOf(regSolution(new Solution(input, true, false)), unchangedCreations - 1);
-		}
+		super.initializePopulation(input);
 	}
 
-	private Solution regSolution(final Solution toReg) {
-		population.add(toReg);
+	protected InfrastructureModel regSolution(final InfrastructureModel toReg) {
+		super.regSolution(toReg);
 		numTrials.add(0);
 		checkIfBest(toReg);
 		return toReg;
-	}
-
-	private void produceClonesOf(final Solution s0, int clonecount) {
-		while (clonecount >= 0) {
-			regSolution(new Solution(s0, true, false));
-			clonecount--;
-		}
 	}
 
 	/**
@@ -110,15 +83,15 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	private void determineProbabilities() {
 		for (int i = 0; i < populationSize; i++) {
-			Solution s = population.get(i);
-			Fitness f = s.evaluate();
+			final InfrastructureModel s = population.get(i);
+			final Fitness f = s.evaluate();
 			int numWins = 0;
 			for (int j = 0; j < 10; j++) {
-				Solution s2 = population.get(random.nextInt(populationSize));
+				final InfrastructureModel s2 = population.get(random.nextInt(populationSize));
 				if (f.isBetterThan(s2.evaluate()))
 					numWins++;
 			}
-			double prob = (2.0 + numWins) / 12;
+			final double prob = (2.0 + numWins) / 12;
 			if (i < probabilities.size())
 				probabilities.set(i, prob);
 			else
@@ -131,9 +104,9 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 * better than the old one. If it is better, it replaces the old one in the
 	 * population, otherwise not.
 	 */
-	private void mutateAndCheck(int j) {
-		Solution s1 = population.get(j);
-		Solution s2 = s1.mutate(mutationProb);
+	private void mutateAndCheck(final int j) {
+		final InfrastructureModel s1 = population.get(j);
+		final InfrastructureModel s2 = s1.mutate(mutationProb);
 		if (s2.evaluate().isBetterThan(s1.evaluate())) {
 			population.set(j, s2);
 			numTrials.set(j, 0);
@@ -150,17 +123,14 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	@Override
 	protected void processProps() {
 		super.processProps();
-		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
-		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
-		determineCreations(populationSize);
 	}
 
 	/**
 	 * The actual ABC algorithm.
 	 */
 	@Override
-	protected Solution optimize(Solution input) {
+	protected InfrastructureModel optimize(final InfrastructureModel input) {
 		// System.err.println("ABC nrIterations="+nrIterations+",
 		// populationSize="+populationSize);
 		initializePopulation(input);
@@ -176,15 +146,12 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 			int j = 0;
 			int t = 0;
 			while (t < populationSize) {
-				double r = random.nextDouble();
 				// Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
-				if (r < probabilities.get(j)) {
+				final int currJ=j++%populationSize;
+				if (random.nextDouble() < probabilities.get(currJ)) {
 					t++;
-					mutateAndCheck(j);
+					mutateAndCheck(currJ);
 				}
-				j++;
-				if (j > populationSize - 1)
-					j = 0;
 			}
 			// scout bee phase
 			int maxTrials = -1;
@@ -196,7 +163,7 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				}
 			}
 			if (maxTrials >= limitTrials) {
-				Solution s = new Solution(input, false, true);
+				final InfrastructureModel s = new InfrastructureModel(input, false, true);
 				population.set(maxTrialsIndex, s);
 				numTrials.set(maxTrialsIndex, 0);
 				checkIfBest(s);
@@ -206,14 +173,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				break;
 		}
 		// Implement best solution in the model
-		return bestSolution;
-	}
-
-	public Fitness getBestFitness() {
-		return bestFitness;
-	}
-
-	public Solution getBestSolution() {
 		return bestSolution;
 	}
 }
