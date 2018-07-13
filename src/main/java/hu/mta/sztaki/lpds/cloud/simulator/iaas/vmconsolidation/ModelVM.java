@@ -12,10 +12,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
  * The resource consumption happens inside the ModelPM class.
  */
 public class ModelVM {
-	
+	public static final ModelVM[] mvmArrSample=new ModelVM[0];
+
 	final public VirtualMachine vm;
 	private ModelPM hostPM;
 	final public ModelPM initialHost;
+	public ModelPM prevPM;
 	final public int id;
 
 	/**
@@ -42,6 +44,13 @@ public class ModelVM {
 		hostPM = pm;		// save the host PM
 		initialHost = pm;	// save the host as the first host PM
 		this.id = id;
+	}
+	
+	public ModelVM(final ModelVM toCopy) {
+		this.vm=toCopy.vm;
+		this.hostPM=toCopy.hostPM;
+		this.initialHost=toCopy.initialHost;
+		this.id=toCopy.id;
 	}
 
 	/**

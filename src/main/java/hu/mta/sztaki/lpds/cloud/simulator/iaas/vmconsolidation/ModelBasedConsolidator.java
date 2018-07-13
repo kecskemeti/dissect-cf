@@ -35,11 +35,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
 	
-	private static final ModelPM[] binsample=new ModelPM[0];
-	private static final ModelVM[] itemsample=new ModelVM[0];
-
-	protected ModelPM[] bins;
-	protected ModelVM[] items;
+	private Solution baseSolution;
+	
 	protected double lowerThreshold, upperThreshold;
 
 	protected Properties props;
@@ -82,10 +79,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		doingConsolidation = true;
-		instantiate(pmList);
-		optimize();
+		baseSolution=optimize(new Solution(pmList, !(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
+		adaptPmStates();
 		Logger.getGlobal().info("Optimized model: " + toString());
-		List<Action> actions = modelDiff();
+		final List<Action> actions = modelDiff();
 		Logger.getGlobal().info(actionsToString(actions));
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
@@ -116,41 +113,11 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	protected abstract void processProps();
 
 	/**
-	 * In this part all PMs and VMs will be put inside this abstract model. For that
-	 * the bins-list contains all PMs as ModelPMs and all VMs as ModelVMs
-	 * afterwards.
-	 * 
-	 * @param pmList
-	 *            All PMs which are currently registered in the IaaS service.
-	 */
-	private void instantiate(PhysicalMachine[] pmList) {
-		final ArrayList<ModelPM> pminit=new ArrayList<>(pmList.length);
-		final ArrayList<ModelVM> vminit=new ArrayList<>();
-		for (int i = 0; i < pmList.length; i++) {
-			// now every PM will be put inside the model with its hosted VMs
-			PhysicalMachine pm = pmList[i];
-			//If using a non-externally-controlled PM scheduler, consider only non-empty PMs for consolidation
-			if(!(pm.isHostingVMs()) && !(toConsolidate.pmcontroller instanceof IControllablePmScheduler))
-				continue;
-			ModelPM bin = new ModelPM(pm, i + 1, upperThreshold, lowerThreshold);
-			for (VirtualMachine vm : pm.publicVms) {
-				ModelVM item = new ModelVM(vm, bin, vminit.size());
-				bin.addVM(item);
-				vminit.add(item);
-			}
-			pminit.add(bin);
-		}
-		bins=pminit.toArray(binsample);
-		items=vminit.toArray(itemsample);
-		
-		Logger.getGlobal().info("Instantiated model at "+Timed.getFireCount()+": " + toString());
-	}
-
-	/**
 	 * The method to do the consolidation. It is individualized by each specific
 	 * consolidator.
+	 * 
 	 */
-	protected abstract void optimize();
+	protected abstract Solution optimize(Solution initial);
 
 	/**
 	 * Creates the actions-list with migration-/start- and shutdown-actions.
@@ -165,7 +132,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 		List<Action> actions = new ArrayList<>();
 		int i = 0;
-		for (ModelPM bin : bins) {
+		for (ModelPM bin : baseSolution.bins) {
 			if(controllablePmScheduler!=null) {
 				if (bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
 					actions.add(new StartAction(i++, bin, controllablePmScheduler));
@@ -173,7 +140,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 					actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
 			}
 			for (ModelVM item : bin.getVMs()) {
-				if (item.gethostPM() != item.initialHost) {
+				if (item.gethostPM().hashCode() != item.initialHost.hashCode()) {
 					actions.add(new MigrationAction(i++, item.initialHost, item.gethostPM(), item));
 					SimpleConsolidator.migrationCount++;
 				}
@@ -234,7 +201,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	public String toString() {
 		String result = "";
 		boolean first = true;
-		for (ModelPM bin : bins) {
+		for (ModelPM bin : baseSolution.bins) {
 			if(!bin.isHostingVMs())
 				continue;
 			if (!first)
@@ -266,7 +233,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * created to add this information to the graph.
 	 */
 	protected void shutDownEmptyPMs() {
-		for (ModelPM pm : bins) {
+		for (ModelPM pm : baseSolution.bins) {
 			if (!pm.isHostingVMs() && pm.getState() != State.EMPTY_OFF) {
 				pm.switchOff(); // shut down this PM
 			}
@@ -277,7 +244,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * PMs that should host at least one VM are switched on.
 	 */
 	protected void switchOnNonEmptyPMs() {
-		for (ModelPM pm : bins) {
+		for (ModelPM pm : baseSolution.bins) {
 			if (pm.isHostingVMs() && pm.getState() == State.EMPTY_OFF) {
 				pm.switchOn();
 			}

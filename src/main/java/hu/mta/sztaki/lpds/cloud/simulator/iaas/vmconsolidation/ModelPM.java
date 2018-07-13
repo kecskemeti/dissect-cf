@@ -18,6 +18,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraint
  * introduce some new States for the allocation of the given PM.
  */
 public class ModelPM {
+	public static final ModelPM[] mpmArrSample=new ModelPM[0];
 
 	private final PhysicalMachine pm;		// the real PM inside the simulator
 	private final List<ModelVM> vmList=new ArrayList<>();
@@ -84,6 +85,24 @@ public class ModelPM {
 		reserved = new AlterableResourceConstraints(ConstantConstraints.noResources);
 		//Logger.getGlobal().info("Created PM: "+toString());
 	}
+	
+	public ModelPM(final ModelPM toCopy) {
+		this.pm=toCopy.pm;
+		this.number=toCopy.number;
+		final int ll=toCopy.vmList.size();
+		for(int i=0;i<ll;i++) {
+			this.vmList.add(new ModelVM(toCopy.vmList.get(i)));
+		}
+		this.consumedResources=new AlterableResourceConstraints(toCopy.consumedResources);
+		this.freeResources=new AlterableResourceConstraints(toCopy.freeResources);
+		this.consumed=new UnalterableConstraintsPropagator(consumedResources);
+		this.free=new UnalterableConstraintsPropagator(freeResources);
+		this.reserved=new AlterableResourceConstraints(toCopy.reserved);
+		// Shallow copy from here:
+		this.lowerThrResources=toCopy.lowerThrResources;
+		this.upperThrResources=toCopy.upperThrResources;
+		this.state=toCopy.state;
+	}
 
 	/**
 	 * toString() is used for debugging and contains the number of the pm in the IaaS and its actual vms.
@@ -117,12 +136,13 @@ public class ModelPM {
 	 * 
 	 * @param vm The VM which is going to be put on this PM.
 	 */
-	public boolean addVM(ModelVM vm) {		
+	public boolean addVM(final ModelVM vm) {		
 		vmList.add(vm);
-		ResourceConstraints rc=vm.getResources();
+		final ResourceConstraints rc=vm.getResources();
 		consumedResources.singleAdd(rc);
 		freeResources.subtract(rc);
 		checkAllocation();
+		vm.sethostPM(this);
 		
 		// adding was succesful
 		return true;
@@ -133,13 +153,15 @@ public class ModelPM {
 	 * 
 	 * @param vm The VM which is going to be removed of this PM.
 	 */
-	private boolean removeVM(ModelVM vm) {
+	public boolean removeVM(final ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
-		ResourceConstraints rc=vm.getResources();
+		final ResourceConstraints rc=vm.getResources();
 		consumedResources.subtract(rc);
 		freeResources.singleAdd(rc);
 		checkAllocation();
+		vm.sethostPM(null);
+		vm.prevPM=this;
 		
 		// removing was succesful
 		return true;
@@ -153,9 +175,8 @@ public class ModelPM {
 	 * @param target The target PM where to migrate.
 	 */	
 	public void migrateVM(ModelVM vm, ModelPM target) {
-		target.addVM(vm);		
 		this.removeVM(vm);
-		vm.sethostPM(target);
+		target.addVM(vm);		
 	}
 
 	/**

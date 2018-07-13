@@ -50,33 +50,30 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 * that the same mapping as existing before consolidation has started is
 	 * put inside a solution.
 	 */
-	private void initializePopulation() {
+	private void initializePopulation(final Solution input) {
 		population.clear();
 		for (int i = 0; i < randomCreations; i++) {
-			Solution s = new Solution(bins, mutationProb);
-			s.fillRandomly();
-			population.add(s);
+			regSolution(new Solution(input, false, true));
 		}
 		if(firstFitCreations != 0) {
-			Solution s0 = new Solution(bins, mutationProb);
-			s0.createFirstFitSolution();
-			population.add(s0);
-			for(int i = 1; i < firstFitCreations; i++) {
-				Solution s = s0.clone();
-				population.add(s);
-			}
+			produceClonesOf(regSolution(new Solution(input, true, true)), firstFitCreations - 1);
 		}
 		if(unchangedCreations != 0) {
-			Solution s0 = new Solution(bins, mutationProb);
-			s0.createUnchangedSolution();
-			population.add(s0);
-			for(int i = 1; i < unchangedCreations; i++) {
-				Solution s = s0.clone();
-				population.add(s);
-			}
+			produceClonesOf(regSolution(new Solution(input, true, false)), unchangedCreations - 1);
 		}
 	}
-
+	
+	private Solution regSolution(final Solution toReg) {
+		population.add(toReg);
+		return toReg;
+	}
+	
+	private void produceClonesOf(final Solution s0, int clonecount) {
+		while (clonecount >= 0) {
+			regSolution(new Solution(s0, true, false));
+			clonecount--;
+		}
+	}
 	/**
 	 * Take two random individuals of the population and let them recombinate to
 	 * create a new individual. If the new individual is better than one of its
@@ -119,8 +116,6 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			}
 		}
 		// Implement solution in the model
-		bestSolution.implement();
-		adaptPmStates();
 	}
 
 	/**
@@ -141,9 +136,9 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
-	protected void optimize() {
+	protected Solution optimize(Solution input) {
 		//System.err.println("GA nrIterations="+nrIterations+", populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
-		initializePopulation();
+		initializePopulation(input);
 		// Logger.getGlobal().info("Population after initialization:
 		// "+populationToString());
 		for (int iter = 0; iter < nrIterations; iter++) {
@@ -153,7 +148,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 			// in the population, otherwise it is discarded.
 			for (int i = 0; i < populationSize; i++) {
 				Solution parent = population.get(i);
-				Solution child = parent.mutate();
+				Solution child = parent.mutate(mutationProb);
 				if (child.evaluate().isBetterThan(parent.evaluate())) {
 					population.set(i, child);
 					improved=true;
@@ -169,6 +164,7 @@ public class GaConsolidator extends SolutionBasedConsolidator {
 				break;
 		}
 		implementBestSolution();
+		return bestSolution;
 	}
 
 	/**

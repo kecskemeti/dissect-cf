@@ -90,33 +90,29 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 * random location and velocity except one, which represents the situation before 
 	 * starting consolidating.
 	 */
-	private void initializeSwarm() {
+	private void initializeSwarm(final Solution input) {
 		swarm.clear();
-		for(int i = 0; i < swarmSize; i++) {
-			swarm.add(new Particle(bins, particleCounter));
-			++particleCounter;
-		}
 		
 		//create random solutions
 		for(int i = 0; i < randomCreations; i++) {
-			Particle p = swarm.get(i);
-			p.fillRandomly();
+			final Particle p = new Particle(input, particleCounter++, false, true);
 			p.updateLocation();
 			p.initVelocity();
+			swarm.add(p);
 		}
 		//create firstfit solutions
 		for(int i = randomCreations; i < firstFitCreations + randomCreations; i++) {
-			Particle p = swarm.get(i);
-			p.createFirstFitSolution();
+			final Particle p = new Particle(input, particleCounter++, true, true);
 			p.updateLocation();
 			p.initVelocity();
+			swarm.add(p);
 		}
 		//create unchanged solutions
 		for(int i = firstFitCreations + randomCreations; i < firstFitCreations + randomCreations + unchangedCreations; i++) {
-			Particle p = swarm.get(i);
-			p.createUnchangedSolution();
+			final Particle p = new Particle(input, particleCounter++, true, false);
 			p.updateLocation();
 			p.initVelocity();
+			swarm.add(p);
 		}
 		
 	}
@@ -125,10 +121,10 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 * Perform the particle swarm optimization algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
-	protected void optimize() {
+	protected Solution optimize(Solution input) {
 		// get the dimension by getting the amount of VMs on the actual PMs
-		this.dimension = items.length;
-		initializeSwarm();
+		this.dimension = input.items.length;
+		initializeSwarm(input);
 		
 		int iterations = 0;
 		
@@ -210,15 +206,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());	// adds up the velocity to create the updated location
 					p.setLocation(newLoc);		
 					p.updateMappings();   	// adjusts the mappings with the new location
-										
-					if(doLocalSearch1) {
-						p.improve();
-						p.updateLocation();	// we have to update the location afterwards
-					}
-					else if(doLocalSearch2){
-						p.simpleConsolidatorImprove();
-						p.updateLocation();	// we have to update the location afterwards
-					}
+					p.useLocalSearch();
+					p.updateLocation();
 					
 					//Logger.getGlobal().info("Iteration " + t + ", Updated Particle " + p.getNumber() + System.getProperty("line.separator") + p.toString());
 				}
@@ -227,23 +216,23 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			//Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			iterations++;
 		}				
-		implementSolution();
+		implementSolution(input);
+		return input;
 	}	
 	
 	/**
 	 * In this method the hostPM of each VM is compared to the solution of the algorithm, the globalBestLocation.
 	 * If the hosts are the same, no migration is needed, if not, we migrate the VM to the new host.
 	 */
-	private void implementSolution() {
+	private void implementSolution(Solution best) {
 		//Implement solution in the model
 		for(int i = 0; i < dimension; i++) {					
-			ModelPM oldPm = items[i].gethostPM();
-			ModelPM newPm = bins[globalBestLocation.get(i).intValue() - 1];		// has to be done because the ids start at one
+			ModelPM oldPm = best.items[i].gethostPM();
+			ModelPM newPm = best.bins[globalBestLocation.get(i).intValue() - 1];		// has to be done because the ids start at one
 			if(newPm != oldPm)
-				oldPm.migrateVM(items[i], newPm);
+				oldPm.migrateVM(best.items[i], newPm);
 		}
-		adaptPmStates();
-}
+	}
 	
 	/**
 	 * Method to find the position of the particle with the smallest fitness value of all Particles.
@@ -291,8 +280,8 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 	 	 * @param bins The currently existing pms.
 	 	 * @param number The id of this particle.
 	 	 */
-		public Particle(ModelPM[] bins, int number) {
-			super(bins, 0);
+		public Particle(Solution base, int number, boolean orig, boolean localsearch) {
+			super(base,orig,localsearch);
 			this.number = number;
 			this.location = new ArithmeticVector(bins.length);
 		}
@@ -308,7 +297,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 			location.clear();
 
 			for(ModelVM v : items) {
-				ModelPM p=mapping.get(v);
+				ModelPM p=v.gethostPM();
 				for(int i=0;i<bins.length;i++) {
 					if(bins[i]==p) {
 						location.add((double)i+1);
@@ -339,28 +328,17 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 				ModelPM locPm = bins[location.get(i).intValue() - 1 ];	// the host of this vm, has to be done 
 																				// because the ids start at one
 				
-				ModelPM mappedPm = mapping.get(items[i]);
+				ModelPM mappedPm = items[i].gethostPM();
 				
 				// now we have to check if both hosts are similar, then we can move on with the next.
 				// Otherwise we have to adjust the mappings
-				if(locPm == mappedPm) {
+				if(locPm.hashCode() == mappedPm.hashCode()) {
 					continue;	// pms are the same
 				}
 				else {
 					// pms are not the same
 					fitness.nrMigrations++;
-					mapping.put(items[i], locPm);	//put the new pm
-					
-					loads.get(mappedPm).subtract(items[i].getResources());
-					loads.get(locPm).singleAdd(items[i].getResources());
-					
-					// mark the pm out of the location as "used", after that check
-					// if the mappedPm is still used/hosting vms, if not, mark it
-					// as "unused"
-					used.put(locPm, true);
-					if(!mappedPm.isHostingVMs())
-						used.put(mappedPm, false);
-					
+					mappedPm.migrateVM(items[i], locPm);
 				}
 			}
 			
@@ -378,7 +356,7 @@ public class PsoConsolidator extends SolutionBasedConsolidator {
 		public void initVelocity() {
 			ArithmeticVector vel = new ArithmeticVector(bins.length);
 			
-			for(int j = 0; j < mapping.keySet().size(); j++) {			
+			for(int j = 0; j < items.length; j++) {			
 				double a;			
 				// here we make a random chance of getting a lower id or a higher id
 				if(random.nextBoolean()) {

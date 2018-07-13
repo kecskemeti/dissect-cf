@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>at.ac.uibk.dps.cloud.simulator</groupId>
 	<artifactId>dissect-cf</artifactId>
-	<version>0.9.7-SNAPSHOT-rp</version>
+	<version>0.9.7-SNAPSHOT-rptest</version>
 	<name>DISSECT-CF</name>
 	<description>DIScrete event baSed Energy Consumption simulaTor for Clouds and Federations</description>
 	<dependencies>
@@ -39,10 +39,10 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.7.0</version>
+				<version>3.2</version>
 				<configuration>
-					<source>1.10</source>
-					<target>1.10</target>
+					<source>10</source>
+					<target>10</target>
   	                		<showWarnings>true</showWarnings>
   	                		<showDeprecation>true</showDeprecation>
 				</configuration>

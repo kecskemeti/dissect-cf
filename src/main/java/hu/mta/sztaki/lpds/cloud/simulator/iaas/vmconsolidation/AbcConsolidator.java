@@ -55,57 +55,48 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 * bestFitness are updated.
 	 */
 	private void checkIfBest(Solution s) {
-		Fitness f = s.evaluate();
-		if (f.isBetterThan(bestFitness)) {
+		if (bestSolution == null) {
 			bestSolution = s;
-			bestFitness = f;
+			bestFitness = s.evaluate();
+		} else {
+			final Fitness f = s.evaluate();
+			if (f.isBetterThan(bestFitness)) {
+				bestSolution = s;
+				bestFitness = f;
+			}
 		}
 	}
 
 	/**
 	 * Initializes the population with the previously determined solutions. After
-	 * that the same mapping as existing before consolidation has started is
-	 * put inside a solution.
+	 * that the same mapping as existing before consolidation has started is put
+	 * inside a solution.
 	 */
-	private void initializePopulation() {
+	private void initializePopulation(final Solution input) {
 		population.clear();
-		for(int i = 0; i < randomCreations; i++) {
-			Solution s = new Solution(bins, mutationProb);
-			s.fillRandomly();
-			population.add(s);
-			numTrials.add(0);
-			if (i == 0) {
-				bestSolution = s;
-				bestFitness = s.evaluate();
-			} else {
-				checkIfBest(s);
-			}
+		bestSolution = null;
+		for (int i = 0; i < randomCreations; i++) {
+			regSolution(new Solution(input,false,true));
 		}
-		if(firstFitCreations != 0) {
-			Solution s0 = new Solution(bins, mutationProb);
-			s0.createFirstFitSolution();
-			population.add(s0);
-			numTrials.add(0);
-			checkIfBest(s0);
-			for(int i = 1; i < firstFitCreations; i++) {
-				Solution s = s0.clone();
-				population.add(s);
-				numTrials.add(0);
-				checkIfBest(s);
-			}
+		if (firstFitCreations != 0) {
+			produceClonesOf(regSolution(new Solution(input, true, true)), firstFitCreations - 1);
 		}
-		if(unchangedCreations != 0) {
-			Solution s0 = new Solution(bins, mutationProb);
-			s0.createUnchangedSolution();
-			population.add(s0);
-			numTrials.add(0);
-			checkIfBest(s0);
-			for(int i = 1; i < unchangedCreations; i++) {
-				Solution s = s0.clone();
-				population.add(s);
-				numTrials.add(0);
-				checkIfBest(s);
-			}
+		if (unchangedCreations != 0) {
+			produceClonesOf(regSolution(new Solution(input, true, false)), unchangedCreations - 1);
+		}
+	}
+
+	private Solution regSolution(final Solution toReg) {
+		population.add(toReg);
+		numTrials.add(0);
+		checkIfBest(toReg);
+		return toReg;
+	}
+
+	private void produceClonesOf(final Solution s0, int clonecount) {
+		while (clonecount >= 0) {
+			regSolution(new Solution(s0, true, false));
+			clonecount--;
 		}
 	}
 
@@ -142,11 +133,11 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 */
 	private void mutateAndCheck(int j) {
 		Solution s1 = population.get(j);
-		Solution s2 = s1.mutate();
+		Solution s2 = s1.mutate(mutationProb);
 		if (s2.evaluate().isBetterThan(s1.evaluate())) {
 			population.set(j, s2);
 			numTrials.set(j, 0);
-			improved=true;
+			improved = true;
 			checkIfBest(s2);
 		} else {
 			numTrials.set(j, numTrials.get(j) + 1);
@@ -162,7 +153,6 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 		this.populationSize = Integer.parseInt(props.getProperty("abcPopulationSize"));
 		this.nrIterations = Integer.parseInt(props.getProperty("abcNrIterations"));
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
-		
 		determineCreations(populationSize);
 	}
 
@@ -170,11 +160,12 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 	 * The actual ABC algorithm.
 	 */
 	@Override
-	protected void optimize() {
-		//System.err.println("ABC nrIterations="+nrIterations+", populationSize="+populationSize);
-		initializePopulation();
+	protected Solution optimize(Solution input) {
+		// System.err.println("ABC nrIterations="+nrIterations+",
+		// populationSize="+populationSize);
+		initializePopulation(input);
 		for (int iter = 0; iter < nrIterations; iter++) {
-			improved=false;
+			improved = false;
 			// employed bees phase
 			for (int j = 0; j < populationSize; j++) {
 //				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
@@ -205,19 +196,17 @@ public class AbcConsolidator extends SolutionBasedConsolidator {
 				}
 			}
 			if (maxTrials >= limitTrials) {
-				Solution s = new Solution(bins, mutationProb);
-				s.fillRandomly();
+				Solution s = new Solution(input, false, true);
 				population.set(maxTrialsIndex, s);
 				numTrials.set(maxTrialsIndex, 0);
 				checkIfBest(s);
 			}
-			//System.err.println("ABC iteration carried out: "+iter);
-			if(!improved)
+			// System.err.println("ABC iteration carried out: "+iter);
+			if (!improved)
 				break;
 		}
 		// Implement best solution in the model
-		bestSolution.implement();
-		adaptPmStates();
+		return bestSolution;
 	}
 
 	public Fitness getBestFitness() {
