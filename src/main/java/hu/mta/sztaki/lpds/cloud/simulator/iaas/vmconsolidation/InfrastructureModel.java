@@ -12,13 +12,14 @@ import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 /**
  * Represents a possible solution of the VM consolidation problem, i.e., a
  * mapping of VMs to PMs. Can be used as an individual in the population.
  */
 public class InfrastructureModel {
-	private final ArrayList<ModelVM> tempvmlist=new ArrayList<>();
+	private final ArrayList<ModelVM> tempvmlist = new ArrayList<>();
 	/** List of all available bins */
 	protected ModelPM[] bins;
 	/** List of all available items */
@@ -37,7 +38,7 @@ public class InfrastructureModel {
 	final private static Comparator<ModelVM> mvmIdCmp = new Comparator<ModelVM>() {
 		@Override
 		public int compare(final ModelVM vm1, final ModelVM vm2) {
-			return Integer.compare(vm1.id, vm2.id);
+			return Integer.compare(vm1.basedetails.id, vm2.basedetails.id);
 		}
 	};
 
@@ -100,7 +101,7 @@ public class InfrastructureModel {
 			final double lowerThreshold) {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
 		final List<ModelVM> vminit = new ArrayList<>();
-		int binIndex=0;
+		int binIndex = 0;
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			final PhysicalMachine pm = pmList[i];
@@ -133,20 +134,20 @@ public class InfrastructureModel {
 		fitness.nrActivePms = 0;
 		fitness.totalOverAllocated = 0;
 		for (final ModelPM pm : bins) {
-			if (pm.isHostingVMs())
+			if (pm.isHostingVMs()) {
 				fitness.nrActivePms++;
-			if (pm.consumed.getTotalProcessingPower() > pm.getUpperThreshold().getRequiredMemory())
-				fitness.totalOverAllocated += pm.consumed.getTotalProcessingPower()
-						/ (pm.getUpperThreshold().getTotalProcessingPower());
-			if (pm.consumed.getRequiredMemory() > pm.getUpperThreshold().getRequiredMemory())
-				fitness.totalOverAllocated += pm.consumed.getRequiredMemory()
-						/ pm.getUpperThreshold().getRequiredMemory();
+				final ResourceConstraints ut = pm.getUpperThreshold();
+				if (pm.consumed.getTotalProcessingPower() > ut.getRequiredMemory())
+					fitness.totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
+				if (pm.consumed.getRequiredMemory() > ut.getRequiredMemory())
+					fitness.totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
+			}
 		}
 	}
 
 	private void updateMapping(final ModelVM v, final ModelPM p) {
 		v.gethostPM().migrateVM(v, p);
-		if (p != v.initialHost) {
+		if (p != v.basedetails.initialHost) {
 			fitness.nrMigrations++;
 		}
 	}
@@ -158,7 +159,7 @@ public class InfrastructureModel {
 			simpleConsolidatorImprove();
 		}
 	}
-	
+
 	/**
 	 * Improving a solution by relieving overloaded PMs, emptying underloaded PMs,
 	 * and finding new hosts for the thus removed VMs using BFD.
@@ -168,8 +169,8 @@ public class InfrastructureModel {
 		// relieve overloaded PMs + empty underloaded PMs
 		for (final ModelPM pm : bins) {
 			final List<ModelVM> vmsOfPm = pm.getVMs();
-			int l=vmsOfPm.size()-1;
-			while (l>=0&&(pm.isOverAllocated()||pm.isUnderAllocated())) {
+			int l = vmsOfPm.size() - 1;
+			while (l >= 0 && (pm.isOverAllocated() || pm.isUnderAllocated())) {
 				final ModelVM vm = vmsOfPm.get(l--);
 				tempvmlist.add(vm);
 				pm.removeVM(vm);
@@ -179,7 +180,7 @@ public class InfrastructureModel {
 		Collections.sort(tempvmlist, mvmComp);
 		final ModelPM[] binsToTry = bins.clone();
 		Arrays.sort(binsToTry, mpmComp);
-		final int tvmls=tempvmlist.size();
+		final int tvmls = tempvmlist.size();
 		for (int i = 0; i < tvmls; i++) {
 			final ModelVM vm = tempvmlist.get(i);
 			ModelPM targetPm = null;
@@ -193,7 +194,7 @@ public class InfrastructureModel {
 			if (targetPm == null)
 				targetPm = vm.prevPM;
 			targetPm.addVM(vm);
-			if (targetPm != vm.initialHost)
+			if (targetPm != vm.basedetails.initialHost)
 				fitness.nrMigrations++;
 		}
 	}
@@ -245,7 +246,7 @@ public class InfrastructureModel {
 
 						if (target.isMigrationPossible(vm)) {
 							source.migrateVM(vm, target);
-							if (target != vm.initialHost) {
+							if (target.hashCode() != vm.basedetails.initialHost.hashCode()) {
 								fitness.nrMigrations++;
 							}
 							alreadyMoved.add(vm);
@@ -290,8 +291,8 @@ public class InfrastructureModel {
 
 	private InfrastructureModel genNew(final GenHelper helper) {
 		final InfrastructureModel result = new InfrastructureModel(this);
-		for (int i=0;i<items.length;i++) {
-			if(helper.shouldUseDifferent()) {
+		for (int i = 0; i < items.length; i++) {
+			if (helper.shouldUseDifferent()) {
 				result.updateMapping(items[i], helper.whatShouldWeUse(i));
 			}
 		}
@@ -341,18 +342,6 @@ public class InfrastructureModel {
 				return other.items[vm].gethostPM();
 			}
 		});
-	}
-
-	/**
-	 * Implement solution in the model by performing the necessary migrations.
-	 */
-	public void implement(final InfrastructureModel target) {
-		for(int i=0;i<items.length;i++) {
-			final ModelPM oldPm = target.items[i].gethostPM();
-			final ModelPM newPm = items[i].gethostPM();
-			if (newPm.hashCode() != oldPm.hashCode())
-				oldPm.migrateVM(target.items[i], target.bins[newPm.hashCode()]);
-		}
 	}
 
 	/**

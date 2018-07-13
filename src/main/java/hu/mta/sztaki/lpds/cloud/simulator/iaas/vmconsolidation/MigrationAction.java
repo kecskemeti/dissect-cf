@@ -105,23 +105,23 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	@Override
 	public void execute() {
 		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString()+", hash="+Integer.toHexString(System.identityHashCode(this)));
-		if(! source.getPM().publicVms.contains(mvm.vm)) {
+		if(! source.getPM().publicVms.contains(mvm.basedetails.vm)) {
 			Logger.getGlobal().info("VM is not on the source PM anymore -> there is nothing to do");
 			finished();
-		} else if(mvm.vm.getMemSize()>target.getPM().freeCapacities.getRequiredMemory()
-		|| mvm.vm.getPerTickProcessingPower()>target.getPM().freeCapacities.getTotalProcessingPower()) {
+		} else if(mvm.basedetails.vm.getMemSize()>target.getPM().freeCapacities.getRequiredMemory()
+		|| mvm.basedetails.vm.getPerTickProcessingPower()>target.getPM().freeCapacities.getTotalProcessingPower()) {
 			Logger.getGlobal().info("Target PM does not have sufficient capacity anymore -> there is nothing to do");
 			finished();
-		} else if(mvm.vm.getState()!=VirtualMachine.State.RUNNING && mvm.vm.getState()!=VirtualMachine.State.SUSPENDED) {
-			Logger.getGlobal().info("State of the VM inappropriate for migration ("+mvm.vm.getState()+") -> there is nothing to do");
+		} else if(mvm.basedetails.vm.getState()!=VirtualMachine.State.RUNNING && mvm.basedetails.vm.getState()!=VirtualMachine.State.SUSPENDED) {
+			Logger.getGlobal().info("State of the VM inappropriate for migration ("+mvm.basedetails.vm.getState()+") -> there is nothing to do");
 			finished();
 		} else if(!(target.getPM().isRunning())) {
 			Logger.getGlobal().info("Target PM not running -> there is nothing to do");
 			finished();
 		} else {
-			mvm.vm.subscribeStateChange(this);		// observe the VM which shall be migrated
+			mvm.basedetails.vm.subscribeStateChange(this);		// observe the VM which shall be migrated
 			try {
-				source.getPM().migrateVM(mvm.vm, target.getPM());
+				source.getPM().migrateVM(mvm.basedetails.vm, target.getPM());
 			} catch (VMManagementException e) {
 				e.printStackTrace();
 			} catch (NetworkException e) { 

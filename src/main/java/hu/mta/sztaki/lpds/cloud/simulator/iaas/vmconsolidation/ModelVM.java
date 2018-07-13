@@ -14,12 +14,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 public class ModelVM {
 	public static final ModelVM[] mvmArrSample=new ModelVM[0];
 
-	final public VirtualMachine vm;
 	private ModelPM hostPM;
-	final public ModelPM initialHost;
 	public ModelPM prevPM;
-	final public int id;
-
+	public final ImmutableVMComponents basedetails;
 	/**
 	 * This represents a VirtualMachine of the simulator. For that this class contains the real VM itself,
 	 * the actual abstract host, the resources (cores, perCoreProcessing, memory) and the id for debugging.
@@ -39,25 +36,20 @@ public class ModelVM {
 	 * 			The ID of the original VM.
 	 */	
 	public ModelVM(final VirtualMachine vm, final ModelPM pm, final int id) {
-		
-		this.vm = vm;
+		basedetails=new ImmutableVMComponents(vm, pm, id);
 		hostPM = pm;		// save the host PM
-		initialHost = pm;	// save the host as the first host PM
-		this.id = id;
 	}
 	
 	public ModelVM(final ModelVM toCopy) {
-		this.vm=toCopy.vm;
+		this.basedetails=toCopy.basedetails;
 		this.hostPM=toCopy.hostPM;
-		this.initialHost=toCopy.initialHost;
-		this.id=toCopy.id;
 	}
 
 	/**
 	 * toString() is just for debugging and returns the ID, cores, perCoreProcessingPower and memory of this VM.
 	 */	
 	public String toString() {
-		return id + ", " + "Cores: " + getResources().getRequiredCPUs() + ", " + "ProcessingPower: " 
+		return basedetails.id + ", " + "Cores: " + getResources().getRequiredCPUs() + ", " + "ProcessingPower: " 
 				+ getResources().getRequiredProcessingPower() + ", " + "Memory: " + getResources().getRequiredMemory();
 	}	
 	
@@ -67,14 +59,14 @@ public class ModelVM {
 	 * @return The id of this vm.
 	 */
 	public String toShortString() {
-		return "VM " + id;
+		return "VM " + basedetails.id;
 	}
 
 	/** Getter
 	 * @return the ResourceVector
 	 */
 	public ResourceConstraints getResources() {
-		return vm.getResourceAllocation().allocated;
+		return basedetails.vm.getResourceAllocation().allocated;
 	}
 	
 	/** Getter
@@ -89,7 +81,7 @@ public class ModelVM {
 	 * @param bin
 	 * 			The new host.
 	 */
-	public void sethostPM(ModelPM bin) {
+	public void sethostPM(final ModelPM bin) {
 		this.hostPM = bin;
 	}
 
@@ -100,6 +92,6 @@ public class ModelVM {
 	 */
 	@Override
 	public int hashCode() {
-		return id;
+		return basedetails.id;
 	}
 }

@@ -140,8 +140,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 					actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
 			}
 			for (ModelVM item : bin.getVMs()) {
-				if (item.gethostPM().hashCode() != item.initialHost.hashCode()) {
-					actions.add(new MigrationAction(i++, item.initialHost, item.gethostPM(), item));
+				if (item.gethostPM().hashCode() != item.basedetails.initialHost.hashCode()) {
+					actions.add(new MigrationAction(i++, item.basedetails.initialHost, item.gethostPM(), item));
 					SimpleConsolidator.migrationCount++;
 				}
 			}
