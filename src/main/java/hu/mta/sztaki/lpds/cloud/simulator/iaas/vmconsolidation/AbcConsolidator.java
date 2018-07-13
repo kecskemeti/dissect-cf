@@ -15,10 +15,10 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private int limitTrials;
 
 	/** For each employed bee, number of trials since last improvement */
-	private ArrayList<Integer> numTrials;
+	private int[] numTrials;
 
 	/** Probabilities for the onlooker bees */
-	private ArrayList<Double> probabilities;
+	private final ArrayList<Double> probabilities;
 
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
@@ -32,9 +32,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	/**
 	 * Creates AbcConsolidator with empty population.
 	 */
-	public AbcConsolidator(IaaSService toConsolidate, long consFreq) {
+	public AbcConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
-		numTrials = new ArrayList<>();
 		probabilities = new ArrayList<>();
 		setOmitAllocationCheck(true);
 	}
@@ -68,7 +67,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 
 	protected InfrastructureModel regSolution(final InfrastructureModel toReg) {
 		super.regSolution(toReg);
-		numTrials.add(0);
+		numTrials[getPopFillIndex()-1]=0;
 		checkIfBest(toReg);
 		return toReg;
 	}
@@ -82,12 +81,12 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * 10 will be used as probability.
 	 */
 	private void determineProbabilities() {
-		for (int i = 0; i < populationSize; i++) {
-			final InfrastructureModel s = population.get(i);
+		for (int i = 0; i < population.length; i++) {
+			final InfrastructureModel s = population[i];
 			final Fitness f = s.evaluate();
 			int numWins = 0;
 			for (int j = 0; j < 10; j++) {
-				final InfrastructureModel s2 = population.get(random.nextInt(populationSize));
+				final InfrastructureModel s2 = population[random.nextInt(population.length)];
 				if (f.isBetterThan(s2.evaluate()))
 					numWins++;
 			}
@@ -105,15 +104,15 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		final InfrastructureModel s1 = population.get(j);
+		final InfrastructureModel s1 = population[j];
 		final InfrastructureModel s2 = s1.mutate(mutationProb);
 		if (s2.evaluate().isBetterThan(s1.evaluate())) {
-			population.set(j, s2);
-			numTrials.set(j, 0);
+			population[j]=s2;
+			numTrials[j]=0;
 			improved = true;
 			checkIfBest(s2);
 		} else {
-			numTrials.set(j, numTrials.get(j) + 1);
+			numTrials[j]++;
 		}
 	}
 
@@ -124,6 +123,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	protected void processProps() {
 		super.processProps();
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
+		numTrials=new int[population.length];
 	}
 
 	/**
@@ -137,7 +137,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		for (int iter = 0; iter < nrIterations; iter++) {
 			improved = false;
 			// employed bees phase
-			for (int j = 0; j < populationSize; j++) {
+			for (int j = 0; j < population.length; j++) {
 //				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
 				mutateAndCheck(j);
 			}
@@ -145,9 +145,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			determineProbabilities();
 			int j = 0;
 			int t = 0;
-			while (t < populationSize) {
+			while (t < population.length) {
 				// Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
-				final int currJ=j++%populationSize;
+				final int currJ=j++%population.length;
 				if (random.nextDouble() < probabilities.get(currJ)) {
 					t++;
 					mutateAndCheck(currJ);
@@ -156,16 +156,16 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			// scout bee phase
 			int maxTrials = -1;
 			int maxTrialsIndex = 0;
-			for (j = 0; j < populationSize; j++) {
-				if (numTrials.get(j) > maxTrials) {
+			for (j = 0; j < population.length; j++) {
+				if (numTrials[j] > maxTrials) {
 					maxTrialsIndex = j;
-					maxTrials = numTrials.get(j);
+					maxTrials = numTrials[j];
 				}
 			}
 			if (maxTrials >= limitTrials) {
 				final InfrastructureModel s = new InfrastructureModel(input, false, true);
-				population.set(maxTrialsIndex, s);
-				numTrials.set(maxTrialsIndex, 0);
+				population[maxTrialsIndex]= s;
+				numTrials[maxTrialsIndex]=0;
 				checkIfBest(s);
 			}
 			// System.err.println("ABC iteration carried out: "+iter);

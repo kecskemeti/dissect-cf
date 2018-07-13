@@ -1,7 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
-
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 /**
@@ -26,13 +24,15 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	private InfrastructureModel bestSolution;
 	/** Fitness of the best solution found so far */
 	private Fitness bestFitness;
-	/** True if at least one individual has improved during the current generation */
+	/**
+	 * True if at least one individual has improved during the current generation
+	 */
 	private boolean improved;
 
 	/**
 	 * Creates GaConsolidator with empty population.
 	 */
-	public GaConsolidator(IaaSService toConsolidate, long consFreq) {
+	public GaConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 		setOmitAllocationCheck(true);
 	}
@@ -44,21 +44,18 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	 * discarded.
 	 */
 	private void crossover() {
-		int i1 = random.nextInt(population.size());
-		int i2 = random.nextInt(population.size());
-		InfrastructureModel s1 = population.get(i1);
-		InfrastructureModel s2 = population.get(i2);
-		InfrastructureModel s3 = s1.recombinate(s2);
-		Fitness f1 = s1.evaluate();
-		Fitness f2 = s2.evaluate();
-		Fitness f3 = s3.evaluate();
+		final int i1 = random.nextInt(population.length);
+		final int i2 = random.nextInt(population.length);
+		final InfrastructureModel s3 = population[i1].recombinate(population[i2]);
+		final Fitness f1 = population[i1].evaluate();
+		final Fitness f2 = population[i2].evaluate();
+		final Fitness f3 = s3.evaluate();
 		if (f3.isBetterThan(f1)) {
-			population.set(i1, s3);
-			improved=true;
-		}
-		else if (f3.isBetterThan(f2)) {
-			population.set(i2, s3);
-			improved=true;
+			population[i1] = s3;
+			improved = true;
+		} else if (f3.isBetterThan(f2)) {
+			population[i2] = s3;
+			improved = true;
 		}
 	}
 
@@ -69,12 +66,12 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	private void implementBestSolution() {
 		// Determine "best" solution (i.e. a solution, compared to which there is no
 		// better one)
-		bestSolution = population.get(0);
+		bestSolution = population[0];
 		bestFitness = bestSolution.evaluate();
-		for (int i = 1; i < populationSize; i++) {
-			Fitness fitness = population.get(i).evaluate();
+		for (int i = 1; i < population.length; i++) {
+			final Fitness fitness = population[i].evaluate();
 			if (fitness.isBetterThan(bestFitness)) {
-				bestSolution = population.get(i);
+				bestSolution = population[i];
 				bestFitness = fitness;
 			}
 		}
@@ -94,22 +91,23 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
-	protected InfrastructureModel optimize(InfrastructureModel input) {
-		//System.err.println("GA nrIterations="+nrIterations+", populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
+	protected InfrastructureModel optimize(final InfrastructureModel input) {
+		// System.err.println("GA nrIterations="+nrIterations+",
+		// populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
 		initializePopulation(input);
 		// Logger.getGlobal().info("Population after initialization:
 		// "+populationToString());
 		for (int iter = 0; iter < nrIterations; iter++) {
-			improved=false;
+			improved = false;
 			// From each individual in the population, create an offspring using
 			// mutation. If the child is better than its parent, it replaces it
 			// in the population, otherwise it is discarded.
-			for (int i = 0; i < populationSize; i++) {
-				InfrastructureModel parent = population.get(i);
-				InfrastructureModel child = parent.mutate(mutationProb);
+			for (int i = 0; i < population.length; i++) {
+				final InfrastructureModel parent = population[i];
+				final InfrastructureModel child = parent.mutate(mutationProb);
 				if (child.evaluate().isBetterThan(parent.evaluate())) {
-					population.set(i, child);
-					improved=true;
+					population[i] = child;
+					improved = true;
 				}
 			}
 			// Perform the given number of crossovers.
@@ -117,8 +115,8 @@ public class GaConsolidator extends IM_ML_Consolidator {
 				crossover();
 			}
 //			 Logger.getGlobal().info("Population after iteration "+iter+":"+populationToString());
-			//System.err.println("GA iteration carried out: "+iter);
-			if(!improved)
+			// System.err.println("GA iteration carried out: "+iter);
+			if (!improved)
 				break;
 		}
 		implementBestSolution();
@@ -131,10 +129,10 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	public String populationToString() {
 		String result = "";
 		boolean first = true;
-		for (int i = 0; i < populationSize; i++) {
+		for (int i = 0; i < population.length; i++) {
 			if (!first)
 				result = result + " ";
-			result = result + population.get(i).toString();
+			result = result + population[i].toString();
 			first = false;
 		}
 		return result;

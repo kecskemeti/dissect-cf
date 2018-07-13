@@ -13,4 +13,9 @@ public abstract class IM_ML_Consolidator extends MachineLearningConsolidator<Inf
 		// TODO Auto-generated method stub
 		return new InfrastructureModel(input, original, localsearch);
 	}
+	
+	@Override
+	protected void createPopArray(final int len) {
+		population=new InfrastructureModel[len];
+	}
 }

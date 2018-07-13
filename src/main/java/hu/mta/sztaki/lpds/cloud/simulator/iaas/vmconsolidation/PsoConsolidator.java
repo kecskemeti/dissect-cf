@@ -69,10 +69,15 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	
 	@Override
 	protected Particle modelFactory(final Particle input, final boolean original, final boolean localsearch) {
-		final Particle p=new Particle(input, particleCounter++, original, localsearch);
+		final Particle p=new Particle(input, getPopFillIndex(), original, localsearch);
 		p.updateLocation();
 		p.initVelocity();
 		return p;
+	}
+	
+	@Override
+	protected void createPopArray(final int len) {
+		population=new Particle[len];
 	}
 
 	/**
@@ -113,15 +118,15 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 			//Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
 			// set the new global best fitness / location
-			if(iterations == 0 || population.get(bestParticleIndex).evaluateFitnessFunction().isBetterThan(globalBest)) {
-				globalBest = population.get(bestParticleIndex).evaluateFitnessFunction();
-				globalBestLocation = population.get(bestParticleIndex).getLocation();		
+			if(iterations == 0 || population[bestParticleIndex].evaluateFitnessFunction().isBetterThan(globalBest)) {
+				globalBest = population[bestParticleIndex].evaluateFitnessFunction();
+				globalBestLocation = population[bestParticleIndex].getLocation();		
 			}
 			
 			//Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation: " + globalBestLocation);
 			
-			for(int i = 0; i < populationSize; i++) {
-				Particle p = population.get(i);
+			for(int i = 0; i < population.length; i++) {
+				Particle p = population[i];
 				
 				if(iterations == 0) {
 					ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity());	// adds up the velocity to create the updated location
@@ -198,12 +203,12 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 * @return The position where the value is in the vector.
 	 */
 	private int getMinPos() {		
-		Fitness minValue = population.get(0).evaluateFitnessFunction();
+		Fitness minValue = population[0].evaluateFitnessFunction();
 		int pos = 0;
 		
-		for(int i = 0; i < populationSize; i++) {
-			if(population.get(i).evaluateFitnessFunction().isBetterThan(minValue)) {
-				minValue = population.get(i).evaluateFitnessFunction();
+		for(int i = 0; i < population.length; i++) {
+			if(population[i].evaluateFitnessFunction().isBetterThan(minValue)) {
+				minValue = population[i].evaluateFitnessFunction();
 				pos = i;
 			}
 		}		
