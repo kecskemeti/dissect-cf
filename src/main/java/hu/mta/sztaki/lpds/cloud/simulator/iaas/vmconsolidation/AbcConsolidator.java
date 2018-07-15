@@ -81,7 +81,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 */
 	private void determineProbabilities() {
 		if (population.length == 1) {
-			probabilities[1] = probBase / (probBase + probTestCount);
+			probabilities[0] = probBase / (probBase + probTestCount);
 		} else {
 			Arrays.fill(wincounts, 0);
 			Arrays.fill(testcounts, 0);
