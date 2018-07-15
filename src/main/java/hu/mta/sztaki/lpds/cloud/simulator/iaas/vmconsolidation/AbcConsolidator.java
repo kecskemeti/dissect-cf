@@ -80,36 +80,32 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * 10 will be used as probability.
 	 */
 	private void determineProbabilities() {
-		if (population.length == 1) {
-			probabilities[0] = probBase / (probBase + probTestCount);
-		} else {
-			Arrays.fill(wincounts, 0);
-			Arrays.fill(testcounts, 0);
-			for (int i = 0; i < population.length; i++) {
-				final InfrastructureModel s = population[i];
-				int maxj = probTestCount - testcounts[i] - wincounts[i];
-				for (int j = 0; j < maxj; j++) {
-					int popidx;
-					int k;
-					do {
-						// Don't test against the same item..
-						while ((popidx = random.nextInt(population.length)) == i)
-							;
-						// Don't test against something we arleady tested with before..
-						for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
-							;
-					} while (k != j);
-					probTestIndexes[j] = popidx;
-					final InfrastructureModel s2 = population[popidx];
-					if (s.isBetterThan(s2)) {
-						wincounts[i]++;
-						testcounts[popidx]++;
-					} else {
-						wincounts[popidx]++;
-					}
+		Arrays.fill(wincounts, 0);
+		Arrays.fill(testcounts, 0);
+		for (int i = 0; i < population.length; i++) {
+			final InfrastructureModel s = population[i];
+			int maxj = Math.max(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
+			for (int j = 0; j < maxj; j++) {
+				int popidx;
+				int k;
+				do {
+					// Don't test against the same item..
+					while ((popidx = random.nextInt(population.length)) == i)
+						;
+					// Don't test against something we arleady tested with before..
+					for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
+						;
+				} while (k != j);
+				probTestIndexes[j] = popidx;
+				final InfrastructureModel s2 = population[popidx];
+				if (s.isBetterThan(s2)) {
+					wincounts[i]++;
+					testcounts[popidx]++;
+				} else {
+					wincounts[popidx]++;
 				}
-				probabilities[i] = (probBase + wincounts[i]) / (probBase + probTestCount);
 			}
+			probabilities[i] = (probBase + wincounts[i]) / (probBase + probTestCount);
 		}
 	}
 
