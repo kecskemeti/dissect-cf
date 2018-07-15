@@ -28,7 +28,6 @@ public class ModelPM {
 	private final AlterableResourceConstraints freeResources;
 	public final UnalterableConstraintsPropagator consumed;
 	public final UnalterableConstraintsPropagator free;
-	private final AlterableResourceConstraints reserved; // the reserved resources
 
 	public final ImmutablePMComponents basedetails;
 
@@ -61,7 +60,6 @@ public class ModelPM {
 		freeResources = new AlterableResourceConstraints(pm.getCapacities());
 		consumed = new UnalterableConstraintsPropagator(consumedResources);
 		free = new UnalterableConstraintsPropagator(freeResources);
-		reserved = new AlterableResourceConstraints(ConstantConstraints.noResources);
 		// Logger.getGlobal().info("Created PM: "+toString());
 	}
 
@@ -75,7 +73,6 @@ public class ModelPM {
 		this.freeResources = new AlterableResourceConstraints(toCopy.freeResources);
 		this.consumed = new UnalterableConstraintsPropagator(consumedResources);
 		this.free = new UnalterableConstraintsPropagator(freeResources);
-		this.reserved = new AlterableResourceConstraints(toCopy.reserved);
 		// Shallow copy from here:
 		this.basedetails = toCopy.basedetails;
 		this.on = toCopy.on;
@@ -158,22 +155,6 @@ public class ModelPM {
 	}
 
 	/**
-	 * Reserves resources for possible migrations.
-	 * 
-	 * @param vm The Virtual Machine which could be migrated.
-	 */
-	public void reserveResources(final ModelVM vm) {
-		this.reserved.add(vm.getResources());
-	}
-
-	/**
-	 * Resets the reserved resources.
-	 */
-	public void setResourcesFree() {
-		this.reserved.subtract(reserved);
-	}
-
-	/**
 	 * Checks if there are any VMs on this PM.
 	 * 
 	 * @return true if VMs are running on this PM.
@@ -229,7 +210,6 @@ public class ModelPM {
 	public boolean isMigrationPossible(final ModelVM toAdd) {
 		final AlterableResourceConstraints available = new AlterableResourceConstraints(basedetails.upperThrResources);
 		available.subtract(consumedResources);
-		available.subtract(reserved);
 		// Logger.getGlobal().info("available: "+available.toString());
 		return toAdd.getResources().getTotalProcessingPower() <= available.getTotalProcessingPower()
 				&& toAdd.getResources().getRequiredMemory() <= available.getRequiredMemory();

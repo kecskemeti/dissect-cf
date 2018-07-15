@@ -1,6 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.logging.Logger;
 
@@ -218,35 +217,24 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			return; // if there are no VMs, we cannot migrate anything
 		}
 
-		ArrayList<ModelPM> migPMs = new ArrayList<ModelPM>(); // save all PMs for hosting VMs depending on their order
-
-		for (ModelVM actual : source.getVMs()) {
-			ModelPM pm = getMigPm(actual, sol);
-			// if there is a PM which could host the actual VM, save it
-			if (pm != null) {
-				pm.reserveResources(actual); // reserve the resource for the possible migration
-				migPMs.add(pm);
+		ModelVM[] mvms=source.getVMs().toArray(ModelVM.mvmArrSample);
+		for (int i=1;i<=mvms.length;i++) {
+			ModelVM v=mvms[mvms.length-i];
+			ModelPM t=getMigPm(v,sol);
+			if(t!=null) {
+				source.migrateVM(v, t);
 			} else {
-				if (migPMs.isEmpty()) {
+				i--;
+				if(i==0) {
 					unchangeableBins.add(source);
-					return; // no migration possible
-				} else {
-					for (ModelPM act : migPMs) {
-						act.setResourcesFree();
-					}
 				}
+				// cancel out the previous migrations
+				for(;i>=1;i--) {
+					v=mvms[mvms.length-i];
+					v.gethostPM().migrateVM(v, source);
+				}
+				return;
 			}
-		}
-
-		for (int i = 0; i < migPMs.size(); i++) {
-			if (source.getVM(i) == null) {
-				Logger.getGlobal()
-						.warning("The " + i + ". VM on this PM is not here anymore, so we cannot migrate it.");
-				migPMs.get(i).setResourcesFree();
-				continue;
-			}
-			source.migrateVM(source.getVM(i), migPMs.get(i));
-			migPMs.get(i).setResourcesFree();
 		}
 	}
 }
