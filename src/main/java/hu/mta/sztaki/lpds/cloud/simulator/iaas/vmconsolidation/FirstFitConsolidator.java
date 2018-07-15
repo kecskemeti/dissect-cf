@@ -6,7 +6,6 @@ import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
  * @author Rene Ponto
@@ -128,8 +127,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		for (int i = 0; i < sol.bins.length; i++) {
 			ModelPM actualPM = sol.bins[i];
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			State state = actualPM.getState();
-			if (actualPM != toMig.gethostPM() && !state.equals(State.EMPTY_RUNNING) && !state.equals(State.EMPTY_OFF)
+			if (actualPM != toMig.gethostPM() && actualPM.isOn() && actualPM.isHostingVMs()
 					&& !actualPM.isOverAllocated() && !unchangeableBins.contains(actualPM)
 					&& actualPM.isMigrationPossible(toMig)) {
 				return actualPM;
@@ -141,14 +139,13 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		for (int j = 0; j < sol.bins.length; j++) {
 			ModelPM actualPM = sol.bins[j];
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			State state = actualPM.getState();
-			if (actualPM != toMig.gethostPM() || state.equals(State.EMPTY_RUNNING)) {
+			if (actualPM != toMig.gethostPM() || actualPM.isHostingVMs()) {
 
 				if (actualPM.isMigrationPossible(toMig)) {
 					return actualPM;
 				}
 			} else {
-				if (state.equals(State.EMPTY_OFF)) {
+				if (!actualPM.isOn()) {
 					return startPM(toMig.getResources(), sol); // start an empty_off PM
 				}
 			}
@@ -169,7 +166,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 */
 	private ModelPM startPM(ResourceConstraints VMConstraints, InfrastructureModel sol) {
 		for (ModelPM pm : sol.bins) {
-			if (pm.getState().equals(State.EMPTY_OFF) && VMConstraints.compareTo(pm.getTotalResources()) <= 0) {
+			if (!pm.isOn() && VMConstraints.compareTo(pm.getTotalResources()) <= 0) {
 				pm.switchOn(); // start this PM
 				return pm;
 			}

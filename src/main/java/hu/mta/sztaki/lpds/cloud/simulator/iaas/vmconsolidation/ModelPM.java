@@ -32,7 +32,7 @@ public class ModelPM {
 
 	public final ImmutablePMComponents basedetails;
 
-	private State state;
+	private boolean on;
 
 	/**
 	 * This represents a Physical Machine of the simulator. It is abstract and
@@ -54,16 +54,7 @@ public class ModelPM {
 	public ModelPM(final PhysicalMachine pm, final int number, final double upperThreshold,
 			final double lowerThreshold) {
 		basedetails = new ImmutablePMComponents(pm, number, lowerThreshold, upperThreshold);
-
-		if (pm.getState() == PhysicalMachine.State.SWITCHINGOFF || pm.getState() == PhysicalMachine.State.OFF) {
-			state = State.EMPTY_OFF;
-		} else {
-			if (pm.getState() == PhysicalMachine.State.RUNNING) {
-				state = State.NORMAL_RUNNING;
-			} else if (pm.getState() == PhysicalMachine.State.SWITCHINGON) {
-				state = State.EMPTY_RUNNING;
-			}
-		}
+		on=PhysicalMachine.ToOnorRunning.contains(pm.getState());
 
 		vmList = new ArrayList<>(pm.publicVms.size());
 		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
@@ -87,7 +78,7 @@ public class ModelPM {
 		this.reserved = new AlterableResourceConstraints(toCopy.reserved);
 		// Shallow copy from here:
 		this.basedetails = toCopy.basedetails;
-		this.state = toCopy.state;
+		this.on = toCopy.on;
 	}
 
 	/**
@@ -99,7 +90,7 @@ public class ModelPM {
 	 */
 	public String toString() {
 		String result = "PM " + basedetails.number + ", cap=" + basedetails.pm.getCapacities().toString() + ", curr="
-				+ consumedResources.toString() + ", state=" + state + ", VMs=";
+				+ consumedResources.toString() + ", state=" + (on?"ON":"OFF") + ", VMs=";
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)
@@ -126,8 +117,6 @@ public class ModelPM {
 	 * @param vm The VM which is going to be put on this PM.
 	 */
 	public boolean addVM(final ModelVM vm) {
-		if (state == State.EMPTY_RUNNING)
-			state = State.NORMAL_RUNNING;
 		vmList.add(vm);
 		final ResourceConstraints rc = vm.getResources();
 		consumedResources.singleAdd(rc);
@@ -151,8 +140,6 @@ public class ModelPM {
 		freeResources.singleAdd(rc);
 		vm.sethostPM(null);
 		vm.prevPM = this;
-		if (isHostingVMs())
-			state = State.EMPTY_RUNNING;
 
 		// removing was succesful
 		return true;
@@ -196,47 +183,11 @@ public class ModelPM {
 	}
 
 	/**
-	 * The possible States for a PM in this abstract model.
-	 * 
-	 * For understanding, we need the 'double'-states because of the graph. If we
-	 * shut down a PM and have to restart it again, it would be an unnecessary
-	 * action, so we mark them as for example EMPTY_RUNNING or EMPTY_OFF. For the
-	 * allocation we only have the x_RUNNING State because the check of the
-	 * allocation can only occur if the PM is running, otherwise it would be empty.
-	 * 
-	 * Additionally we have one other State for OVERALLOCATED_RUNNING and
-	 * UNDERALLOCATED_RUNNING, UNCHANGEABLE_OVERALLOCATED and
-	 * UNCHANGEABLE_UNDERALLOCATED. This is important becouse of the possibility to
-	 * determine how often it has been tried to migrate this PM or VMs of this PM
-	 * without success. So the State UNCHANGEABLE_x symbolizes that it will not be
-	 * possible to get a succesful migration in the future. In that case the
-	 * UNCHANGEABLE_x PM will be skipped inside the algorithm for now.
-	 */
-	public static enum State {
-
-		/**
-		 * There are actually no vms on this pm, pm is not running
-		 */
-		EMPTY_OFF,
-
-		/**
-		 * pm is running and empty
-		 */
-		EMPTY_RUNNING,
-
-		/**
-		 * allocation is between the upper and lower threshold, pm is running
-		 */
-		NORMAL_RUNNING
-
-	};
-
-	/**
 	 * Changes the state of the pm so the graph can give the switch off information
 	 * later to the simulation.
 	 */
 	protected void switchOff() {
-		state = State.EMPTY_OFF;
+		on=false;
 	}
 
 	/**
@@ -244,17 +195,9 @@ public class ModelPM {
 	 * later to the simulation.
 	 */
 	protected void switchOn() {
-		state = State.EMPTY_RUNNING;
+		on=true;
 	}
 
-	/**
-	 * Setter for the state of this pm.
-	 * 
-	 * @param state The new state for this pm.
-	 */
-	public void setState(final State state) {
-		this.state = state;
-	}
 
 	/**
 	 * Method for checking if the actual pm is overAllocated.
@@ -325,15 +268,6 @@ public class ModelPM {
 	}
 
 	/**
-	 * Getter for the state.
-	 * 
-	 * @return The current state of this pm.
-	 */
-	public State getState() {
-		return this.state;
-	}
-
-	/**
 	 * This class represents the consumed resources of this PM.
 	 * 
 	 * @return cores, perCoreProcessing and memory of the PM in a ResourceVector.
@@ -377,5 +311,9 @@ public class ModelPM {
 	@Override
 	public int hashCode() {
 		return basedetails.number;
+	}
+	
+	public boolean isOn() {
+		return on;
 	}
 }

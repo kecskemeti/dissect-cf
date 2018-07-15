@@ -14,7 +14,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelPM.State;
 
 /**
  * @author Julian Bellendorf, Rene Ponto, Zoltan Mann
@@ -132,10 +131,13 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		int i = 0;
 		for (ModelPM bin : baseSolution.bins) {
 			if(controllablePmScheduler!=null) {
-				if (bin.getState() != State.EMPTY_OFF && !bin.getPM().isRunning())
-					actions.add(new StartAction(i++, bin, controllablePmScheduler));
-				if (bin.getState() == State.EMPTY_OFF && bin.getPM().isRunning())
-					actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
+				if (bin.isOn()) {
+					if(!bin.getPM().isRunning())
+						actions.add(new StartAction(i++, bin, controllablePmScheduler));
+				} else {
+					if(bin.getPM().isRunning()) 
+						actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
+				}
 			}
 			for (ModelVM item : bin.getVMs()) {
 				if (item.gethostPM().hashCode() != item.basedetails.initialHost.hashCode()) {
@@ -232,7 +234,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void shutDownEmptyPMs() {
 		for (ModelPM pm : baseSolution.bins) {
-			if (!pm.isHostingVMs() && pm.getState() != State.EMPTY_OFF) {
+			if (!pm.isHostingVMs() && pm.isOn()) {
 				pm.switchOff(); // shut down this PM
 			}
 		}
@@ -243,7 +245,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	protected void switchOnNonEmptyPMs() {
 		for (ModelPM pm : baseSolution.bins) {
-			if (pm.isHostingVMs() && pm.getState() == State.EMPTY_OFF) {
+			if (pm.isHostingVMs() && !pm.isOn()) {
 				pm.switchOn();
 			}
 		}
