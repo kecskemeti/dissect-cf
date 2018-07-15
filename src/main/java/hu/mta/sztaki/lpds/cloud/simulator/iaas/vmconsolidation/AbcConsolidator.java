@@ -23,9 +23,6 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
 
-	/** Fitness of the best solution found so far */
-	private Fitness bestFitness;
-
 	/** True if at least one solution has improved during the current iteration */
 	private boolean improved;
 
@@ -45,12 +42,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private void checkIfBest(final InfrastructureModel s) {
 		if (bestSolution == null) {
 			bestSolution = s;
-			bestFitness = s.evaluate();
 		} else {
-			final Fitness f = s.evaluate();
-			if (f.isBetterThan(bestFitness)) {
+			if (s.isBetterThan(bestSolution)) {
 				bestSolution = s;
-				bestFitness = f;
 			}
 		}
 	}
@@ -83,11 +77,10 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private void determineProbabilities() {
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
-			final Fitness f = s.evaluate();
 			int numWins = 0;
 			for (int j = 0; j < 10; j++) {
 				final InfrastructureModel s2 = population[random.nextInt(population.length)];
-				if (f.isBetterThan(s2.evaluate()))
+				if (s.isBetterThan(s2))
 					numWins++;
 			}
 			final double prob = (2.0 + numWins) / 12;
@@ -106,7 +99,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private void mutateAndCheck(final int j) {
 		final InfrastructureModel s1 = population[j];
 		final InfrastructureModel s2 = s1.mutate(mutationProb);
-		if (s2.evaluate().isBetterThan(s1.evaluate())) {
+		if (s2.isBetterThan(s1)) {
 			population[j]=s2;
 			numTrials[j]=0;
 			improved = true;

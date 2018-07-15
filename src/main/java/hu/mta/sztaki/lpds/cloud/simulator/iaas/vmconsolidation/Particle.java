@@ -18,7 +18,14 @@ public class Particle extends InfrastructureModel {
 	private ArithmeticVector velocity;		// the actual velocity : in which direction shall the solution go?
 	private ArithmeticVector location;		// the actual location : possible solution
 
-	private Fitness personalBest;	// the personal best Fitness so far
+	/**
+	 * Total amount of PM overloads, aggregated over all PMs and all resource types
+	 */
+	protected double bestTotalOverAllocated;
+	/** Number of PMs that are on */
+	protected int bestNrActivePms;
+	/** Number of migrations necessary from original placement of the VMs */
+	protected int bestNrMigrations;
 	private ArithmeticVector personalBestLocation;	// the personal best location so far
 	
 	/**
@@ -85,7 +92,7 @@ public class Particle extends InfrastructureModel {
 			}
 			else {
 				// pms are not the same
-				fitness.nrMigrations++;
+				nrMigrations++;
 				mappedPm.migrateVM(items[i], locPm);
 			}
 		}
@@ -120,15 +127,6 @@ public class Particle extends InfrastructureModel {
 	}
 
 	/**
-	 * Get the current fitness values.
-	 * 
-	 * @return The Fitness-object belonging to this particle.
-	 */
-	public Fitness evaluateFitnessFunction() {
-		return super.evaluate();
-	}
-
-	/**
 	 * Getter for the number of this particle.
 	 * 
 	 * @return The number of this particle.
@@ -137,22 +135,14 @@ public class Particle extends InfrastructureModel {
 		return number;
 	}
 
-	/**
-	 * Getter for the fitness of this particle.
-	 * 
-	 * @return The fitness of this particle.
-	 */
-	public Fitness getPBest() {
-		return this.personalBest;
+	public boolean improvedOnPersonal() {
+		return betterThan(totalOverAllocated, nrActivePms, nrMigrations, bestTotalOverAllocated, bestNrActivePms, bestNrMigrations);
 	}
 
-	/**
-	 * Sets the personal best fitness with the parametrized Fitness.
-	 * 
-	 * @param fitness The new Fitness.
-	 */
-	public void setPBest(Fitness fitness) {
-		this.personalBest = fitness;
+	public void savePBest() {
+		this.bestNrActivePms=this.nrActivePms;
+		this.bestNrMigrations=this.nrMigrations;
+		this.bestTotalOverAllocated=this.totalOverAllocated;
 	}
 
 	/**
@@ -230,8 +220,8 @@ public class Particle extends InfrastructureModel {
 	public String toString() {
 		String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") 
 			+ "Velocity: " + this.getVelocity() + System.getProperty("line.separator") 
-			+ "FitnessValue: " + this.evaluateFitnessFunction() + ", PersonalBestFitness: " 
-			+ this.getPBest() + System.getProperty("line.separator")
+			//+ "FitnessValue: " + this.evaluateFitnessFunction() + ", PersonalBestFitness: " 
+//			+ this.getPBest() + System.getProperty("line.separator")
 			+ "PersonalBestLocation: " + this.getPBestLocation() + System.getProperty("line.separator");
 	
 		return erg;

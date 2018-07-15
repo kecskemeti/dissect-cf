@@ -22,8 +22,17 @@ public class InfrastructureModel {
 	protected ModelPM[] bins;
 	/** List of all available items */
 	protected ModelVM[] items;
-	/** Fitness of the solution */
-	protected Fitness fitness;
+
+	// Fitness of the solution...
+	/**
+	 * Total amount of PM overloads, aggregated over all PMs and all resource types
+	 */
+	protected double totalOverAllocated;
+	/** Number of PMs that are on */
+	protected int nrActivePms;
+	/** Number of migrations necessary from original placement of the VMs */
+	protected int nrMigrations;
+	// Fitness ends
 
 	final private static Comparator<ModelVM> mvmComp = new Comparator<ModelVM>() {
 		@Override
@@ -60,7 +69,7 @@ public class InfrastructureModel {
 	 */
 	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
 		this(base);
-		fitness.nrMigrations = 0;
+		nrMigrations = 0;
 		if (!original) {
 			for (final ModelVM vm : items) {
 				updateMapping(vm, bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
@@ -80,7 +89,6 @@ public class InfrastructureModel {
 			mvms.addAll(bins[i].getVMs());
 		}
 		convItemsArr(mvms);
-		fitness = new Fitness();
 	}
 
 	private void convItemsArr(final List<ModelVM> mvms) {
@@ -118,7 +126,6 @@ public class InfrastructureModel {
 
 		bins = pminit.toArray(ModelPM.mpmArrSample);
 		convItemsArr(vminit);
-		fitness = new Fitness();
 		countActivePmsAndOverloads();
 	}
 
@@ -127,16 +134,16 @@ public class InfrastructureModel {
 	 * fitness.nrActivePms and fitness.totalOverAllocated are correct
 	 */
 	protected void countActivePmsAndOverloads() {
-		fitness.nrActivePms = 0;
-		fitness.totalOverAllocated = 0;
+		nrActivePms = 0;
+		totalOverAllocated = 0;
 		for (final ModelPM pm : bins) {
 			if (pm.isHostingVMs()) {
-				fitness.nrActivePms++;
+				nrActivePms++;
 				final ResourceConstraints ut = pm.getUpperThreshold();
 				if (pm.consumed.getTotalProcessingPower() > ut.getRequiredMemory())
-					fitness.totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
+					totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
 				if (pm.consumed.getRequiredMemory() > ut.getRequiredMemory())
-					fitness.totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
+					totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
 			}
 		}
 	}
@@ -144,7 +151,7 @@ public class InfrastructureModel {
 	private void updateMapping(final ModelVM v, final ModelPM p) {
 		v.gethostPM().migrateVM(v, p);
 		if (p != v.basedetails.initialHost) {
-			fitness.nrMigrations++;
+			nrMigrations++;
 		}
 	}
 
@@ -191,7 +198,7 @@ public class InfrastructureModel {
 				targetPm = vm.prevPM;
 			targetPm.addVM(vm);
 			if (targetPm != vm.basedetails.initialHost)
-				fitness.nrMigrations++;
+				nrMigrations++;
 		}
 	}
 
@@ -243,7 +250,7 @@ public class InfrastructureModel {
 						if (target.isMigrationPossible(vm)) {
 							source.migrateVM(vm, target);
 							if (target.hashCode() != vm.basedetails.initialHost.hashCode()) {
-								fitness.nrMigrations++;
+								nrMigrations++;
 							}
 							alreadyMoved.add(vm);
 
@@ -270,13 +277,6 @@ public class InfrastructureModel {
 				}
 			}
 		} while (didMove);
-	}
-
-	/**
-	 * Get the fitness value belonging to this solution.
-	 */
-	public Fitness evaluate() {
-		return fitness;
 	}
 
 	interface GenHelper {
@@ -341,6 +341,28 @@ public class InfrastructureModel {
 	}
 
 	/**
+	 * Decides if this fitness value is better than the other. Note that this
+	 * relation is not a total order: it is possible that from two fitness values,
+	 * no one is better than the other.
+	 * 
+	 * @param other Another fitness value
+	 * @return true if this is better than other
+	 */
+	boolean isBetterThan(InfrastructureModel other) {
+		return betterThan(this.totalOverAllocated, this.nrActivePms, this.nrMigrations, other.totalOverAllocated, other.nrActivePms, other.nrMigrations);
+	}
+
+	protected static final boolean betterThan(double oA1, int nAPM1, int nMg1, double oA2, int nAPM2, int nMg2) {
+		// The primary objective is the total overload. If there is a clear
+		// difference (>1%) in that, this decides which is better.
+		// If there is no significant difference in the total overload, then
+		// the number of active PMs decides.
+		// If there is no significant difference in the total overload, nor
+		// in the number of active PMs, then the number of migrations decides.
+		return oA1 < oA2 * 0.99 || (oA2 >= oA1 * 0.99 && (nAPM1 < nAPM2 || (nAPM2 >= nAPM1 && nMg1 < nMg2)));
+	}
+
+	/**
 	 * String representation of both the mapping and the fitness of the given
 	 * solution.
 	 */
@@ -354,7 +376,8 @@ public class InfrastructureModel {
 			result.append(vm.hashCode()).append("->").append(vm.gethostPM().hashCode());
 			first = false;
 		}
-		result.append("),f=").append(fitness.toString()).append(']');
+		result.append("),f=").append("(").append(totalOverAllocated).append(",").append(nrActivePms).append(",")
+				.append(nrMigrations).append(")").append(']');
 		return result.toString();
 	}
 }

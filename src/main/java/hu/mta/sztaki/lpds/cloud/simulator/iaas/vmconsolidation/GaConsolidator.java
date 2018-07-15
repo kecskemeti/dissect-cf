@@ -22,8 +22,6 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	private int nrCrossovers;
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
-	/** Fitness of the best solution found so far */
-	private Fitness bestFitness;
 	/**
 	 * True if at least one individual has improved during the current generation
 	 */
@@ -47,13 +45,10 @@ public class GaConsolidator extends IM_ML_Consolidator {
 		final int i1 = random.nextInt(population.length);
 		final int i2 = random.nextInt(population.length);
 		final InfrastructureModel s3 = population[i1].recombinate(population[i2]);
-		final Fitness f1 = population[i1].evaluate();
-		final Fitness f2 = population[i2].evaluate();
-		final Fitness f3 = s3.evaluate();
-		if (f3.isBetterThan(f1)) {
+		if (s3.isBetterThan(population[i1])) {
 			population[i1] = s3;
 			improved = true;
-		} else if (f3.isBetterThan(f2)) {
+		} else if (s3.isBetterThan(population[i2])) {
 			population[i2] = s3;
 			improved = true;
 		}
@@ -67,12 +62,9 @@ public class GaConsolidator extends IM_ML_Consolidator {
 		// Determine "best" solution (i.e. a solution, compared to which there is no
 		// better one)
 		bestSolution = population[0];
-		bestFitness = bestSolution.evaluate();
 		for (int i = 1; i < population.length; i++) {
-			final Fitness fitness = population[i].evaluate();
-			if (fitness.isBetterThan(bestFitness)) {
+			if (population[i].isBetterThan(bestSolution)) {
 				bestSolution = population[i];
-				bestFitness = fitness;
 			}
 		}
 		// Implement solution in the model
@@ -105,7 +97,7 @@ public class GaConsolidator extends IM_ML_Consolidator {
 			for (int i = 0; i < population.length; i++) {
 				final InfrastructureModel parent = population[i];
 				final InfrastructureModel child = parent.mutate(mutationProb);
-				if (child.evaluate().isBetterThan(parent.evaluate())) {
+				if (child.isBetterThan(parent)) {
 					population[i] = child;
 					improved = true;
 				}
@@ -136,10 +128,6 @@ public class GaConsolidator extends IM_ML_Consolidator {
 			first = false;
 		}
 		return result;
-	}
-
-	public Fitness getBestFitness() {
-		return bestFitness;
 	}
 
 	public InfrastructureModel getBestSolution() {

@@ -26,7 +26,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	private final double w = 0.6;
 	
 	/** the best fitness values so far */
-	private Fitness globalBest;
+	private Particle globalBest;
 	
 	/** the best fitness values so far */
 	private ArithmeticVector globalBestLocation;
@@ -98,13 +98,12 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 				//p.evaluateFitnessFunction();	
 				
 				if(iterations == 0) {
-					p.setPBest(p.evaluateFitnessFunction());
+					p.savePBest();;
 					p.setPBestLocation(p.getLocation());
 				}				
-				
-				//the aim is to minimize the function
-				if(p.evaluateFitnessFunction().isBetterThan(p.getPBest())) {
-					p.setPBest(p.evaluateFitnessFunction());
+				else if(p.improvedOnPersonal()) {
+					//the aim is to minimize the function
+					p.savePBest();
 					p.setPBestLocation(p.getLocation());
 				}
 				//Logger.getGlobal().info("Iteration " + t + ", Particle " + p.getNumber() + ", " + p.toString());
@@ -115,8 +114,8 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 			//Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in Iteration " + t);
 			
 			// set the new global best fitness / location
-			if(iterations == 0 || population[bestParticleIndex].evaluateFitnessFunction().isBetterThan(globalBest)) {
-				globalBest = population[bestParticleIndex].evaluateFitnessFunction();
+			if(iterations == 0 || population[bestParticleIndex].isBetterThan(globalBest)) {
+				globalBest = population[bestParticleIndex];
 				globalBestLocation = population[bestParticleIndex].getLocation();		
 			}
 			
@@ -200,12 +199,10 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 * @return The position where the value is in the vector.
 	 */
 	private int getMinPos() {		
-		Fitness minValue = population[0].evaluateFitnessFunction();
 		int pos = 0;
 		
-		for(int i = 0; i < population.length; i++) {
-			if(population[i].evaluateFitnessFunction().isBetterThan(minValue)) {
-				minValue = population[i].evaluateFitnessFunction();
+		for(int i = 1; i < population.length; i++) {
+			if(population[i].isBetterThan(population[pos])) {
 				pos = i;
 			}
 		}		
