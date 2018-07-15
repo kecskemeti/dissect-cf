@@ -22,7 +22,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraint
 public class ModelPM {
 	public static final ModelPM[] mpmArrSample = new ModelPM[0];
 
-	private final List<ModelVM> vmList = new ArrayList<>();
+	private final List<ModelVM> vmList;
 
 	private final AlterableResourceConstraints consumedResources;
 	private final AlterableResourceConstraints freeResources;
@@ -65,6 +65,7 @@ public class ModelPM {
 			}
 		}
 
+		vmList=new ArrayList<>(pm.publicVms.size());
 		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
 		freeResources = new AlterableResourceConstraints(pm.getCapacities());
 		consumed = new UnalterableConstraintsPropagator(consumedResources);
@@ -76,6 +77,7 @@ public class ModelPM {
 
 	public ModelPM(final ModelPM toCopy) {
 		final int ll = toCopy.vmList.size();
+		this.vmList=new ArrayList<>(ll);
 		for (int i = 0; i < ll; i++) {
 			this.vmList.add(new ModelVM(toCopy.vmList.get(i)));
 		}
