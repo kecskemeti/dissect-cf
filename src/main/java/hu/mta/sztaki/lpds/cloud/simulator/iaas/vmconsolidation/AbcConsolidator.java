@@ -157,20 +157,15 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			}
 			// onlooker bees phase
 			determineProbabilities();
-			int j = 0;
-			int t = 0;
-			while (t < population.length) {
-				// Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
-				final int currJ = j++ % population.length;
-				if (random.nextDouble() < probabilities[currJ]) {
-					t++;
-					mutateAndCheck(currJ);
+			for(int j=0;j<population.length;j++) {
+				if (random.nextDouble() < probabilities[j]) {
+					mutateAndCheck(j);
 				}
 			}
 			// scout bee phase
 			int maxTrials = -1;
 			int maxTrialsIndex = 0;
-			for (j = 0; j < population.length; j++) {
+			for (int j = 0; j < population.length; j++) {
 				if (numTrials[j] > maxTrials) {
 					maxTrialsIndex = j;
 					maxTrials = numTrials[j];
