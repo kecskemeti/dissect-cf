@@ -24,21 +24,12 @@ public class Fitness {
 	boolean isBetterThan(Fitness other) {
 		//The primary objective is the total overload. If there is a clear
 		//difference (>1%) in that, this decides which is better.
-		if(this.totalOverAllocated<other.totalOverAllocated*0.99)
-			return true;
-		if(other.totalOverAllocated<this.totalOverAllocated*0.99)
-			return false;
 		//If there is no significant difference in the total overload, then
 		//the number of active PMs decides.
-		if(this.nrActivePms<other.nrActivePms)
-			return true;
-		if(other.nrActivePms<this.nrActivePms)
-			return false;
 		//If there is no significant difference in the total overload, nor
 		//in the number of active PMs, then the number of migrations decides.
-		if(this.nrMigrations<other.nrMigrations)
-			return true;
-		return false;
+		return this.totalOverAllocated<other.totalOverAllocated*0.99 || (
+				other.totalOverAllocated>=this.totalOverAllocated*0.99&&(this.nrActivePms<other.nrActivePms||(other.nrActivePms>=this.nrActivePms&&this.nrMigrations<other.nrMigrations)));
 	}
 
 	public String toString() {
