@@ -84,7 +84,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		Arrays.fill(testcounts, 0);
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
-			int maxj = Math.max(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
+			int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
 			for (int j = 0; j < maxj; j++) {
 				int popidx;
 				int k;
