@@ -1,7 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -11,6 +10,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author Zoltan Mann
  */
 public class AbcConsolidator extends IM_ML_Consolidator {
+	public static final int probTestCount=10;
 
 	/** Maximum number of trials for improvement before a solution is abandoned */
 	private int limitTrials;
@@ -24,7 +24,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
 	
-	private ArrayList<Integer> probTestIndexes;
+	private int[] probTestIndexes=new int[probTestCount];
 
 	/** True if at least one solution has improved during the current iteration */
 	private boolean improved;
@@ -78,12 +78,18 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * 10 will be used as probability.
 	 */
 	private void determineProbabilities() {
-		Collections.shuffle(probTestIndexes,MachineLearningConsolidator.random);
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
 			int numWins = 0;
 			for (int j = 0; j < 10; j++) {
-				final InfrastructureModel s2 = population[probTestIndexes.get(i)];
+				int popidx;
+				int k;
+				do {
+				popidx=random.nextInt(population.length);
+				for(k=0;k<j&&probTestIndexes[k]!=popidx;k++);
+				} while(k!=j);
+				probTestIndexes[j]=popidx;
+				final InfrastructureModel s2 = population[popidx];
 				if (s.isBetterThan(s2))
 					numWins++;
 			}
@@ -121,8 +127,6 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		super.processProps();
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
 		numTrials=new int[population.length];
-		probTestIndexes=new ArrayList<>(population.length);
-		for(int i =0;i<population.length;i++) probTestIndexes.add(i);
 	}
 
 	/**
