@@ -190,7 +190,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	private void migrateOverAllocatedPM(ModelPM source, InfrastructureModel sol) {
 		// Logger.getGlobal().info("source="+source.toString());
 		while (!isNothingToChange(source) && source.isOverAllocated()) {
-			ModelVM actual = source.getVM(0); // now taking the first VM on this PM and try to migrate it to a target
+			ModelVM actual = source.getVMs().get(0); // now taking the first VM on this PM and try to migrate it to a target
 			ModelPM pm = getMigPm(actual, sol);
 			// if there is no PM to host the actual VM of the source PM, change the state
 			// depending on its acutal state

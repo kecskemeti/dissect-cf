@@ -1,6 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -12,7 +13,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmSched
  */
 public class StartAction extends Action implements PhysicalMachine.StateChangeListener {
 
-	//Reference to the model of the PM, which needs to start
+	// Reference to the model of the PM, which needs to start
 	ModelPM pmToStart;
 
 	/** PM scheduler */
@@ -20,7 +21,8 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 
 	/**
 	 * Constructor of an action to start a PM.
-	 * @param id The ID of this action.
+	 * 
+	 * @param id        The ID of this action.
 	 * @param pmToStart The modelled PM respresenting the PM which shall start.
 	 */
 	public StartAction(int id, ModelPM pmToStart, IControllablePmScheduler pmScheduler) {
@@ -33,7 +35,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 * 
 	 * @return The modelled PM respresenting the PM which shall start.
 	 */
-	public ModelPM getPmToStart(){
+	public ModelPM getPmToStart() {
 		return pmToStart;
 	}
 
@@ -51,7 +53,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 
 	@Override
 	public String toString() {
-		return "Action: "+getType()+"  :"+getPmToStart().toShortString();
+		return "Action: " + getType() + "  :" + getPmToStart().toShortString();
 	}
 
 	/**
@@ -59,20 +61,21 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 */
 	@Override
 	public void execute() {
-		Logger.getGlobal().info("Executing at "+Timed.getFireCount()+": "+toString());
+		if (Logger.getGlobal().isLoggable(Level.INFO))
+			Logger.getGlobal().info("Executing at " + Timed.getFireCount() + ": " + toString());
 		PhysicalMachine pm = this.getPmToStart().getPM();
-		pm.subscribeStateChangeEvents(this);		//observe the PM before turning it on
+		pm.subscribeStateChangeEvents(this); // observe the PM before turning it on
 		pmScheduler.switchOn(pm);
 	}
 
 	/**
-	 * The stateChanged-logic, if the PM which has been started changes its state to RUNNING,
-	 * we can stop observing it.
+	 * The stateChanged-logic, if the PM which has been started changes its state to
+	 * RUNNING, we can stop observing it.
 	 */
 	@Override
 	public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
 			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
-		if(newState.equals(PhysicalMachine.State.RUNNING)){
+		if (newState.equals(PhysicalMachine.State.RUNNING)) {
 			pm.unsubscribeStateChangeEvents(this);
 			finished();
 		}

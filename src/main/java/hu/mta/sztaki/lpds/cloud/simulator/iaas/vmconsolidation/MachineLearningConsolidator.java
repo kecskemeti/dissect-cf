@@ -24,6 +24,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.Random;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -132,8 +133,10 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			firstFitCreations = numberOfCreations/4;
 			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
 		}
-		Logger.getGlobal().info("Creations: " + numberOfCreations + ", random: " + randomCreations + ", first fit: "
+		if(Logger.getGlobal().isLoggable(Level.INFO)) {
+			Logger.getGlobal().info("Creations: " + numberOfCreations + ", random: " + randomCreations + ", first fit: "
 				+ firstFitCreations + ", unchanged: " + unchangedCreations);
+		}
 	}
 
 }

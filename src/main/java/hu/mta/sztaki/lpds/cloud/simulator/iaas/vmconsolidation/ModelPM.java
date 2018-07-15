@@ -216,20 +216,6 @@ public class ModelPM {
 	}
 
 	/**
-	 * Getter for a specific VM.
-	 * 
-	 * @param position The desired position where the VM is.
-	 * 
-	 * @return The VM on this position, null if there is none.
-	 */
-	public ModelVM getVM(final int position) {
-		if (vmList.size() <= position) {
-			return null;
-		} else
-			return vmList.get(position);
-	}
-
-	/**
 	 * Getter.
 	 * 
 	 * @return The list which contains all actual running vms on this PM.

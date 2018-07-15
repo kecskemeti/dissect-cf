@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -22,22 +23,22 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmSched
  *         consolidation. The main idea is to make an abstract model out of the
  *         given PMs and its VMs with the original properties and let an
  *         algorithm (optimize) do the new placement of the VMs in order to save
- *         power by shutting down unused PMs. 
- *         
- *         After the optimization is done the differences of the ModelPMs / ModelVMs
- *         are calculated and the necessary respective changes are saved inside Action-
- *         Classes. Afterwards a graph is created with an ordered list of all actions.
- *         At last the graph is being executed and the changes are made to the non-
- *         abstract IaaS-System.
+ *         power by shutting down unused PMs.
+ * 
+ *         After the optimization is done the differences of the ModelPMs /
+ *         ModelVMs are calculated and the necessary respective changes are
+ *         saved inside Action- Classes. Afterwards a graph is created with an
+ *         ordered list of all actions. At last the graph is being executed and
+ *         the changes are made to the non- abstract IaaS-System.
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
-	
+
 	private InfrastructureModel baseSolution;
-	
+
 	protected double lowerThreshold, upperThreshold;
 
 	protected Properties props;
-	
+
 	public static boolean doingConsolidation = false;
 
 	/**
@@ -45,10 +46,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * the upper threshold, a value for the lower threshold and a variable which
 	 * says how often the consolidation shall occur.
 	 * 
-	 * @param toConsolidate
-	 *            The used IaaSService.
-	 * @param consFreq
-	 *            This value determines, how often the consolidation should run.
+	 * @param toConsolidate The used IaaSService.
+	 * @param consFreq      This value determines, how often the consolidation
+	 *                      should run.
 	 */
 	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
 		super(toConsolidate, consFreq);
@@ -63,24 +63,27 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * This is the method where the order for consolidation is defined. Before the 
-	 * consolidation starts, we create a model of the current situation of the IaaS. 
-	 * Then the consolidation-algorithm is invoked. After the optimization is done 
-	 * the differences of the ModelPMs / ModelVMs are calculated and the necessary 
-	 * respective changes are saved inside Action-Classes. Afterwards a graph is 
-	 * created with an ordered list of all actions. At last the graph is being 
+	 * This is the method where the order for consolidation is defined. Before the
+	 * consolidation starts, we create a model of the current situation of the IaaS.
+	 * Then the consolidation-algorithm is invoked. After the optimization is done
+	 * the differences of the ModelPMs / ModelVMs are calculated and the necessary
+	 * respective changes are saved inside Action-Classes. Afterwards a graph is
+	 * created with an ordered list of all actions. At last the graph is being
 	 * executed and the changes are made to the non-abstract IaaS-System.
 	 * 
-	 * @param pmList
-	 *            All PMs which are currently registered in the IaaS service.
+	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
 	protected void doConsolidation(PhysicalMachine[] pmList) {
 		doingConsolidation = true;
-		baseSolution=optimize(new InfrastructureModel(pmList, !(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
+		baseSolution = optimize(new InfrastructureModel(pmList,
+				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
 		adaptPmStates();
-		Logger.getGlobal().info("Optimized model: " + toString());
+		final boolean infoenabled = Logger.getGlobal().isLoggable(Level.INFO);
+		if (infoenabled)
+			Logger.getGlobal().info("Optimized model: " + toString());
 		final List<Action> actions = modelDiff();
-		Logger.getGlobal().info(actionsToString(actions));
+		if (infoenabled)
+			Logger.getGlobal().info(actionsToString(actions));
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
 		// printGraph(actions);
@@ -122,20 +125,21 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @return The list with all the actions.
 	 */
 	private List<Action> modelDiff() {
-		//If we have an externally controllable PM scheduler, then we also create start-up and shut-down actions, otherwise only migration actions
-		IControllablePmScheduler controllablePmScheduler=null;
-		if(toConsolidate.pmcontroller instanceof IControllablePmScheduler) {
-			controllablePmScheduler=(IControllablePmScheduler) toConsolidate.pmcontroller;
+		// If we have an externally controllable PM scheduler, then we also create
+		// start-up and shut-down actions, otherwise only migration actions
+		IControllablePmScheduler controllablePmScheduler = null;
+		if (toConsolidate.pmcontroller instanceof IControllablePmScheduler) {
+			controllablePmScheduler = (IControllablePmScheduler) toConsolidate.pmcontroller;
 		}
 		List<Action> actions = new ArrayList<>();
 		int i = 0;
 		for (ModelPM bin : baseSolution.bins) {
-			if(controllablePmScheduler!=null) {
+			if (controllablePmScheduler != null) {
 				if (bin.isOn()) {
-					if(!bin.getPM().isRunning())
+					if (!bin.getPM().isRunning())
 						actions.add(new StartAction(i++, bin, controllablePmScheduler));
 				} else {
-					if(bin.getPM().isRunning()) 
+					if (bin.getPM().isRunning())
 						actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
 				}
 			}
@@ -152,9 +156,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * Determines the dependencies between the actions.
 	 * 
-	 * @param actions
-	 *            The action-list with all changes that have to be done inside the
-	 *            simulator.
+	 * @param actions The action-list with all changes that have to be done inside
+	 *                the simulator.
 	 */
 	private void createGraph(List<Action> actions) {
 		for (Action action : actions) {
@@ -166,9 +169,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * Checks if there are any predecessors of the actual action. If not, its
 	 * execute()-method is called.
 	 * 
-	 * @param actions
-	 *            The action-list with all changes that have to be done inside the
-	 *            simulator.
+	 * @param actions The action-list with all changes that have to be done inside
+	 *                the simulator.
 	 */
 	private void performActions(List<Action> actions) {
 		for (Action action : actions) {
@@ -181,9 +183,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * Creates a graph with the toString()-method of each action.
 	 * 
-	 * @param actions
-	 *            The action-list with all changes that have to be done inside the
-	 *            simulator.
+	 * @param actions The action-list with all changes that have to be done inside
+	 *                the simulator.
 	 */
 	public void printGraph(List<Action> actions) {
 		String s = "";
@@ -192,7 +193,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			for (Action pred : action.getPredecessors())
 				s = s + "    pred: " + pred.toString() + "\n";
 		}
-		Logger.getGlobal().info(s);
+		if (Logger.getGlobal().isLoggable(Level.INFO))
+			Logger.getGlobal().info(s);
 	}
 
 	/**
@@ -202,7 +204,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		String result = "";
 		boolean first = true;
 		for (ModelPM bin : baseSolution.bins) {
-			if(!bin.isHostingVMs())
+			if (!bin.isHostingVMs())
 				continue;
 			if (!first)
 				result = result + "\n";
@@ -259,7 +261,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		shutDownEmptyPMs();
 		switchOnNonEmptyPMs();
 	}
-	
+
 	/**
 	 * Getter for the upper Threshold of each PM.
 	 * 
