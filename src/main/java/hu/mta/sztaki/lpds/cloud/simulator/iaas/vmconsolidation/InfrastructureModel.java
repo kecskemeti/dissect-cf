@@ -6,10 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
@@ -123,10 +120,6 @@ public class InfrastructureModel {
 		convItemsArr(vminit);
 		fitness = new Fitness();
 		countActivePmsAndOverloads();
-
-		if(Logger.getGlobal().isLoggable(Level.INFO)) {
-			Logger.getGlobal().info("Instantiated model at " + Timed.getFireCount() + ": " + toString());
-		}
 	}
 
 	/**

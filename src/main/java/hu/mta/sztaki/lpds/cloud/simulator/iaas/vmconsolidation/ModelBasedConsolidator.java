@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -78,12 +76,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		baseSolution = optimize(new InfrastructureModel(pmList,
 				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
 		adaptPmStates();
-		final boolean infoenabled = Logger.getGlobal().isLoggable(Level.INFO);
-		if (infoenabled)
-			Logger.getGlobal().info("Optimized model: " + toString());
 		final List<Action> actions = modelDiff();
-		if (infoenabled)
-			Logger.getGlobal().info(actionsToString(actions));
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
 		// printGraph(actions);
@@ -193,8 +186,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			for (Action pred : action.getPredecessors())
 				s = s + "    pred: " + pred.toString() + "\n";
 		}
-		if (Logger.getGlobal().isLoggable(Level.INFO))
-			Logger.getGlobal().info(s);
 	}
 
 	/**

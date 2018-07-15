@@ -1,7 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.HashSet;
-import java.util.logging.Logger;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
@@ -149,7 +148,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 				}
 			}
 		}
-		Logger.getGlobal().warning("No appropriate PM found as migPM");
 		return null;
 	}
 
@@ -170,7 +168,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 				return pm;
 			}
 		}
-		Logger.getGlobal().warning("No appropriate PM found");
 		return null;
 	}
 

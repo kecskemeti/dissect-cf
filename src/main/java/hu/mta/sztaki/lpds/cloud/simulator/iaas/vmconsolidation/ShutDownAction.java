@@ -1,11 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
-import java.util.logging.Level;
-//import java.util.logging.Logger;
-import java.util.logging.Logger;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 
@@ -70,12 +66,8 @@ public class ShutDownAction extends Action {
 	 */
 	@Override
 	public void execute() {
-		if (Logger.getGlobal().isLoggable(Level.INFO))
-			Logger.getGlobal().info("Executing at " + Timed.getFireCount() + ": " + toString());
 		PhysicalMachine pm = this.getPmToShutDown().getPM();
-		if (pm.isHostingVMs())
-			Logger.getGlobal().info("PM not empty -> nothing to do");
-		else
+		if (!pm.isHostingVMs())
 			pmScheduler.switchOff(pm);
 	}
 

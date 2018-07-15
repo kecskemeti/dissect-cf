@@ -1,11 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
-import java.util.logging.Level;
-//import java.util.logging.Logger;
-import java.util.logging.Logger;
 
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
@@ -109,30 +105,16 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 */
 	@Override
 	public void execute() {
-		boolean infoEnabled = Logger.getGlobal().isLoggable(Level.INFO);
-		if (infoEnabled)
-			Logger.getGlobal().info("Executing at " + Timed.getFireCount() + ": " + toString() + ", hash="
-					+ Integer.toHexString(System.identityHashCode(this)));
 		if (!source.getPM().publicVms.contains(mvm.basedetails.vm)) {
-			if (infoEnabled)
-				Logger.getGlobal().info("VM is not on the source PM anymore -> there is nothing to do");
 			finished();
 		} else if (mvm.basedetails.vm.getMemSize() > target.getPM().freeCapacities.getRequiredMemory()
 				|| mvm.basedetails.vm.getPerTickProcessingPower() > target.getPM().freeCapacities
 						.getTotalProcessingPower()) {
-			if (infoEnabled)
-				Logger.getGlobal()
-						.info("Target PM does not have sufficient capacity anymore -> there is nothing to do");
 			finished();
 		} else if (mvm.basedetails.vm.getState() != VirtualMachine.State.RUNNING
 				&& mvm.basedetails.vm.getState() != VirtualMachine.State.SUSPENDED) {
-			if (infoEnabled)
-				Logger.getGlobal().info("State of the VM inappropriate for migration (" + mvm.basedetails.vm.getState()
-						+ ") -> there is nothing to do");
 			finished();
 		} else if (!(target.getPM().isRunning())) {
-			if (infoEnabled)
-				Logger.getGlobal().info("Target PM not running -> there is nothing to do");
 			finished();
 		} else {
 			mvm.basedetails.vm.subscribeStateChange(this); // observe the VM which shall be migrated

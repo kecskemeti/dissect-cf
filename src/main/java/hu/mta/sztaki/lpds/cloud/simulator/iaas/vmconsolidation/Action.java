@@ -2,10 +2,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 
 /**
  * This abstract class stores the actions that need to be done inside the simulator.
@@ -93,9 +89,6 @@ public abstract class Action{
 	 * This method is to be called when the action has been finished.
 	 */
 	public void finished() {
-		if(Logger.getGlobal().isLoggable(Level.INFO)) {
-			Logger.getGlobal().info("Finished at "+Timed.getFireCount()+": "+toString());
-		}
 		for(Action a : successors) {
 			a.removePredecessor(this);
 			if(a.getPredecessors().isEmpty())
