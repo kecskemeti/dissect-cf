@@ -65,19 +65,18 @@ public class ModelPM {
 			}
 		}
 
-		vmList=new ArrayList<>(pm.publicVms.size());
+		vmList = new ArrayList<>(pm.publicVms.size());
 		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
 		freeResources = new AlterableResourceConstraints(pm.getCapacities());
 		consumed = new UnalterableConstraintsPropagator(consumedResources);
 		free = new UnalterableConstraintsPropagator(freeResources);
 		reserved = new AlterableResourceConstraints(ConstantConstraints.noResources);
-		checkAllocation();
 		// Logger.getGlobal().info("Created PM: "+toString());
 	}
 
 	public ModelPM(final ModelPM toCopy) {
 		final int ll = toCopy.vmList.size();
-		this.vmList=new ArrayList<>(ll);
+		this.vmList = new ArrayList<>(ll);
 		for (int i = 0; i < ll; i++) {
 			this.vmList.add(new ModelVM(toCopy.vmList.get(i)));
 		}
@@ -127,11 +126,12 @@ public class ModelPM {
 	 * @param vm The VM which is going to be put on this PM.
 	 */
 	public boolean addVM(final ModelVM vm) {
+		if (state == State.EMPTY_RUNNING)
+			state = State.NORMAL_RUNNING;
 		vmList.add(vm);
 		final ResourceConstraints rc = vm.getResources();
 		consumedResources.singleAdd(rc);
 		freeResources.subtract(rc);
-		checkAllocation();
 		vm.sethostPM(this);
 
 		// adding was succesful
@@ -149,9 +149,10 @@ public class ModelPM {
 		final ResourceConstraints rc = vm.getResources();
 		consumedResources.subtract(rc);
 		freeResources.singleAdd(rc);
-		checkAllocation();
 		vm.sethostPM(null);
 		vm.prevPM = this;
+		if (isHostingVMs())
+			state = State.EMPTY_RUNNING;
 
 		// removing was succesful
 		return true;
@@ -226,29 +227,8 @@ public class ModelPM {
 		/**
 		 * allocation is between the upper and lower threshold, pm is running
 		 */
-		NORMAL_RUNNING,
+		NORMAL_RUNNING
 
-		/**
-		 * allocation is lower than the lower threshold, pm is running
-		 */
-		UNDERALLOCATED_RUNNING,
-
-		/**
-		 * allocation is higher than the upper threshold, pm is running
-		 */
-		OVERALLOCATED_RUNNING,
-
-		/**
-		 * allocation cannot be changed in any way and no migrations are possible
-		 * anymore.
-		 */
-		UNCHANGEABLE_OVERALLOCATED,
-
-		/**
-		 * allocation cannot be changed in any way and no migrations are possible
-		 * anymore.
-		 */
-		UNCHANGEABLE_UNDERALLOCATED
 	};
 
 	/**
@@ -277,24 +257,6 @@ public class ModelPM {
 	}
 
 	/**
-	 * In this method the status of this pm is considered. For that, the methods
-	 * underAllocated() and overAllocated() are written. It is recognized if the
-	 * last migration on this PM was not succesful and in case of that the state
-	 * remains unchanged.
-	 */
-	protected void checkAllocation() {
-		if (isHostingVMs()) {
-			boolean ua, oa;
-			if ((!(ua = isUnderAllocated()) || !state.equals(State.UNCHANGEABLE_UNDERALLOCATED))
-					&& (!(oa = isOverAllocated()) || !state.equals(State.UNCHANGEABLE_OVERALLOCATED))) {
-				state = ua ? State.UNDERALLOCATED_RUNNING : oa ? State.OVERALLOCATED_RUNNING : State.NORMAL_RUNNING;
-			}
-		} else {
-			state = State.EMPTY_RUNNING;
-		}
-	}
-
-	/**
 	 * Method for checking if the actual pm is overAllocated.
 	 * 
 	 * @return True if overAllocated, false otherwise.
@@ -311,17 +273,6 @@ public class ModelPM {
 	 */
 	public boolean isUnderAllocated() {
 		return consumedResources.compareTo(basedetails.lowerThrResources) == -1;
-	}
-
-	/**
-	 * Checks if the pm is in a state where nothing has to be changed.
-	 * 
-	 * @return True if the state is NORMAL_RUNNING, UNCHANGEABLE_OVERALLOCATED or
-	 *         UNCHANGEABLE_UNDERALLOCATED, false otherwise.
-	 */
-	public boolean isNothingToChange() {
-		return state == State.NORMAL_RUNNING || state == State.UNCHANGEABLE_OVERALLOCATED
-				|| state == State.UNCHANGEABLE_UNDERALLOCATED;
 	}
 
 	/**

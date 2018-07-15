@@ -25,9 +25,6 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	/** used to get a new velocity for each particle */
 	private final double w = 0.6;
 	
-	/** counter for creating particles */
-	private int particleCounter = 1; 
-
 	/** the best fitness values so far */
 	private Fitness globalBest;
 	
