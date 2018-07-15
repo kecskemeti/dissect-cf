@@ -1,6 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
@@ -10,7 +10,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author Zoltan Mann
  */
 public class AbcConsolidator extends IM_ML_Consolidator {
-	public static final int probTestCount=10;
+	public static final int probTestCount = 10;
 
 	/** Maximum number of trials for improvement before a solution is abandoned */
 	private int limitTrials;
@@ -19,12 +19,14 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private int[] numTrials;
 
 	/** Probabilities for the onlooker bees */
-	private final ArrayList<Double> probabilities;
+	private double[] probabilities;
 
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
-	
-	private int[] probTestIndexes=new int[probTestCount];
+
+	private int[] probTestIndexes = new int[probTestCount];
+	private int[] wincounts;
+	private int[] testcounts;
 
 	/** True if at least one solution has improved during the current iteration */
 	private boolean improved;
@@ -34,7 +36,6 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 */
 	public AbcConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
-		probabilities = new ArrayList<>();
 		setOmitAllocationCheck(true);
 	}
 
@@ -64,7 +65,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 
 	protected InfrastructureModel regSolution(final InfrastructureModel toReg) {
 		super.regSolution(toReg);
-		numTrials[getPopFillIndex()-1]=0;
+		numTrials[getPopFillIndex() - 1] = 0;
 		checkIfBest(toReg);
 		return toReg;
 	}
@@ -78,26 +79,32 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * 10 will be used as probability.
 	 */
 	private void determineProbabilities() {
+		Arrays.fill(wincounts, 0);
+		Arrays.fill(testcounts, 0);
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
-			int numWins = 0;
-			for (int j = 0; j < 10; j++) {
+			int maxj = probTestCount - testcounts[i] - wincounts[i];
+			for (int j = 0; j < maxj; j++) {
 				int popidx;
 				int k;
 				do {
-				popidx=random.nextInt(population.length);
-				for(k=0;k<j&&probTestIndexes[k]!=popidx;k++);
-				} while(k!=j);
-				probTestIndexes[j]=popidx;
+					// Don't test against the same item..
+					while ((popidx = random.nextInt(population.length)) == i)
+						;
+					// Don't test against something we arleady tested with before..
+					for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
+						;
+				} while (k != j);
+				probTestIndexes[j] = popidx;
 				final InfrastructureModel s2 = population[popidx];
-				if (s.isBetterThan(s2))
-					numWins++;
+				if (s.isBetterThan(s2)) {
+					wincounts[i]++;
+					testcounts[popidx]++;
+				} else {
+					wincounts[popidx]++;
+				}
 			}
-			final double prob = (2.0 + numWins) / 12;
-			if (i < probabilities.size())
-				probabilities.set(i, prob);
-			else
-				probabilities.add(prob);
+			probabilities[i] = (2.0 + wincounts[i]) / 12;
 		}
 	}
 
@@ -110,8 +117,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		final InfrastructureModel s1 = population[j];
 		final InfrastructureModel s2 = s1.mutate(mutationProb);
 		if (s2.isBetterThan(s1)) {
-			population[j]=s2;
-			numTrials[j]=0;
+			population[j] = s2;
+			numTrials[j] = 0;
 			improved = true;
 			checkIfBest(s2);
 		} else {
@@ -126,7 +133,10 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	protected void processProps() {
 		super.processProps();
 		this.limitTrials = Integer.parseInt(props.getProperty("abcLimitTrials"));
-		numTrials=new int[population.length];
+		numTrials = new int[population.length];
+		wincounts = new int[population.length];
+		testcounts = new int[population.length];
+		probabilities = new double[population.length];
 	}
 
 	/**
@@ -150,8 +160,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			int t = 0;
 			while (t < population.length) {
 				// Logger.getGlobal().info("r="+r+", prob[j]="+probabilities.get(j));
-				final int currJ=j++%population.length;
-				if (random.nextDouble() < probabilities.get(currJ)) {
+				final int currJ = j++ % population.length;
+				if (random.nextDouble() < probabilities[currJ]) {
 					t++;
 					mutateAndCheck(currJ);
 				}
@@ -167,8 +177,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			}
 			if (maxTrials >= limitTrials) {
 				final InfrastructureModel s = new InfrastructureModel(input, false, true);
-				population[maxTrialsIndex]= s;
-				numTrials[maxTrialsIndex]=0;
+				population[maxTrialsIndex] = s;
+				numTrials[maxTrialsIndex] = 0;
 				checkIfBest(s);
 			}
 			// System.err.println("ABC iteration carried out: "+iter);
