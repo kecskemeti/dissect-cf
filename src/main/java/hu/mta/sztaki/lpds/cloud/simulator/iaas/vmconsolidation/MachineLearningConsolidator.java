@@ -85,7 +85,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	}
 
 	protected void produceClonesOf(final T s0, int clonecount) {
-		while (clonecount >= 0) {
+		while (clonecount > 0) {
 			regSolution(modelFactory(s0, true, false));
 			clonecount--;
 		}

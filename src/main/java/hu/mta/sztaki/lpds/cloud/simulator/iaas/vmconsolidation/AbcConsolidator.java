@@ -10,7 +10,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
  * @author Zoltan Mann
  */
 public class AbcConsolidator extends IM_ML_Consolidator {
-	public static final int probTestCount = 10;
+	public static final int probTestCount = 15;
 	public static final double probBase = 2;
 
 	/** Maximum number of trials for improvement before a solution is abandoned */
@@ -29,15 +29,33 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private int[] wincounts;
 	private int[] testcounts;
 
-	/** True if at least one solution has improved during the current iteration */
-	private boolean improved;
+	private InfChecker currChecker;
+
+	interface InfChecker {
+		void checkBest(InfrastructureModel s);
+	}
+
+	private final InfChecker regChecker = new InfChecker() {
+		public void checkBest(final InfrastructureModel s) {
+			if (s.isBetterThan(bestSolution)) {
+				bestSolution = s;
+			}
+		}
+	};
+
+	private final InfChecker nullChecker = new InfChecker() {
+		@Override
+		public void checkBest(final InfrastructureModel s) {
+			bestSolution = s;
+			currChecker = regChecker;
+		}
+	};
 
 	/**
 	 * Creates AbcConsolidator with empty population.
 	 */
 	public AbcConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
-		setOmitAllocationCheck(true);
 	}
 
 	/**
@@ -45,13 +63,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * bestFitness are updated.
 	 */
 	private void checkIfBest(final InfrastructureModel s) {
-		if (bestSolution == null) {
-			bestSolution = s;
-		} else {
-			if (s.isBetterThan(bestSolution)) {
-				bestSolution = s;
-			}
-		}
+		currChecker.checkBest(s);
 	}
 
 	/**
@@ -60,14 +72,18 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * inside a solution.
 	 */
 	protected void initializePopulation(final InfrastructureModel input) {
-		bestSolution = null;
+		currChecker = nullChecker;
 		super.initializePopulation(input);
+	}
+
+	private void postRegTasks(int idx) {
+		numTrials[idx] = 0;
+		checkIfBest(population[idx]);
 	}
 
 	protected InfrastructureModel regSolution(final InfrastructureModel toReg) {
 		super.regSolution(toReg);
-		numTrials[getPopFillIndex() - 1] = 0;
-		checkIfBest(toReg);
+		postRegTasks(getPopFillIndex() - 1);
 		return toReg;
 	}
 
@@ -84,7 +100,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		Arrays.fill(testcounts, 0);
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
-			int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
+			final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
 			for (int j = 0; j < maxj; j++) {
 				int popidx;
 				int k;
@@ -115,13 +131,10 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		final InfrastructureModel s1 = population[j];
-		final InfrastructureModel s2 = s1.mutate(mutationProb);
-		if (s2.isBetterThan(s1)) {
-			population[j] = s2;
-			numTrials[j] = 0;
-			improved = true;
-			checkIfBest(s2);
+		final InfrastructureModel s = population[j].mutate(mutationProb);
+		if (s.isBetterThan(population[j])) {
+			population[j] = s;
+			postRegTasks(j);
 		} else {
 			numTrials[j]++;
 		}
@@ -149,7 +162,6 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// populationSize="+populationSize);
 		initializePopulation(input);
 		for (int iter = 0; iter < nrIterations; iter++) {
-			improved = false;
 			// employed bees phase
 			for (int j = 0; j < population.length; j++) {
 //				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
@@ -157,29 +169,22 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			}
 			// onlooker bees phase
 			determineProbabilities();
-			for(int j=0;j<population.length;j++) {
-				if (random.nextDouble() < probabilities[j]) {
+			final double rnd = random.nextDouble();
+			for (int j = 0; j < population.length; j++) {
+				if (rnd <= probabilities[j]) {
 					mutateAndCheck(j);
 				}
 			}
 			// scout bee phase
-			int maxTrials = -1;
-			int maxTrialsIndex = 0;
 			for (int j = 0; j < population.length; j++) {
-				if (numTrials[j] > maxTrials) {
-					maxTrialsIndex = j;
-					maxTrials = numTrials[j];
+				if (numTrials[j] >= limitTrials) {
+					population[j] = new InfrastructureModel(input, false, true);
+					numTrials[j] = 0;
+					checkIfBest(population[j]);
+					break;
 				}
 			}
-			if (maxTrials >= limitTrials) {
-				final InfrastructureModel s = new InfrastructureModel(input, false, true);
-				population[maxTrialsIndex] = s;
-				numTrials[maxTrialsIndex] = 0;
-				checkIfBest(s);
-			}
 			// System.err.println("ABC iteration carried out: "+iter);
-			if (!improved)
-				break;
 		}
 		// Implement best solution in the model
 		return bestSolution;

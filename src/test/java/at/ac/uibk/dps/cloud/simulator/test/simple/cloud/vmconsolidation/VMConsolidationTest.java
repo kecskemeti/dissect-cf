@@ -30,7 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.ConsolidationFriendl
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.AbcConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.FirstFitConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.GaConsolidator;
-//import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PsoConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PsoConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -444,64 +444,64 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	
 	// VM consolidator using a particle swarm optimization algorithm
 	
-//	@Test(timeout = 2000)
-//	public void psoUnderAllocSimpleTest() throws VMManagementException, NetworkException {
-//		testPM2.turnon();
-//		testPM3.turnon();
-//		Timed.simulateUntilLastEvent();
-//		switchOnVM(VM1, smallConstraints, testPM2, false);
-//		switchOnVM(VM2, mediumConstraints, testPM3, false);
-//		Timed.simulateUntilLastEvent();
-//
-//		//Now, both PMs contain one VM each. If we turn on the consolidator, 
-//		//we expect it to consolidate the two VMs to a single PM.
-//
-//		new PsoConsolidator(basic, 600);
-//		Timed.simulateUntil(Timed.getFireCount()+1000);
-//
-//		Assert.assertEquals(1, basic.runningMachines.size());
-//	}
+	@Test(timeout = 2000)
+	public void psoUnderAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM2.turnon();
+		testPM3.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM2, false);
+		switchOnVM(VM2, mediumConstraints, testPM3, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, both PMs contain one VM each. If we turn on the consolidator, 
+		//we expect it to consolidate the two VMs to a single PM.
+
+		new PsoConsolidator(basic, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
 	
-//	@Test(timeout = 2000)
-//	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
-//		testPM1.turnon();
-//		testPM2.turnon();
-//		testPM3.turnon();
-//		testPM4.turnon();
-//		Timed.simulateUntilLastEvent();
-//		switchOnVM(VM1, smallConstraints, testPM1, false);
-//		switchOnVM(VM2, smallConstraints, testPM2, false);
-//		switchOnVM(VM3, smallConstraints, testPM3, false);
-//		switchOnVM(VM4, smallConstraints, testPM4, false);
-//		Timed.simulateUntilLastEvent();
-//
-//		//Now, all four PMs contain one VM each. After turning on the consolidator,
-//		//there should be only one PM running, hosting all four VMs.
-//
-//		new PsoConsolidator(basic, 600);
-//		Timed.simulateUntil(Timed.getFireCount()+1000);
-//
-//		Assert.assertEquals(1, basic.runningMachines.size());
-//	}
+	@Test(timeout = 2000)
+	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		testPM2.turnon();
+		testPM3.turnon();
+		testPM4.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, smallConstraints, testPM1, false);
+		switchOnVM(VM2, smallConstraints, testPM2, false);
+		switchOnVM(VM3, smallConstraints, testPM3, false);
+		switchOnVM(VM4, smallConstraints, testPM4, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, all four PMs contain one VM each. After turning on the consolidator,
+		//there should be only one PM running, hosting all four VMs.
+
+		new PsoConsolidator(basic, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		Assert.assertEquals(1, basic.runningMachines.size());
+	}
 	
-//	@Test(timeout = 2000)
-//	public void psoOverAllocSimpleTest() throws VMManagementException, NetworkException {
-//		testPM1.turnon();
-//		Timed.simulateUntilLastEvent();
-//		switchOnVM(VM1, bigConstraints, testPM1, false);
-//		switchOnVM(VM2, mediumConstraints, testPM1, false);
-//		Timed.simulateUntilLastEvent();
-//
-//		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
-//		//we expect it to consolidate one VM to another PM.
-//
-//		PsoConsolidator pso = new PsoConsolidator(basic, 600);
-//		Timed.simulateUntil(Timed.getFireCount()+1000);
-//
-//		if(pso.getUpperThreshold() != 1.0) {
-//			Assert.assertEquals(2, basic.runningMachines.size());
-//		}		
-//	}
+	@Test(timeout = 2000)
+	public void psoOverAllocSimpleTest() throws VMManagementException, NetworkException {
+		testPM1.turnon();
+		Timed.simulateUntilLastEvent();
+		switchOnVM(VM1, bigConstraints, testPM1, false);
+		switchOnVM(VM2, mediumConstraints, testPM1, false);
+		Timed.simulateUntilLastEvent();
+
+		//Now, PM1 contains two VM, making it overAllocated. If we turn on the consolidator, 
+		//we expect it to consolidate one VM to another PM.
+
+		PsoConsolidator pso = new PsoConsolidator(basic, 600);
+		Timed.simulateUntil(Timed.getFireCount()+1000);
+
+		if(pso.getUpperThreshold() != 1.0) {
+			Assert.assertEquals(2, basic.runningMachines.size());
+		}		
+	}
 	
 	@Test(timeout = 1000)
 	public void localSearchTest() throws VMManagementException, NetworkException, InterruptedException, 

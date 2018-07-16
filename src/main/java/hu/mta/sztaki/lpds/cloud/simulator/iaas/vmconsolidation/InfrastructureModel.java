@@ -348,18 +348,18 @@ public class InfrastructureModel {
 	 * @param other Another fitness value
 	 * @return true if this is better than other
 	 */
-	boolean isBetterThan(InfrastructureModel other) {
+	boolean isBetterThan(final InfrastructureModel other) {
 		return betterThan(this.totalOverAllocated, this.nrActivePms, this.nrMigrations, other.totalOverAllocated, other.nrActivePms, other.nrMigrations);
 	}
 
-	protected static final boolean betterThan(double oA1, int nAPM1, int nMg1, double oA2, int nAPM2, int nMg2) {
+	protected static final boolean betterThan(final double oA1, final int nAPM1, final int nMg1, final double oA2, final int nAPM2, final int nMg2) {
 		// The primary objective is the total overload. If there is a clear
 		// difference (>1%) in that, this decides which is better.
 		// If there is no significant difference in the total overload, then
 		// the number of active PMs decides.
 		// If there is no significant difference in the total overload, nor
 		// in the number of active PMs, then the number of migrations decides.
-		return oA1 < oA2 * 0.99 || (oA2 >= oA1 * 0.99 && (nAPM1 < nAPM2 || (nAPM2 >= nAPM1 && nMg1 < nMg2)));
+		return oA1 < oA2 * 0.99 || oA2 >= oA1 * 0.99 && (nAPM1 < nAPM2 || nAPM2 >= nAPM1 && nMg1 < nMg2);
 	}
 
 	/**
@@ -376,8 +376,8 @@ public class InfrastructureModel {
 			result.append(vm.hashCode()).append("->").append(vm.gethostPM().hashCode());
 			first = false;
 		}
-		result.append("),f=").append("(").append(totalOverAllocated).append(",").append(nrActivePms).append(",")
-				.append(nrMigrations).append(")").append(']');
+		result.append("),f=(").append(totalOverAllocated).append(',').append(nrActivePms).append(',')
+				.append(nrMigrations).append(")]");
 		return result.toString();
 	}
 }
