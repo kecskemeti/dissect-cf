@@ -1,20 +1,17 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
-<entry key="mutationProb">0.2</entry>
 <entry key="upperThreshold">1.0</entry>
-<entry key="gaPopulationSize">10</entry>
-<entry key="psoNrIterations">50</entry>
-<entry key="lowerThreshold">0.25</entry>
-<entry key="abcNrIterations">50</entry>
-<entry key="gaNrIterations">50</entry>
-<entry key="abcPopulationSize">10</entry>
-<entry key="seed">50</entry>
-<entry key="abcLimitTrials">5</entry>
-<entry key="psoSwarmSize">20</entry>
+<entry key="seed">123</entry>
+<entry key="mutationProb">0.9999999999999999</entry>
+<entry key="nrIterations">1</entry>
+<entry key="doLocalSearch">true</entry>
+<entry key="gaNrCrossovers">81</entry>
+<entry key="psoC1">9</entry>
+<entry key="populationSize">13</entry>
+<entry key="psoC2">9</entry>
+<entry key="lowerThreshold">0.2</entry>
 <entry key="doLocalSearch2">false</entry>
 <entry key="doLocalSearch1">true</entry>
-<entry key="gaNrCrossovers">10</entry>
-<entry key="psoC2">2</entry>
-<entry key="psoC1">2</entry>
+<entry key="abcLimitTrials">10</entry>
 </properties>

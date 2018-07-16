@@ -132,8 +132,8 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 					// we do not have to update the velocity, because it is updated before updating the location in the loop
 				}
 				else {
-					double r1 = random.nextDouble();
-					double r2 = random.nextDouble();
+					double r1 = random.nextDoubleFast();
+					double r2 = random.nextDoubleFast();
 					
 					// step 3 - update velocity
 					

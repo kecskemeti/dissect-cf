@@ -169,7 +169,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 			}
 			// onlooker bees phase
 			determineProbabilities();
-			final double rnd = random.nextDouble();
+			final double rnd = random.nextDoubleFast();
 			for (int j = 0; j < population.length; j++) {
 				if (rnd <= probabilities[j]) {
 					mutateAndCheck(j);

@@ -313,7 +313,7 @@ public class InfrastructureModel {
 
 			@Override
 			public boolean shouldUseDifferent() {
-				return MachineLearningConsolidator.random.nextDouble() < mutationProb;
+				return MachineLearningConsolidator.random.nextDoubleFast() < mutationProb;
 			}
 		});
 	}

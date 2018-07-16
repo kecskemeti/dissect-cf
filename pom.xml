@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>at.ac.uibk.dps.cloud.simulator</groupId>
 	<artifactId>dissect-cf</artifactId>
-	<version>0.9.7-SNAPSHOT-rptest</version>
+	<version>0.9.7-SNAPSHOT-rp</version>
 	<name>DISSECT-CF</name>
 	<description>DIScrete event baSed Energy Consumption simulaTor for Clouds and Federations</description>
 	<dependencies>
@@ -22,6 +22,11 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
 			<version>3.7</version>
+		</dependency>
+		<dependency>
+			<groupId>it.unimi.dsi</groupId>
+			<artifactId>dsiutils</artifactId>
+			<version>2.5.1</version>
 		</dependency>
 	</dependencies>
 	<inceptionYear>2012</inceptionYear>
