@@ -69,7 +69,6 @@ public class InfrastructureModel {
 	 */
 	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
 		this(base);
-		nrMigrations = 0;
 		if (!original) {
 			for (final ModelVM vm : items) {
 				updateMapping(vm, bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
@@ -78,7 +77,7 @@ public class InfrastructureModel {
 		if (applylocalsearch) {
 			useLocalSearch();
 		}
-		countActivePmsAndOverloads();
+		calculateFitness();
 	}
 
 	private InfrastructureModel(final InfrastructureModel toCopy) {
@@ -126,16 +125,17 @@ public class InfrastructureModel {
 
 		bins = pminit.toArray(ModelPM.mpmArrSample);
 		convItemsArr(vminit);
-		countActivePmsAndOverloads();
+		calculateFitness();
 	}
 
 	/**
 	 * Auxiliary method. PRE: the maps #loads and #used are already filled POST:
 	 * fitness.nrActivePms and fitness.totalOverAllocated are correct
 	 */
-	protected void countActivePmsAndOverloads() {
+	protected void calculateFitness() {
 		nrActivePms = 0;
 		totalOverAllocated = 0;
+		nrMigrations = 0;
 		for (final ModelPM pm : bins) {
 			if (pm.isHostingVMs()) {
 				nrActivePms++;
@@ -146,13 +146,15 @@ public class InfrastructureModel {
 					totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
 			}
 		}
+		for(final ModelVM vm:items) {
+			if(vm.basedetails.initialHost.hashCode()!=vm.gethostPM().hashCode()) {
+				nrMigrations++;
+			}
+		}
 	}
 
 	private void updateMapping(final ModelVM v, final ModelPM p) {
 		v.gethostPM().migrateVM(v, p);
-		if (p != v.basedetails.initialHost) {
-			nrMigrations++;
-		}
 	}
 
 	protected void useLocalSearch() {
@@ -197,8 +199,6 @@ public class InfrastructureModel {
 			if (targetPm == null)
 				targetPm = vm.prevPM;
 			targetPm.addVM(vm);
-			if (targetPm != vm.basedetails.initialHost)
-				nrMigrations++;
 		}
 	}
 
@@ -249,9 +249,6 @@ public class InfrastructureModel {
 
 						if (target.isMigrationPossible(vm)) {
 							source.migrateVM(vm, target);
-							if (target.hashCode() != vm.basedetails.initialHost.hashCode()) {
-								nrMigrations++;
-							}
 							alreadyMoved.add(vm);
 
 							if (target.free.getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
@@ -293,7 +290,7 @@ public class InfrastructureModel {
 			}
 		}
 		result.useLocalSearch();
-		result.countActivePmsAndOverloads();
+		result.calculateFitness();
 		return result;
 	}
 

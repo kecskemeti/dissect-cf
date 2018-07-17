@@ -92,13 +92,12 @@ public class Particle extends InfrastructureModel {
 			}
 			else {
 				// pms are not the same
-				nrMigrations++;
 				mappedPm.migrateVM(items[i], locPm);
 			}
 		}
 		
 		// determine the fitness
-		this.countActivePmsAndOverloads();
+		this.calculateFitness();
 		
 		//Logger.getGlobal().info("After updateMappings(), location: " + location + ", mapping: " + mappingToString());
 		
