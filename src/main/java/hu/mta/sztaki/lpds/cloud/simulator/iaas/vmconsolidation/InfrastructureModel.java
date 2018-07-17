@@ -356,7 +356,7 @@ public class InfrastructureModel {
 		// the number of active PMs decides.
 		// If there is no significant difference in the total overload, nor
 		// in the number of active PMs, then the number of migrations decides.
-		return oA1 < oA2 * 0.99 || oA2 >= oA1 * 0.99 && (nAPM1 < nAPM2 || nAPM2 >= nAPM1 && nMg1 < nMg2);
+		return oA1 < oA2 * 0.99 || oA2 >= oA1 * 0.99 && (nAPM1 < nAPM2 || nAPM2 == nAPM1 && nMg1 < nMg2);
 	}
 
 	/**
