@@ -25,7 +25,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	/** Best solution found so far */
 	private InfrastructureModel bestSolution;
 
-	private int[] probTestIndexes = new int[probTestCount];
+	private int[] probTestIndexes = new int[probTestCount + 1];
 	private int[] wincounts;
 	private int[] testcounts;
 
@@ -103,14 +103,14 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		Arrays.fill(testcounts, 0);
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
-			final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]);
-			for (int j = 0; j < maxj; j++) {
+			final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]) + 1;
+			// Don't test against the same item..
+			probTestIndexes[0] = i;
+			for (int j = 1; j < maxj; j++) {
 				int popidx;
 				int k;
 				do {
-					// Don't test against the same item..
-					while ((popidx = random.nextInt(population.length)) == i)
-						;
+					popidx = random.nextInt(population.length);
 					// Don't test against something we arleady tested with before..
 					for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
 						;
@@ -138,7 +138,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		if (s.isBetterThan(population[j])) {
 			population[j] = s;
 			postRegTasks(j);
-			improved=true;
+			improved = true;
 		} else {
 			numTrials[j]++;
 		}
@@ -165,9 +165,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// System.err.println("ABC nrIterations="+nrIterations+",
 		// populationSize="+populationSize);
 		initializePopulation(input);
-		improved=true;
+		improved = true;
 		for (int iter = 0; iter < nrIterations && improved; iter++) {
-			improved=false;
+			improved = false;
 			// employed bees phase
 			for (int j = 0; j < population.length; j++) {
 //				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
