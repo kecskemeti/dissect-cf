@@ -25,7 +25,8 @@ public abstract class Action{
 		SHUTDOWN
 	}
 
-	protected int id;
+	public final int id;
+	public final Type type;
 	//List of actions, which need to be completed before the action starts
 	protected List<Action> predecessors;
 	//List of actions, which need to start after completion of this one
@@ -35,8 +36,9 @@ public abstract class Action{
 	 * Constructor. Instantiates the empty lists for its predecessors and successors.
 	 * @param id
 	 */
-	public Action(int id){
+	public Action(final int id, final Type t){
 		this.id = id;
+		this.type=t;
 		predecessors=new ArrayList<>();
 		successors=new ArrayList<>();
 	}
@@ -45,7 +47,7 @@ public abstract class Action{
 	 * Adds v as a predecessor of this action AND also this action as a 
 	 * successor of v.
 	 */
-	public void addPredecessor(Action v){
+	public void addPredecessor(final Action v){
 		predecessors.add(v);
 		v.addSuccessor(this);
 	}
@@ -54,7 +56,7 @@ public abstract class Action{
 	 * Removes v as a predecessor of this action AND also this action as a 
 	 * successor of v.
 	 */
-	public void removePredecessor(Action v){
+	public void removePredecessor(final Action v){
 		predecessors.remove(v);
 		//v.removeSuccessor(this); //commented out to avoid concurrent modification exception
 	}
@@ -63,11 +65,11 @@ public abstract class Action{
 		return predecessors;
 	}
 
-	public void addSuccessor(Action v){
+	public void addSuccessor(final Action v){
 		successors.add(v);
 	}
 
-	public void removeSuccessor(Action v){
+	public void removeSuccessor(final Action v){
 		successors.remove(v);
 	}
 
@@ -89,17 +91,14 @@ public abstract class Action{
 	 * This method is to be called when the action has been finished.
 	 */
 	public void finished() {
-		for(Action a : successors) {
+		for(final Action a : successors) {
 			a.removePredecessor(this);
 			if(a.getPredecessors().isEmpty())
 				a.execute();
 		}
 	}
 
-	/**
-	 * This Method returns the type of the action.
-	 */
-	public abstract Type getType();
-
-	public abstract String toString();
+	public String toString() {
+		return "Action: " + type + "  :";
+	}
 }

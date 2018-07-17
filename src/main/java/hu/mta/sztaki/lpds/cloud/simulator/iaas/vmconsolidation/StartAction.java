@@ -11,10 +11,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmSched
 public class StartAction extends Action implements PhysicalMachine.StateChangeListener {
 
 	// Reference to the model of the PM, which needs to start
-	ModelPM pmToStart;
+	public final ModelPM pmToStart;
 
 	/** PM scheduler */
-	IControllablePmScheduler pmScheduler;
+	public final IControllablePmScheduler pmScheduler;
 
 	/**
 	 * Constructor of an action to start a PM.
@@ -22,35 +22,22 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 * @param id        The ID of this action.
 	 * @param pmToStart The modelled PM respresenting the PM which shall start.
 	 */
-	public StartAction(int id, ModelPM pmToStart, IControllablePmScheduler pmScheduler) {
-		super(id);
+	public StartAction(final int id, final ModelPM pmToStart, final IControllablePmScheduler pmScheduler) {
+		super(id,Type.START);
 		this.pmToStart = pmToStart;
 		this.pmScheduler = pmScheduler;
-	}
-
-	/**
-	 * 
-	 * @return The modelled PM respresenting the PM which shall start.
-	 */
-	public ModelPM getPmToStart() {
-		return pmToStart;
 	}
 
 	/**
 	 * There are no predecessors for a starting action.
 	 */
 	@Override
-	public void determinePredecessors(List<Action> actions) {
-	}
-
-	@Override
-	public Type getType() {
-		return Type.START;
+	public void determinePredecessors(final List<Action> actions) {
 	}
 
 	@Override
 	public String toString() {
-		return "Action: " + getType() + "  :" + getPmToStart().toShortString();
+		return super.toString() + pmToStart.toShortString();
 	}
 
 	/**
@@ -58,7 +45,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 */
 	@Override
 	public void execute() {
-		PhysicalMachine pm = this.getPmToStart().getPM();
+		final PhysicalMachine pm = this.pmToStart.getPM();
 		pm.subscribeStateChangeEvents(this); // observe the PM before turning it on
 		pmScheduler.switchOn(pm);
 	}
@@ -68,8 +55,8 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 * RUNNING, we can stop observing it.
 	 */
 	@Override
-	public void stateChanged(PhysicalMachine pm, hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State oldState,
-			hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State newState) {
+	public void stateChanged(final PhysicalMachine pm, final PhysicalMachine.State oldState,
+			final PhysicalMachine.State newState) {
 		if (newState.equals(PhysicalMachine.State.RUNNING)) {
 			pm.unsubscribeStateChangeEvents(this);
 			finished();

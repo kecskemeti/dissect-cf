@@ -138,7 +138,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			}
 			for (ModelVM item : bin.getVMs()) {
 				if (item.gethostPM().hashCode() != item.basedetails.initialHost.hashCode()) {
-					actions.add(new MigrationAction(i++, item.basedetails.initialHost, item.gethostPM(), item));
+					actions.add(new MigrationAction(i++, item));
 					SimpleConsolidator.migrationCount++;
 				}
 			}

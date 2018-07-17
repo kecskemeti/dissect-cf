@@ -11,10 +11,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmSched
 public class ShutDownAction extends Action {
 
 	// Reference to the model of the PM, which needs to shut down
-	ModelPM pmToShutDown;
+	public final ModelPM pmToShutDown;
 
 	/** PM scheduler */
-	IControllablePmScheduler pmScheduler;
+	public final IControllablePmScheduler pmScheduler;
 
 	/**
 	 * Constructor for an action to shut a PM down.
@@ -24,15 +24,11 @@ public class ShutDownAction extends Action {
 	 *                     down.
 	 * @param pmScheduler  Reference to the PM scheduler of the IaaS service
 	 */
-	public ShutDownAction(int id, ModelPM pmToShutDown, IControllablePmScheduler pmScheduler) {
-		super(id);
+	public ShutDownAction(final int id, final ModelPM pmToShutDown, final IControllablePmScheduler pmScheduler) {
+		super(id, Type.SHUTDOWN);
 		this.pmToShutDown = pmToShutDown;
 		this.pmScheduler = pmScheduler;
 		// Logger.getGlobal().info("ShutDownAction created");
-	}
-
-	public ModelPM getPmToShutDown() {
-		return pmToShutDown;
 	}
 
 	/**
@@ -42,9 +38,9 @@ public class ShutDownAction extends Action {
 	@Override
 	public void determinePredecessors(List<Action> actions) {
 		// looking for migrations with this PM as source
-		for (Action action : actions) {
-			if (action.getType().equals(Type.MIGRATION)) {
-				if ((((MigrationAction) action).getSource()).equals(this.getPmToShutDown())) {
+		for (final Action action : actions) {
+			if (action.type.equals(Type.MIGRATION)) {
+				if ((((MigrationAction) action).mvm.basedetails.initialHost.hashCode()==pmToShutDown.hashCode())) {
 					this.addPredecessor(action);
 				}
 			}
@@ -52,13 +48,8 @@ public class ShutDownAction extends Action {
 	}
 
 	@Override
-	public Type getType() {
-		return Type.SHUTDOWN;
-	}
-
-	@Override
 	public String toString() {
-		return "Action: " + getType() + "  :" + getPmToShutDown().toShortString();
+		return super.toString() + pmToShutDown.toShortString();
 	}
 
 	/**
@@ -66,7 +57,7 @@ public class ShutDownAction extends Action {
 	 */
 	@Override
 	public void execute() {
-		PhysicalMachine pm = this.getPmToShutDown().getPM();
+		final PhysicalMachine pm = this.pmToShutDown.getPM();
 		if (!pm.isHostingVMs())
 			pmScheduler.switchOff(pm);
 	}

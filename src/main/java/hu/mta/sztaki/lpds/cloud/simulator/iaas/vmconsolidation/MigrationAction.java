@@ -2,6 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.util.List;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
@@ -12,14 +13,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
  */
 public class MigrationAction extends Action implements VirtualMachine.StateChange {
 
-	// Reference to the model of the PM, which contains the VM before migrating it
-	ModelPM source;
-
-	// Reference to the model of the PM, which contains the VM after migrating it
-	ModelPM target;
-
 	// Reference to the model of the VM, which needs be migrated
-	ModelVM mvm;
+	public final ModelVM mvm;
 
 	/**
 	 * Constructor for an action which shall migrate a VM inside the simulator.
@@ -29,37 +24,9 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * @param target The PM which shall host this VM after migration.
 	 * @param vm     The reference to the VM which shall be migrated.
 	 */
-	public MigrationAction(int id, ModelPM source, ModelPM target, ModelVM vm) {
-		super(id);
-		this.source = source;
-		this.target = target;
+	public MigrationAction(final int id, final ModelVM vm) {
+		super(id, Type.MIGRATION);
 		this.mvm = vm;
-	}
-
-	/**
-	 * 
-	 * @return Reference to the model of the PM, which contains the VM before
-	 *         migrating it
-	 */
-	public ModelPM getSource() {
-		return source;
-	}
-
-	/**
-	 * 
-	 * @return Reference to the model of the PM, which contains the VM after
-	 *         migrating it
-	 */
-	public ModelPM getTarget() {
-		return target;
-	}
-
-	/**
-	 * 
-	 * @return Reference to the model of the VM, which needs be migrated
-	 */
-	public ModelVM getVm() {
-		return mvm;
 	}
 
 	/**
@@ -70,19 +37,19 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * needs improvement, as it can currently lead to deadlocks.
 	 */
 	@Override
-	public void determinePredecessors(List<Action> actions) {
+	public void determinePredecessors(final List<Action> actions) {
 		// looking for actions where a PM gets started, that is the target of this
 		// migration
-		for (Action action : actions) {
-			if (action.getType().equals(Type.START)) {
-				if ((((StartAction) action).getPmToStart()).equals(getTarget())) {
+		for (final Action action : actions) {
+			if (action.type.equals(Type.START)) {
+				if ((((StartAction) action).pmToStart.hashCode() == mvm.gethostPM().hashCode())) {
 					this.addPredecessor(action);
 				}
 			}
 			// If two PMs would like to migrate one VM to each other,
 			// there could be a loop. Not solved yet.
-			if (action.getType().equals(Type.MIGRATION)) {
-				if ((((MigrationAction) action).getSource()).equals(this.getTarget())) {
+			if (action.type.equals(Type.MIGRATION)) {
+				if (((MigrationAction) action).mvm.basedetails.initialHost.hashCode() == mvm.gethostPM().hashCode()) {
 					this.addPredecessor(action);
 				}
 			}
@@ -90,14 +57,9 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	}
 
 	@Override
-	public Type getType() {
-		return Type.MIGRATION;
-	}
-
-	@Override
 	public String toString() {
-		return "Action: " + getType() + " Source:  " + getSource().toShortString() + " Target: "
-				+ getTarget().toShortString() + " VM: " + getVm().toShortString();
+		return super.toString() + " Source:  " + mvm.basedetails.initialHost.toShortString() + " Target: "
+				+ mvm.gethostPM().toShortString() + " VM: " + mvm.toShortString();
 	}
 
 	/**
@@ -105,27 +67,32 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 */
 	@Override
 	public void execute() {
-		if (!source.getPM().publicVms.contains(mvm.basedetails.vm)) {
-			finished();
-		} else if (mvm.basedetails.vm.getMemSize() > target.getPM().freeCapacities.getRequiredMemory()
-				|| mvm.basedetails.vm.getPerTickProcessingPower() > target.getPM().freeCapacities
-						.getTotalProcessingPower()) {
-			finished();
-		} else if (mvm.basedetails.vm.getState() != VirtualMachine.State.RUNNING
-				&& mvm.basedetails.vm.getState() != VirtualMachine.State.SUSPENDED) {
-			finished();
-		} else if (!(target.getPM().isRunning())) {
-			finished();
-		} else {
-			mvm.basedetails.vm.subscribeStateChange(this); // observe the VM which shall be migrated
-			try {
-				source.getPM().migrateVM(mvm.basedetails.vm, target.getPM());
-			} catch (VMManagementException e) {
-				e.printStackTrace();
-			} catch (NetworkException e) {
-				e.printStackTrace();
+		final PhysicalMachine simSourcePM = mvm.basedetails.initialHost.getPM();
+		final VirtualMachine simVM = mvm.basedetails.vm;
+		if (simSourcePM.publicVms.contains(simVM)) {
+			final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
+			if (simVM.getMemSize() > simTargetPM.freeCapacities.getRequiredMemory()
+					|| simVM.getPerTickProcessingPower() > simTargetPM.freeCapacities.getTotalProcessingPower()) {
+				finished();
+			} else if (simVM.getState() != VirtualMachine.State.RUNNING
+					&& simVM.getState() != VirtualMachine.State.SUSPENDED) {
+				finished();
+			} else if (simTargetPM.isRunning()) {
+				simVM.subscribeStateChange(this); // observe the VM which shall be migrated
+				try {
+					simSourcePM.migrateVM(simVM, simTargetPM);
+				} catch (VMManagementException e) {
+					e.printStackTrace();
+				} catch (NetworkException e) {
+					e.printStackTrace();
+				}
+			} else {
+				finished();
 			}
+		} else {
+			finished();
 		}
+
 	}
 
 	/**
@@ -133,7 +100,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * migrating, then it do not has to be observed any longer.
 	 */
 	@Override
-	public void stateChanged(VirtualMachine vm, State oldState, State newState) {
+	public void stateChanged(final VirtualMachine vm, final State oldState, final State newState) {
 		if (newState.equals(VirtualMachine.State.RUNNING)) {
 			vm.unsubscribeStateChange(this);
 			// Logger.getGlobal().info("Migration action finished");
