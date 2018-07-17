@@ -1,7 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.List;
-
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 
@@ -19,13 +17,12 @@ public class ShutDownAction extends Action {
 	/**
 	 * Constructor for an action to shut a PM down.
 	 * 
-	 * @param id           The ID of this action.
 	 * @param pmToShutDown The reference to the PM inside the simulator to get shut
 	 *                     down.
 	 * @param pmScheduler  Reference to the PM scheduler of the IaaS service
 	 */
-	public ShutDownAction(final int id, final ModelPM pmToShutDown, final IControllablePmScheduler pmScheduler) {
-		super(id, Type.SHUTDOWN);
+	public ShutDownAction(final ModelPM pmToShutDown, final IControllablePmScheduler pmScheduler) {
+		super(Type.SHUTDOWN);
 		this.pmToShutDown = pmToShutDown;
 		this.pmScheduler = pmScheduler;
 		// Logger.getGlobal().info("ShutDownAction created");
@@ -36,7 +33,7 @@ public class ShutDownAction extends Action {
 	 * shut-down action is a migration from this PM.
 	 */
 	@Override
-	public void determinePredecessors(List<Action> actions) {
+	public void determinePredecessors(final Action[] actions) {
 		// looking for migrations with this PM as source
 		for (final Action action : actions) {
 			if (action.type.equals(Type.MIGRATION)) {

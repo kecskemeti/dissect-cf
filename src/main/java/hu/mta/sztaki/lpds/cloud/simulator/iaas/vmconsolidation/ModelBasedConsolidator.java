@@ -37,8 +37,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	protected Properties props;
 
-	public static boolean doingConsolidation = false;
-
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for
 	 * the upper threshold, a value for the lower threshold and a variable which
@@ -48,7 +46,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param consFreq      This value determines, how often the consolidation
 	 *                      should run.
 	 */
-	public ModelBasedConsolidator(IaaSService toConsolidate, long consFreq) {
+	public ModelBasedConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 
 		try {
@@ -71,17 +69,14 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * 
 	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
-	protected void doConsolidation(PhysicalMachine[] pmList) {
-		doingConsolidation = true;
+	protected void doConsolidation(final PhysicalMachine[] pmList) {
 		baseSolution = optimize(new InfrastructureModel(pmList,
 				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
-		adaptPmStates();
-		final List<Action> actions = modelDiff();
+		final Action[] actions = modelDiff();
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
 		createGraph(actions);
 		// printGraph(actions);
 		performActions(actions);
-		doingConsolidation = false;
 	}
 
 	public static void clearStatics() {
@@ -90,8 +85,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	private void loadProps() throws InvalidPropertiesFormatException, IOException {
 		props = new Properties();
-		File file = new File("consolidationProperties.xml");
-		FileInputStream fileInput = new FileInputStream(file);
+		final File file = new File("consolidationProperties.xml");
+		final FileInputStream fileInput = new FileInputStream(file);
 		props.loadFromXML(fileInput);
 		fileInput.close();
 		lowerThreshold = Double.parseDouble(props.getProperty("lowerThreshold"));
@@ -117,33 +112,31 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * 
 	 * @return The list with all the actions.
 	 */
-	private List<Action> modelDiff() {
+	private Action[] modelDiff() {
 		// If we have an externally controllable PM scheduler, then we also create
 		// start-up and shut-down actions, otherwise only migration actions
 		IControllablePmScheduler controllablePmScheduler = null;
 		if (toConsolidate.pmcontroller instanceof IControllablePmScheduler) {
 			controllablePmScheduler = (IControllablePmScheduler) toConsolidate.pmcontroller;
 		}
-		List<Action> actions = new ArrayList<>();
-		int i = 0;
-		for (ModelPM bin : baseSolution.bins) {
-			if (controllablePmScheduler != null) {
-				if (bin.isOn()) {
+		final List<Action> actions = new ArrayList<>();
+		if (controllablePmScheduler != null) {
+			for (final ModelPM bin : baseSolution.bins) {
+				if (bin.isOn()||bin.isHostingVMs()) {
 					if (!bin.getPM().isRunning())
-						actions.add(new StartAction(i++, bin, controllablePmScheduler));
+						actions.add(new StartAction(bin, controllablePmScheduler));
 				} else {
 					if (bin.getPM().isRunning())
-						actions.add(new ShutDownAction(i++, bin, controllablePmScheduler));
-				}
-			}
-			for (ModelVM item : bin.getVMs()) {
-				if (item.gethostPM().hashCode() != item.basedetails.initialHost.hashCode()) {
-					actions.add(new MigrationAction(i++, item));
-					SimpleConsolidator.migrationCount++;
+						actions.add(new ShutDownAction(bin, controllablePmScheduler));
 				}
 			}
 		}
-		return actions;
+		for (final ModelVM item : baseSolution.items) {
+			if (item.gethostPM().hashCode() != item.basedetails.initialHost.hashCode()) {
+				actions.add(new MigrationAction(item));
+			}
+		}
+		return actions.toArray(Action.actArrSample);
 	}
 
 	/**
@@ -152,8 +145,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param actions The action-list with all changes that have to be done inside
 	 *                the simulator.
 	 */
-	private void createGraph(List<Action> actions) {
-		for (Action action : actions) {
+	private void createGraph(final Action[] actions) {
+		for (final Action action : actions) {
 			action.determinePredecessors(actions);
 		}
 	}
@@ -165,8 +158,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param actions The action-list with all changes that have to be done inside
 	 *                the simulator.
 	 */
-	private void performActions(List<Action> actions) {
-		for (Action action : actions) {
+	private void performActions(final Action[] actions) {
+		for (final Action action : actions) {
 			if (action.getPredecessors().isEmpty()) {
 				action.execute();
 			}
@@ -179,11 +172,11 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param actions The action-list with all changes that have to be done inside
 	 *                the simulator.
 	 */
-	public void printGraph(List<Action> actions) {
+	public void printGraph(final List<Action> actions) {
 		String s = "";
-		for (Action action : actions) {
+		for (final Action action : actions) {
 			s = s + action.toString() + "\n";
-			for (Action pred : action.getPredecessors())
+			for (final Action pred : action.getPredecessors())
 				s = s + "    pred: " + pred.toString() + "\n";
 		}
 	}
@@ -194,7 +187,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	public String toString() {
 		String result = "";
 		boolean first = true;
-		for (ModelPM bin : baseSolution.bins) {
+		for (final ModelPM bin : baseSolution.bins) {
 			if (!bin.isHostingVMs())
 				continue;
 			if (!first)
@@ -208,49 +201,16 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * The toString()-method for the list of actions, used for debugging.
 	 */
-	public String actionsToString(List<Action> actions) {
+	public String actionsToString(final List<Action> actions) {
 		String result = "";
 		boolean first = true;
-		for (Action a : actions) {
+		for (final Action a : actions) {
 			if (!first)
 				result = result + "\n";
 			result = result + a.toString();
 			first = false;
 		}
 		return result;
-	}
-
-	/**
-	 * This method can be called after all migrations were done. It is checked which
-	 * PMs do not have any VMs hosted and then this method shut them down. A node is
-	 * created to add this information to the graph.
-	 */
-	protected void shutDownEmptyPMs() {
-		for (ModelPM pm : baseSolution.bins) {
-			if (!pm.isHostingVMs() && pm.isOn()) {
-				pm.switchOff(); // shut down this PM
-			}
-		}
-	}
-
-	/**
-	 * PMs that should host at least one VM are switched on.
-	 */
-	protected void switchOnNonEmptyPMs() {
-		for (ModelPM pm : baseSolution.bins) {
-			if (pm.isHostingVMs() && !pm.isOn()) {
-				pm.switchOn();
-			}
-		}
-	}
-
-	/**
-	 * PMs that should host at least one VM are switched on; PMs that should host no
-	 * VM are switched off.
-	 */
-	protected void adaptPmStates() {
-		shutDownEmptyPMs();
-		switchOnNonEmptyPMs();
 	}
 
 	/**

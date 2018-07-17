@@ -1,11 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.List;
+import java.util.EnumSet;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
@@ -19,13 +20,10 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	/**
 	 * Constructor for an action which shall migrate a VM inside the simulator.
 	 * 
-	 * @param id     The ID of this action.
-	 * @param source The PM which is currently hosting the VM.
-	 * @param target The PM which shall host this VM after migration.
-	 * @param vm     The reference to the VM which shall be migrated.
+	 * @param vm The reference to the VM which shall be migrated.
 	 */
-	public MigrationAction(final int id, final ModelVM vm) {
-		super(id, Type.MIGRATION);
+	public MigrationAction(final ModelVM vm) {
+		super(Type.MIGRATION);
 		this.mvm = vm;
 	}
 
@@ -37,7 +35,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * needs improvement, as it can currently lead to deadlocks.
 	 */
 	@Override
-	public void determinePredecessors(final List<Action> actions) {
+	public void determinePredecessors(final Action[] actions) {
 		// looking for actions where a PM gets started, that is the target of this
 		// migration
 		for (final Action action : actions) {
@@ -62,37 +60,33 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 				+ mvm.gethostPM().toShortString() + " VM: " + mvm.toShortString();
 	}
 
+	public static final EnumSet<VirtualMachine.State> acceptableStatesForMigr = EnumSet.of(VirtualMachine.State.RUNNING,
+			VirtualMachine.State.SUSPENDED);
+
 	/**
 	 * Method for doing the migration inside the simulator.
 	 */
 	@Override
 	public void execute() {
 		final PhysicalMachine simSourcePM = mvm.basedetails.initialHost.getPM();
+		final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
 		final VirtualMachine simVM = mvm.basedetails.vm;
-		if (simSourcePM.publicVms.contains(simVM)) {
-			final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
-			if (simVM.getMemSize() > simTargetPM.freeCapacities.getRequiredMemory()
-					|| simVM.getPerTickProcessingPower() > simTargetPM.freeCapacities.getTotalProcessingPower()) {
-				finished();
-			} else if (simVM.getState() != VirtualMachine.State.RUNNING
-					&& simVM.getState() != VirtualMachine.State.SUSPENDED) {
-				finished();
-			} else if (simTargetPM.isRunning()) {
-				simVM.subscribeStateChange(this); // observe the VM which shall be migrated
-				try {
-					simSourcePM.migrateVM(simVM, simTargetPM);
-				} catch (VMManagementException e) {
-					e.printStackTrace();
-				} catch (NetworkException e) {
-					e.printStackTrace();
-				}
-			} else {
-				finished();
+		if (simTargetPM.isRunning() && acceptableStatesForMigr.contains(simVM.getState())
+				&& simVM.getMemSize() <= simTargetPM.freeCapacities.getRequiredMemory()
+				&& simVM.getPerTickProcessingPower() <= simTargetPM.freeCapacities.getTotalProcessingPower()
+				&& simSourcePM.publicVms.contains(simVM)) {
+			simVM.subscribeStateChange(this); // observe the VM which shall be migrated
+			try {
+				SimpleConsolidator.migrationCount++;
+				simSourcePM.migrateVM(simVM, simTargetPM);
+				return;
+			} catch (VMManagementException e) {
+				e.printStackTrace();
+			} catch (NetworkException e) {
+				e.printStackTrace();
 			}
-		} else {
-			finished();
 		}
-
+		finished();
 	}
 
 	/**

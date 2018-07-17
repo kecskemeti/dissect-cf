@@ -1,7 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.List;
-
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
 
@@ -19,11 +17,10 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	/**
 	 * Constructor of an action to start a PM.
 	 * 
-	 * @param id        The ID of this action.
 	 * @param pmToStart The modelled PM respresenting the PM which shall start.
 	 */
-	public StartAction(final int id, final ModelPM pmToStart, final IControllablePmScheduler pmScheduler) {
-		super(id,Type.START);
+	public StartAction(final ModelPM pmToStart, final IControllablePmScheduler pmScheduler) {
+		super(Type.START);
 		this.pmToStart = pmToStart;
 		this.pmScheduler = pmScheduler;
 	}
@@ -32,7 +29,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	 * There are no predecessors for a starting action.
 	 */
 	@Override
-	public void determinePredecessors(final List<Action> actions) {
+	public void determinePredecessors(final Action[] actions) {
 	}
 
 	@Override
