@@ -23,10 +23,8 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
-import java.util.Random;
-
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import it.unimi.dsi.util.XoRoShiRo128StarStarRandom;
+import it.unimi.dsi.util.XoShiRo256PlusRandom;
 
 /**
  * This class is to be sub-classed by all workload consolidators that use the
@@ -47,7 +45,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	protected T[] population;
 	private int popFillIndex;
 	/** For generating random numbers */
-	static protected XoRoShiRo128StarStarRandom random;
+	static protected XoShiRo256PlusRandom random;
 	/**
 	 * Controls whether new solutions (created by mutation or recombination) should
 	 * be improved with a local search
@@ -99,7 +97,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	@Override
 	protected void processProps() {
 		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
-		random = new XoRoShiRo128StarStarRandom(Long.parseLong(props.getProperty("seed")));
+		random = new XoShiRo256PlusRandom(Long.parseLong(props.getProperty("seed")));
 		doLocalSearch1 = Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
 		doLocalSearch2 = Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
 		createPopArray(Integer.parseInt(props.getProperty("populationSize")));

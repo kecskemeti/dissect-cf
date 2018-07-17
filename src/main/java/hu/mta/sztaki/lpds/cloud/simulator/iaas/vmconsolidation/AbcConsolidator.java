@@ -29,6 +29,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	private int[] wincounts;
 	private int[] testcounts;
 
+	/** True if at least one solution has improved during the current iteration */
+	private boolean improved;
+
 	private InfChecker currChecker;
 
 	interface InfChecker {
@@ -135,6 +138,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		if (s.isBetterThan(population[j])) {
 			population[j] = s;
 			postRegTasks(j);
+			improved=true;
 		} else {
 			numTrials[j]++;
 		}
@@ -161,7 +165,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// System.err.println("ABC nrIterations="+nrIterations+",
 		// populationSize="+populationSize);
 		initializePopulation(input);
-		for (int iter = 0; iter < nrIterations; iter++) {
+		improved=true;
+		for (int iter = 0; iter < nrIterations && improved; iter++) {
+			improved=false;
 			// employed bees phase
 			for (int j = 0; j < population.length; j++) {
 //				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
