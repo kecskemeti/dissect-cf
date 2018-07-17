@@ -327,7 +327,7 @@ public class InfrastructureModel {
 		return genNew(new GenHelper() {
 			@Override
 			public boolean shouldUseDifferent() {
-				return MachineLearningConsolidator.random.nextBoolean();
+				return CachingPRNG.genBoolean();
 			}
 
 			@Override

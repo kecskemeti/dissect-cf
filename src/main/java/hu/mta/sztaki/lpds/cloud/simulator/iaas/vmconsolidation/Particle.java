@@ -111,14 +111,8 @@ public class Particle extends InfrastructureModel {
 		ArithmeticVector vel = new ArithmeticVector(bins.length);
 		
 		for(int j = 0; j < items.length; j++) {			
-			double a;			
 			// here we make a random chance of getting a lower id or a higher id
-			if(PsoConsolidator.random.nextBoolean()) {
-				a = + 1;
-			}				
-			else {
-				a = - 1;
-			}
+			double a=CachingPRNG.genBoolean()?1:-1;			
 			vel.add(a); 	// add the random velocity				
 		}
 		
