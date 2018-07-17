@@ -42,8 +42,9 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	 * discarded.
 	 */
 	private void crossover() {
-		final int i1 = random.nextInt(population.length);
-		final int i2 = random.nextInt(population.length);
+		final long temp=Math.abs(random.nextLong());
+		final int i1 = (int)(temp%population.length);
+		final int i2 = (int)((temp>>32)%population.length);
 		final InfrastructureModel s3 = population[i1].recombinate(population[i2]);
 		if (s3.isBetterThan(population[i1])) {
 			population[i1] = s3;
