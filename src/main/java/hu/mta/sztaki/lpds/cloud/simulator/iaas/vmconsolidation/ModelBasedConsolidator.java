@@ -13,6 +13,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions.Action;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions.MigrationAction;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions.ShutDownAction;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions.StartAction;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 
 /**
  * @author Julian Bellendorf, Rene Ponto, Zoltan Mann
@@ -122,7 +129,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		final List<Action> actions = new ArrayList<>();
 		if (controllablePmScheduler != null) {
 			for (final ModelPM bin : baseSolution.bins) {
-				if (bin.isOn()||bin.isHostingVMs()) {
+				if (bin.isOn() || bin.isHostingVMs()) {
 					if (!bin.getPM().isRunning())
 						actions.add(new StartAction(bin, controllablePmScheduler));
 				} else {
@@ -160,24 +167,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 */
 	private void performActions(final Action[] actions) {
 		for (final Action action : actions) {
-			if (action.getPredecessors().isEmpty()) {
+			if (action.isReady()) {
 				action.execute();
 			}
-		}
-	}
-
-	/**
-	 * Creates a graph with the toString()-method of each action.
-	 * 
-	 * @param actions The action-list with all changes that have to be done inside
-	 *                the simulator.
-	 */
-	public void printGraph(final List<Action> actions) {
-		String s = "";
-		for (final Action action : actions) {
-			s = s + action.toString() + "\n";
-			for (final Action pred : action.getPredecessors())
-				s = s + "    pred: " + pred.toString() + "\n";
 		}
 	}
 

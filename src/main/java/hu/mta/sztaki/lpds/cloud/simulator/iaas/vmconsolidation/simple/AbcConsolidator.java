@@ -1,8 +1,11 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 
 import java.util.Arrays;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
 
 /**
  * VM consolidator using artificial bee colony algorithm.
@@ -79,7 +82,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		super.initializePopulation(input);
 	}
 
-	private void postRegTasks(int idx) {
+	private void postRegTasks(final int idx) {
 		numTrials[idx] = 0;
 		checkIfBest(population[idx]);
 	}
@@ -134,7 +137,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		final InfrastructureModel s = population[j].mutate(mutationProb);
+		final InfrastructureModel s = new MutatedInfrastructureModel(population[j]);
 		if (s.isBetterThan(population[j])) {
 			population[j] = s;
 			postRegTasks(j);

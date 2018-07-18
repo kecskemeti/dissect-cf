@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,17 +11,20 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
 
 /**
  * Represents a possible solution of the VM consolidation problem, i.e., a
  * mapping of VMs to PMs. Can be used as an individual in the population.
  */
 public class InfrastructureModel {
+
 	private final ArrayList<ModelVM> tempvmlist = new ArrayList<>();
 	/** List of all available bins */
-	protected ModelPM[] bins;
+	public ModelPM[] bins;
 	/** List of all available items */
-	protected ModelVM[] items;
+	public ModelVM[] items;
 
 	// Fitness of the solution...
 	/**
@@ -63,48 +66,63 @@ public class InfrastructureModel {
 		}
 	};
 
+	private static final GenHelper randomizer = new GenHelper() {
+		public boolean shouldUseDifferent() {
+			return true;
+		}
+
+		@Override
+		public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
+			return im.bins[MachineLearningConsolidator.random.nextInt(im.bins.length)];
+		}
+	};
+
+	private static final GenHelper keepOrig = new GenHelper() {
+		public boolean shouldUseDifferent() {
+			return false;
+		}
+
+		@Override
+		public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
+			return null;
+		}
+	};
+
 	/**
 	 * Creates a solution with an empty mapping that will need to be filled somehow,
 	 * e.g., using #fillRandomly().
 	 */
 	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
-		this(base);
-		if (!original) {
-			for (final ModelVM vm : items) {
-				vm.migrate(bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
+		this(base, original ? keepOrig : randomizer, applylocalsearch);
+	}
+
+	protected InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper,
+			final boolean applylocalsearch) {
+		bins = new ModelPM[toCopy.bins.length];
+		items = new ModelVM[toCopy.items.length];
+
+		// Base copy without mapping
+		for (int i = 0; i < bins.length; i++) {
+			final ModelPM oldPM = toCopy.bins[i];
+			bins[i] = new ModelPM(oldPM);
+		}
+
+		// Mapping as desired by helper
+		for (int i = 0; i < items.length; i++) {
+			final ModelVM oldVM = toCopy.items[i];
+			items[i] = new ModelVM(oldVM);
+			ModelPM target;
+			if (helper.shouldUseDifferent()) {
+				target = helper.whatShouldWeUse(this, i);
+			} else {
+				target = oldVM.gethostPM();
 			}
+			target.addVM(items[i]);
 		}
 		if (applylocalsearch) {
 			useLocalSearch();
 		}
 		calculateFitness();
-	}
-
-	private InfrastructureModel(final InfrastructureModel toCopy) {
-		bins = new ModelPM[toCopy.bins.length];
-		final List<ModelVM> mvms = new ArrayList<>();
-		for (int i = 0; i < bins.length; i++) {
-			bins[i] = new ModelPM(toCopy.bins[i]);
-			// We can do shallow copy here because ModelPM does the deep copy for us already
-			mvms.addAll(bins[i].getVMs());
-		}
-		convItemsArr(mvms);
-	}
-
-	private InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper) {
-		this(toCopy);
-		for (int i = 0; i < items.length; i++) {
-			if (helper.shouldUseDifferent()) {
-				items[i].migrate(helper.whatShouldWeUse(i));
-			}
-		}
-		useLocalSearch();
-		calculateFitness();
-	}
-
-	private void convItemsArr(final List<ModelVM> mvms) {
-		items = mvms.toArray(ModelVM.mvmArrSample);
-		Arrays.sort(items, mvmIdCmp);
 	}
 
 	/**
@@ -117,8 +135,7 @@ public class InfrastructureModel {
 	public InfrastructureModel(final PhysicalMachine[] pmList, final boolean onlyNonEmpty, final double upperThreshold,
 			final double lowerThreshold) {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
-		final List<ModelVM> vminit = new ArrayList<>();
-		int binIndex = 0;
+		final List<ModelVM> vminit = new ArrayList<>(pmList.length);
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			final PhysicalMachine pm = pmList[i];
@@ -126,7 +143,7 @@ public class InfrastructureModel {
 			// PMs for consolidation
 			if (!(pm.isHostingVMs()) && onlyNonEmpty)
 				continue;
-			final ModelPM bin = new ModelPM(pm, binIndex++, upperThreshold, lowerThreshold);
+			final ModelPM bin = new ModelPM(pm, pminit.size(), upperThreshold, lowerThreshold);
 			for (final VirtualMachine vm : pm.publicVms) {
 				final ModelVM item = new ModelVM(vm, bin, vminit.size());
 				bin.addVM(item);
@@ -136,7 +153,7 @@ public class InfrastructureModel {
 		}
 
 		bins = pminit.toArray(ModelPM.mpmArrSample);
-		convItemsArr(vminit);
+		items = vminit.toArray(ModelVM.mvmArrSample);
 		calculateFitness();
 	}
 
@@ -165,7 +182,7 @@ public class InfrastructureModel {
 		}
 	}
 
-	protected void useLocalSearch() {
+	public void useLocalSearch() {
 		if (MachineLearningConsolidator.doLocalSearch1) {
 			improve();
 		} else if (MachineLearningConsolidator.doLocalSearch2) {
@@ -197,8 +214,7 @@ public class InfrastructureModel {
 		for (int i = 0; i < tvmls; i++) {
 			final ModelVM vm = tempvmlist.get(i);
 			ModelPM targetPm = null;
-			for (int j = 0; j < binsToTry.length; j++) {
-				final ModelPM pm = binsToTry[j];
+			for (final ModelPM pm : binsToTry) {
 				if (pm.isMigrationPossible(vm)) {
 					targetPm = pm;
 					break;
@@ -220,8 +236,7 @@ public class InfrastructureModel {
 		// create an array out of the bins
 		ModelPM[] pmList = new ModelPM[bins.length];
 		int runningLen = 0;
-		for (int i = 0; i < pmList.length; i++) {
-			final ModelPM curr = bins[i];
+		for (final ModelPM curr : bins) {
 			if (curr.isHostingVMs() && curr.free.getTotalProcessingPower() > SimpleConsolidator.pmFullLimit) {
 				pmList[runningLen++] = curr;
 			}
@@ -284,33 +299,6 @@ public class InfrastructureModel {
 		} while (didMove);
 	}
 
-	interface GenHelper {
-		boolean shouldUseDifferent();
-
-		ModelPM whatShouldWeUse(int vm);
-	}
-
-	/**
-	 * Create a new solution by mutating the current one. Each gene (i.e., the
-	 * mapping of each VM) is replaced by a random one with probability mutationProb
-	 * and simply copied otherwise. Note that the current solution (this) is not
-	 * changed.
-	 */
-	InfrastructureModel mutate(final double mutationProb) {
-		return new InfrastructureModel(this, new GenHelper() {
-
-			@Override
-			public ModelPM whatShouldWeUse(final int vm) {
-				return bins[MachineLearningConsolidator.random.nextInt(bins.length)];
-			}
-
-			@Override
-			public boolean shouldUseDifferent() {
-				return MachineLearningConsolidator.random.nextDoubleFast() < mutationProb;
-			}
-		});
-	}
-
 	/**
 	 * Create a new solution by recombinating this solution with another. Each gene
 	 * (i.e., the mapping of each VM) is taken randomly either from this or the
@@ -319,7 +307,7 @@ public class InfrastructureModel {
 	 * @param other The other parent for the recombination
 	 * @return A new solution resulting from the recombination
 	 */
-	InfrastructureModel recombinate(final InfrastructureModel other) {
+	public InfrastructureModel recombinate(final InfrastructureModel other) {
 		return new InfrastructureModel(this, new GenHelper() {
 			@Override
 			public boolean shouldUseDifferent() {
@@ -327,10 +315,10 @@ public class InfrastructureModel {
 			}
 
 			@Override
-			public ModelPM whatShouldWeUse(final int vm) {
+			public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
 				return other.items[vm].gethostPM();
 			}
-		});
+		}, true);
 	}
 
 	/**
@@ -341,7 +329,7 @@ public class InfrastructureModel {
 	 * @param other Another fitness value
 	 * @return true if this is better than other
 	 */
-	boolean isBetterThan(final InfrastructureModel other) {
+	public boolean isBetterThan(final InfrastructureModel other) {
 		return betterThan(this.totalOverAllocated, this.nrActivePms, this.nrMigrations, other.totalOverAllocated,
 				other.nrActivePms, other.nrMigrations);
 	}

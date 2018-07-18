@@ -1,6 +1,9 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
 
 /**
  * VM consolidator using a genetic algorithm.
@@ -42,9 +45,9 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	 * discarded.
 	 */
 	private void crossover() {
-		final long temp=Math.abs(random.nextLong());
-		final int i1 = (int)(temp%population.length);
-		final int i2 = (int)((temp>>32)%population.length);
+		final long temp = Math.abs(random.nextLong());
+		final int i1 = (int) (temp % population.length);
+		final int i2 = (int) ((temp >> 32) % population.length);
 		final InfrastructureModel s3 = population[i1].recombinate(population[i2]);
 		if (s3.isBetterThan(population[i1])) {
 			population[i1] = s3;
@@ -63,9 +66,9 @@ public class GaConsolidator extends IM_ML_Consolidator {
 		// Determine "best" solution (i.e. a solution, compared to which there is no
 		// better one)
 		bestSolution = population[0];
-		for (int i = 1; i < population.length; i++) {
-			if (population[i].isBetterThan(bestSolution)) {
-				bestSolution = population[i];
+		for (final InfrastructureModel im : population) {
+			if (im.isBetterThan(bestSolution)) {
+				bestSolution = im;
 			}
 		}
 		// Implement solution in the model
@@ -97,7 +100,7 @@ public class GaConsolidator extends IM_ML_Consolidator {
 			// in the population, otherwise it is discarded.
 			for (int i = 0; i < population.length; i++) {
 				final InfrastructureModel parent = population[i];
-				final InfrastructureModel child = parent.mutate(mutationProb);
+				final InfrastructureModel child = new MutatedInfrastructureModel(parent);
 				if (child.isBetterThan(parent)) {
 					population[i] = child;
 					improved = true;

@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,29 +53,38 @@ public class ModelPM {
 	public ModelPM(final PhysicalMachine pm, final int number, final double upperThreshold,
 			final double lowerThreshold) {
 		basedetails = new ImmutablePMComponents(pm, number, lowerThreshold, upperThreshold);
-		on=PhysicalMachine.ToOnorRunning.contains(pm.getState());
+		on = PhysicalMachine.ToOnorRunning.contains(pm.getState());
 
 		vmList = new ArrayList<>(pm.publicVms.size());
-		consumedResources = new AlterableResourceConstraints(0, pm.getCapacities().getRequiredProcessingPower(), 0);
-		freeResources = new AlterableResourceConstraints(pm.getCapacities());
+		consumedResources = genEmptyConsumed();
+		freeResources = genCompletelyFree();
 		consumed = new UnalterableConstraintsPropagator(consumedResources);
 		free = new UnalterableConstraintsPropagator(freeResources);
 		// Logger.getGlobal().info("Created PM: "+toString());
 	}
 
+	private AlterableResourceConstraints genEmptyConsumed() {
+		return new AlterableResourceConstraints(0, basedetails.pm.getCapacities().getRequiredProcessingPower(), 0);
+	}
+
+	private AlterableResourceConstraints genCompletelyFree() {
+		return new AlterableResourceConstraints(basedetails.pm.getCapacities());
+	}
+
+	/**
+	 * ModelVMs are not copied!
+	 */
 	public ModelPM(final ModelPM toCopy) {
+		// Shallow copy on basedetails:
+		this.basedetails = toCopy.basedetails;
+		// Proper copy (except VMlist on the rest)
+		this.on = toCopy.on;
 		final int ll = toCopy.vmList.size();
 		this.vmList = new ArrayList<>(ll);
-		for (int i = 0; i < ll; i++) {
-			this.vmList.add(new ModelVM(toCopy.vmList.get(i),this));
-		}
-		this.consumedResources = new AlterableResourceConstraints(toCopy.consumedResources);
-		this.freeResources = new AlterableResourceConstraints(toCopy.freeResources);
+		this.consumedResources = genEmptyConsumed();
+		this.freeResources = genCompletelyFree();
 		this.consumed = new UnalterableConstraintsPropagator(consumedResources);
 		this.free = new UnalterableConstraintsPropagator(freeResources);
-		// Shallow copy from here:
-		this.basedetails = toCopy.basedetails;
-		this.on = toCopy.on;
 	}
 
 	/**
@@ -87,7 +96,7 @@ public class ModelPM {
 	 */
 	public String toString() {
 		String result = "PM " + basedetails.number + ", cap=" + basedetails.pm.getCapacities().toString() + ", curr="
-				+ consumedResources.toString() + ", state=" + (on?"ON":"OFF") + ", VMs=";
+				+ consumedResources.toString() + ", state=" + (on ? "ON" : "OFF") + ", VMs=";
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)
@@ -167,18 +176,17 @@ public class ModelPM {
 	 * Changes the state of the pm so the graph can give the switch off information
 	 * later to the simulation.
 	 */
-	protected void switchOff() {
-		on=false;
+	public void switchOff() {
+		on = false;
 	}
 
 	/**
 	 * Changes the state of the pm so the graph can give the switch on information
 	 * later to the simulation.
 	 */
-	protected void switchOn() {
-		on=true;
+	public void switchOn() {
+		on = true;
 	}
-
 
 	/**
 	 * Method for checking if the actual pm is overAllocated.
@@ -278,7 +286,7 @@ public class ModelPM {
 	public int hashCode() {
 		return basedetails.number;
 	}
-	
+
 	public boolean isOn() {
 		return on;
 	}

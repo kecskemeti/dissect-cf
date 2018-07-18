@@ -1,7 +1,8 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.IControllablePmScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
 
 /**
  * This class stores actions, which need to start a PM in the simulator.

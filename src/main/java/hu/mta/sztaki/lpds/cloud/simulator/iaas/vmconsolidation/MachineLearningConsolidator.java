@@ -24,6 +24,8 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
 import it.unimi.dsi.util.XoShiRo256PlusRandom;
 
 /**
@@ -34,7 +36,6 @@ import it.unimi.dsi.util.XoShiRo256PlusRandom;
  *         Moores University, (c) 2017"
  */
 public abstract class MachineLearningConsolidator<T extends InfrastructureModel> extends ModelBasedConsolidator {
-	protected double mutationProb;
 
 	protected int randomCreations;
 	protected int unchangedCreations;
@@ -45,20 +46,21 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	protected T[] population;
 	private int popFillIndex;
 	/** For generating random numbers */
-	static protected XoShiRo256PlusRandom random;
+	static public XoShiRo256PlusRandom random;
 	/**
 	 * Controls whether new solutions (created by mutation or recombination) should
 	 * be improved with a local search
 	 */
-	static protected boolean doLocalSearch1 = false;
+	static public boolean doLocalSearch1 = false;
 	/** simple consolidator local search */
-	static protected boolean doLocalSearch2 = false;
+	static public boolean doLocalSearch2 = false;
 
 	public MachineLearningConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
 
 	protected abstract T modelFactory(T input, boolean original, boolean localsearch);
+
 	protected abstract void createPopArray(int len);
 
 	/**
@@ -89,14 +91,14 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			clonecount--;
 		}
 	}
-	
+
 	protected int getPopFillIndex() {
 		return popFillIndex;
 	}
 
 	@Override
 	protected void processProps() {
-		this.mutationProb = Double.parseDouble(props.getProperty("mutationProb"));
+		MutatedInfrastructureModel.prepareMutator(Double.parseDouble(props.getProperty("mutationProb")));
 		random = new XoShiRo256PlusRandom(Long.parseLong(props.getProperty("seed")));
 		doLocalSearch1 = Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
 		doLocalSearch2 = Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
@@ -127,7 +129,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			firstFitCreations = 1;
 		} else {
 			unchangedCreations = 1;
-			firstFitCreations = numberOfCreations/4;
+			firstFitCreations = numberOfCreations / 4;
 			randomCreations = numberOfCreations - unchangedCreations - firstFitCreations;
 		}
 	}

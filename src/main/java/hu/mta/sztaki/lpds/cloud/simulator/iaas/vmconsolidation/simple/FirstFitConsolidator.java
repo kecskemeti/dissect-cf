@@ -1,9 +1,13 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 
 import java.util.HashSet;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 
 /**
  * @author Rene Ponto
@@ -25,7 +29,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @param consFreq      This value determines, how often the consolidation
 	 *                      should run.
 	 */
-	public FirstFitConsolidator(IaaSService toConsolidate, long consFreq) {
+	public FirstFitConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
 
@@ -40,11 +44,10 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * graph, which does the changes inside the simulator.
 	 */
 	@Override
-	public InfrastructureModel optimize(InfrastructureModel sol) {
-		unchangeableBins = new HashSet<>(sol.bins.length);
+	public InfrastructureModel optimize(final InfrastructureModel sol) {
+		unchangeableBins = new HashSet<>();
 		if (isOverAllocated(sol) || isUnderAllocated(sol)) {
-			for (int i = 0; i < sol.bins.length; i++) {
-				ModelPM pm = sol.bins[i];
+			for (final ModelPM pm : sol.bins) {
 				if (isNothingToChange(pm))
 					continue;
 				if (pm.isUnderAllocated()) {
@@ -83,8 +86,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	};
 
 	private boolean checkifStateExists(final PMCheck chk, final InfrastructureModel sol) {
-		for (final ModelPM pm : sol.bins) {
-			if (chk.check(pm)) {
+		for (final ModelPM bin : sol.bins) {
+			if (chk.check(bin)) {
 				return true;
 			}
 		}
@@ -96,7 +99,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @return true, if there is an overAllocated PM.
 	 */
-	private boolean isOverAllocated(InfrastructureModel sol) {
+	private boolean isOverAllocated(final InfrastructureModel sol) {
 		return checkifStateExists(oaChecker, sol);
 	}
 
@@ -105,7 +108,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @return true, if there is an underAllocated PM.
 	 */
-	private boolean isUnderAllocated(InfrastructureModel sol) {
+	private boolean isUnderAllocated(final InfrastructureModel sol) {
 		return checkifStateExists(uaChecker, sol);
 	}
 
@@ -119,11 +122,10 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 *         no running VM with the needed resources; null is returned if no
 	 *         appropriate PM was found.
 	 */
-	private ModelPM getMigPm(ModelVM toMig, InfrastructureModel sol) {
+	private ModelPM getMigPm(final ModelVM toMig, final InfrastructureModel sol) {
 		// Logger.getGlobal().info("vm="+toMig.toString());
 		// now we have to search for a fitting pm
-		for (int i = 0; i < sol.bins.length; i++) {
-			ModelPM actualPM = sol.bins[i];
+		for (final ModelPM actualPM : sol.bins) {
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			if (actualPM != toMig.gethostPM() && actualPM.isOn() && actualPM.isHostingVMs()
 					&& !actualPM.isOverAllocated() && !unchangeableBins.contains(actualPM)
@@ -134,8 +136,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 
 		// now we have to take an empty PM if possible, because no running PM is
 		// possible to take the load of the VM
-		for (int j = 0; j < sol.bins.length; j++) {
-			ModelPM actualPM = sol.bins[j];
+		for (final ModelPM actualPM : sol.bins) {
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
 			if (actualPM != toMig.gethostPM() || actualPM.isHostingVMs()) {
 
@@ -161,8 +162,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * @return A PM with the needed resources or null if no appropriate PM was
 	 *         found.
 	 */
-	private ModelPM startPM(ResourceConstraints VMConstraints, InfrastructureModel sol) {
-		for (ModelPM pm : sol.bins) {
+	private ModelPM startPM(final ResourceConstraints VMConstraints, final InfrastructureModel sol) {
+		for (final ModelPM pm:sol.bins) {
 			if (!pm.isOn() && VMConstraints.compareTo(pm.getTotalResources()) <= 0) {
 				pm.switchOn(); // start this PM
 				return pm;
@@ -171,7 +172,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		return null;
 	}
 
-	private boolean isNothingToChange(ModelPM pm) {
+	private boolean isNothingToChange(final ModelPM pm) {
 		return unchangeableBins.contains(pm);
 	}
 
@@ -184,11 +185,13 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @param source The source PM which host the VMs to migrate.
 	 */
-	private void migrateOverAllocatedPM(ModelPM source, InfrastructureModel sol) {
+	private void migrateOverAllocatedPM(final ModelPM source, final InfrastructureModel sol) {
 		// Logger.getGlobal().info("source="+source.toString());
 		while (!isNothingToChange(source) && source.isOverAllocated()) {
-			ModelVM actual = source.getVMs().get(0); // now taking the first VM on this PM and try to migrate it to a target
-			ModelPM pm = getMigPm(actual, sol);
+			final ModelVM actual = source.getVMs().get(0); // now taking the first VM on this PM and try to migrate it
+															// to a
+															// target
+			final ModelPM pm = getMigPm(actual, sol);
 			// if there is no PM to host the actual VM of the source PM, change the state
 			// depending on its acutal state
 			if (pm == null) {
@@ -207,28 +210,27 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 * 
 	 * @param source The source PM which host the VMs to migrate.
 	 */
-	private void migrateUnderAllocatedPM(ModelPM source, InfrastructureModel sol) {
+	private void migrateUnderAllocatedPM(final ModelPM source, final InfrastructureModel sol) {
 
 		if (!source.isHostingVMs()) {
 			source.switchOff();
 			return; // if there are no VMs, we cannot migrate anything
 		}
 
-		ModelVM[] mvms=source.getVMs().toArray(ModelVM.mvmArrSample);
-		for (int i=1;i<=mvms.length;i++) {
-			ModelVM v=mvms[mvms.length-i];
-			ModelPM t=getMigPm(v,sol);
-			if(t!=null) {
+		final ModelVM[] mvms = source.getVMs().toArray(ModelVM.mvmArrSample);
+		for (int i = 1; i <= mvms.length; i++) {
+			final ModelVM v = mvms[mvms.length - i];
+			final ModelPM t = getMigPm(v, sol);
+			if (t != null) {
 				source.migrateVM(v, t);
 			} else {
 				i--;
-				if(i==0) {
+				if (i == 0) {
 					unchangeableBins.add(source);
 				}
 				// cancel out the previous migrations
-				for(;i>=1;i--) {
-					v=mvms[mvms.length-i];
-					v.migrate(source);
+				for (; i >= 1; i--) {
+					mvms[mvms.length - i].migrate(source);
 				}
 				return;
 			}

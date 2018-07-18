@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
@@ -36,9 +36,13 @@ public class ModelVM {
 		hostPM = pm; // save the host PM
 	}
 
-	public ModelVM(final ModelVM toCopy, final ModelPM withHost) {
+	/**
+	 * Host is not copied as it is assumed to be changed after copy
+	 * @param toCopy
+	 */
+	public ModelVM(final ModelVM toCopy) {
 		this.basedetails = toCopy.basedetails;
-		this.hostPM = withHost;
+		// host is not copied
 	}
 
 	/**

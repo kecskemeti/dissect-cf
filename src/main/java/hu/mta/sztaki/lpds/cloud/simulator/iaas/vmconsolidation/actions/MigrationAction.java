@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions;
 
 import java.util.EnumSet;
 
@@ -7,6 +7,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**

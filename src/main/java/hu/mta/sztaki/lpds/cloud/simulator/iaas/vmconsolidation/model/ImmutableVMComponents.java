@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 

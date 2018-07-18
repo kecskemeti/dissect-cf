@@ -1,4 +1,4 @@
-package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
+package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +8,7 @@ import java.util.List;
  * simulator.
  */
 public abstract class Action {
-	public static final Action[] actArrSample=new Action[0];
+	public static final Action[] actArrSample = new Action[0];
 
 	public static enum Type {
 		/**
@@ -31,10 +31,9 @@ public abstract class Action {
 
 	public final int id;
 	public final Type type;
-	// List of actions, which need to be completed before the action starts
-	protected List<Action> predecessors;
 	// List of actions, which need to start after completion of this one
 	protected List<Action> successors;
+	private int remainingPredecessors;
 
 	/**
 	 * Constructor. Instantiates the empty lists for its predecessors and
@@ -45,7 +44,7 @@ public abstract class Action {
 	public Action(final Type t) {
 		this.id = idSequence++;
 		this.type = t;
-		predecessors = new ArrayList<>();
+		remainingPredecessors = 0;
 		successors = new ArrayList<>();
 	}
 
@@ -54,34 +53,8 @@ public abstract class Action {
 	 * v.
 	 */
 	public void addPredecessor(final Action v) {
-		predecessors.add(v);
-		v.addSuccessor(this);
-	}
-
-	/**
-	 * Removes v as a predecessor of this action AND also this action as a successor
-	 * of v.
-	 */
-	public void removePredecessor(final Action v) {
-		predecessors.remove(v);
-		// v.removeSuccessor(this); //commented out to avoid concurrent modification
-		// exception
-	}
-
-	public List<Action> getPredecessors() {
-		return predecessors;
-	}
-
-	public void addSuccessor(final Action v) {
-		successors.add(v);
-	}
-
-	public void removeSuccessor(final Action v) {
-		successors.remove(v);
-	}
-
-	public List<Action> getSuccessors() {
-		return successors;
+		remainingPredecessors++;
+		v.successors.add(this);
 	}
 
 	/**
@@ -99,10 +72,18 @@ public abstract class Action {
 	 */
 	public void finished() {
 		for (final Action a : successors) {
-			a.removePredecessor(this);
-			if (a.getPredecessors().isEmpty())
-				a.execute();
+			a.finishedPredecessor();
 		}
+	}
+
+	private void finishedPredecessor() {
+		remainingPredecessors--;
+		if (isReady())
+			execute();
+	}
+
+	public boolean isReady() {
+		return remainingPredecessors == 0;
 	}
 
 	public String toString() {
