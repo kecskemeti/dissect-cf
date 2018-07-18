@@ -44,6 +44,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	protected Properties props;
 
+	private Action[] previousActions = Action.actArrSample;
+
 	/**
 	 * The constructor for VM consolidation. It expects an IaaSService, a value for
 	 * the upper threshold, a value for the lower threshold and a variable which
@@ -77,13 +79,19 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
 	protected void doConsolidation(final PhysicalMachine[] pmList) {
-		baseSolution = optimize(new InfrastructureModel(pmList,
-				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), lowerThreshold, upperThreshold));
-		final Action[] actions = modelDiff();
+		// Cancel this round if there are unfinished actions.
+		for (final Action a : previousActions) {
+			if (!a.isFinished()) {
+				return;
+			}
+		}
+		baseSolution = optimize(new InfrastructureModel(pmList, lowerThreshold,
+				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold));
+		previousActions = modelDiff();
 		// Logger.getGlobal().info("Number of actions: "+actions.size());
-		createGraph(actions);
+		createGraph();
 		// printGraph(actions);
-		performActions(actions);
+		performActions();
 	}
 
 	public static void clearStatics() {
@@ -152,9 +160,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param actions The action-list with all changes that have to be done inside
 	 *                the simulator.
 	 */
-	private void createGraph(final Action[] actions) {
-		for (final Action action : actions) {
-			action.determinePredecessors(actions);
+	private void createGraph() {
+		for (final Action action : previousActions) {
+			action.determinePredecessors(previousActions);
 		}
 	}
 
@@ -165,8 +173,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param actions The action-list with all changes that have to be done inside
 	 *                the simulator.
 	 */
-	private void performActions(final Action[] actions) {
-		for (final Action action : actions) {
+	private void performActions() {
+		for (final Action action : previousActions) {
 			if (action.isReady()) {
 				action.execute();
 			}

@@ -115,7 +115,7 @@ public class InfrastructureModel {
 			if (helper.shouldUseDifferent()) {
 				target = helper.whatShouldWeUse(this, i);
 			} else {
-				target = oldVM.gethostPM();
+				target = bins[oldVM.gethostPM().hashCode()];
 			}
 			target.addVM(items[i]);
 		}
@@ -132,8 +132,8 @@ public class InfrastructureModel {
 	 * 
 	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
-	public InfrastructureModel(final PhysicalMachine[] pmList, final boolean onlyNonEmpty, final double upperThreshold,
-			final double lowerThreshold) {
+	public InfrastructureModel(final PhysicalMachine[] pmList, final double lowerThreshold, final boolean onlyNonEmpty,
+			final double upperThreshold) {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
 		final List<ModelVM> vminit = new ArrayList<>(pmList.length);
 		for (int i = 0; i < pmList.length; i++) {
@@ -143,7 +143,7 @@ public class InfrastructureModel {
 			// PMs for consolidation
 			if (!(pm.isHostingVMs()) && onlyNonEmpty)
 				continue;
-			final ModelPM bin = new ModelPM(pm, pminit.size(), upperThreshold, lowerThreshold);
+			final ModelPM bin = new ModelPM(pm, lowerThreshold, pminit.size(), upperThreshold);
 			for (final VirtualMachine vm : pm.publicVms) {
 				final ModelVM item = new ModelVM(vm, bin, vminit.size());
 				bin.addVM(item);
@@ -169,7 +169,7 @@ public class InfrastructureModel {
 			if (pm.isHostingVMs()) {
 				nrActivePms++;
 				final ResourceConstraints ut = pm.getUpperThreshold();
-				if (pm.consumed.getTotalProcessingPower() > ut.getRequiredMemory())
+				if (pm.consumed.getTotalProcessingPower() > ut.getTotalProcessingPower())
 					totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
 				if (pm.consumed.getRequiredMemory() > ut.getRequiredMemory())
 					totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();

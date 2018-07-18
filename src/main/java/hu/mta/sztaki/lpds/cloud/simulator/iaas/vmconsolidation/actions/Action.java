@@ -34,6 +34,7 @@ public abstract class Action {
 	// List of actions, which need to start after completion of this one
 	protected List<Action> successors;
 	private int remainingPredecessors;
+	private boolean finished = false;
 
 	/**
 	 * Constructor. Instantiates the empty lists for its predecessors and
@@ -71,9 +72,14 @@ public abstract class Action {
 	 * This method is to be called when the action has been finished.
 	 */
 	public void finished() {
+		finished = true;
 		for (final Action a : successors) {
 			a.finishedPredecessor();
 		}
+	}
+
+	public boolean isFinished() {
+		return finished;
 	}
 
 	private void finishedPredecessor() {

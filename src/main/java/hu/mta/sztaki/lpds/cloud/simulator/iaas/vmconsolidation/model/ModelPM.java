@@ -50,9 +50,9 @@ public class ModelPM {
 	 * @param upperThreshold The upperThreshold out of the properties.
 	 * @param lowerThreshold The lowerThreshold out of the properties.
 	 */
-	public ModelPM(final PhysicalMachine pm, final int number, final double upperThreshold,
-			final double lowerThreshold) {
-		basedetails = new ImmutablePMComponents(pm, number, lowerThreshold, upperThreshold);
+	public ModelPM(final PhysicalMachine pm, final double lowerThreshold, final int number,
+			final double upperThreshold) {
+		basedetails = new ImmutablePMComponents(pm, lowerThreshold, number, upperThreshold);
 		on = PhysicalMachine.ToOnorRunning.contains(pm.getState());
 
 		vmList = new ArrayList<>(pm.publicVms.size());

@@ -9,7 +9,7 @@ public class ImmutablePMComponents {
 	public final int number;
 	public final ConstantConstraints lowerThrResources, upperThrResources;
 
-	public ImmutablePMComponents(final PhysicalMachine pm, final int number, final double lowerThreshold,
+	public ImmutablePMComponents(final PhysicalMachine pm, final double lowerThreshold, final int number,
 			final double upperThreshold) {
 		this.pm = pm;
 		this.number = number;

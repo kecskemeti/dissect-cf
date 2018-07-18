@@ -17,6 +17,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 
 	// Reference to the model of the VM, which needs be migrated
 	public final ModelVM mvm;
+	private boolean goForMigration = true;
 
 	/**
 	 * Constructor for an action which shall migrate a VM inside the simulator.
@@ -45,11 +46,24 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 					this.addPredecessor(action);
 				}
 			}
-			// If two PMs would like to migrate one VM to each other,
-			// there could be a loop. Not solved yet.
+
 			if (action.type.equals(Type.MIGRATION)) {
-				if (((MigrationAction) action).mvm.basedetails.initialHost.hashCode() == mvm.gethostPM().hashCode()) {
-					this.addPredecessor(action);
+				final ModelVM otherVM = ((MigrationAction) action).mvm;
+				boolean cancelMigration = false;
+				if (otherVM.basedetails.initialHost.hashCode() == mvm.gethostPM().hashCode()) {
+					if (otherVM.gethostPM().hashCode() == mvm.basedetails.initialHost.hashCode()) {
+						// Cancels circular migrations
+						cancelMigration = true;
+					} else {
+						// Deeper circules should be efficiently detected
+//						if (!this.addPredecessor(action)) {
+//							cancelMigration = true;
+//						}
+					}
+				}
+				if (cancelMigration) {
+					goForMigration = false;
+					((MigrationAction) action).goForMigration = false;
 				}
 			}
 		}
@@ -69,22 +83,24 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 */
 	@Override
 	public void execute() {
-		final PhysicalMachine simSourcePM = mvm.basedetails.initialHost.getPM();
-		final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
-		final VirtualMachine simVM = mvm.basedetails.vm;
-		if (simTargetPM.isRunning() && acceptableStatesForMigr.contains(simVM.getState())
-				&& simVM.getMemSize() <= simTargetPM.freeCapacities.getRequiredMemory()
-				&& simVM.getPerTickProcessingPower() <= simTargetPM.freeCapacities.getTotalProcessingPower()
-				&& simSourcePM.publicVms.contains(simVM)) {
-			simVM.subscribeStateChange(this); // observe the VM which shall be migrated
-			try {
-				SimpleConsolidator.migrationCount++;
-				simSourcePM.migrateVM(simVM, simTargetPM);
-				return;
-			} catch (VMManagementException e) {
-				e.printStackTrace();
-			} catch (NetworkException e) {
-				e.printStackTrace();
+		if (goForMigration) {
+			final PhysicalMachine simSourcePM = mvm.basedetails.initialHost.getPM();
+			final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
+			final VirtualMachine simVM = mvm.basedetails.vm;
+			if (simTargetPM.isRunning() && acceptableStatesForMigr.contains(simVM.getState())
+					&& simVM.getMemSize() <= simTargetPM.freeCapacities.getRequiredMemory()
+					&& simVM.getPerTickProcessingPower() <= simTargetPM.freeCapacities.getTotalProcessingPower()
+					&& simSourcePM.publicVms.contains(simVM)) {
+				simVM.subscribeStateChange(this); // observe the VM which shall be migrated
+				try {
+					SimpleConsolidator.migrationCount++;
+					simSourcePM.migrateVM(simVM, simTargetPM);
+					return;
+				} catch (VMManagementException e) {
+					e.printStackTrace();
+				} catch (NetworkException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 		finished();
