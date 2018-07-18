@@ -67,7 +67,7 @@ public class ModelPM {
 		final int ll = toCopy.vmList.size();
 		this.vmList = new ArrayList<>(ll);
 		for (int i = 0; i < ll; i++) {
-			this.vmList.add(new ModelVM(toCopy.vmList.get(i)));
+			this.vmList.add(new ModelVM(toCopy.vmList.get(i),this));
 		}
 		this.consumedResources = new AlterableResourceConstraints(toCopy.consumedResources);
 		this.freeResources = new AlterableResourceConstraints(toCopy.freeResources);

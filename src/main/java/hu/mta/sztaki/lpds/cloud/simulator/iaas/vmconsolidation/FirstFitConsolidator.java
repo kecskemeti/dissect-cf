@@ -194,7 +194,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 			if (pm == null) {
 				unchangeableBins.add(source);
 			} else {
-				actual.gethostPM().migrateVM(actual, pm); // do the migration
+				actual.migrate(pm); // do the migration
 			}
 		}
 	}
@@ -228,7 +228,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 				// cancel out the previous migrations
 				for(;i>=1;i--) {
 					v=mvms[mvms.length-i];
-					v.gethostPM().migrateVM(v, source);
+					v.migrate(source);
 				}
 				return;
 			}

@@ -71,7 +71,7 @@ public class InfrastructureModel {
 		this(base);
 		if (!original) {
 			for (final ModelVM vm : items) {
-				updateMapping(vm, bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
+				vm.migrate(bins[MachineLearningConsolidator.random.nextInt(bins.length)]);
 			}
 		}
 		if (applylocalsearch) {
@@ -85,9 +85,21 @@ public class InfrastructureModel {
 		final List<ModelVM> mvms = new ArrayList<>();
 		for (int i = 0; i < bins.length; i++) {
 			bins[i] = new ModelPM(toCopy.bins[i]);
+			// We can do shallow copy here because ModelPM does the deep copy for us already
 			mvms.addAll(bins[i].getVMs());
 		}
 		convItemsArr(mvms);
+	}
+
+	private InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper) {
+		this(toCopy);
+		for (int i = 0; i < items.length; i++) {
+			if (helper.shouldUseDifferent()) {
+				items[i].migrate(helper.whatShouldWeUse(i));
+			}
+		}
+		useLocalSearch();
+		calculateFitness();
 	}
 
 	private void convItemsArr(final List<ModelVM> mvms) {
@@ -146,15 +158,11 @@ public class InfrastructureModel {
 					totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
 			}
 		}
-		for(final ModelVM vm:items) {
-			if(vm.basedetails.initialHost.hashCode()!=vm.gethostPM().hashCode()) {
+		for (final ModelVM vm : items) {
+			if (vm.basedetails.initialHost.hashCode() != vm.gethostPM().hashCode()) {
 				nrMigrations++;
 			}
 		}
-	}
-
-	private void updateMapping(final ModelVM v, final ModelPM p) {
-		v.gethostPM().migrateVM(v, p);
 	}
 
 	protected void useLocalSearch() {
@@ -282,18 +290,6 @@ public class InfrastructureModel {
 		ModelPM whatShouldWeUse(int vm);
 	}
 
-	private InfrastructureModel genNew(final GenHelper helper) {
-		final InfrastructureModel result = new InfrastructureModel(this);
-		for (int i = 0; i < items.length; i++) {
-			if (helper.shouldUseDifferent()) {
-				result.updateMapping(items[i], helper.whatShouldWeUse(i));
-			}
-		}
-		result.useLocalSearch();
-		result.calculateFitness();
-		return result;
-	}
-
 	/**
 	 * Create a new solution by mutating the current one. Each gene (i.e., the
 	 * mapping of each VM) is replaced by a random one with probability mutationProb
@@ -301,7 +297,7 @@ public class InfrastructureModel {
 	 * changed.
 	 */
 	InfrastructureModel mutate(final double mutationProb) {
-		return genNew(new GenHelper() {
+		return new InfrastructureModel(this, new GenHelper() {
 
 			@Override
 			public ModelPM whatShouldWeUse(final int vm) {
@@ -324,7 +320,7 @@ public class InfrastructureModel {
 	 * @return A new solution resulting from the recombination
 	 */
 	InfrastructureModel recombinate(final InfrastructureModel other) {
-		return genNew(new GenHelper() {
+		return new InfrastructureModel(this, new GenHelper() {
 			@Override
 			public boolean shouldUseDifferent() {
 				return CachingPRNG.genBoolean();
@@ -346,10 +342,12 @@ public class InfrastructureModel {
 	 * @return true if this is better than other
 	 */
 	boolean isBetterThan(final InfrastructureModel other) {
-		return betterThan(this.totalOverAllocated, this.nrActivePms, this.nrMigrations, other.totalOverAllocated, other.nrActivePms, other.nrMigrations);
+		return betterThan(this.totalOverAllocated, this.nrActivePms, this.nrMigrations, other.totalOverAllocated,
+				other.nrActivePms, other.nrMigrations);
 	}
 
-	protected static final boolean betterThan(final double oA1, final int nAPM1, final int nMg1, final double oA2, final int nAPM2, final int nMg2) {
+	protected static final boolean betterThan(final double oA1, final int nAPM1, final int nMg1, final double oA2,
+			final int nAPM2, final int nMg2) {
 		// The primary objective is the total overload. If there is a clear
 		// difference (>1%) in that, this decides which is better.
 		// If there is no significant difference in the total overload, then
