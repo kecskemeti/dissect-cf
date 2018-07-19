@@ -137,7 +137,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		final List<Action> actions = new ArrayList<>();
 		if (controllablePmScheduler != null) {
 			for (final ModelPM bin : baseSolution.bins) {
-				if (bin.isOn() || bin.isHostingVMs()) {
+				if (bin.isHostingVMs()) {
 					if (!bin.getPM().isRunning())
 						actions.add(new StartAction(bin, controllablePmScheduler));
 				} else {

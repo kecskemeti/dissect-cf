@@ -95,8 +95,8 @@ public class ModelPM {
 	 *         state and its vms.
 	 */
 	public String toString() {
-		String result = "PM " + basedetails.number + ", cap=" + basedetails.pm.getCapacities().toString() + ", curr="
-				+ consumedResources.toString() + ", state=" + (on ? "ON" : "OFF") + ", VMs=";
+		String result = "PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString() + ",\n curr="
+				+ consumedResources.toString() + ",\n state=" + (on ? "ON" : "OFF") + ",\n VMs=";
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)

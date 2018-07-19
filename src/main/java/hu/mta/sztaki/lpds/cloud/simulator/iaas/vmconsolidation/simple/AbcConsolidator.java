@@ -168,6 +168,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// System.err.println("ABC nrIterations="+nrIterations+",
 		// populationSize="+populationSize);
 		initializePopulation(input);
+		currChecker.checkBest(input);
 		improved = true;
 		for (int iter = 0; iter < nrIterations && improved; iter++) {
 			improved = false;

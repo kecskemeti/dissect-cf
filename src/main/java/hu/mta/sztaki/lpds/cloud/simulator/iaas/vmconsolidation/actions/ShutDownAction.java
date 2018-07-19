@@ -58,6 +58,7 @@ public class ShutDownAction extends Action {
 		final PhysicalMachine pm = this.pmToShutDown.getPM();
 		if (!pm.isHostingVMs())
 			pmScheduler.switchOff(pm);
+		finished();
 	}
 
 }
