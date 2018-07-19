@@ -14,9 +14,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEv
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
- * A PM scheduler that (i) can be controlled by a VM consolidator for
- * switching on/off PMs and (ii) reacts to requests from a VM scheduler for
- * switching on PMs.
+ * A PM scheduler that (i) can be controlled by a VM consolidator for switching
+ * on/off PMs and (ii) reacts to requests from a VM scheduler for switching on
+ * PMs.
  * 
  * @author Zoltan Mann
  */
@@ -61,34 +61,41 @@ public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController 
 	}
 
 	/**
-	 * The VM scheduler alarms us that there are not enough running PMs -> we
-	 * should turn on one or more PMs, if we can and unless sufficient PMs are 
-	 * being turned on already.
+	 * The VM scheduler alarms us that there are not enough running PMs -> we should
+	 * turn on one or more PMs, if we can and unless sufficient PMs are being turned
+	 * on already.
 	 */
 	@Override
 	protected QueueingEvent getQueueingEvent() {
 		return new Scheduler.QueueingEvent() {
 			@Override
 			public void queueingStarted() {
-				//First we determine the set of PMs that are off 
-				//and the total capacity of the PMs that are currently being turned on
-				Vector<PhysicalMachine> offPms=new Vector<>();
-				AlterableResourceConstraints capacityTurningOn=AlterableResourceConstraints.getNoResources();
-				for(PhysicalMachine pm : parent.machines) {
-					if(PhysicalMachine.ToOfforOff.contains(pm.getState())) {
-						offPms.add(pm);
+				// First we determine the set of PMs that are off
+				// and the total capacity of the PMs that are currently being turned on
+				// We should turn on PMs as long as there are PMs that are off
+				// and the capacity of the PMs being turned on is not sufficient for the
+				// requests in the queue
+				AlterableResourceConstraints capacityTurningOn;
+				PhysicalMachine toTurnOn;
+				do {
+					toTurnOn = null;
+					capacityTurningOn = AlterableResourceConstraints.getNoResources();
+					for (final PhysicalMachine pm : parent.machines) {
+						if (toTurnOn == null && PhysicalMachine.ToOfforOff.contains(pm.getState())) {
+							toTurnOn = pm;
+						}
+						if (pm.getState().equals(PhysicalMachine.State.SWITCHINGON)) {
+							capacityTurningOn.singleAdd(pm.getCapacities());
+						}
 					}
-					if(pm.getState().equals(PhysicalMachine.State.SWITCHINGON)) {
-						capacityTurningOn.singleAdd(pm.getCapacities());
+					if (capacityTurningOn.compareTo(parent.sched.getTotalQueued()) >= 0) {
+						return;
 					}
-				}
-				//We should turn on PMs as long as there are PMs that are off 
-				//and the capacity of the PMs being turned on is not sufficient for the requests in the queue
-				while(offPms.size()>0 && capacityTurningOn.compareTo(parent.sched.getTotalQueued())<0) {
-					PhysicalMachine pm=offPms.remove(offPms.size()-1);
-					capacityTurningOn.singleAdd(pm.getCapacities());
-					pm.turnon();
-				}
+					if (toTurnOn != null) {
+						capacityTurningOn.singleAdd(toTurnOn.getCapacities());
+						toTurnOn.turnon();
+					}
+				} while (toTurnOn != null && capacityTurningOn.compareTo(parent.sched.getTotalQueued()) < 0);
 			}
 		};
 	}

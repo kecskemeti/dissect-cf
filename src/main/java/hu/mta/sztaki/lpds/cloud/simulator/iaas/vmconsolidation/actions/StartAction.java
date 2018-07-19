@@ -44,6 +44,10 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	@Override
 	public void execute() {
 		final PhysicalMachine pm = this.pmToStart.getPM();
+		if(PhysicalMachine.ToOnorRunning.contains(pm.getState())) {
+			finished();
+			return;
+		}
 		pm.subscribeStateChangeEvents(this); // observe the PM before turning it on
 		pmScheduler.switchOn(pm);
 	}
