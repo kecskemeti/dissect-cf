@@ -1,10 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.CapacityChangeEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
@@ -21,8 +23,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
  * @author Zoltan Mann
  */
 public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController implements IControllablePmScheduler {
+	final HashSet<PhysicalMachine> startedPMSbecauseofQueue = new HashSet<>();
 
-	public ConsolidationFriendlyPmScheduler(IaaSService parent) {
+	public ConsolidationFriendlyPmScheduler(final IaaSService parent) {
 		super(parent);
 	}
 
@@ -30,17 +33,21 @@ public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController 
 	 * Remote control for switching on a PM.
 	 */
 	@Override
-	public void switchOn(PhysicalMachine pm) {
-		pm.turnon();
+	public void switchOn(final PhysicalMachine pm) {
+		if (!startedPMSbecauseofQueue.contains(pm)) {
+			pm.turnon();
+		}
 	}
 
 	/**
 	 * Remote control for switching off a PM.
 	 */
 	@Override
-	public void switchOff(PhysicalMachine pm) {
+	public void switchOff(final PhysicalMachine pm) {
 		try {
-			pm.switchoff(null);
+			if (!startedPMSbecauseofQueue.contains(pm)) {
+				pm.switchoff(null);
+			}
 		} catch (VMManagementException | NetworkException e) {
 			System.err.println("Exception while trying to switch off a PM, as instructed by the consolidator");
 			e.printStackTrace();
@@ -55,7 +62,7 @@ public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController 
 	protected CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
 		return new CapacityChangeEvent<PhysicalMachine>() {
 			@Override
-			public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> alteredPMs) {
+			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
 			}
 		};
 	}
@@ -93,6 +100,19 @@ public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController 
 					}
 					if (toTurnOn != null) {
 						capacityTurningOn.singleAdd(toTurnOn.getCapacities());
+						toTurnOn.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
+
+							@Override
+							public void stateChanged(final PhysicalMachine pm, final State oldState,
+									final State newState) {
+								if (newState.equals(PhysicalMachine.State.RUNNING)) {
+									startedPMSbecauseofQueue.remove(pm);
+									pm.unsubscribeStateChangeEvents(this);
+								}
+
+							}
+						});
+						startedPMSbecauseofQueue.add(toTurnOn);
 						toTurnOn.turnon();
 					}
 				} while (toTurnOn != null && capacityTurningOn.compareTo(parent.sched.getTotalQueued()) < 0);

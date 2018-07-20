@@ -62,8 +62,7 @@ public abstract class Consolidator extends Timed {
 		/**
 		 * Subscribes for free capacity change events.
 		 * 
-		 * @param forMe
-		 *            The to be observed PhysicalMachine object.
+		 * @param forMe The to be observed PhysicalMachine object.
 		 */
 		public VMListObserver(PhysicalMachine forMe) {
 			forMe.subscribeToDecreasingFreeapacityChanges(this);
@@ -106,14 +105,13 @@ public abstract class Consolidator extends Timed {
 	 * the list of objects that ensure we start to receive periodic events for
 	 * consolidation as soon as we have some VMs running on the infrastructure.
 	 * 
-	 * @param toConsolidate
-	 *            The cloud infrastructure to be continuously consolidated
-	 * @param consFreq
-	 *            The frequency with which the actual consolidator algorithm should
-	 *            be called. Note: this class does not necessarily hold on to this
-	 *            frequency. But guarantees there will be no more frequent events.
-	 *            In cases when the infrastructure is not used, the actual applied
-	 *            frequency could be dramatically lengthened.
+	 * @param toConsolidate The cloud infrastructure to be continuously consolidated
+	 * @param consFreq      The frequency with which the actual consolidator
+	 *                      algorithm should be called. Note: this class does not
+	 *                      necessarily hold on to this frequency. But guarantees
+	 *                      there will be no more frequent events. In cases when the
+	 *                      infrastructure is not used, the actual applied frequency
+	 *                      could be dramatically lengthened.
 	 */
 	public Consolidator(IaaSService toConsolidate, long consFreq) {
 		// TODO: merge some of the below functionality with several similar
@@ -172,16 +170,14 @@ public abstract class Consolidator extends Timed {
 			// consolidation...
 			PhysicalMachine[] pmList = toConsolidate.machines
 					.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
-			// Should we consolidate?
+			// Should we consolidate next time?
 			boolean thereAreVMs = false;
 			for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
 				thereAreVMs |= pmList[i].isHostingVMs();
 			}
-			if (thereAreVMs) {
-				// Yes we should
-				consolidationRuns++;
-				doConsolidation(pmList);
-			} else {
+			consolidationRuns++;
+			doConsolidation(pmList);
+			if (!thereAreVMs) {
 				// No we should not
 				unsubscribe();
 			}
@@ -212,11 +208,10 @@ public abstract class Consolidator extends Timed {
 	 * The implementations of this function should provide the actual consolidation
 	 * algorithm.
 	 * 
-	 * @param pmList
-	 *            the list of PMs that are currently in the IaaS service. The list
-	 *            can be modified at the will of the consolidator algorithm, as it
-	 *            is a copy of the state of the machine list before the
-	 *            consolidation was invoked.
+	 * @param pmList the list of PMs that are currently in the IaaS service. The
+	 *               list can be modified at the will of the consolidator algorithm,
+	 *               as it is a copy of the state of the machine list before the
+	 *               consolidation was invoked.
 	 */
 	protected abstract void doConsolidation(PhysicalMachine[] pmList);
 }

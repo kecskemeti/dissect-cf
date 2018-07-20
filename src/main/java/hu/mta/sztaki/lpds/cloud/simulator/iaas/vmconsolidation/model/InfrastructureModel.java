@@ -351,7 +351,9 @@ public class InfrastructureModel {
 	 */
 	@Override
 	public String toString() {
-		final StringBuilder result = new StringBuilder("[m=(");
+		final StringBuilder result = new StringBuilder("[f=(");
+		result.append(totalOverAllocated).append(',').append(nrActivePms).append(',').append(nrMigrations)
+				.append("),m=(");
 		boolean first = true;
 		for (final ModelVM vm : items) {
 			if (!first)
@@ -359,8 +361,7 @@ public class InfrastructureModel {
 			result.append(vm.hashCode()).append("->").append(vm.gethostPM().hashCode());
 			first = false;
 		}
-		result.append("),f=(").append(totalOverAllocated).append(',').append(nrActivePms).append(',')
-				.append(nrMigrations).append(")]");
+		result.append(")]");
 		return result.toString();
 	}
 }

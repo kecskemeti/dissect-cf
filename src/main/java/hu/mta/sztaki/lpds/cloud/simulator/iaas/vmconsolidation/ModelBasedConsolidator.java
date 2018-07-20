@@ -137,11 +137,12 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		final List<Action> actions = new ArrayList<>();
 		if (controllablePmScheduler != null) {
 			for (final ModelPM bin : baseSolution.bins) {
+				final boolean pmWillBeRunning = PhysicalMachine.ToOnorRunning.contains(bin.getPM().getState());
 				if (bin.isHostingVMs()) {
-					if (!bin.getPM().isRunning())
+					if (!pmWillBeRunning)
 						actions.add(new StartAction(bin, controllablePmScheduler));
 				} else {
-					if (bin.getPM().isRunning())
+					if (pmWillBeRunning)
 						actions.add(new ShutDownAction(bin, controllablePmScheduler));
 				}
 			}
