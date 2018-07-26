@@ -12,13 +12,7 @@ public class MutatedInfrastructureModel extends InfrastructureModel {
 	private static GenHelper mutator;
 
 	public static void prepareMutator(final double mutationProb) {
-		mutator = new GenHelper() {
-
-			@Override
-			public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
-				return im.bins[MachineLearningConsolidator.random.nextInt(im.bins.length)];
-			}
-
+		mutator = new RandomVMassigner() {
 			@Override
 			public boolean shouldUseDifferent() {
 				return MachineLearningConsolidator.random.nextDoubleFast() < mutationProb;

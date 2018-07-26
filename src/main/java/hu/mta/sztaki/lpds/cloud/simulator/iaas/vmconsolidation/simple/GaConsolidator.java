@@ -1,7 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
 
@@ -40,15 +42,26 @@ public class GaConsolidator extends IM_ML_Consolidator {
 
 	/**
 	 * Take two random individuals of the population and let them recombinate to
-	 * create a new individual. If the new individual is better than one of its
-	 * parents, then it replaces that parent in the population, otherwise it is
-	 * discarded.
+	 * create a new individual. Each gene (i.e., the mapping of each VM) is taken
+	 * randomly either from this or the other parent. Note that the two parents are
+	 * not changed. If the new individual is better than one of its parents, then it
+	 * replaces that parent in the population, otherwise it is discarded.
 	 */
 	private void crossover() {
 		final long temp = Math.abs(random.nextLong());
 		final int i1 = (int) (temp % population.length);
 		final int i2 = (int) ((temp >> 32) % population.length);
-		final InfrastructureModel s3 = population[i1].recombinate(population[i2]);
+		final InfrastructureModel s3 = new InfrastructureModel(population[i1], new GenHelper() {
+			@Override
+			public boolean shouldUseDifferent() {
+				return CachingPRNG.genBoolean();
+			}
+
+			@Override
+			public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
+				return population[i2].items[vm].gethostPM().hashCode();
+			}
+		}, true);
 		if (s3.isBetterThan(population[i1])) {
 			population[i1] = s3;
 			improved = true;

@@ -20,10 +20,15 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningCo
  */
 public class InfrastructureModel {
 
-	private final ArrayList<ModelVM> tempvmlist = new ArrayList<>();
-	/** List of all available bins */
+	/**
+	 * List of all available bins, order is important, all models have the same bin
+	 * order at a particular consolidation run
+	 */
 	public ModelPM[] bins;
-	/** List of all available items */
+	/**
+	 * List of all available items, order is important, all models have the same
+	 * items order at a particular consolidation run
+	 */
 	public ModelVM[] items;
 
 	// Fitness of the solution...
@@ -66,25 +71,18 @@ public class InfrastructureModel {
 		}
 	};
 
-	private static final GenHelper randomizer = new GenHelper() {
-		public boolean shouldUseDifferent() {
-			return true;
-		}
-
-		@Override
-		public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
-			return im.bins[MachineLearningConsolidator.random.nextInt(im.bins.length)];
-		}
-	};
-
 	private static final GenHelper keepOrig = new GenHelper() {
+
 		public boolean shouldUseDifferent() {
 			return false;
 		}
 
+		/**
+		 * This is never to be called!
+		 */
 		@Override
-		public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
-			return null;
+		public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
+			return -1;
 		}
 	};
 
@@ -93,10 +91,10 @@ public class InfrastructureModel {
 	 * e.g., using #fillRandomly().
 	 */
 	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
-		this(base, original ? keepOrig : randomizer, applylocalsearch);
+		this(base, original ? keepOrig : RandomVMassigner.globalRandomAssigner, applylocalsearch);
 	}
 
-	protected InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper,
+	public InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper,
 			final boolean applylocalsearch) {
 		bins = new ModelPM[toCopy.bins.length];
 		items = new ModelVM[toCopy.items.length];
@@ -111,13 +109,8 @@ public class InfrastructureModel {
 		for (int i = 0; i < items.length; i++) {
 			final ModelVM oldVM = toCopy.items[i];
 			items[i] = new ModelVM(oldVM);
-			ModelPM target;
-			if (helper.shouldUseDifferent()) {
-				target = helper.whatShouldWeUse(this, i);
-			} else {
-				target = bins[oldVM.gethostPM().hashCode()];
-			}
-			target.addVM(items[i]);
+			bins[helper.shouldUseDifferent() ? helper.whatShouldWeUse(this, i) : oldVM.gethostPM().hashCode()]
+					.addVM(items[i]);
 		}
 		if (applylocalsearch) {
 			useLocalSearch();
@@ -195,7 +188,7 @@ public class InfrastructureModel {
 	 * and finding new hosts for the thus removed VMs using BFD.
 	 */
 	private void improve() {
-		tempvmlist.clear();
+		final ArrayList<ModelVM> tempvmlist = new ArrayList<>();
 		// relieve overloaded PMs + empty underloaded PMs
 		for (final ModelPM pm : bins) {
 			final List<ModelVM> vmsOfPm = pm.getVMs();
@@ -297,28 +290,6 @@ public class InfrastructureModel {
 				}
 			}
 		} while (didMove);
-	}
-
-	/**
-	 * Create a new solution by recombinating this solution with another. Each gene
-	 * (i.e., the mapping of each VM) is taken randomly either from this or the
-	 * other parent. Note that the two parents are not changed.
-	 * 
-	 * @param other The other parent for the recombination
-	 * @return A new solution resulting from the recombination
-	 */
-	public InfrastructureModel recombinate(final InfrastructureModel other) {
-		return new InfrastructureModel(this, new GenHelper() {
-			@Override
-			public boolean shouldUseDifferent() {
-				return CachingPRNG.genBoolean();
-			}
-
-			@Override
-			public ModelPM whatShouldWeUse(final InfrastructureModel im, final int vm) {
-				return other.items[vm].gethostPM();
-			}
-		}, true);
 	}
 
 	/**
