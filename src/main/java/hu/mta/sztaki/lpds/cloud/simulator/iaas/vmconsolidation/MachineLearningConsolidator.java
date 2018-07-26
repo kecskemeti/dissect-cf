@@ -55,6 +55,11 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	/** simple consolidator local search */
 	static public boolean doLocalSearch2 = false;
 
+	protected T input;
+
+	/** True if at least one solution has improved during the current iteration */
+	protected boolean improved;
+
 	public MachineLearningConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
@@ -69,6 +74,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	 * inside a solution.
 	 */
 	protected void initializePopulation(final T input) {
+		this.input = input;
 		popFillIndex = 0;
 		for (int i = 0; i < randomCreations; i++) {
 			regSolution(modelFactory(input, false, true));
@@ -134,6 +140,29 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		}
 	}
 
+	protected boolean checkAndReplace(final T imTest, final int idx) {
+		boolean replaced = false;
+		if (imTest.isBetterThan(population[idx])) {
+			population[idx] = imTest;
+			replaced = improved = true;
+		}
+		return replaced;
+	}
+
+	/**
+	 * Determine "best" solution (i.e. an infrastructure setup, compared to which
+	 * there is no better one
+	 */
+	public T findBestSolution() {
+		T bestSolution = population[0];
+		for (final T im : population) {
+			if (im.isBetterThan(bestSolution)) {
+				bestSolution = im;
+			}
+		}
+		return bestSolution;
+	}
+
 	/**
 	 * String representation of the whole population (for debugging purposes).
 	 */
@@ -148,4 +177,16 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		return result.toString();
 	}
 
+	protected abstract void singleIteration();
+
+	@Override
+	protected InfrastructureModel optimize(final InfrastructureModel input) {
+		initializePopulation((T) input);
+		improved = true;
+		for (int iter = 0; iter < nrIterations && improved; iter++) {
+			improved = false;
+			singleIteration();
+		}
+		return findBestSolution();
+	}
 }

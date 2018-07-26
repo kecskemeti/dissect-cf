@@ -80,8 +80,12 @@ public class ModelVM {
 	public ModelPM gethostPM() {
 		return hostPM;
 	}
+	
+	public int getHostID() {
+		return hostPM.hashCode();
+	}
 
-	public void migrate(ModelPM target) {
+	public void migrate(final ModelPM target) {
 		hostPM.migrateVM(this, target);
 	}
 	

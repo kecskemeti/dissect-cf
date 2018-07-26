@@ -109,7 +109,7 @@ public class InfrastructureModel {
 		for (int i = 0; i < items.length; i++) {
 			final ModelVM oldVM = toCopy.items[i];
 			items[i] = new ModelVM(oldVM);
-			bins[helper.shouldUseDifferent() ? helper.whatShouldWeUse(this, i) : oldVM.gethostPM().hashCode()]
+			bins[helper.shouldUseDifferent() ? helper.whatShouldWeUse(this, i) : oldVM.getHostID()]
 					.addVM(items[i]);
 		}
 		if (applylocalsearch) {
@@ -169,7 +169,7 @@ public class InfrastructureModel {
 			}
 		}
 		for (final ModelVM vm : items) {
-			if (vm.basedetails.initialHost.hashCode() != vm.gethostPM().hashCode()) {
+			if (vm.basedetails.initialHost.hashCode() != vm.getHostID()) {
 				nrMigrations++;
 			}
 		}
@@ -329,7 +329,7 @@ public class InfrastructureModel {
 		for (final ModelVM vm : items) {
 			if (!first)
 				result.append(',');
-			result.append(vm.hashCode()).append("->").append(vm.gethostPM().hashCode());
+			result.append(vm.hashCode()).append("->").append(vm.getHostID());
 			first = false;
 		}
 		result.append(")]");

@@ -25,12 +25,6 @@ public class GaConsolidator extends IM_ML_Consolidator {
 
 	/** Number of recombinations to perform in each generation */
 	private int nrCrossovers;
-	/** Best solution found so far */
-	private InfrastructureModel bestSolution;
-	/**
-	 * True if at least one individual has improved during the current generation
-	 */
-	private boolean improved;
 
 	/**
 	 * Creates GaConsolidator with empty population.
@@ -59,32 +53,12 @@ public class GaConsolidator extends IM_ML_Consolidator {
 
 			@Override
 			public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
-				return population[i2].items[vm].gethostPM().hashCode();
+				return population[i2].items[vm].getHostID();
 			}
 		}, true);
-		if (s3.isBetterThan(population[i1])) {
-			population[i1] = s3;
-			improved = true;
-		} else if (s3.isBetterThan(population[i2])) {
-			population[i2] = s3;
-			improved = true;
+		if (!checkAndReplace(s3, i1)) {
+			checkAndReplace(s3, i2);
 		}
-	}
-
-	/**
-	 * At the end of the GA, update the model of the consolidator to reflect the
-	 * mapping corresponding to the best found solution.
-	 */
-	private void implementBestSolution() {
-		// Determine "best" solution (i.e. a solution, compared to which there is no
-		// better one)
-		bestSolution = population[0];
-		for (final InfrastructureModel im : population) {
-			if (im.isBetterThan(bestSolution)) {
-				bestSolution = im;
-			}
-		}
-		// Implement solution in the model
 	}
 
 	/**
@@ -100,34 +74,17 @@ public class GaConsolidator extends IM_ML_Consolidator {
 	 * Perform the genetic algorithm to optimize the mapping of VMs to PMs.
 	 */
 	@Override
-	protected InfrastructureModel optimize(final InfrastructureModel input) {
-		// System.err.println("GA nrIterations="+nrIterations+",
-		// populationSize="+populationSize+", nrCrossovers="+nrCrossovers);
-		initializePopulation(input);
-		// Logger.getGlobal().info("Population after initialization:
-		// "+populationToString());
-		for (int iter = 0; iter < nrIterations; iter++) {
-			improved = false;
-			// From each individual in the population, create an offspring using
-			// mutation. If the child is better than its parent, it replaces it
-			// in the population, otherwise it is discarded.
-			for (int i = 0; i < population.length; i++) {
-				final InfrastructureModel child = new MutatedInfrastructureModel(population[i]);
-				if (child.isBetterThan(population[i])) {
-					population[i] = child;
-					improved = true;
-				}
-			}
-			// Perform the given number of crossovers.
-			for (int i = 0; i < nrCrossovers; i++) {
-				crossover();
-			}
-//			 Logger.getGlobal().info("Population after iteration "+iter+":"+populationToString());
-			// System.err.println("GA iteration carried out: "+iter);
-			if (!improved)
-				break;
+	protected void singleIteration() {
+		// From each individual in the population, create an offspring using
+		// mutation. If the child is better than its parent, it replaces it
+		// in the population, otherwise it is discarded.
+		for (int i = 0; i < population.length; i++) {
+			checkAndReplace(new MutatedInfrastructureModel(population[i]), i);
 		}
-		implementBestSolution();
-		return bestSolution;
+		// Perform the given number of crossovers.
+		for (int i = 0; i < nrCrossovers; i++) {
+			crossover();
+		}
 	}
+
 }

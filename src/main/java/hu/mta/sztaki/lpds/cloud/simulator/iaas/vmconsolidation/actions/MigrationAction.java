@@ -42,7 +42,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 		// migration
 		for (final Action action : actions) {
 			if (action.type.equals(Type.START)) {
-				if ((((StartAction) action).pmToStart.hashCode() == mvm.gethostPM().hashCode())) {
+				if ((((StartAction) action).pmToStart.hashCode() == mvm.getHostID())) {
 					this.addPredecessor(action);
 				}
 			}
@@ -50,8 +50,8 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 			if (action.type.equals(Type.MIGRATION)) {
 				final ModelVM otherVM = ((MigrationAction) action).mvm;
 				boolean cancelMigration = false;
-				if (otherVM.basedetails.initialHost.hashCode() == mvm.gethostPM().hashCode()) {
-					if (otherVM.gethostPM().hashCode() == mvm.basedetails.initialHost.hashCode()) {
+				if (otherVM.basedetails.initialHost.hashCode() == mvm.getHostID()) {
+					if (otherVM.getHostID() == mvm.basedetails.initialHost.hashCode()) {
 						// Cancels circular migrations
 						cancelMigration = true;
 					} else {

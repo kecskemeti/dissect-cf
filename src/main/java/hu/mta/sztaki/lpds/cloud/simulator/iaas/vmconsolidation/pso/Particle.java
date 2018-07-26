@@ -63,7 +63,7 @@ public class Particle extends InfrastructureModel {
 
 		for (final ModelVM vm: items) {
 			// ModelPMs are stored in the bins array indexed with their hashcode
-			location.add(vm.gethostPM().hashCode() + 1.0);
+			location.add(vm.getHostID() + 1.0);
 		}
 
 		// Logger.getGlobal().info("After updateLocation(), new location: " + location +

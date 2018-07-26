@@ -25,37 +25,9 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	/** Probabilities for the onlooker bees */
 	private double[] probabilities;
 
-	/** Best solution found so far */
-	private InfrastructureModel bestSolution;
-
 	private int[] probTestIndexes = new int[probTestCount + 1];
 	private int[] wincounts;
 	private int[] testcounts;
-
-	/** True if at least one solution has improved during the current iteration */
-	private boolean improved;
-
-	private InfChecker currChecker;
-
-	interface InfChecker {
-		void checkBest(InfrastructureModel s);
-	}
-
-	private final InfChecker regChecker = new InfChecker() {
-		public void checkBest(final InfrastructureModel s) {
-			if (s.isBetterThan(bestSolution)) {
-				bestSolution = s;
-			}
-		}
-	};
-
-	private final InfChecker nullChecker = new InfChecker() {
-		@Override
-		public void checkBest(final InfrastructureModel s) {
-			bestSolution = s;
-			currChecker = regChecker;
-		}
-	};
 
 	/**
 	 * Creates AbcConsolidator with empty population.
@@ -64,27 +36,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		super(toConsolidate, consFreq);
 	}
 
-	/**
-	 * If s is better than the best solution found so far, then bestSolution and
-	 * bestFitness are updated.
-	 */
-	private void checkIfBest(final InfrastructureModel s) {
-		currChecker.checkBest(s);
-	}
-
-	/**
-	 * Initializes the population with the previously determined solutions. After
-	 * that the same mapping as existing before consolidation has started is put
-	 * inside a solution.
-	 */
-	protected void initializePopulation(final InfrastructureModel input) {
-		currChecker = nullChecker;
-		super.initializePopulation(input);
-	}
-
 	private void postRegTasks(final int idx) {
 		numTrials[idx] = 0;
-		checkIfBest(population[idx]);
 	}
 
 	protected InfrastructureModel regSolution(final InfrastructureModel toReg) {
@@ -137,11 +90,8 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		final InfrastructureModel s = new MutatedInfrastructureModel(population[j]);
-		if (s.isBetterThan(population[j])) {
-			population[j] = s;
+		if (checkAndReplace(new MutatedInfrastructureModel(population[j]), j)) {
 			postRegTasks(j);
-			improved = true;
 		} else {
 			numTrials[j]++;
 		}
@@ -164,39 +114,26 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * The actual ABC algorithm.
 	 */
 	@Override
-	protected InfrastructureModel optimize(final InfrastructureModel input) {
-		// System.err.println("ABC nrIterations="+nrIterations+",
-		// populationSize="+populationSize);
-		initializePopulation(input);
-		currChecker.checkBest(input);
-		improved = true;
-		for (int iter = 0; iter < nrIterations && improved; iter++) {
-			improved = false;
-			// employed bees phase
-			for (int j = 0; j < population.length; j++) {
-//				Logger.getGlobal().info("populationSize: " + populationSize + ", j: " + j);
+	protected void singleIteration() {
+		// employed bees phase
+		for (int j = 0; j < population.length; j++) {
+			mutateAndCheck(j);
+		}
+		// onlooker bees phase
+		determineProbabilities();
+		final double rnd = random.nextDoubleFast();
+		for (int j = 0; j < population.length; j++) {
+			if (rnd <= probabilities[j]) {
 				mutateAndCheck(j);
 			}
-			// onlooker bees phase
-			determineProbabilities();
-			final double rnd = random.nextDoubleFast();
-			for (int j = 0; j < population.length; j++) {
-				if (rnd <= probabilities[j]) {
-					mutateAndCheck(j);
-				}
-			}
-			// scout bee phase
-			for (int j = 0; j < population.length; j++) {
-				if (numTrials[j] >= limitTrials) {
-					population[j] = new InfrastructureModel(input, false, true);
-					numTrials[j] = 0;
-					checkIfBest(population[j]);
-					break;
-				}
-			}
-			// System.err.println("ABC iteration carried out: "+iter);
 		}
-		// Implement best solution in the model
-		return bestSolution;
+		// scout bee phase
+		for (int j = 0; j < population.length; j++) {
+			if (numTrials[j] >= limitTrials) {
+				population[j] = new InfrastructureModel(input, false, true);
+				numTrials[j] = 0;
+				break;
+			}
+		}
 	}
 }
