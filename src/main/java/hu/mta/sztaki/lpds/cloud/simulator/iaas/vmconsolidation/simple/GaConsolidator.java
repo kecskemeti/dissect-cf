@@ -99,9 +99,8 @@ public class GaConsolidator extends IM_ML_Consolidator {
 			// mutation. If the child is better than its parent, it replaces it
 			// in the population, otherwise it is discarded.
 			for (int i = 0; i < population.length; i++) {
-				final InfrastructureModel parent = population[i];
-				final InfrastructureModel child = new MutatedInfrastructureModel(parent);
-				if (child.isBetterThan(parent)) {
+				final InfrastructureModel child = new MutatedInfrastructureModel(population[i]);
+				if (child.isBetterThan(population[i])) {
 					population[i] = child;
 					improved = true;
 				}
@@ -116,25 +115,6 @@ public class GaConsolidator extends IM_ML_Consolidator {
 				break;
 		}
 		implementBestSolution();
-		return bestSolution;
-	}
-
-	/**
-	 * String representation of the whole population (for debugging purposes).
-	 */
-	public String populationToString() {
-		String result = "";
-		boolean first = true;
-		for (int i = 0; i < population.length; i++) {
-			if (!first)
-				result = result + " ";
-			result = result + population[i].toString();
-			first = false;
-		}
-		return result;
-	}
-
-	public InfrastructureModel getBestSolution() {
 		return bestSolution;
 	}
 }

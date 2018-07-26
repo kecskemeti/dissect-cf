@@ -134,4 +134,18 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		}
 	}
 
+	/**
+	 * String representation of the whole population (for debugging purposes).
+	 */
+	public String populationToString() {
+		final StringBuilder result = new StringBuilder();
+		for (int i = 0; i < population.length; i++) {
+			if (i != 0) {
+				result.append(' ');
+			}
+			result.append(population[i].toString());
+		}
+		return result.toString();
+	}
+
 }
