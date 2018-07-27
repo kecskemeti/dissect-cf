@@ -4,6 +4,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
  * @author Rene Ponto
@@ -65,14 +66,15 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	}
 
 	@Override
-	protected Particle modelFactory(final Particle input, final boolean original, final boolean localsearch) {
+	protected Particle modelFactory(final Particle input, final boolean original,
+			final InfrastructureModel.Improver localsearch) {
 		final int i = getPopFillIndex();
 		final Particle p = new Particle(input, original, localsearch);
 		initVelocity(i, input.items.length);
 		// adds up the velocity to create the initial location
 		personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
 		// adjusts the mappings with the new location
-		currentLocations[i] = population[i].updateMappings(currentLocations[i]);
+		currentLocations[i] = population[i].updateMappings(currentLocations[i], localSearch);
 		population[i].savePBest();
 		return p;
 	}
@@ -121,7 +123,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 			// adds up the velocity to create the updated location
 			// then adjusts the mappings with the new location
 			currentLocations[i] = population[i]
-					.updateMappings(population[i].createLocationFromMapping().addUp(currentVelocities[i]));
+					.updateMappings(population[i].createLocationFromMapping().addUp(currentVelocities[i]),localSearch);
 
 			// Logger.getGlobal().info("Iteration " + t + ", Updated Particle " +
 			// p.getNumber() + System.getProperty("line.separator") + p.toString());
@@ -134,8 +136,8 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	}
 
 	@Override
-	protected Particle transformInput(InfrastructureModel input) {
-		return new Particle(input, true, false);
+	protected Particle transformInput(final InfrastructureModel input) {
+		return new Particle(input, true, NonImprover.singleton);
 	}
 
 	/**

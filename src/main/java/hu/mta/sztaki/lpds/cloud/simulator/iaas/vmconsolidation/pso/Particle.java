@@ -36,7 +36,7 @@ public class Particle extends InfrastructureModel {
 	 * @param bins   The currently existing pms.
 	 * @param number The id of this particle.
 	 */
-	public Particle(final InfrastructureModel base, final boolean orig, final boolean localsearch) {
+	public Particle(final InfrastructureModel base, final boolean orig, final InfrastructureModel.Improver localsearch) {
 		super(base, orig, localsearch);
 	}
 
@@ -63,7 +63,7 @@ public class Particle extends InfrastructureModel {
 	 * on the changeds inside the location. Note that there is a difference in
 	 * saving the pms inside the mappings and inside the location.
 	 */
-	public ArithmeticVector updateMappings(final ArithmeticVector adjustedLocation) {
+	public ArithmeticVector updateMappings(final ArithmeticVector adjustedLocation, final InfrastructureModel.Improver localSearch) {
 
 		roundValues(adjustedLocation);
 
@@ -84,7 +84,7 @@ public class Particle extends InfrastructureModel {
 			}
 		}
 
-		useLocalSearch();
+		localSearch.improve(this);
 
 		// determine the fitness
 		calculateFitness();

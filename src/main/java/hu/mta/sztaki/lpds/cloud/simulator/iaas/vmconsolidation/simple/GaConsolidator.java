@@ -55,7 +55,7 @@ public class GaConsolidator extends IM_ML_Consolidator {
 			public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
 				return population[i2].items[vm].getHostID();
 			}
-		}, true);
+		}, localSearch);
 		if (!checkAndReplace(s3, i1)) {
 			checkAndReplace(s3, i2);
 		}
@@ -79,7 +79,7 @@ public class GaConsolidator extends IM_ML_Consolidator {
 		// mutation. If the child is better than its parent, it replaces it
 		// in the population, otherwise it is discarded.
 		for (int i = 0; i < population.length; i++) {
-			checkAndReplace(new MutatedInfrastructureModel(population[i]), i);
+			checkAndReplace(new MutatedInfrastructureModel(population[i], localSearch), i);
 		}
 		// Perform the given number of crossovers.
 		for (int i = 0; i < nrCrossovers; i++) {

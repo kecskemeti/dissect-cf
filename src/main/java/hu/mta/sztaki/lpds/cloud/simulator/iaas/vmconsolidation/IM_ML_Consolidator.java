@@ -16,7 +16,7 @@ public abstract class IM_ML_Consolidator extends MachineLearningConsolidator<Inf
 
 	@Override
 	protected InfrastructureModel modelFactory(final InfrastructureModel input, final boolean original,
-			final boolean localsearch) {
+			final InfrastructureModel.Improver localsearch) {
 		return new InfrastructureModel(input, original, localsearch);
 	}
 

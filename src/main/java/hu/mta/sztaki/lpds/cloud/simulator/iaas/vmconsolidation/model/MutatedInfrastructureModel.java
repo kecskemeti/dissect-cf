@@ -27,7 +27,7 @@ public class MutatedInfrastructureModel extends InfrastructureModel {
 	 * changed.
 	 */
 
-	public MutatedInfrastructureModel(final InfrastructureModel m) {
-		super(m, mutator, true);
+	public MutatedInfrastructureModel(final InfrastructureModel m, final InfrastructureModel.Improver imp) {
+		super(m, mutator, imp);
 	}
 }

@@ -1,23 +1,21 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
 
 /**
  * Represents a possible solution of the VM consolidation problem, i.e., a
  * mapping of VMs to PMs. Can be used as an individual in the population.
  */
 public class InfrastructureModel {
+
+	public interface Improver {
+		void improve(InfrastructureModel im);
+	}
 
 	/**
 	 * List of all available bins, order is important, all models have the same bin
@@ -41,28 +39,6 @@ public class InfrastructureModel {
 	protected int nrMigrations;
 	// Fitness ends
 
-	final private static Comparator<ModelVM> mvmComp = new Comparator<ModelVM>() {
-		@Override
-		public int compare(final ModelVM vm1, final ModelVM vm2) {
-			return Double.compare(vm2.getResources().getTotalProcessingPower(),
-					vm1.getResources().getTotalProcessingPower());
-		}
-	};
-
-	final private static Comparator<ModelPM> mpmComp = new Comparator<ModelPM>() {
-		@Override
-		public int compare(final ModelPM pm1, final ModelPM pm2) {
-			return Double.compare(pm2.consumed.getTotalProcessingPower(), pm1.consumed.getTotalProcessingPower());
-		}
-	};
-
-	final private static Comparator<ModelPM> mpmFreeComp = new Comparator<ModelPM>() {
-		@Override
-		public int compare(final ModelPM pm1, final ModelPM pm2) {
-			return -pm1.free.compareTo(pm2.free);
-		}
-	};
-
 	private static final GenHelper keepOrig = new GenHelper() {
 
 		public boolean shouldUseDifferent() {
@@ -82,12 +58,11 @@ public class InfrastructureModel {
 	 * Creates a solution with an empty mapping that will need to be filled somehow,
 	 * e.g., using #fillRandomly().
 	 */
-	public InfrastructureModel(final InfrastructureModel base, final boolean original, final boolean applylocalsearch) {
-		this(base, original ? keepOrig : RandomVMassigner.globalRandomAssigner, applylocalsearch);
+	public InfrastructureModel(final InfrastructureModel base, final boolean original, final Improver localSearch) {
+		this(base, original ? keepOrig : RandomVMassigner.globalRandomAssigner, localSearch);
 	}
 
-	public InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper,
-			final boolean applylocalsearch) {
+	public InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper, final Improver localSearch) {
 		bins = new ModelPM[toCopy.bins.length];
 		items = new ModelVM[toCopy.items.length];
 
@@ -100,12 +75,9 @@ public class InfrastructureModel {
 		for (int i = 0; i < items.length; i++) {
 			final ModelVM oldVM = toCopy.items[i];
 			items[i] = new ModelVM(oldVM);
-			bins[helper.shouldUseDifferent() ? helper.whatShouldWeUse(this, i) : oldVM.getHostID()]
-					.addVM(items[i]);
+			bins[helper.shouldUseDifferent() ? helper.whatShouldWeUse(this, i) : oldVM.getHostID()].addVM(items[i]);
 		}
-		if (applylocalsearch) {
-			useLocalSearch();
-		}
+		localSearch.improve(this);
 		calculateFitness();
 	}
 
@@ -164,123 +136,6 @@ public class InfrastructureModel {
 				nrMigrations++;
 			}
 		}
-	}
-
-	protected void useLocalSearch() {
-		if (MachineLearningConsolidator.doLocalSearch1) {
-			improve();
-		} else if (MachineLearningConsolidator.doLocalSearch2) {
-			simpleConsolidatorImprove();
-		}
-	}
-
-	/**
-	 * Improving a solution by relieving overloaded PMs, emptying underloaded PMs,
-	 * and finding new hosts for the thus removed VMs using BFD.
-	 */
-	private void improve() {
-		final ArrayList<ModelVM> tempvmlist = new ArrayList<>();
-		// relieve overloaded PMs + empty underloaded PMs
-		for (final ModelPM pm : bins) {
-			final List<ModelVM> vmsOfPm = pm.getVMs();
-			int l = vmsOfPm.size() - 1;
-			while (l >= 0 && (pm.isOverAllocated() || pm.isUnderAllocated())) {
-				final ModelVM vm = vmsOfPm.get(l--);
-				tempvmlist.add(vm);
-				pm.removeVM(vm);
-			}
-		}
-		// find new host for the VMs to migrate using BFD
-		Collections.sort(tempvmlist, mvmComp);
-		final ModelPM[] binsToTry = bins.clone();
-		Arrays.sort(binsToTry, mpmComp);
-		final int tvmls = tempvmlist.size();
-		for (int i = 0; i < tvmls; i++) {
-			final ModelVM vm = tempvmlist.get(i);
-			ModelPM targetPm = null;
-			for (final ModelPM pm : binsToTry) {
-				if (pm.isMigrationPossible(vm)) {
-					targetPm = pm;
-					break;
-				}
-			}
-			if (targetPm == null)
-				targetPm = vm.prevPM;
-			targetPm.addVM(vm);
-		}
-	}
-
-	/**
-	 * The algorithm out of the simple consolidator, adjusted to work with the
-	 * abstract model.
-	 */
-	private void simpleConsolidatorImprove() {
-//		Logger.getGlobal().info("starting to improve with second local search");
-
-		// create an array out of the bins
-		ModelPM[] pmList = new ModelPM[bins.length];
-		int runningLen = 0;
-		for (final ModelPM curr : bins) {
-			if (curr.isHostingVMs() && curr.free.getTotalProcessingPower() > SimpleConsolidator.pmFullLimit) {
-				pmList[runningLen++] = curr;
-			}
-		}
-
-//		Logger.getGlobal().info("size of the pmList: " + pmList.length);
-
-		boolean didMove;
-		runningLen--;
-		int beginIndex = 0;
-		final HashSet<ModelVM> alreadyMoved = new HashSet<>();
-		do {
-			didMove = false;
-
-			// sort the array from highest to lowest free capacity with an adjusted version
-			// of the fitting pm comparator
-			Arrays.sort(pmList, beginIndex, runningLen + 1, mpmFreeComp);
-
-//			Logger.getGlobal().info("filtered array: " + Arrays.toString(pmList));
-
-			for (int i = beginIndex; i < runningLen; i++) {
-				final ModelPM source = pmList[i];
-				final ModelVM[] vmList = source.getVMs().toArray(ModelVM.mvmArrSample);
-				int vmc = 0;
-				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-					final ModelVM vm = vmList[vmidx];
-					if (alreadyMoved.contains(vm))
-						continue;
-					// ModelVMs can only run, so we need not to check the state (there is none
-					// either)
-					for (int j = runningLen; j > i; j--) {
-						final ModelPM target = pmList[j];
-
-						if (target.isMigrationPossible(vm)) {
-							source.migrateVM(vm, target);
-							alreadyMoved.add(vm);
-
-							if (target.free.getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
-								// Ensures that those PMs that barely have resources will not be
-								// considered in future runs of this loop
-								if (j != runningLen) {
-									if (j == runningLen - 1) {
-										pmList[j] = pmList[runningLen];
-									} else {
-										System.arraycopy(pmList, j + 1, pmList, j, runningLen - j);
-									}
-								}
-								runningLen--;
-							}
-							vmc++;
-							didMove = true;
-							break;
-						}
-					}
-				}
-				if (vmc == vmList.length) {
-					pmList[i] = pmList[beginIndex++];
-				}
-			}
-		} while (didMove);
 	}
 
 	/**

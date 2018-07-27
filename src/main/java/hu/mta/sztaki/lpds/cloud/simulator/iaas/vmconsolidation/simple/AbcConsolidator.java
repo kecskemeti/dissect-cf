@@ -90,7 +90,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		if (checkAndReplace(new MutatedInfrastructureModel(population[j]), j)) {
+		if (checkAndReplace(new MutatedInfrastructureModel(population[j], localSearch), j)) {
 			postRegTasks(j);
 		} else {
 			numTrials[j]++;
@@ -130,7 +130,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// scout bee phase
 		for (int j = 0; j < population.length; j++) {
 			if (numTrials[j] >= limitTrials) {
-				population[j] = new InfrastructureModel(input, false, true);
+				population[j] = new InfrastructureModel(input, false, localSearch);
 				numTrials[j] = 0;
 				break;
 			}

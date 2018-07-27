@@ -26,6 +26,9 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.FirstFitBFD;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.SimpleConsImprover;
 import it.unimi.dsi.util.XoShiRo256PlusRandom;
 
 /**
@@ -51,9 +54,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	 * Controls whether new solutions (created by mutation or recombination) should
 	 * be improved with a local search
 	 */
-	static public boolean doLocalSearch1 = false;
-	/** simple consolidator local search */
-	static public boolean doLocalSearch2 = false;
+	protected InfrastructureModel.Improver localSearch;
 
 	protected T input;
 
@@ -64,7 +65,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		super(toConsolidate, consFreq);
 	}
 
-	protected abstract T modelFactory(T input, boolean original, boolean localsearch);
+	protected abstract T modelFactory(T input, boolean original, InfrastructureModel.Improver localsearch);
 
 	protected abstract void createPopArray(int len);
 
@@ -77,13 +78,13 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		this.input = input;
 		popFillIndex = 0;
 		for (int i = 0; i < randomCreations; i++) {
-			regSolution(modelFactory(input, false, true));
+			regSolution(modelFactory(input, false, localSearch));
 		}
 		if (firstFitCreations != 0) {
-			produceClonesOf(regSolution(modelFactory(input, true, true)), firstFitCreations - 1);
+			produceClonesOf(regSolution(modelFactory(input, true, localSearch)), firstFitCreations - 1);
 		}
 		if (unchangedCreations != 0) {
-			produceClonesOf(regSolution(modelFactory(input, true, false)), unchangedCreations - 1);
+			produceClonesOf(regSolution(modelFactory(input, true, NonImprover.singleton)), unchangedCreations - 1);
 		}
 	}
 
@@ -93,7 +94,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 
 	protected void produceClonesOf(final T s0, int clonecount) {
 		while (clonecount > 0) {
-			regSolution(modelFactory(s0, true, false));
+			regSolution(modelFactory(s0, true, NonImprover.singleton));
 			clonecount--;
 		}
 	}
@@ -106,8 +107,13 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	protected void processProps() {
 		MutatedInfrastructureModel.prepareMutator(Double.parseDouble(props.getProperty("mutationProb")));
 		random = new XoShiRo256PlusRandom(Long.parseLong(props.getProperty("seed")));
-		doLocalSearch1 = Boolean.parseBoolean(props.getProperty("doLocalSearch1"));
-		doLocalSearch2 = Boolean.parseBoolean(props.getProperty("doLocalSearch2"));
+		if (Boolean.parseBoolean(props.getProperty("doLocalSearch1"))) {
+			localSearch = FirstFitBFD.singleton;
+		} else if (Boolean.parseBoolean(props.getProperty("doLocalSearch2"))) {
+			localSearch = SimpleConsImprover.singleton;
+		} else {
+			localSearch = NonImprover.singleton;
+		}
 		createPopArray(Integer.parseInt(props.getProperty("populationSize")));
 		this.nrIterations = Integer.parseInt(props.getProperty("nrIterations"));
 		determineCreations(population.length);
@@ -178,6 +184,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	}
 
 	protected abstract void singleIteration();
+
 	protected abstract T transformInput(InfrastructureModel input);
 
 	@Override
