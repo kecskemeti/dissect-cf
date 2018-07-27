@@ -5,7 +5,7 @@ import java.util.Arrays;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMassigner;
 
 /**
  * VM consolidator using artificial bee colony algorithm.
@@ -90,7 +90,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 	 * population, otherwise not.
 	 */
 	private void mutateAndCheck(final int j) {
-		if (checkAndReplace(new MutatedInfrastructureModel(population[j], localSearch), j)) {
+		if (checkAndReplace(new InfrastructureModel(population[j], mutator, localSearch), j)) {
 			postRegTasks(j);
 		} else {
 			numTrials[j]++;
@@ -130,7 +130,7 @@ public class AbcConsolidator extends IM_ML_Consolidator {
 		// scout bee phase
 		for (int j = 0; j < population.length; j++) {
 			if (numTrials[j] >= limitTrials) {
-				population[j] = new InfrastructureModel(input, false, localSearch);
+				population[j] = new InfrastructureModel(input, RandomVMassigner.globalRandomAssigner, localSearch);
 				numTrials[j] = 0;
 				break;
 			}

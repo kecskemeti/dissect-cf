@@ -5,7 +5,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
 
 /**
  * VM consolidator using a genetic algorithm.
@@ -79,7 +78,7 @@ public class GaConsolidator extends IM_ML_Consolidator {
 		// mutation. If the child is better than its parent, it replaces it
 		// in the population, otherwise it is discarded.
 		for (int i = 0; i < population.length; i++) {
-			checkAndReplace(new MutatedInfrastructureModel(population[i], localSearch), i);
+			checkAndReplace(new InfrastructureModel(population[i], mutator, localSearch), i);
 		}
 		// Perform the given number of crossovers.
 		for (int i = 0; i < nrCrossovers; i++) {

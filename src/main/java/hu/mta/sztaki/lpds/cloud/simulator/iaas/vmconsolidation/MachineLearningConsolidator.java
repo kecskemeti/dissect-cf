@@ -24,8 +24,10 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.MutatedInfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMassigner;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.FirstFitBFD;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.SimpleConsImprover;
@@ -61,11 +63,13 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	/** True if at least one solution has improved during the current iteration */
 	protected boolean improved;
 
+	protected GenHelper mutator;
+
 	public MachineLearningConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
 
-	protected abstract T modelFactory(T input, boolean original, InfrastructureModel.Improver localsearch);
+	protected abstract T modelFactory(T input, GenHelper vmAssignment, InfrastructureModel.Improver localsearch);
 
 	protected abstract void createPopArray(int len);
 
@@ -78,13 +82,15 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		this.input = input;
 		popFillIndex = 0;
 		for (int i = 0; i < randomCreations; i++) {
-			regSolution(modelFactory(input, false, localSearch));
+			regSolution(modelFactory(input, RandomVMassigner.globalRandomAssigner, localSearch));
 		}
 		if (firstFitCreations != 0) {
-			produceClonesOf(regSolution(modelFactory(input, true, localSearch)), firstFitCreations - 1);
+			produceClonesOf(regSolution(modelFactory(input, PreserveAllocations.singleton, localSearch)),
+					firstFitCreations - 1);
 		}
 		if (unchangedCreations != 0) {
-			produceClonesOf(regSolution(modelFactory(input, true, NonImprover.singleton)), unchangedCreations - 1);
+			produceClonesOf(regSolution(modelFactory(input, PreserveAllocations.singleton, NonImprover.singleton)),
+					unchangedCreations - 1);
 		}
 	}
 
@@ -94,7 +100,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 
 	protected void produceClonesOf(final T s0, int clonecount) {
 		while (clonecount > 0) {
-			regSolution(modelFactory(s0, true, NonImprover.singleton));
+			regSolution(modelFactory(s0, PreserveAllocations.singleton, NonImprover.singleton));
 			clonecount--;
 		}
 	}
@@ -105,7 +111,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 
 	@Override
 	protected void processProps() {
-		MutatedInfrastructureModel.prepareMutator(Double.parseDouble(props.getProperty("mutationProb")));
+		prepareMutator(Double.parseDouble(props.getProperty("mutationProb")));
 		random = new XoShiRo256PlusRandom(Long.parseLong(props.getProperty("seed")));
 		if (Boolean.parseBoolean(props.getProperty("doLocalSearch1"))) {
 			localSearch = FirstFitBFD.singleton;
@@ -167,6 +173,21 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			}
 		}
 		return bestSolution;
+	}
+
+	/**
+	 * Create a new solution by mutating the current one. Each gene (i.e., the
+	 * mapping of each VM) is replaced by a random one with probability mutationProb
+	 * and simply copied otherwise. Note that the current solution (this) is not
+	 * changed.
+	 */
+	private void prepareMutator(final double mutationProb) {
+		mutator = new RandomVMassigner() {
+			@Override
+			public boolean shouldUseDifferent() {
+				return MachineLearningConsolidator.random.nextDoubleFast() < mutationProb;
+			}
+		};
 	}
 
 	/**

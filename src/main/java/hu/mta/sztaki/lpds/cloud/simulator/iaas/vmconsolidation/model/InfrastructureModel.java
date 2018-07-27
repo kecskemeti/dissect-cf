@@ -39,29 +39,6 @@ public class InfrastructureModel {
 	protected int nrMigrations;
 	// Fitness ends
 
-	private static final GenHelper keepOrig = new GenHelper() {
-
-		public boolean shouldUseDifferent() {
-			return false;
-		}
-
-		/**
-		 * This is never to be called!
-		 */
-		@Override
-		public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
-			return -1;
-		}
-	};
-
-	/**
-	 * Creates a solution with an empty mapping that will need to be filled somehow,
-	 * e.g., using #fillRandomly().
-	 */
-	public InfrastructureModel(final InfrastructureModel base, final boolean original, final Improver localSearch) {
-		this(base, original ? keepOrig : RandomVMassigner.globalRandomAssigner, localSearch);
-	}
-
 	public InfrastructureModel(final InfrastructureModel toCopy, final GenHelper helper, final Improver localSearch) {
 		bins = new ModelPM[toCopy.bins.length];
 		items = new ModelVM[toCopy.items.length];

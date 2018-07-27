@@ -1,5 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
@@ -36,8 +37,8 @@ public class Particle extends InfrastructureModel {
 	 * @param bins   The currently existing pms.
 	 * @param number The id of this particle.
 	 */
-	public Particle(final InfrastructureModel base, final boolean orig, final InfrastructureModel.Improver localsearch) {
-		super(base, orig, localsearch);
+	public Particle(final InfrastructureModel base, final GenHelper vmAssignment, final InfrastructureModel.Improver localsearch) {
+		super(base, vmAssignment, localsearch);
 	}
 
 	/**

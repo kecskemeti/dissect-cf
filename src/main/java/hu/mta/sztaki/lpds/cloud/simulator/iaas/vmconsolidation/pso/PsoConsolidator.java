@@ -3,7 +3,9 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
@@ -66,10 +68,10 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	}
 
 	@Override
-	protected Particle modelFactory(final Particle input, final boolean original,
+	protected Particle modelFactory(final Particle input, final GenHelper vmAssignment,
 			final InfrastructureModel.Improver localsearch) {
 		final int i = getPopFillIndex();
-		final Particle p = new Particle(input, original, localsearch);
+		final Particle p = new Particle(input, vmAssignment, localsearch);
 		initVelocity(i, input.items.length);
 		// adds up the velocity to create the initial location
 		personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
@@ -137,7 +139,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 	@Override
 	protected Particle transformInput(final InfrastructureModel input) {
-		return new Particle(input, true, NonImprover.singleton);
+		return new Particle(input, PreserveAllocations.singleton, NonImprover.singleton);
 	}
 
 	/**

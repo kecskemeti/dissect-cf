@@ -1,6 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 
 /**
@@ -15,9 +16,9 @@ public abstract class IM_ML_Consolidator extends MachineLearningConsolidator<Inf
 	}
 
 	@Override
-	protected InfrastructureModel modelFactory(final InfrastructureModel input, final boolean original,
+	protected InfrastructureModel modelFactory(final InfrastructureModel input, final GenHelper vmAssignment,
 			final InfrastructureModel.Improver localsearch) {
-		return new InfrastructureModel(input, original, localsearch);
+		return new InfrastructureModel(input, vmAssignment, localsearch);
 	}
 
 	@Override
