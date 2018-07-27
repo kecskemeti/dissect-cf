@@ -11,7 +11,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
 
 /**
@@ -47,13 +46,6 @@ public class InfrastructureModel {
 		public int compare(final ModelVM vm1, final ModelVM vm2) {
 			return Double.compare(vm2.getResources().getTotalProcessingPower(),
 					vm1.getResources().getTotalProcessingPower());
-		}
-	};
-
-	final private static Comparator<ModelVM> mvmIdCmp = new Comparator<ModelVM>() {
-		@Override
-		public int compare(final ModelVM vm1, final ModelVM vm2) {
-			return Integer.compare(vm1.basedetails.id, vm2.basedetails.id);
 		}
 	};
 
@@ -101,8 +93,7 @@ public class InfrastructureModel {
 
 		// Base copy without mapping
 		for (int i = 0; i < bins.length; i++) {
-			final ModelPM oldPM = toCopy.bins[i];
-			bins[i] = new ModelPM(oldPM);
+			bins[i] = new ModelPM(toCopy.bins[i]);
 		}
 
 		// Mapping as desired by helper
@@ -175,7 +166,7 @@ public class InfrastructureModel {
 		}
 	}
 
-	public void useLocalSearch() {
+	protected void useLocalSearch() {
 		if (MachineLearningConsolidator.doLocalSearch1) {
 			improve();
 		} else if (MachineLearningConsolidator.doLocalSearch2) {

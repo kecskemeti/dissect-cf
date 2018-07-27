@@ -66,7 +66,15 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 	@Override
 	protected Particle modelFactory(final Particle input, final boolean original, final boolean localsearch) {
-		return new Particle(input, getPopFillIndex(), original, localsearch);
+		final int i = getPopFillIndex();
+		final Particle p = new Particle(input, original, localsearch);
+		initVelocity(i, input.items.length);
+		// adds up the velocity to create the initial location
+		personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
+		// adjusts the mappings with the new location
+		currentLocations[i] = population[i].updateMappings(currentLocations[i]);
+		population[i].savePBest();
+		return p;
 	}
 
 	@Override
@@ -80,9 +88,6 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		final int bestParticleIndex = findBestSolution(); // get the position of the minimum fitness value
 
 		for (int i = 0; i < population.length; i++) {
-
-			final double r1 = random.nextDoubleFast();
-			final double r2 = random.nextDoubleFast();
 
 			// step 3 - update velocity
 
@@ -102,9 +107,9 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 			final ArithmeticVector inertiaComponent = currentVelocities[i].multiply(w);
 			final ArithmeticVector cognitiveComponent = personalBests[i].subtract(currentLocations[i])
-					.multiply(c1 * r1);
+					.multiply(c1 * random.nextDoubleFast());
 			final ArithmeticVector socialComponent = currentLocations[bestParticleIndex].subtract(currentLocations[i])
-					.multiply(c2 * r2);
+					.multiply(c2 * random.nextDoubleFast());
 			currentVelocities[i] = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 
 			// Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " +
@@ -114,10 +119,9 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 			// now the mapping has to be converted to an ArithmeticVector
 			// adds up the velocity to create the updated location
-			currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
-			population[i].updateMappings(currentLocations[i]); // adjusts the mappings with the new location
-			population[i].useLocalSearch();
-			currentLocations[i] = population[i].createLocationFromMapping();
+			// then adjusts the mappings with the new location
+			currentLocations[i] = population[i]
+					.updateMappings(population[i].createLocationFromMapping().addUp(currentVelocities[i]));
 
 			// Logger.getGlobal().info("Iteration " + t + ", Updated Particle " +
 			// p.getNumber() + System.getProperty("line.separator") + p.toString());
@@ -131,7 +135,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 	@Override
 	protected Particle transformInput(InfrastructureModel input) {
-		return new Particle(input, -1, true, false);
+		return new Particle(input, true, false);
 	}
 
 	/**
@@ -143,21 +147,6 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		for (int j = 0; j < len; j++) {
 			// here we make a random chance of getting a lower id or a higher id
 			currentVelocities[i].add(CachingPRNG.genBoolean() ? 1.0 : -1.0); // add the random velocity
-		}
-	}
-
-	protected void initializePopulation(final Particle input) {
-		super.initializePopulation(input);
-		final int dim = population[0].items.length;
-		// TODO: check if there is any velocity set before this is ran!
-		for (int i = 0; i < population.length; i++) {
-			initVelocity(i, dim);
-			// adds up the velocity to create the initial location
-			personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping()
-					.addUp(currentVelocities[i]);
-			// adjusts the mappings with the new location
-			population[i].updateMappings(currentLocations[i]);
-			population[i].savePBest();
 		}
 	}
 

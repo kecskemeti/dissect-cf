@@ -20,8 +20,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 
 public class Particle extends InfrastructureModel {
 
-	final private int number;
-
 	/**
 	 * Total amount of PM overloads, aggregated over all PMs and all resource types
 	 */
@@ -38,9 +36,8 @@ public class Particle extends InfrastructureModel {
 	 * @param bins   The currently existing pms.
 	 * @param number The id of this particle.
 	 */
-	public Particle(final InfrastructureModel base, final int number, final boolean orig, final boolean localsearch) {
+	public Particle(final InfrastructureModel base, final boolean orig, final boolean localsearch) {
 		super(base, orig, localsearch);
-		this.number = number;
 	}
 
 	/**
@@ -50,18 +47,14 @@ public class Particle extends InfrastructureModel {
 	 */
 	public ArithmeticVector createLocationFromMapping() {
 
-		// Logger.getGlobal().info("Before updateLocation(), new location: " + location
-		// + ", mapping: " + mappingToString());
 
-		ArithmeticVector l=new ArithmeticVector(items.length);
+		final ArithmeticVector l = new ArithmeticVector(items.length);
 
-		for (final ModelVM vm: items) {
+		for (final ModelVM vm : items) {
 			// ModelPMs are stored in the bins array indexed with their hashcode
 			l.add(vm.getHostID() + 1.0);
 		}
 		return l;
-		// Logger.getGlobal().info("After updateLocation(), new location: " + location +
-		// ", mapping: " + mappingToString());
 	}
 
 	/**
@@ -70,49 +63,33 @@ public class Particle extends InfrastructureModel {
 	 * on the changeds inside the location. Note that there is a difference in
 	 * saving the pms inside the mappings and inside the location.
 	 */
-	public void updateMappings(ArithmeticVector adjustedLocation) {
+	public ArithmeticVector updateMappings(final ArithmeticVector adjustedLocation) {
 
 		roundValues(adjustedLocation);
-
-		// Logger.getGlobal().info("Before updateMappings(), location: " + location + ",
-		// mapping: " + mappingToString());
 
 		// check if the mappings and the location are different, then adjust the
 		// mappings
 		final int locSize = adjustedLocation.size();
 		for (int i = 0; i < locSize; i++) {
 
-			// System.out.println("bins.size="+bins.size()+",
-			// location[i]="+location.get(i));
-			final ModelPM locPm = bins[adjustedLocation.get(i).intValue() - 1]; // the host of this vm, has to be done
-			// because the ids start at one
-			final ModelVM mvm = items[i];
-			final ModelPM mappedPm = mvm.gethostPM();
+			// the host of this vm, has to be done because the ids start at one
+			final ModelPM locPm = bins[adjustedLocation.get(i).intValue() - 1];
+			final ModelPM mappedPm = items[i].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
-			// next.
-			// Otherwise we have to adjust the mappings
+			// next. Otherwise we have to adjust the mappings
 			if (locPm.hashCode() != mappedPm.hashCode()) {
 				// pms are not the same
-				mappedPm.migrateVM(mvm, locPm);
+				mappedPm.migrateVM(items[i], locPm);
 			}
 		}
 
+		useLocalSearch();
+
 		// determine the fitness
-		this.calculateFitness();
+		calculateFitness();
 
-		// Logger.getGlobal().info("After updateMappings(), location: " + location + ",
-		// mapping: " + mappingToString());
-
-	}
-
-	/**
-	 * Getter for the number of this particle.
-	 * 
-	 * @return The number of this particle.
-	 */
-	public int getNumber() {
-		return number;
+		return createLocationFromMapping();
 	}
 
 	public boolean improvedOnPersonal() {
