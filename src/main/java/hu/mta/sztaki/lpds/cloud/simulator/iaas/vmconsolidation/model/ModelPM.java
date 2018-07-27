@@ -31,8 +31,6 @@ public class ModelPM {
 
 	public final ImmutablePMComponents basedetails;
 
-	private boolean on;
-
 	/**
 	 * This represents a Physical Machine of the simulator. It is abstract and
 	 * inherits only the methods and properties which are necessary to do the
@@ -53,7 +51,6 @@ public class ModelPM {
 	public ModelPM(final PhysicalMachine pm, final double lowerThreshold, final int number,
 			final double upperThreshold) {
 		basedetails = new ImmutablePMComponents(pm, lowerThreshold, number, upperThreshold);
-		on = PhysicalMachine.ToOnorRunning.contains(pm.getState());
 
 		vmList = new ArrayList<>(pm.publicVms.size());
 		consumedResources = genEmptyConsumed();
@@ -78,7 +75,6 @@ public class ModelPM {
 		// Shallow copy on basedetails:
 		this.basedetails = toCopy.basedetails;
 		// Proper copy (except VMlist on the rest)
-		this.on = toCopy.on;
 		final int ll = toCopy.vmList.size();
 		this.vmList = new ArrayList<>(ll);
 		this.consumedResources = genEmptyConsumed();
@@ -96,7 +92,7 @@ public class ModelPM {
 	 */
 	public String toString() {
 		String result = "PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString() + ",\n curr="
-				+ consumedResources.toString() + ",\n state=" + (on ? "ON" : "OFF") + ",\n VMs=";
+				+ consumedResources.toString() + ",\n state=" + (isHostingVMs() ? "ON" : "OFF") + ",\n VMs=";
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)
@@ -170,22 +166,6 @@ public class ModelPM {
 	 */
 	public boolean isHostingVMs() {
 		return !vmList.isEmpty();
-	}
-
-	/**
-	 * Changes the state of the pm so the graph can give the switch off information
-	 * later to the simulation.
-	 */
-	public void switchOff() {
-		on = false;
-	}
-
-	/**
-	 * Changes the state of the pm so the graph can give the switch on information
-	 * later to the simulation.
-	 */
-	public void switchOn() {
-		on = true;
 	}
 
 	/**
@@ -285,9 +265,5 @@ public class ModelPM {
 	@Override
 	public int hashCode() {
 		return basedetails.number;
-	}
-
-	public boolean isOn() {
-		return on;
 	}
 }

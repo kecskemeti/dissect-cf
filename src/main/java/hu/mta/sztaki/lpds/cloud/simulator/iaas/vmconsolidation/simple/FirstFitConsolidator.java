@@ -81,7 +81,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 
 	private static final PMCheck uaChecker = new PMCheck() {
 		public boolean check(final ModelPM pm) {
-			return pm.isOverAllocated();
+			return pm.isUnderAllocated();
 		};
 	};
 
@@ -127,9 +127,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		// now we have to search for a fitting pm
 		for (final ModelPM actualPM : sol.bins) {
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			if (actualPM != toMig.gethostPM() && actualPM.isOn() && actualPM.isHostingVMs()
-					&& !actualPM.isOverAllocated() && !unchangeableBins.contains(actualPM)
-					&& actualPM.isMigrationPossible(toMig)) {
+			if (actualPM != toMig.gethostPM() && !unchangeableBins.contains(actualPM) && actualPM.isHostingVMs()
+					&& !actualPM.isOverAllocated() && actualPM.isMigrationPossible(toMig)) {
 				return actualPM;
 			}
 		}
@@ -138,15 +137,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		// possible to take the load of the VM
 		for (final ModelPM actualPM : sol.bins) {
 			// Logger.getGlobal().info("evaluating pm "+actualPM.toString());
-			if (actualPM != toMig.gethostPM() || actualPM.isHostingVMs()) {
-
-				if (actualPM.isMigrationPossible(toMig)) {
-					return actualPM;
-				}
-			} else {
-				if (!actualPM.isOn()) {
-					return startPM(toMig.getResources(), sol); // start an empty_off PM
-				}
+			if (actualPM != toMig.gethostPM() && !actualPM.isHostingVMs()) {
+				return startPM(toMig.getResources(), sol); // start an empty_off PM
 			}
 		}
 		return null;
@@ -163,9 +155,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	 *         found.
 	 */
 	private ModelPM startPM(final ResourceConstraints VMConstraints, final InfrastructureModel sol) {
-		for (final ModelPM pm:sol.bins) {
-			if (!pm.isOn() && VMConstraints.compareTo(pm.getTotalResources()) <= 0) {
-				pm.switchOn(); // start this PM
+		for (final ModelPM pm : sol.bins) {
+			if (!pm.isHostingVMs() && VMConstraints.compareTo(pm.getTotalResources()) <= 0) {
 				return pm;
 			}
 		}
@@ -213,7 +204,6 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	private void migrateUnderAllocatedPM(final ModelPM source, final InfrastructureModel sol) {
 
 		if (!source.isHostingVMs()) {
-			source.switchOff();
 			return; // if there are no VMs, we cannot migrate anything
 		}
 
