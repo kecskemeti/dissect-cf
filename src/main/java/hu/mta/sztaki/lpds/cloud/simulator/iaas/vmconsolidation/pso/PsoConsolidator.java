@@ -1,10 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 
 /**
  * @author Rene Ponto
@@ -18,8 +17,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 
 public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
-	/** the problem dimension, gets defined according to the amounts of VMs */
-	private int dimension;
+	private ArithmeticVector[] currentLocations;
+	private ArithmeticVector[] currentVelocities;
+	private ArithmeticVector[] personalBests;
 
 	/** learning factor one */
 	private int c1;
@@ -29,12 +29,6 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 
 	/** used to get a new velocity for each particle */
 	private static final double w = 0.6;
-
-	/** the best fitness values so far */
-	private Particle globalBest;
-
-	/** the best fitness values so far */
-	private ArithmeticVector globalBestLocation;
 
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model
@@ -64,17 +58,15 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 * The toString-method, used for debugging.
 	 */
 	public String toString() {
-		String erg = "Amount of VMs: " + dimension + ", GlobalBest: " + this.globalBest + ", GlobalBestLocation: "
-				+ this.globalBestLocation;
+		final int bestSolindex = findBestSolution();
+		String erg = "Amount of VMs: " + population[0].items.length + ", GlobalBest: " + population[bestSolindex]
+				+ ", GlobalBestLocation: " + currentLocations[bestSolindex];
 		return erg;
 	}
 
 	@Override
 	protected Particle modelFactory(final Particle input, final boolean original, final boolean localsearch) {
-		final Particle p = new Particle(input, getPopFillIndex(), original, localsearch);
-		p.updateLocation();
-		p.initVelocity();
-		return p;
+		return new Particle(input, getPopFillIndex(), original, localsearch);
 	}
 
 	@Override
@@ -82,154 +74,91 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		population = new Particle[len];
 	}
 
-	/**
-	 * Perform the particle swarm optimization algorithm to optimize the mapping of
-	 * VMs to PMs.
-	 */
 	@Override
-	protected InfrastructureModel optimize(final InfrastructureModel input) {
-		// get the dimension by getting the amount of VMs on the actual PMs
-		this.dimension = input.items.length;
-		initializePopulation(new Particle(input, -1, true, false));
+	protected void singleIteration() {
+		// step 2 - update gBest
+		final int bestParticleIndex = findBestSolution(); // get the position of the minimum fitness value
 
-		int iterations = 0;
+		for (int i = 0; i < population.length; i++) {
 
-		// it is assured that the mappings and the location of each Particle are in sync
-		// at the start of the loop
-		while (iterations < this.nrIterations) {
-			// step 1 - update pBest
+			final double r1 = random.nextDoubleFast();
+			final double r2 = random.nextDoubleFast();
 
-			for (final Particle p : population) {
+			// step 3 - update velocity
 
-				// Logger.getGlobal().info("Before setting best values, Particle " +
-				// p.getNumber() + ", " + p.toString());
+			/**
+			 * Comment on the function to update the velocity:
+			 * 
+			 * At first the actual Velocity of the Particle has to be multiplied with the
+			 * user-supplied coefficient w, which is called the inertiaComponent. After this
+			 * the cognitiveComponent has to be added to the inertiaComponent, which
+			 * inherits the multiplication of the coefficients c1 and r1, multiplied with
+			 * the result of the personalBestLocation of the Particle minus the actual
+			 * location of it. Afterwards the socialComponent also has to be added to the
+			 * parts before. It inherits the multiplication of the coefficients c2 and r2,
+			 * multiplied with the result of the subtraction of the globalBestLocation with
+			 * the actual location of the Particle.
+			 */
 
-				// p.evaluateFitnessFunction();
+			final ArithmeticVector inertiaComponent = currentVelocities[i].multiply(w);
+			final ArithmeticVector cognitiveComponent = personalBests[i].subtract(currentLocations[i])
+					.multiply(c1 * r1);
+			final ArithmeticVector socialComponent = currentLocations[bestParticleIndex].subtract(currentLocations[i])
+					.multiply(c2 * r2);
+			currentVelocities[i] = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 
-				if (iterations == 0) {
-					p.savePBest();
-					p.setPBestLocation(p.getLocation());
-				} else if (p.improvedOnPersonal()) {
-					// the aim is to minimize the function
-					p.savePBest();
-					p.setPBestLocation(p.getLocation());
-				}
-				// Logger.getGlobal().info("Iteration " + t + ", Particle " + p.getNumber() + ",
-				// " + p.toString());
+			// Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " +
+			// newVel);
+
+			// step 4 - update location
+
+			// now the mapping has to be converted to an ArithmeticVector
+			// adds up the velocity to create the updated location
+			currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
+			population[i].updateMappings(currentLocations[i]); // adjusts the mappings with the new location
+			population[i].useLocalSearch();
+			currentLocations[i] = population[i].createLocationFromMapping();
+
+			// Logger.getGlobal().info("Iteration " + t + ", Updated Particle " +
+			// p.getNumber() + System.getProperty("line.separator") + p.toString());
+			if (population[i].improvedOnPersonal()) {
+				// the aim is to minimize the function
+				population[i].savePBest();
+				personalBests[i] = currentLocations[i];
 			}
-
-			// step 2 - update gBest
-			final int bestParticleIndex = getMinPos(); // get the position of the minimum fitness value
-			// Logger.getGlobal().info("bestParticleIndex: " + bestParticleIndex + " in
-			// Iteration " + t);
-
-			// set the new global best fitness / location
-			if (iterations == 0 || population[bestParticleIndex].isBetterThan(globalBest)) {
-				globalBest = population[bestParticleIndex];
-				globalBestLocation = population[bestParticleIndex].getLocation();
-			}
-
-			// Logger.getGlobal().info("GlobalBest: " + globalBest + ", GlobalBestLocation:
-			// " + globalBestLocation);
-
-			for (final Particle p:population) {
-
-				if (iterations == 0) {
-					final ArithmeticVector newLoc = p.getLocation().addUp(p.getVelocity()); // adds up the velocity to
-																							// create the updated
-																							// location
-					p.setLocation(newLoc);
-					p.updateMappings(); // adjusts the mappings with the new location
-
-					// we do not have to update the velocity, because it is updated before updating
-					// the location in the loop
-				} else {
-					final double r1 = random.nextDoubleFast();
-					final double r2 = random.nextDoubleFast();
-
-					// step 3 - update velocity
-
-					/**
-					 * Comment on the function to update the velocity:
-					 * 
-					 * At first the actual Velocity of the Particle has to be multiplied with the
-					 * user-supplied coefficient w, which is called the inertiaComponent. After this
-					 * the cognitiveComponent has to be added to the inertiaComponent, which
-					 * inherits the multiplication of the coefficients c1 and r1, multiplied with
-					 * the result of the personalBestLocation of the Particle minus the actual
-					 * location of it. Afterwards the socialComponent also has to be added to the
-					 * parts before. It inherits the multiplication of the coefficients c2 and r2,
-					 * multiplied with the result of the subtraction of the globalBestLocation with
-					 * the actual location of the Particle.
-					 */
-
-					final ArithmeticVector inertiaComponent = p.getVelocity().multiply(w);
-					final ArithmeticVector cognitiveComponent = p.getPBestLocation().subtract(p.getLocation())
-							.multiply(c1 * r1);
-					final ArithmeticVector socialComponent = globalBestLocation.subtract(p.getLocation())
-							.multiply(c2 * r2);
-					final ArithmeticVector newVel = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
-
-					p.setVelocity(newVel);
-
-					// Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " +
-					// newVel);
-
-					// step 4 - update location
-
-					// now the mapping has to be converted to an ArithmeticVector
-					p.updateLocation();
-					p.setLocation(p.getLocation().addUp(p.getVelocity()));// adds up the velocity to create the updated
-																			// location
-					p.updateMappings(); // adjusts the mappings with the new location
-					p.useLocalSearch();
-					p.updateLocation();
-
-					// Logger.getGlobal().info("Iteration " + t + ", Updated Particle " +
-					// p.getNumber() + System.getProperty("line.separator") + p.toString());
-				}
-
-			}
-			// Logger.getGlobal().info("In iteration " + t + ", GlobalBest: " + globalBest +
-			// ", GlobalBestLocation: " + globalBestLocation);
-			iterations++;
-		}
-		implementSolution(input);
-		return input;
-	}
-
-	/**
-	 * In this method the hostPM of each VM is compared to the solution of the
-	 * algorithm, the globalBestLocation. If the hosts are the same, no migration is
-	 * needed, if not, we migrate the VM to the new host.
-	 */
-	private void implementSolution(final InfrastructureModel best) {
-		// Implement solution in the model
-		for (int i = 0; i < dimension; i++) {
-			final ModelVM curr = best.items[i];
-			final ModelPM oldPm = curr.gethostPM();
-			final ModelPM newPm = best.bins[globalBestLocation.get(i).intValue() - 1]; // has to be done because the
-																						// ids start at one
-			if (newPm.hashCode() != oldPm.hashCode())
-				oldPm.migrateVM(curr, newPm);
 		}
 	}
 
-	/**
-	 * Method to find the position of the particle with the smallest fitness value
-	 * of all Particles.
-	 * 
-	 * @return The position where the value is in the vector.
-	 */
-	private int getMinPos() {
-		int pos = 0;
+	@Override
+	protected Particle transformInput(InfrastructureModel input) {
+		return new Particle(input, -1, true, false);
+	}
 
-		for (int i = 1; i < population.length; i++) {
-			if (population[i].isBetterThan(population[pos])) {
-				pos = i;
-			}
+	/**
+	 * Creates the initial velocity of a particle. The velocity points randomly in a
+	 * positive or negative direction.
+	 */
+	public void initVelocity(final int i, final int len) {
+		currentVelocities[i] = new ArithmeticVector(len);
+		for (int j = 0; j < len; j++) {
+			// here we make a random chance of getting a lower id or a higher id
+			currentVelocities[i].add(CachingPRNG.genBoolean() ? 1.0 : -1.0); // add the random velocity
 		}
-		return pos;
+	}
+
+	protected void initializePopulation(final Particle input) {
+		super.initializePopulation(input);
+		final int dim = population[0].items.length;
+		// TODO: check if there is any velocity set before this is ran!
+		for (int i = 0; i < population.length; i++) {
+			initVelocity(i, dim);
+			// adds up the velocity to create the initial location
+			personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping()
+					.addUp(currentVelocities[i]);
+			// adjusts the mappings with the new location
+			population[i].updateMappings(currentLocations[i]);
+			population[i].savePBest();
+		}
 	}
 
 }

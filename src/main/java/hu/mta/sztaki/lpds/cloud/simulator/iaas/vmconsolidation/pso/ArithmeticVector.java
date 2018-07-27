@@ -10,7 +10,7 @@ import java.util.ArrayList;
 	 * subtract an ArithmeticVector and multiply it with a constant.
 	 */
 @SuppressWarnings("serial")
-public class ArithmeticVector extends ArrayList<Double>{
+public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
 
 	double highestID;
 	

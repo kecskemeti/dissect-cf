@@ -1,6 +1,5 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
@@ -23,9 +22,6 @@ public class Particle extends InfrastructureModel {
 
 	final private int number;
 
-	private ArithmeticVector velocity; // the actual velocity : in which direction shall the solution go?
-	private ArithmeticVector location; // the actual location : possible solution
-
 	/**
 	 * Total amount of PM overloads, aggregated over all PMs and all resource types
 	 */
@@ -34,7 +30,6 @@ public class Particle extends InfrastructureModel {
 	protected int bestNrActivePms;
 	/** Number of migrations necessary from original placement of the VMs */
 	protected int bestNrMigrations;
-	private ArithmeticVector personalBestLocation; // the personal best location so far
 
 	/**
 	 * Creates a new Particle and sets the bins list with the values out of the
@@ -46,7 +41,6 @@ public class Particle extends InfrastructureModel {
 	public Particle(final InfrastructureModel base, final int number, final boolean orig, final boolean localsearch) {
 		super(base, orig, localsearch);
 		this.number = number;
-		this.location = new ArithmeticVector(bins.length);
 	}
 
 	/**
@@ -54,18 +48,18 @@ public class Particle extends InfrastructureModel {
 	 * Note that there is a difference in saving the pms inside the mappings and
 	 * inside the location.
 	 */
-	public void updateLocation() {
+	public ArithmeticVector createLocationFromMapping() {
 
 		// Logger.getGlobal().info("Before updateLocation(), new location: " + location
 		// + ", mapping: " + mappingToString());
 
-		location.clear();
+		ArithmeticVector l=new ArithmeticVector(items.length);
 
 		for (final ModelVM vm: items) {
 			// ModelPMs are stored in the bins array indexed with their hashcode
-			location.add(vm.getHostID() + 1.0);
+			l.add(vm.getHostID() + 1.0);
 		}
-
+		return l;
 		// Logger.getGlobal().info("After updateLocation(), new location: " + location +
 		// ", mapping: " + mappingToString());
 	}
@@ -76,21 +70,21 @@ public class Particle extends InfrastructureModel {
 	 * on the changeds inside the location. Note that there is a difference in
 	 * saving the pms inside the mappings and inside the location.
 	 */
-	public void updateMappings() {
+	public void updateMappings(ArithmeticVector adjustedLocation) {
 
-		roundValues();
+		roundValues(adjustedLocation);
 
 		// Logger.getGlobal().info("Before updateMappings(), location: " + location + ",
 		// mapping: " + mappingToString());
 
 		// check if the mappings and the location are different, then adjust the
 		// mappings
-		final int locSize = location.size();
+		final int locSize = adjustedLocation.size();
 		for (int i = 0; i < locSize; i++) {
 
 			// System.out.println("bins.size="+bins.size()+",
 			// location[i]="+location.get(i));
-			final ModelPM locPm = bins[location.get(i).intValue() - 1]; // the host of this vm, has to be done
+			final ModelPM locPm = bins[adjustedLocation.get(i).intValue() - 1]; // the host of this vm, has to be done
 			// because the ids start at one
 			final ModelVM mvm = items[i];
 			final ModelPM mappedPm = mvm.gethostPM();
@@ -110,20 +104,6 @@ public class Particle extends InfrastructureModel {
 		// Logger.getGlobal().info("After updateMappings(), location: " + location + ",
 		// mapping: " + mappingToString());
 
-	}
-
-	/**
-	 * Creates the initial velocity of a particle. The velocity points randomly in a
-	 * positive or negative direction.
-	 */
-	public void initVelocity() {
-		final ArithmeticVector vel = new ArithmeticVector(bins.length);
-		for (int j = 0; j < items.length; j++) {
-			// here we make a random chance of getting a lower id or a higher id
-			vel.add(CachingPRNG.genBoolean() ? 1.0 : -1.0); // add the random velocity
-		}
-
-		this.setVelocity(vel);
 	}
 
 	/**
@@ -147,85 +127,14 @@ public class Particle extends InfrastructureModel {
 	}
 
 	/**
-	 * Getter for the best location achieved so far.
-	 * 
-	 * @return An ArithmeticVector with the personal best location.
-	 */
-	public ArithmeticVector getPBestLocation() {
-		return this.personalBestLocation;
-	}
-
-	/**
-	 * Sets the personal best location with the parametrized ArithmeticVector.
-	 * 
-	 * @param loc The new best location.
-	 */
-	public void setPBestLocation(final ArithmeticVector loc) {
-		this.personalBestLocation = loc;
-	}
-
-	/**
-	 * Getter for the current velocity.
-	 * 
-	 * @return The current velocity of this particle.
-	 */
-	public ArithmeticVector getVelocity() {
-		return velocity;
-	}
-
-	/**
-	 * Sets the velocity of this particle with the parametrized ArithmeticVector.
-	 * 
-	 * @param velocity The new velocity.
-	 */
-	public void setVelocity(final ArithmeticVector velocity) {
-		this.velocity = velocity;
-	}
-
-	/**
-	 * Getter for the current location.
-	 * 
-	 * @return The current location of this particle.
-	 */
-	public ArithmeticVector getLocation() {
-		return location;
-	}
-
-	/**
-	 * Sets the location of this particle with the parametrized ArithmeticVector.
-	 * 
-	 * @param location The new location.
-	 */
-	public void setLocation(final ArithmeticVector location) {
-		this.location = location;
-	}
-
-	/**
 	 * Replaces the decimals with one zero to round the values. Can be used after
 	 * the arithmetics inside the particle swarm optimization to work with round
 	 * values.
 	 */
-	private void roundValues() {
-		final int locLen = location.size();
+	private void roundValues(final ArithmeticVector l) {
+		final int locLen = l.size();
 		for (int i = 0; i < locLen; i++) {
-			location.set(i, (double) location.get(i).intValue());
+			l.set(i, (double) l.get(i).intValue());
 		}
-	}
-
-	/**
-	 * The toString-method, used for debugging.
-	 * 
-	 * @return A String-object containing the current location, velocity, Fitness,
-	 *         personal best Fitness and the personal best location.
-	 */
-	public String toString() {
-		String erg = "Location: " + this.getLocation() + System.getProperty("line.separator") + "Velocity: "
-				+ this.getVelocity() + System.getProperty("line.separator")
-				// + "FitnessValue: " + this.evaluateFitnessFunction() + ", PersonalBestFitness:
-				// "
-//			+ this.getPBest() + System.getProperty("line.separator")
-				+ "PersonalBestLocation: " + this.getPBestLocation() + System.getProperty("line.separator");
-
-		return erg;
 	}
 }

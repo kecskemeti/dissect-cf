@@ -19,9 +19,14 @@ public abstract class IM_ML_Consolidator extends MachineLearningConsolidator<Inf
 			final boolean localsearch) {
 		return new InfrastructureModel(input, original, localsearch);
 	}
-	
+
+	@Override
+	protected InfrastructureModel transformInput(final InfrastructureModel input) {
+		return input;
+	}
+
 	@Override
 	protected void createPopArray(final int len) {
-		population=new InfrastructureModel[len];
+		population = new InfrastructureModel[len];
 	}
 }

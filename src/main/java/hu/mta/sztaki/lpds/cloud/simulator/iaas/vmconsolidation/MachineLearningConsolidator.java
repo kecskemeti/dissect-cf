@@ -153,11 +153,11 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	 * Determine "best" solution (i.e. an infrastructure setup, compared to which
 	 * there is no better one
 	 */
-	public T findBestSolution() {
-		T bestSolution = population[0];
-		for (final T im : population) {
-			if (im.isBetterThan(bestSolution)) {
-				bestSolution = im;
+	protected int findBestSolution() {
+		int bestSolution = 0;
+		for (int i = 1; i < population.length; i++) {
+			if (population[i].isBetterThan(population[bestSolution])) {
+				bestSolution = i;
 			}
 		}
 		return bestSolution;
@@ -178,15 +178,16 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	}
 
 	protected abstract void singleIteration();
+	protected abstract T transformInput(InfrastructureModel input);
 
 	@Override
 	protected InfrastructureModel optimize(final InfrastructureModel input) {
-		initializePopulation((T) input);
+		initializePopulation(transformInput(input));
 		improved = true;
 		for (int iter = 0; iter < nrIterations && improved; iter++) {
 			improved = false;
 			singleIteration();
 		}
-		return findBestSolution();
+		return population[findBestSolution()];
 	}
 }
