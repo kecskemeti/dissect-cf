@@ -49,7 +49,7 @@ public class Particle extends InfrastructureModel {
 	public ArithmeticVector createLocationFromMapping() {
 
 
-		final ArithmeticVector l = new ArithmeticVector(items.length);
+		final ArithmeticVector l = new ArithmeticVector(bins.length);
 
 		for (final ModelVM vm : items) {
 			// ModelPMs are stored in the bins array indexed with their hashcode

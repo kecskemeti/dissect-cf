@@ -74,16 +74,19 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		final Particle p = new Particle(input, vmAssignment, localsearch);
 		initVelocity(i, input.items.length);
 		// adds up the velocity to create the initial location
-		personalBests[i] = currentLocations[i] = population[i].createLocationFromMapping().addUp(currentVelocities[i]);
+		personalBests[i] = currentLocations[i] = p.createLocationFromMapping().addUp(currentVelocities[i]);
 		// adjusts the mappings with the new location
-		currentLocations[i] = population[i].updateMappings(currentLocations[i], localSearch);
-		population[i].savePBest();
+		currentLocations[i] = p.updateMappings(currentLocations[i], localSearch);
+		p.savePBest();
 		return p;
 	}
 
 	@Override
 	protected void createPopArray(final int len) {
 		population = new Particle[len];
+		currentLocations=new ArithmeticVector[len];
+		currentVelocities=new ArithmeticVector[len];
+		personalBests=new ArithmeticVector[len];
 	}
 
 	@Override
