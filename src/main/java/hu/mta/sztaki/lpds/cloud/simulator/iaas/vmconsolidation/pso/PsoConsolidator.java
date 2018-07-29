@@ -75,7 +75,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		initVelocity(i, input.items.length);
 		// adds up the velocity to create the initial location
 		currentLocations[i] = p.createLocationFromMapping().addUp(currentVelocities[i]);
-		personalBests[i] = (ArithmeticVector) currentLocations[i].clone();
+		personalBests[i] = new ArithmeticVector(currentLocations[i]);
 		// adjusts the mappings with the new location
 		currentLocations[i] = p.updateMappings(currentLocations[i], localSearch);
 		p.savePBest();
@@ -114,9 +114,9 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 			 */
 
 			final ArithmeticVector inertiaComponent = currentVelocities[i].multiply(w);
-			final ArithmeticVector cognitiveComponent = ((ArithmeticVector) personalBests[i].clone())
+			final ArithmeticVector cognitiveComponent = new ArithmeticVector(personalBests[i])
 					.subtract(currentLocations[i]).multiply(c1 * random.nextDoubleFast());
-			final ArithmeticVector socialComponent = ((ArithmeticVector) currentLocations[bestParticleIndex].clone())
+			final ArithmeticVector socialComponent = new ArithmeticVector(currentLocations[bestParticleIndex])
 					.subtract(currentLocations[i]).multiply(c2 * random.nextDoubleFast());
 			currentVelocities[i] = inertiaComponent.addUp(cognitiveComponent).addUp(socialComponent);
 
@@ -136,7 +136,7 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 			if (population[i].improvedOnPersonal()) {
 				// the aim is to minimize the function
 				population[i].savePBest();
-				personalBests[i] = (ArithmeticVector) currentLocations[i].clone();
+				personalBests[i] = new ArithmeticVector(currentLocations[i]);
 			}
 		}
 	}

@@ -37,7 +37,8 @@ public class Particle extends InfrastructureModel {
 	 * @param bins   The currently existing pms.
 	 * @param number The id of this particle.
 	 */
-	public Particle(final InfrastructureModel base, final GenHelper vmAssignment, final InfrastructureModel.Improver localsearch) {
+	public Particle(final InfrastructureModel base, final GenHelper vmAssignment,
+			final InfrastructureModel.Improver localsearch) {
 		super(base, vmAssignment, localsearch);
 	}
 
@@ -47,7 +48,6 @@ public class Particle extends InfrastructureModel {
 	 * inside the location.
 	 */
 	public ArithmeticVector createLocationFromMapping() {
-
 
 		final ArithmeticVector l = new ArithmeticVector(bins.length);
 
@@ -64,7 +64,8 @@ public class Particle extends InfrastructureModel {
 	 * on the changeds inside the location. Note that there is a difference in
 	 * saving the pms inside the mappings and inside the location.
 	 */
-	public ArithmeticVector updateMappings(final ArithmeticVector adjustedLocation, final InfrastructureModel.Improver localSearch) {
+	public ArithmeticVector updateMappings(final ArithmeticVector adjustedLocation,
+			final InfrastructureModel.Improver localSearch) {
 
 		roundValues(adjustedLocation);
 
@@ -74,7 +75,7 @@ public class Particle extends InfrastructureModel {
 		for (int i = 0; i < locSize; i++) {
 
 			// the host of this vm, has to be done because the ids start at one
-			final ModelPM locPm = bins[adjustedLocation.get(i).intValue() - 1];
+			final ModelPM locPm = bins[(int) adjustedLocation.get(i) - 1];
 			final ModelPM mappedPm = items[i].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
@@ -112,7 +113,7 @@ public class Particle extends InfrastructureModel {
 	private void roundValues(final ArithmeticVector l) {
 		final int locLen = l.size();
 		for (int i = 0; i < locLen; i++) {
-			l.set(i, (double) l.get(i).intValue());
+			l.set(i, Math.floor(l.get(i)));
 		}
 	}
 }

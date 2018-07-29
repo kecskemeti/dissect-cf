@@ -1,6 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
-import java.util.ArrayList;
+import gnu.trove.list.array.TDoubleArrayList;
 
 /**
  * @author Rene Ponto
@@ -10,8 +10,7 @@ import java.util.ArrayList;
  *         are operations like add an ArithmeticVector, subtract an
  *         ArithmeticVector and multiply it with a constant.
  */
-@SuppressWarnings("serial")
-public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
+public class ArithmeticVector extends TDoubleArrayList {
 
 	final double highestID;
 
@@ -21,6 +20,11 @@ public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
 	 */
 	public ArithmeticVector(final double highestID) {
 		this.highestID = highestID;
+	}
+	
+	public ArithmeticVector(final ArithmeticVector toCopy) {
+		super(toCopy);
+		this.highestID=toCopy.highestID;
 	}
 
 	/**
@@ -59,19 +63,12 @@ public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector addUp(final ArithmeticVector second) {
-		final int len=size();
+		final int len = size();
 		for (int i = 0; i < len; i++) {
 			final double result = this.get(i) + second.get(i);
-			if (result > highestID)
-				set(i, highestID);
-			else {
-				if (result < 1)
-					set(i, 1.0); // if the actual value is 1.0 and the actual value of the velcity is smaller
-									// than 1.0,
-									// 1.0 is set becouse there is no lower ID than 1.
-				else
-					set(i, result);
-			}
+			// if the actual value is 1.0 and the actual value of the velcity is smaller
+			// than 1.0, 1.0 is set becouse there is no lower ID than 1.
+			set(i, result > highestID ? highestID : result < 1 ? 1 : result);
 		}
 		return this;
 	}
@@ -85,14 +82,10 @@ public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector subtract(final ArithmeticVector second) {
-		final int len=size();
+		final int len = size();
 		for (int i = 0; i < len; i++) {
 			final double result = this.get(i) - second.get(i);
-			if (result < 1)
-				set(i, 1.0); // if the value would be lower than 1, 1 is set because there is no lower id
-								// than 1.
-			else
-				set(i, result);
+			set(i, result < 1 ? 1.0 : result);
 
 		}
 		return this;
@@ -105,7 +98,7 @@ public class ArithmeticVector extends ArrayList<Double> implements Cloneable {
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public ArithmeticVector multiply(final double constant) {
-		final int len=size();
+		final int len = size();
 		for (int i = 0; i < len; i++) {
 			set(i, this.get(i) * constant);
 		}
