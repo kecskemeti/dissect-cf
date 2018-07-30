@@ -12,19 +12,15 @@ import gnu.trove.list.array.TDoubleArrayList;
  */
 public class ArithmeticVector extends TDoubleArrayList {
 
-	final double highestID;
-
 	/**
 	 * Empty constructor, because all values of this class are created randomly at
 	 * the beginning of the PSO and get added to this.
 	 */
-	public ArithmeticVector(final double highestID) {
-		this.highestID = highestID;
+	public ArithmeticVector() {
 	}
-	
+
 	public ArithmeticVector(final ArithmeticVector toCopy) {
 		super(toCopy);
-		this.highestID=toCopy.highestID;
 	}
 
 	/**
@@ -65,10 +61,7 @@ public class ArithmeticVector extends TDoubleArrayList {
 	public ArithmeticVector addUp(final ArithmeticVector second) {
 		final int len = size();
 		for (int i = 0; i < len; i++) {
-			final double result = this.get(i) + second.get(i);
-			// if the actual value is 1.0 and the actual value of the velcity is smaller
-			// than 1.0, 1.0 is set becouse there is no lower ID than 1.
-			set(i, result > highestID ? highestID : result < 1 ? 1 : result);
+			set(i, this.get(i) + second.get(i));
 		}
 		return this;
 	}
@@ -84,9 +77,7 @@ public class ArithmeticVector extends TDoubleArrayList {
 	public ArithmeticVector subtract(final ArithmeticVector second) {
 		final int len = size();
 		for (int i = 0; i < len; i++) {
-			final double result = this.get(i) - second.get(i);
-			set(i, result < 1 ? 1.0 : result);
-
+			set(i, this.get(i) - second.get(i));
 		}
 		return this;
 	}

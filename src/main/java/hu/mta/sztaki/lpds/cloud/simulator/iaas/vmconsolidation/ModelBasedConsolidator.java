@@ -85,13 +85,16 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 				return;
 			}
 		}
-		baseSolution = optimize(new InfrastructureModel(pmList, lowerThreshold,
-				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold));
-		previousActions = modelDiff();
-		// Logger.getGlobal().info("Number of actions: "+actions.size());
-		createGraph();
-		// printGraph(actions);
-		performActions();
+		final InfrastructureModel input = new InfrastructureModel(pmList, lowerThreshold,
+				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold);
+		baseSolution = optimize(input);
+		if (baseSolution.isBetterThan(input)) {
+			previousActions = modelDiff();
+			// Logger.getGlobal().info("Number of actions: "+actions.size());
+			createGraph();
+			// printGraph(actions);
+			performActions();
+		}
 	}
 
 	public static void clearStatics() {
