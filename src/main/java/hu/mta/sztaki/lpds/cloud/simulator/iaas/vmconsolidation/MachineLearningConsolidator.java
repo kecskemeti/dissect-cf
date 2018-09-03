@@ -65,6 +65,17 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 
 	protected GenHelper mutator;
 
+	public static final FitCompare baseComp = new FitCompare() {
+		@Override
+		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
+			return a.isBetterThan(b);
+		}
+	};
+
+	protected interface FitCompare {
+		boolean isBetterThan(InfrastructureModel a, InfrastructureModel b);
+	}
+
 	public MachineLearningConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
@@ -165,10 +176,10 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	 * Determine "best" solution (i.e. an infrastructure setup, compared to which
 	 * there is no better one
 	 */
-	protected int findBestSolution() {
+	protected int findBestSolution(final FitCompare comp) {
 		int bestSolution = 0;
 		for (int i = 1; i < population.length; i++) {
-			if (population[i].isBetterThan(population[bestSolution])) {
+			if (comp.isBetterThan(population[i], population[bestSolution])) {
 				bestSolution = i;
 			}
 		}
@@ -216,6 +227,6 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			improved = false;
 			singleIteration();
 		}
-		return population[findBestSolution()];
+		return population[findBestSolution(baseComp)];
 	}
 }

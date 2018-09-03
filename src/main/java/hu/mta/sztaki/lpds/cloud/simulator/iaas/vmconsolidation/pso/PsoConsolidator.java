@@ -25,8 +25,12 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	/** learning factor two */
 	private double c2;
 
-	/** used to get a new velocity for each particle */
-	private static final double w = 0.6;
+	public static final FitCompare bestComp = new FitCompare() {
+		@Override
+		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
+			return ((Particle) a).isBetterBest((Particle) b);
+		}
+	};
 
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model
@@ -56,14 +60,13 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 * The toString-method, used for debugging.
 	 */
 	public String toString() {
-		String erg = "Amount of VMs: " + population[0].items.length + ", GlobalBest: " + population[findBestSolution()];
-		return erg;
+		return "Amount of VMs: " + population[0].items.length + ", GlobalBest: " + population[findBestSolution(baseComp)];
 	}
 
 	@Override
 	protected Particle modelFactory(final Particle input, final GenHelper vmAssignment,
 			final InfrastructureModel.Improver localsearch) {
-		return new Particle(input, vmAssignment, localsearch, c1, c2, w);
+		return new Particle(input, vmAssignment, localsearch);
 	}
 
 	@Override
@@ -71,30 +74,37 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		population = new Particle[len];
 	}
 
+	private void updateSingleParticle(final int index, final int bestIndex) {
+		// step 3 - update velocity
+		population[index].updateVelocity(population[bestIndex], c1 * random.nextDoubleFast(),
+				c2 * random.nextDoubleFast());
+		// Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " +
+		// newVel);
+		// step 4 - update location
+		if (population[index].updateLocation(localSearch))
+			improved = true;
+	}
+
 	@Override
 	protected void singleIteration() {
 		// step 2 - update gBest
-		final int bestParticleIndex = findBestSolution(); // get the position of the minimum fitness value
-
-		for (int i = 0; i < population.length; i++) {
-
-			// step 3 - update velocity
-
-			population[i].updateVelocity(population[bestParticleIndex], random.nextDoubleFast(),
-					random.nextDoubleFast());
-			// Logger.getGlobal().info("Particle: " + p.getNumber() + ", new Velocity: " +
-			// newVel);
-
-			// step 4 - update location
-
-			if (population[i].updateLocation(localSearch))
-				improved = true;
+		final int bestParticleIndex = findBestSolution(bestComp);
+		int i;
+		for (i = 0; i < bestParticleIndex; i++) {
+			updateSingleParticle(i, bestParticleIndex);
 		}
+		// Skips the best particle
+		for (i++; i < population.length; i++) {
+			updateSingleParticle(i, bestParticleIndex);
+		}
+		// The best particle is updated last as all others were directed towards this
+		// one in the current iteration
+		updateSingleParticle(bestParticleIndex, bestParticleIndex);
 	}
 
 	@Override
 	protected Particle transformInput(final InfrastructureModel input) {
-		return new Particle(input, PreserveAllocations.singleton, NonImprover.singleton, c1, c2, w);
+		return new Particle(input, PreserveAllocations.singleton, NonImprover.singleton);
 	}
 
 }

@@ -33,7 +33,8 @@ public class Particle extends InfrastructureModel {
 	private final ArithmeticVector currentVelocity;
 	private ArithmeticVector personalBest;
 
-	private final double c1, c2, w;
+	/** used to get a new velocity for each particle */
+	private static final double w = 0.6;
 
 	/**
 	 * Creates a new Particle and sets the bins list with the values out of the
@@ -43,22 +44,21 @@ public class Particle extends InfrastructureModel {
 	 * @param number The id of this particle.
 	 */
 	public Particle(final InfrastructureModel base, final GenHelper vmAssignment,
-			final InfrastructureModel.Improver localsearch, final double c1, final double c2, double w) {
+			final InfrastructureModel.Improver localsearch) {
 		super(base, vmAssignment, localsearch);
-		this.c1 = c1;
-		this.c2 = c2;
-		this.w = w;
-		currentVelocity = new ArithmeticVector();
-		currentLocation = new ArithmeticVector();
+		double[] velBase = new double[base.items.length];
+		double[] locBase = new double[base.items.length];
 		/*
 		 * Creates the initial location and velocity of a particle. The velocity points
 		 * randomly in a positive or negative direction.
 		 */
 		for (int i = 0; i < base.items.length; i++) {
-			currentLocation.add(items[i].getHostID());
+			locBase[i] = items[i].getHostID();
 			// here we make a random chance of getting a lower id or a higher id
-			currentVelocity.add(CachingPRNG.genBoolean() ? 1.0 : -1.0); // add the random velocity
+			velBase[i] = CachingPRNG.genBoolean() ? 1.0 : -1.0; // add the random velocity
 		}
+		currentVelocity = new ArithmeticVector(velBase);
+		currentLocation = new ArithmeticVector(locBase);
 		savePBest();
 		// adds up the velocity to create the initial location
 		currentLocation.addUp(currentVelocity);
@@ -71,12 +71,17 @@ public class Particle extends InfrastructureModel {
 	 * Note that there is a difference in saving the pms inside the mappings and
 	 * inside the location.
 	 */
-	private ArithmeticVector updateLocationFromMapping() {
+	private boolean updateLocationFromMapping() {
 		for (int i = 0; i < items.length; i++) {
 			// ModelPMs are stored in the bins array indexed with their hashcode
-			currentLocation.set(i, items[i].getHostID());
+			currentLocation.data[i] = items[i].getHostID();
 		}
-		return currentLocation;
+		if (improvedOnPersonal()) {
+			// the aim is to minimize the function
+			savePBest();
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -85,14 +90,14 @@ public class Particle extends InfrastructureModel {
 	 * on the changeds inside the location. Note that there is a difference in
 	 * saving the pms inside the mappings and inside the location.
 	 */
-	private void updateMappings(final InfrastructureModel.Improver localSearch) {
+	private boolean updateMappings(final InfrastructureModel.Improver localSearch) {
 
 		// check if the mappings and the location are different, then adjust the
 		// mappings
 		for (int i = 0; i < items.length; i++) {
 
 			// the host of this vm, has to be done because the ids start at one
-			final ModelPM locPm = bins[Math.abs(((int) currentLocation.get(i))%bins.length)];
+			final ModelPM locPm = bins[Math.abs(((int) currentLocation.data[i]) % bins.length)];
 			final ModelPM mappedPm = items[i].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
@@ -108,7 +113,7 @@ public class Particle extends InfrastructureModel {
 		// determine the fitness
 		calculateFitness();
 
-		updateLocationFromMapping();
+		return updateLocationFromMapping();
 	}
 
 	private boolean improvedOnPersonal() {
@@ -123,6 +128,19 @@ public class Particle extends InfrastructureModel {
 		personalBest = new ArithmeticVector(currentLocation);
 	}
 
+	private void createAndAddVelocityComponent(final ArithmeticVector direction, final double rnd) {
+		final ArithmeticVector comp = new ArithmeticVector(direction);
+		comp.subtract(currentLocation);
+		comp.scale(rnd);
+		currentVelocity.addUp(comp);
+	}
+
+	
+	public boolean isBetterBest(final Particle o) {
+		return betterThan(bestTotalOverAllocated, bestNrActivePms, bestNrMigrations, o.bestTotalOverAllocated,
+				o.bestNrActivePms, o.bestNrMigrations);		
+	}
+	
 	/**
 	 * Comment on the function to update the velocity:
 	 * 
@@ -137,11 +155,11 @@ public class Particle extends InfrastructureModel {
 	 * the actual location of the Particle.
 	 */
 	public void updateVelocity(final Particle bestSoFar, final double rnd1, final double rnd2) {
-		final ArithmeticVector cognitiveComponent = new ArithmeticVector(personalBest).subtract(currentLocation)
-				.multiply(c1 * rnd1);
-		final ArithmeticVector socialComponent = new ArithmeticVector(bestSoFar.personalBest).subtract(currentLocation)
-				.multiply(c2 * rnd2);
-		currentVelocity.multiply(w).addUp(cognitiveComponent).addUp(socialComponent);
+		currentVelocity.scale(w);
+		// The cognitive component:
+		createAndAddVelocityComponent(personalBest, rnd1);
+		// The social component:
+		createAndAddVelocityComponent(bestSoFar.personalBest, rnd2);
 	}
 
 	/**
@@ -153,13 +171,6 @@ public class Particle extends InfrastructureModel {
 	 */
 	public boolean updateLocation(final InfrastructureModel.Improver localSearch) {
 		currentLocation.addUp(currentVelocity);
-		updateMappings(localSearch);
-
-		if (improvedOnPersonal()) {
-			// the aim is to minimize the function
-			savePBest();
-			return true;
-		}
-		return false;
+		return updateMappings(localSearch);
 	}
 }

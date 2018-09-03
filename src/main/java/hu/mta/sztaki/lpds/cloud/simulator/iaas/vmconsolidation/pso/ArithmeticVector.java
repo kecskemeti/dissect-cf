@@ -1,6 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
-import gnu.trove.list.array.TDoubleArrayList;
+import java.util.Arrays;
 
 /**
  * @author Rene Ponto
@@ -10,60 +10,35 @@ import gnu.trove.list.array.TDoubleArrayList;
  *         are operations like add an ArithmeticVector, subtract an
  *         ArithmeticVector and multiply it with a constant.
  */
-public class ArithmeticVector extends TDoubleArrayList {
+public final class ArithmeticVector {
+
+	final double[] data;
 
 	/**
-	 * Empty constructor, because all values of this class are created randomly at
-	 * the beginning of the PSO and get added to this.
+	 * 
+	 * @param baseData is not copied, but referenced from the class. It is assumed
+	 *                 that the passed array is not modified outside after receiving
+	 *                 it via the constructor! For making an actual copy of the data
+	 *                 passed, use the copy constructor.
 	 */
-	public ArithmeticVector() {
+	public ArithmeticVector(final double[] baseData) {
+		data = baseData;
 	}
 
 	public ArithmeticVector(final ArithmeticVector toCopy) {
-		super(toCopy);
-	}
-
-	/**
-	 * The toString-method, used for debugging.
-	 * 
-	 * @return
-	 */
-	public String toString() {
-		String erg = "Size: " + this.size() + ", " + this.toList();
-		return erg;
-	}
-
-	/**
-	 * Creates an artificial list of the values of this class, used inside the
-	 * toString-method.
-	 * 
-	 * @return
-	 */
-	private String toList() {
-		String erg = "[";
-		for (int i = 0; i < this.size(); i++) {
-			erg = erg + this.get(i) + ", ";
-		}
-		if (erg != null && erg.length() > 2) {
-			erg = erg.substring(0, erg.length() - 2);
-		}
-		erg = erg + "]";
-		return erg;
+		data = Arrays.copyOf(toCopy.data, toCopy.data.length);
 	}
 
 	/**
 	 * Method to add another ArithmeticVector to this one. There is a defined border
 	 * so there can no PM be used which is not in the IaaS.
 	 * 
-	 * @param second The second ArithmeticVector, the velocity.
-	 * @return The solution of this operation as a new ArithmeticVector.
+	 * @param addMe The second ArithmeticVector, the velocity.
 	 */
-	public ArithmeticVector addUp(final ArithmeticVector second) {
-		final int len = size();
-		for (int i = 0; i < len; i++) {
-			set(i, this.get(i) + second.get(i));
+	public void addUp(final ArithmeticVector addMe) {
+		for (int i = 0; i < addMe.data.length; i++) {
+			data[i] += addMe.data[i];
 		}
-		return this;
 	}
 
 	/**
@@ -71,28 +46,23 @@ public class ArithmeticVector extends TDoubleArrayList {
 	 * border for not using a PM with an ID lower than 1, because such a PM does not
 	 * exist.
 	 * 
-	 * @param second The second ArithmeticVector, the velocity.
-	 * @return The solution of this operation as a new ArithmeticVector.
+	 * @param subtractMe The second ArithmeticVector, the velocity.
 	 */
-	public ArithmeticVector subtract(final ArithmeticVector second) {
-		final int len = size();
-		for (int i = 0; i < len; i++) {
-			set(i, this.get(i) - second.get(i));
+	public void subtract(final ArithmeticVector subtractMe) {
+		for (int i = 0; i < subtractMe.data.length; i++) {
+			data[i] -= subtractMe.data[i];
 		}
-		return this;
 	}
 
 	/**
 	 * Method to multiply every value of this class with a constant.
 	 * 
-	 * @param constant The double Value to multiply with.
+	 * @param scale The double Value to multiply with.
 	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
-	public ArithmeticVector multiply(final double constant) {
-		final int len = size();
-		for (int i = 0; i < len; i++) {
-			set(i, this.get(i) * constant);
+	public void scale(final double scale) {
+		for (int i = 0; i < data.length; i++) {
+			data[i] *= scale;
 		}
-		return this;
 	}
 }
