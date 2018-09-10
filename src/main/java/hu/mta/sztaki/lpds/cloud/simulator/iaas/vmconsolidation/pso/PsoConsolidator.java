@@ -43,7 +43,6 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 */
 	public PsoConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
-		setOmitAllocationCheck(true);
 	}
 
 	/**

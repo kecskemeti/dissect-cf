@@ -69,13 +69,18 @@ public class InfrastructureModel {
 			final double upperThreshold) {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
 		final List<ModelVM> vminit = new ArrayList<>(pmList.length);
+		int nonHostingRunningPMs = 0;
 		for (int i = 0; i < pmList.length; i++) {
 			// now every PM will be put inside the model with its hosted VMs
 			final PhysicalMachine pm = pmList[i];
 			// If using a non-externally-controlled PM scheduler, consider only non-empty
 			// PMs for consolidation
-			if (!(pm.isHostingVMs()) && onlyNonEmpty)
-				continue;
+			if (!pm.isHostingVMs()) {
+				if (onlyNonEmpty)
+					continue;
+				else if (pm.isRunning())
+					nonHostingRunningPMs++;
+			}
 			final ModelPM bin = new ModelPM(pm, lowerThreshold, pminit.size(), upperThreshold);
 			for (final VirtualMachine vm : pm.publicVms) {
 				final ModelVM item = new ModelVM(vm, bin, vminit.size());
@@ -88,6 +93,7 @@ public class InfrastructureModel {
 		bins = pminit.toArray(ModelPM.mpmArrSample);
 		items = vminit.toArray(ModelVM.mvmArrSample);
 		calculateFitness();
+		nrActivePms += nonHostingRunningPMs;
 	}
 
 	/**
