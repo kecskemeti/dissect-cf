@@ -1,9 +1,12 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
+import java.util.Arrays;
+
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
  * @author Rene Ponto
@@ -67,6 +70,55 @@ public class Particle extends InfrastructureModel {
 	}
 
 	/**
+	 * Allows the creation of a particle as an average of the swarm specified in the
+	 * parameter
+	 * 
+	 * @param baseSwarm
+	 */
+	public Particle(final Particle[] baseSwarm) {
+		super(baseSwarm[0], new GenHelper() {
+			double[] locBase = genLocBase();
+
+			private double[] genLocBase() {
+				double[] returner = new double[baseSwarm[0].items.length];
+				Arrays.fill(returner, 0);
+				for (int i = 0; i < returner.length; i++) {
+					for (int j = 0; j < baseSwarm.length; j++) {
+						returner[i] += baseSwarm[j].currentLocation.data[i];
+					}
+					returner[i] /= baseSwarm.length;
+				}
+				return returner;
+			}
+
+			@Override
+			public int whatShouldWeUse(InfrastructureModel im, int vm) {
+				return (int) locBase[vm];
+			}
+
+			@Override
+			public boolean shouldUseDifferent() {
+				return true;
+			}
+		}, NonImprover.singleton);
+		double[] velBase = new double[baseSwarm[0].items.length];
+		Arrays.fill(velBase, 0);
+		for (int i = 0; i < velBase.length; i++) {
+			for (int j = 0; j < baseSwarm.length; j++) {
+				velBase[i] += baseSwarm[j].currentVelocity.data[i];
+			}
+			velBase[i] /= baseSwarm.length;
+		}
+		currentLocation = new ArithmeticVector(new double[baseSwarm[0].items.length]);
+		bestNrActivePms = Integer.MAX_VALUE;
+		bestNrMigrations = Integer.MAX_VALUE;
+		bestTotalOverAllocated = Double.MAX_VALUE;
+		updateLocationFromMapping();
+		currentVelocity = new ArithmeticVector(velBase);
+		savePBest();
+	}
+
+	/**
 	 * Has to be called when using the arithmetics or after the mapping has changed.
 	 * Note that there is a difference in saving the pms inside the mappings and
 	 * inside the location.
@@ -91,13 +143,16 @@ public class Particle extends InfrastructureModel {
 	 * saving the pms inside the mappings and inside the location.
 	 */
 	private boolean updateMappings(final InfrastructureModel.Improver localSearch) {
-
 		// check if the mappings and the location are different, then adjust the
 		// mappings
 		for (int i = 0; i < items.length; i++) {
 
 			// the host of this vm, has to be done because the ids start at one
-			final ModelPM locPm = bins[Math.abs(((int) currentLocation.data[i]) % bins.length)];
+			int target = ((int) currentLocation.data[i]) % bins.length;
+			if (currentLocation.data[i] < 0) {
+				target = (int) (bins.length - 1 + target);
+			}
+			final ModelPM locPm = bins[target];
 			final ModelPM mappedPm = items[i].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
@@ -135,12 +190,11 @@ public class Particle extends InfrastructureModel {
 		currentVelocity.addUp(comp);
 	}
 
-	
 	public boolean isBetterBest(final Particle o) {
 		return betterThan(bestTotalOverAllocated, bestNrActivePms, bestNrMigrations, o.bestTotalOverAllocated,
-				o.bestNrActivePms, o.bestNrMigrations);		
+				o.bestNrActivePms, o.bestNrMigrations);
 	}
-	
+
 	/**
 	 * Comment on the function to update the velocity:
 	 * 
@@ -172,5 +226,10 @@ public class Particle extends InfrastructureModel {
 	public boolean updateLocation(final InfrastructureModel.Improver localSearch) {
 		currentLocation.addUp(currentVelocity);
 		return updateMappings(localSearch);
+	}
+
+	public void replaceMappingWithPersonalBest() {
+		System.arraycopy(personalBest.data, 0, currentLocation.data, 0, personalBest.data.length);
+		updateMappings(NonImprover.singleton);
 	}
 }

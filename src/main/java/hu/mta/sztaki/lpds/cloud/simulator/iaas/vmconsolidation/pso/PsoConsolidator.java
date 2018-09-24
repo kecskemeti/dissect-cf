@@ -32,6 +32,13 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		}
 	};
 
+	public static final FitCompare worstCurrentComp = new FitCompare() {
+		@Override
+		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
+			return b.isBetterThan(a);
+		}
+	};
+
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model
 	 * and work on the modelled PMs and VMs. After finding the solution everything
@@ -59,7 +66,8 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 	 * The toString-method, used for debugging.
 	 */
 	public String toString() {
-		return "Amount of VMs: " + population[0].items.length + ", GlobalBest: " + population[findBestSolution(baseComp)];
+		return "Amount of VMs: " + population[0].items.length + ", GlobalBest: "
+				+ population[findBestSolution(baseComp)];
 	}
 
 	@Override
@@ -99,6 +107,8 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		// The best particle is updated last as all others were directed towards this
 		// one in the current iteration
 		updateSingleParticle(bestParticleIndex, bestParticleIndex);
+		// The selection of the best particle might not be as trivial as it is with ABC
+		// and GA. This needs more tweaking.
 	}
 
 	@Override
