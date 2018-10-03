@@ -167,6 +167,7 @@ public abstract class Consolidator extends Timed {
 	public void tick(long fires) {
 		if (resourceAllocationChange || omitAllocationCheck) {
 			if(toConsolidate.runningMachines.isEmpty()&&toConsolidate.sched.getQueueLength()==0) {
+				unsubscribe();
 				return;
 			}
 			// Make a copy as machines could be sold/removed if they are not used because of
