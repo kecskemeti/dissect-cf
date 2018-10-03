@@ -38,8 +38,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
  */
 public abstract class ModelBasedConsolidator extends Consolidator {
 
-	private InfrastructureModel baseSolution;
-
 	protected double lowerThreshold, upperThreshold;
 
 	protected Properties props;
@@ -87,9 +85,9 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 		final InfrastructureModel input = new InfrastructureModel(pmList, lowerThreshold,
 				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold);
-		baseSolution = optimize(input);
-		if (baseSolution.isBetterThan(input)) {
-			previousActions = modelDiff();
+		InfrastructureModel solution = optimize(input);
+		if (solution.isBetterThan(input)) {
+			previousActions = modelDiff(solution);
 			// Logger.getGlobal().info("Number of actions: "+actions.size());
 			createGraph();
 			// printGraph(actions);
@@ -130,7 +128,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * 
 	 * @return The list with all the actions.
 	 */
-	private Action[] modelDiff() {
+	private Action[] modelDiff(InfrastructureModel solution) {
 		// If we have an externally controllable PM scheduler, then we also create
 		// start-up and shut-down actions, otherwise only migration actions
 		IControllablePmScheduler controllablePmScheduler = null;
@@ -139,7 +137,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 		final List<Action> actions = new ArrayList<>();
 		if (controllablePmScheduler != null) {
-			for (final ModelPM bin : baseSolution.bins) {
+			for (final ModelPM bin : solution.bins) {
 				final boolean pmWillBeRunning = PhysicalMachine.ToOnorRunning.contains(bin.getPM().getState());
 				if (bin.isHostingVMs()) {
 					if (!pmWillBeRunning)
@@ -150,7 +148,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 				}
 			}
 		}
-		for (final ModelVM item : baseSolution.items) {
+		for (final ModelVM item : solution.items) {
 			if (item.getHostID() != item.basedetails.initialHost.hashCode()) {
 				actions.add(new MigrationAction(item));
 			}
@@ -183,23 +181,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 				action.execute();
 			}
 		}
-	}
-
-	/**
-	 * The toString()-method, used for debugging.
-	 */
-	public String toString() {
-		String result = "";
-		boolean first = true;
-		for (final ModelPM bin : baseSolution.bins) {
-			if (!bin.isHostingVMs())
-				continue;
-			if (!first)
-				result = result + "\n";
-			result = result + bin.toString();
-			first = false;
-		}
-		return result;
 	}
 
 	/**
