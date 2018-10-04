@@ -148,11 +148,8 @@ public class Particle extends InfrastructureModel {
 		for (int i = 0; i < items.length; i++) {
 
 			// the host of this vm, has to be done because the ids start at one
-			int target = ((int) currentLocation.data[i]) % bins.length;
-			if (currentLocation.data[i] < 0) {
-				target = (int) (bins.length - 1 + target);
-			}
-			final ModelPM locPm = bins[target];
+			final ModelPM locPm = bins[(currentLocation.data[i] < 0 ? bins.length - 1 : 0)
+					+ ((int) currentLocation.data[i]) % bins.length];
 			final ModelPM mappedPm = items[i].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
