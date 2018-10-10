@@ -1,11 +1,13 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
@@ -34,6 +36,10 @@ public class Particle extends InfrastructureModel {
 	protected int bestNrMigrations;
 	private final ArithmeticVector currentLocation;
 	private final ArithmeticVector currentVelocity;
+	private final int[] vmIdxMapFwd;
+	private final int[] vmIdxMapRev;
+	private final int[] pmIdxMapFwd;
+	private final int[] pmIdxMapRev;
 	private ArithmeticVector personalBest;
 
 	/** used to get a new velocity for each particle */
@@ -49,6 +55,39 @@ public class Particle extends InfrastructureModel {
 	public Particle(final InfrastructureModel base, final GenHelper vmAssignment,
 			final InfrastructureModel.Improver localsearch) {
 		super(base, vmAssignment, localsearch);
+		final ModelPM[] srtPMs = bins.clone();
+		Arrays.sort(srtPMs, new Comparator<ModelPM>() {
+			@Override
+			public int compare(final ModelPM arg0, final ModelPM arg1) {
+				return Double.compare(arg0.basedetails.pm.freeCapacities.getTotalProcessingPower(),
+						arg1.basedetails.pm.freeCapacities.getTotalProcessingPower());
+			}
+		});
+		pmIdxMapFwd = new int[srtPMs.length];
+		for (int i = 0; i < srtPMs.length; i++) {
+			pmIdxMapFwd[srtPMs[i].hashCode()] = i;
+		}
+		pmIdxMapRev = new int[srtPMs.length];
+		for (int i = 0; i < srtPMs.length; i++) {
+			pmIdxMapRev[i] = srtPMs[i].hashCode();
+		}
+
+		final ModelVM[] sorted = items.clone();
+		Arrays.sort(sorted, new Comparator<ModelVM>() {
+			@Override
+			public int compare(final ModelVM arg0, final ModelVM arg1) {
+				return -Double.compare(arg0.getResources().getTotalProcessingPower(),
+						arg1.getResources().getTotalProcessingPower());
+			}
+		});
+		vmIdxMapFwd = new int[sorted.length];
+		for (int i = 0; i < sorted.length; i++) {
+			vmIdxMapFwd[sorted[i].basedetails.id] = i;
+		}
+		vmIdxMapRev = new int[sorted.length];
+		for (int i = 0; i < sorted.length; i++) {
+			vmIdxMapRev[i] = sorted[i].basedetails.id;
+		}
 		double[] velBase = new double[base.items.length];
 		double[] locBase = new double[base.items.length];
 		/*
@@ -56,7 +95,7 @@ public class Particle extends InfrastructureModel {
 		 * randomly in a positive or negative direction.
 		 */
 		for (int i = 0; i < base.items.length; i++) {
-			locBase[i] = items[i].getHostID();
+			locBase[i] = pmIdxMapFwd[sorted[i].getHostID()];
 			// here we make a random chance of getting a lower id or a higher id
 			velBase[i] = CachingPRNG.genBoolean() ? 1.0 : -1.0; // add the random velocity
 		}
@@ -92,7 +131,7 @@ public class Particle extends InfrastructureModel {
 			}
 
 			@Override
-			public int whatShouldWeUse(InfrastructureModel im, int vm) {
+			public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
 				return (int) locBase[vm];
 			}
 
@@ -101,6 +140,10 @@ public class Particle extends InfrastructureModel {
 				return true;
 			}
 		}, NonImprover.singleton);
+		vmIdxMapFwd = baseSwarm[0].vmIdxMapFwd.clone();
+		vmIdxMapRev = baseSwarm[0].vmIdxMapRev.clone();
+		pmIdxMapFwd = baseSwarm[0].pmIdxMapFwd.clone();
+		pmIdxMapRev = baseSwarm[0].pmIdxMapRev.clone();
 		double[] velBase = new double[baseSwarm[0].items.length];
 		Arrays.fill(velBase, 0);
 		for (int i = 0; i < velBase.length; i++) {
@@ -126,7 +169,7 @@ public class Particle extends InfrastructureModel {
 	private boolean updateLocationFromMapping() {
 		for (int i = 0; i < items.length; i++) {
 			// ModelPMs are stored in the bins array indexed with their hashcode
-			currentLocation.data[i] = items[i].getHostID();
+			currentLocation.data[i] = pmIdxMapFwd[items[vmIdxMapFwd[i]].getHostID()];
 		}
 		if (improvedOnPersonal()) {
 			// the aim is to minimize the function
@@ -148,15 +191,17 @@ public class Particle extends InfrastructureModel {
 		for (int i = 0; i < items.length; i++) {
 
 			// the host of this vm, has to be done because the ids start at one
-			final ModelPM locPm = bins[(currentLocation.data[i] < 0 ? bins.length - 1 : 0)
-					+ ((int) currentLocation.data[i]) % bins.length];
-			final ModelPM mappedPm = items[i].gethostPM();
+			final ModelPM locPm = bins[pmIdxMapRev[currentLocation.data[i] < 0 ? 0
+					: currentLocation.data[i] >= bins.length ? bins.length - 1 : (int) currentLocation.data[i]]];
+//					+ ((int) currentLocation.data[i]) % bins.length]];
+			final int orI = vmIdxMapRev[i];
+			final ModelPM mappedPm = items[orI].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
 			// next. Otherwise we have to adjust the mappings
 			if (locPm.hashCode() != mappedPm.hashCode()) {
 				// pms are not the same
-				mappedPm.migrateVM(items[i], locPm);
+				mappedPm.migrateVM(items[orI], locPm);
 			}
 		}
 
