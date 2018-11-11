@@ -218,6 +218,10 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 	protected abstract void singleIteration();
 
 	protected abstract T transformInput(InfrastructureModel input);
+	
+	protected T getBestResult() {
+		return population[findBestSolution(baseComp)];
+	}
 
 	@Override
 	protected InfrastructureModel optimize(final InfrastructureModel input) {
@@ -227,6 +231,6 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 			improved = false;
 			singleIteration();
 		}
-		return population[findBestSolution(baseComp)];
+		return getBestResult();
 	}
 }

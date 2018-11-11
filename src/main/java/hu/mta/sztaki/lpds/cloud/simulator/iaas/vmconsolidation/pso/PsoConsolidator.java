@@ -107,13 +107,20 @@ public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
 		// The best particle is updated last as all others were directed towards this
 		// one in the current iteration
 		updateSingleParticle(bestParticleIndex, bestParticleIndex);
-		// The selection of the best particle might not be as trivial as it is with ABC
-		// and GA. This needs more tweaking.
+		// Bit of non-basic PSO tweaking
+		// the worst particle is eliminated and replaced with an average particle
+		population[findBestSolution(worstCurrentComp)]=new Particle(population);
 	}
 
 	@Override
 	protected Particle transformInput(final InfrastructureModel input) {
 		return new Particle(input, PreserveAllocations.singleton, NonImprover.singleton);
 	}
-
+	
+	@Override
+	protected Particle getBestResult() {
+		final int bestParticleIndex=findBestSolution(bestComp);
+		population[bestParticleIndex].replaceMappingWithPersonalBest();
+		return population[bestParticleIndex];
+	}
 }
