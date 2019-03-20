@@ -121,8 +121,18 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void dontFireSchedulerOnEmptyQueue() throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+	public void dontFireSchedulerOnEmptyQueue() throws IllegalArgumentException, SecurityException,
+			InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 		setupIaaS(AssertFulScheduler.class, AlwaysOnMachines.class, 10, 1);
 		Timed.simulateUntilLastEvent();
+	}
+
+	@Test(timeout = 100, expected = VMManagementException.class)
+	public void disallowVMRequestsWithoutVAonSource()
+			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
+			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 1, 1);
+		VirtualAppliance va = new VirtualAppliance("nonregistered", 1, 0);
+		s.requestVM(va, s.getCapacities(), s.repositories.get(0), 1);
 	}
 }
