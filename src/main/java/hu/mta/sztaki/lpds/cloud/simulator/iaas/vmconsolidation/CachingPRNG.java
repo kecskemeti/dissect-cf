@@ -11,7 +11,7 @@ public class CachingPRNG {
 
 	public static boolean genBoolean() {
 		if (rem == 0) {
-			cache = MachineLearningConsolidator.random.nextLong();
+			cache = PopulationBasedConsolidator.random.nextLong();
 			rem = 64;
 		}
 		rem--;

@@ -10,7 +10,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.Infrastruct
  *         Moores University, (c) 2018"
  */
 
-public abstract class IM_ML_Consolidator extends MachineLearningConsolidator<InfrastructureModel> {
+public abstract class IM_ML_Consolidator extends PopulationBasedConsolidator<InfrastructureModel> {
 	public IM_ML_Consolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}

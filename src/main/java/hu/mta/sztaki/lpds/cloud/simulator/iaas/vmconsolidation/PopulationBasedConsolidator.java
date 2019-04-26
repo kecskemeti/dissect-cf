@@ -40,7 +40,7 @@ import it.unimi.dsi.util.XoShiRo256PlusRandom;
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
  *         Moores University, (c) 2017"
  */
-public abstract class MachineLearningConsolidator<T extends InfrastructureModel> extends ModelBasedConsolidator {
+public abstract class PopulationBasedConsolidator<T extends InfrastructureModel> extends ModelBasedConsolidator {
 
 	protected int randomCreations;
 	protected int unchangedCreations;
@@ -76,7 +76,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		boolean isBetterThan(InfrastructureModel a, InfrastructureModel b);
 	}
 
-	public MachineLearningConsolidator(final IaaSService toConsolidate, final long consFreq) {
+	public PopulationBasedConsolidator(final IaaSService toConsolidate, final long consFreq) {
 		super(toConsolidate, consFreq);
 	}
 
@@ -196,7 +196,7 @@ public abstract class MachineLearningConsolidator<T extends InfrastructureModel>
 		mutator = new RandomVMassigner() {
 			@Override
 			public boolean shouldUseDifferent() {
-				return MachineLearningConsolidator.random.nextDoubleFast() < mutationProb;
+				return PopulationBasedConsolidator.random.nextDoubleFast() < mutationProb;
 			}
 		};
 	}

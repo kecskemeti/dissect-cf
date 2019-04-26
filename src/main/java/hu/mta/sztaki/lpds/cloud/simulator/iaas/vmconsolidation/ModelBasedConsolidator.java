@@ -20,6 +20,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions.StartActi
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
  * @author Julian Bellendorf, Rene Ponto, Zoltan Mann
@@ -85,7 +87,10 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		}
 		final InfrastructureModel input = new InfrastructureModel(pmList, lowerThreshold,
 				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold);
-		InfrastructureModel solution = optimize(input);
+		// the input is duplicated before sending it for optimisation to allow
+		// consolidators directly change the input model
+		final InfrastructureModel solution = optimize(
+				new InfrastructureModel(input, PreserveAllocations.singleton, NonImprover.singleton));
 		if (solution.isBetterThan(input)) {
 			previousActions = modelDiff(solution);
 			// Logger.getGlobal().info("Number of actions: "+actions.size());

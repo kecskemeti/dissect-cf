@@ -1,7 +1,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PopulationBasedConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
@@ -17,7 +17,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.No
  *         and the amount of overAllocated PMs are used for the fitness.
  */
 
-public class PsoConsolidator extends MachineLearningConsolidator<Particle> {
+public class PsoConsolidator extends PopulationBasedConsolidator<Particle> {
 
 	/** learning factor one */
 	private double c1;

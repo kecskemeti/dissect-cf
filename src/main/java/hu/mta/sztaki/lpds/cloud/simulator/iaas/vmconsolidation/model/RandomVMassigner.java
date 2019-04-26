@@ -1,6 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.MachineLearningConsolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.PopulationBasedConsolidator;
 
 /**
  * 
@@ -16,6 +16,6 @@ public class RandomVMassigner implements GenHelper {
 
 	@Override
 	public int whatShouldWeUse(final InfrastructureModel im, final int vm) {
-		return MachineLearningConsolidator.random.nextInt(im.bins.length);
+		return PopulationBasedConsolidator.random.nextInt(im.bins.length);
 	}
 }
