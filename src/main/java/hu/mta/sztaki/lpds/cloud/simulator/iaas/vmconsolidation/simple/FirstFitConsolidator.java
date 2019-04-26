@@ -8,6 +8,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.ModelBasedConsoli
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 
 /**
  * @author Rene Ponto
@@ -65,8 +67,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		 * Set<ModelVM> setItems = new LinkedHashSet<ModelVM>(allVMsOnPM);
 		 * allVMsOnPM.clear(); allVMsOnPM.addAll(setItems); }
 		 */
-
-		return sol;
+		return new InfrastructureModel(sol, PreserveAllocations.singleton, NonImprover.singleton);
 	}
 
 	interface PMCheck {
