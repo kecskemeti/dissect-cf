@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2016, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -38,13 +39,15 @@ import java.util.ArrayList;
  * 
  * The individual notifications can be customized via the class's constructor.
  * 
- * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2016"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
  *
  * @param <T>
  *            the kind of state change for which this handler is prepared to
  *            notify about.
- * @param
- * 			<P>
+ * @param <P>
  *            the kind of data to be passed on to the notified party
  */
 public class StateDependentEventHandler<T, P> {
@@ -53,21 +56,15 @@ public class StateDependentEventHandler<T, P> {
 	 * The listeners that will receive notifications if the notify listeners
 	 * function is called
 	 */
-	private ArrayList<T> listeners = new ArrayList<T>();
+	final ArrayList<T> listeners = new ArrayList<T>();
 	/**
-	 * if the notificaiton process is underway, then new listeners are
-	 * registered here (they will not receive notifications in the current
+	 * if the notificaiton process is underway, then new and cancelled listeners
+	 * are registered here (they will not receive notifications in the current
 	 * notification round as their registration is actually a result of the
-	 * current notification round)
+	 * current notification round).
 	 */
-	private ArrayList<T> newListeners = new ArrayList<T>();
-	/**
-	 * if the notificaiton process is underway, then to be removed listeners are
-	 * registered here (they will still receive notifications in the current
-	 * notification round as their de-registration is actually a result of the
-	 * current notification round)
-	 */
-	private ArrayList<T> cancelledListeners = new ArrayList<T>();
+	private ArrayList<T> changedListeners;
+	int newCount = 0;
 	/**
 	 * a marker to show if there is a notification process underway
 	 */
@@ -75,7 +72,11 @@ public class StateDependentEventHandler<T, P> {
 	/**
 	 * the entity that is actually used to perform the notifications
 	 */
-	private final SingleNotificationHandler<T, P> myHandler;
+	final SingleNotificationHandler<T, P> myHandler;
+	/**
+	 * the dispatcher to be used when events need to be fired.
+	 */
+	EventDispatcherCore eventing = NullDispatcher.instance;
 
 	/**
 	 * Initialization of the event handling mechanism.
@@ -100,10 +101,38 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void subscribeToEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
-			listeners.add(listener);
+			eventing.add(StateDependentEventHandler.this, listener);
 		} else {
-			newListeners.add(listener);
+			if (changedListeners == null) {
+				changedListeners = new ArrayList<T>();
+			} else if (checkAndRemoveFromListeners(newCount, changedListeners.size(), listener)) {
+				// Was it about to be removed?
+				return;
+			}
+			// Not really, we have to add it after the dispatching
+			if (changedListeners.size() == newCount) {
+				changedListeners.add(listener);
+			} else {
+				// Ensure we save the to be overwritten item
+				changedListeners.add(changedListeners.get(newCount));
+				changedListeners.set(newCount, listener);
+			}
+			newCount++;
 		}
+	}
+
+	private boolean checkAndRemoveFromListeners(int start, int stop, T what) {
+		for (int i = start; i < stop; i++) {
+			if (changedListeners.get(i) == what) {
+				stop--;
+				T otherListener = changedListeners.remove(stop);
+				if (stop != i) {
+					changedListeners.set(i, otherListener);
+				}
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -116,21 +145,20 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	public void unsubscribeFromEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
-			listeners.remove(listener);
+			eventing.remove(StateDependentEventHandler.this, listener);
 		} else {
-			cancelledListeners.add(listener);
-		}
-	}
-
-	/**
-	 * The main event dispatching loop. It is not intended for external use as
-	 * it is not prepared to handle cases when the number of subscribers change
-	 * while the dispatching is in process.
-	 */
-	private void mainNotificationLoop(final P payload) {
-		final int size = listeners.size();
-		for (int i = 0; i < size; i++) {
-			myHandler.sendNotification(listeners.get(i), payload);
+			if (changedListeners == null) {
+				changedListeners = new ArrayList<T>();
+			} else if (checkAndRemoveFromListeners(0, newCount, listener)) {
+				int cls = changedListeners.size();
+				if (cls > newCount) {
+					cls--;
+					changedListeners.set(newCount, changedListeners.remove(cls));
+				}
+				newCount--;
+				return;
+			}
+			changedListeners.add(listener);
 		}
 	}
 
@@ -145,28 +173,33 @@ public class StateDependentEventHandler<T, P> {
 	 *            notification
 	 */
 	public void notifyListeners(final P payload) {
-		if (noEventDispatchingInProcess) {
-			// No nesting
+		if (eventing != NullDispatcher.instance) {
+			if (noEventDispatchingInProcess) {
+				noEventDispatchingInProcess = false;
+				eventing.mainNotificationLoop(StateDependentEventHandler.this, payload);
+				// Complete dispatching is done (even if there were some nested
+				// events)
+				noEventDispatchingInProcess = true;
 
-			// Mark for start of dispatching process
-			noEventDispatchingInProcess = false;
-			mainNotificationLoop(payload);
-			// Complete dispatching is done (even if there were some nested
-			// events)
-			noEventDispatchingInProcess = true;
-
-			// Additions and deletions are handled only in the outermost call
-			if (newListeners.size() != 0) {
-				listeners.addAll(newListeners);
-				newListeners.clear();
+				// Additions and deletions are handled only in the outermost
+				// call
+				if (changedListeners != null) {
+					int chls = changedListeners.size();
+					if (newCount != 0) {
+						eventing.addAll(StateDependentEventHandler.this, changedListeners.subList(0, newCount));
+					}
+					if (chls - newCount > 0) {
+						eventing.removeAll(StateDependentEventHandler.this,
+								changedListeners.subList(newCount, changedListeners.size()));
+					}
+					changedListeners = null;
+					newCount = 0;
+				}
+			} else {
+				// Nested call handling
+				eventing.mainNotificationLoop(StateDependentEventHandler.this, payload);
 			}
-			if (cancelledListeners.size() != 0) {
-				listeners.removeAll(cancelledListeners);
-				cancelledListeners.clear();
-			}
-		} else {
-			// Nested call handling
-			mainNotificationLoop(payload);
 		}
 	}
+
 }

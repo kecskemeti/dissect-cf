@@ -213,7 +213,6 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 					// Management of capacity decrease
 					for (int i = pmNum - 1; i >= 0; i--) {
 						capacityManagers.remove(alteredPMs.get(i)).cancelEvents();
-						;
 					}
 				}
 			}

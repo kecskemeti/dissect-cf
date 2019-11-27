@@ -18,7 +18,8 @@
  *  
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
- *  
+ *
+ *  (C) Copyright 2015, Vincenzo De Maio (vincenzo@dps.uibk.ac.at)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -26,7 +27,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.EnumSet;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,9 +43,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine.StateChangeException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
+import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
@@ -55,6 +58,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	VirtualAppliance va, vaWithBG;
 	VirtualMachine centralVM, centralVMwithBG;
 	Repository repo;
+	final static long defaultMemory = 1000;
 
 	@Before
 	public void initializeObject() throws Exception {
@@ -65,6 +69,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		repo = dummyRepoCreator(false);
 		repo.registerObject(va);
 		repo.registerObject(vaWithBG);
+		repo.setState(NetworkNode.State.RUNNING);
 		centralVMwithBG = new VirtualMachine(vaWithBG);
 		pm.localDisk.registerObject(va);
 		pm.localDisk.registerObject(vaWithBG);
@@ -99,8 +104,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		}
 		ra.cancel();
 		try {
-			centralVM.prepare(new Repository(1, "1", 1, 1, 1, new HashMap<String, Integer>()),
-					new Repository(2, "2", 2, 2, 2, new HashMap<String, Integer>()));
+			centralVM.prepare(dummyRepoCreator(false), dummyRepoCreator(false));
 			Assert.fail("It should not be possible to do preparation if the VM is non servable");
 		} catch (StateChangeException ex) {
 			// Correct behavior
@@ -184,6 +188,8 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(expected = VMManagementException.class, timeout = 100)
 	public void faultyStartupAfterPrepare() throws VMManagementException, NetworkException {
 		PhysicalMachine target = dummyPMcreator();
+		target.turnon();
+		Timed.simulateUntilLastEvent();
 		centralVM.prepare(pm.localDisk, target.localDisk);
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("VM is not in expected state after prepare", VirtualMachine.State.SHUTDOWN,
@@ -266,7 +272,7 @@ public class VMTest extends IaaSRelatedFoundation {
 		};
 		centralVM.subscribeStateChange(sc);
 		centralVM.destroy(false);
-		centralVM.unsubscribeStateChange(sc);;
+		centralVM.unsubscribeStateChange(sc);
 		Assert.assertArrayEquals("Did not receive the necessary state changes",
 				new VirtualMachine.State[] { VirtualMachine.State.SHUTDOWN, VirtualMachine.State.DESTROYED },
 				receivedStates.toArray(new VirtualMachine.State[receivedStates.size()]));
@@ -331,12 +337,6 @@ public class VMTest extends IaaSRelatedFoundation {
 		long memless = pm.localDisk.getFreeStorageCapacity();
 		long memsize = ra.allocated.getRequiredMemory();
 		vmToUse.suspend();
-		try {
-			vmToUse.destroy(false);
-			Assert.fail("A VM in transferring phase should not be destroyable!");
-		} catch (VMManagementException ex) {
-			// expected operation
-		}
 		Assert.assertEquals("Not in expected state", VirtualMachine.State.SUSPEND_TR, vmToUse.getState());
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("PM's local storage should decrease with memory size", memless - memsize,
@@ -411,7 +411,6 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertTrue("The target PM should not have anything in its storage",
 				pmtarget.localDisk.getMaxStorageCapacity() == pmtarget.localDisk.getFreeStorageCapacity());
 		switchOnVMwithMaxCapacity(toUse, true);
-		final double beforePmCon = pm.getTotalProcessed();
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		final double ctLen = 100 * aSecond;
 		toUse.newComputeTask(ctLen, 1, cae);
@@ -420,10 +419,8 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertTrue("VM is not on its new host", pmtarget.publicVms.contains(toUse));
 		Assert.assertFalse("VM is still on its old host", pm.publicVms.contains(toUse));
 		Assert.assertEquals("VM is not properly resumed", VirtualMachine.State.RUNNING, toUse.getState());
-		Assert.assertEquals("Source VM should have minority of the consumption", beforePmCon + aSecond,
-				pm.getTotalProcessed(), 0.01);
-		Assert.assertEquals("Target VM should have the majority of the consumption", ctLen - aSecond,
-				pmtarget.getTotalProcessed(), 0.01);
+		Assert.assertTrue("Source VM should have minority of the consumption",
+				pm.getTotalProcessed() < pmtarget.getTotalProcessed());
 		return pmtarget;
 	}
 
@@ -438,7 +435,7 @@ public class VMTest extends IaaSRelatedFoundation {
 	}
 
 	@Test(timeout = 100)
-	public void simpleMigrationWithBgNWL() throws VMManagementException, NetworkException {
+	public void simpleLiveMigration() throws VMManagementException, NetworkException {
 		final long beforeSize = pm.localDisk.getFreeStorageCapacity();
 		PhysicalMachine pmtarget = simpleMigrate(centralVMwithBG);
 		Assert.assertEquals("The source of the migration should not have any storage occupied by the VM's remainders",
@@ -516,44 +513,39 @@ public class VMTest extends IaaSRelatedFoundation {
 				pmtarget.localDisk.getFreeStorageCapacity() - spaceToLeave, false));
 		switchOnVMwithMaxCapacity(centralVM, true);
 		doMigration(pm, pmtarget, centralVM, true);
-		Assert.assertEquals("Migration should not succeed", VirtualMachine.State.SUSPENDED_MIG, centralVM.getState());
+		Assert.fail("Migration should fail with an exception, should not reach this point");
 	}
 
-	@Test(timeout = 100)
+	@Test(expected = VMManagementException.class, timeout = 100)
 	public void failMigrationProcedureAfterSuspendPhaseNoAvalableStorage()
 			throws VMManagementException, NetworkException {
-		// Does not allow the copying of the disk and memory to the target
-		// machine
+		// Does not allow the copying of the disk to the target machine
 		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size - 1);
-	}
-
-	@Test(timeout = 100)
-	public void failMigrationProcedureAfterSuspendPhaseLittleAvalableStorage()
-			throws VMManagementException, NetworkException {
-		// Does not allow the copying of the memory to the target machine
-		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size);
-	}
-
-	@Test(timeout = 100)
-	public void failMigrationProcedureBeforeResumePhase() throws VMManagementException, NetworkException {
-		// Does not allow the copying of the memory to the VM's state
-		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
 	}
 
 	@Test(timeout = 100)
 	public void migrationFailureandRetry() throws VMManagementException, NetworkException {
 		final PhysicalMachine pmnewtarget = createAndExecutePM();
-		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
+		try {
+			failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size - 1);
+		} catch (VMManagementException e) {
+			// Expected
+		}
 		centralVM.migrate(
 				pmnewtarget.allocateResources(pmnewtarget.getCapacities(), true, PhysicalMachine.migrationAllocLen));
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("The VM is now expected to be running", VirtualMachine.State.RUNNING, centralVM.getState());
 	}
 
-	@Test(expected = StateChangeException.class, timeout = 100)
+	@Test(timeout = 100)
 	public void migrationFailureandResume() throws VMManagementException, NetworkException {
-		failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size + 1);
-		centralVM.resume();
+		try {
+			failMigrationProcedureAfterSuspendPhase(centralVM.getVa().size - 1);
+		} catch (VMManagementException e) {
+			// Expected
+		}
+		Assert.assertEquals("The VM should be running just fine after a failed migration attempt",
+				VirtualMachine.State.RUNNING, centralVM.getState());
 	}
 
 	@Test(timeout = 100)
@@ -642,4 +634,80 @@ public class VMTest extends IaaSRelatedFoundation {
 					centralVM.getResourceAllocation());
 		}
 	}
+
+	@Test(timeout = 100)
+	public void ensureVMKeepsItsAllocationDuringInitialMigration() throws VMManagementException, NetworkException {
+		final EnumSet<VirtualMachine.State> needsAllocationOnSource = EnumSet.of(VirtualMachine.State.MIGRATING,
+				VirtualMachine.State.SUSPEND_TR);
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		final ConstantConstraints needToKeepThisCapacity = new ConstantConstraints(pm.freeCapacities);
+		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
+			@Override
+			public void stateChanged(VirtualMachine vm, State oldState, State newState) {
+				if (needsAllocationOnSource.contains(newState)) {
+					Assert.assertTrue("Allocation for source disappeared prematurely, current VM state is " + newState,
+							needToKeepThisCapacity.compareTo(pm.freeCapacities) == 0);
+				}
+			}
+		});
+		pm.migrateVM(centralVM, target);
+		Timed.simulateUntilLastEvent();
+	}
+
+	@Test(timeout = 100)
+	public void allowDestroyDuringInitialTransfer() throws VMManagementException, NetworkException {
+		switchOnVMwithMaxCapacity(centralVM, false);
+		new DeferredEvent(1) {
+			@Override
+			protected void eventAction() {
+				try {
+					centralVM.destroy(false);
+				} catch (VMManagementException e) {
+					throw new RuntimeException(e);
+				}
+			};
+		};
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("Should get to destroyed", VirtualMachine.State.DESTROYED, centralVM.getState());
+		switchOnVMwithMaxCapacity(centralVM, true);
+		Assert.assertEquals("Cancel should not ruin the chance to get to running", VirtualMachine.State.RUNNING,
+				centralVM.getState());
+	}
+
+	@Test(timeout = 100)
+	public void allowDestroyWhileMigrating() throws VMManagementException, NetworkException {
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		pm.migrateVM(centralVM, target);
+		Assert.assertEquals("The VM should already be in MIGRATING phase", VirtualMachine.State.MIGRATING,
+				centralVM.getState());
+		centralVM.destroy(false);
+		Timed.simulateUntil(Timed.getFireCount() + aSecond);
+		Assert.assertEquals("There should be no allocation kept for the VM on the source", 0,
+				pm.getCapacities().compareTo(pm.freeCapacities));
+		Assert.assertEquals("There should be no allocation kept for the VM on the target", 0,
+				target.getCapacities().compareTo(target.freeCapacities));
+		Timed.simulateUntilLastEvent();
+		Assert.assertEquals("The VM should be destroyed by now", VirtualMachine.State.DESTROYED, centralVM.getState());
+	}
+
+	@Test(expected = StateChangeException.class, timeout = 100)
+	public void disallowLiveIfNotRunning() throws VMManagementException, NetworkException {
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVMwithBG, true);
+		ConstantConstraints rc = new ConstantConstraints(centralVMwithBG.getResourceAllocation().allocated);
+		centralVMwithBG.suspend();
+		Timed.simulateUntilLastEvent();
+		centralVMwithBG.migrate(target.allocateResources(rc, true, PhysicalMachine.migrationAllocLen), true);
+	}
+
+	@Test(expected = VMManagementException.class, timeout = 100)
+	public void disallowLiveForNonRemotelyStored() throws VMManagementException, NetworkException {
+		PhysicalMachine target = createAndExecutePM();
+		switchOnVMwithMaxCapacity(centralVM, true);
+		centralVM.migrate(target.allocateResources(centralVM.getResourceAllocation().allocated, true,
+				PhysicalMachine.migrationAllocLen), true);
+	}
+
 }

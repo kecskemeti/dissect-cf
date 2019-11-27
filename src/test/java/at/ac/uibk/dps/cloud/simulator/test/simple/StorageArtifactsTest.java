@@ -45,21 +45,15 @@ public class StorageArtifactsTest extends TestFoundation {
 		Random rnd = SeedSyncer.centralRnd;
 		final long bgLoad = rnd.nextLong();
 		final double startproc = rnd.nextDouble();
-		VirtualAppliance va1 = new VirtualAppliance(initialID, startproc,
-				bgLoad);
-		VirtualAppliance va2 = new VirtualAppliance("ID2", startproc, bgLoad,
-				false, baseVASize);
-		VirtualAppliance va3 = new VirtualAppliance("ID3", startproc, bgLoad,
-				true, baseVASize);
+		VirtualAppliance va1 = new VirtualAppliance(initialID, startproc, bgLoad);
+		VirtualAppliance va2 = new VirtualAppliance("ID2", startproc, bgLoad, false, baseVASize);
+		VirtualAppliance va3 = new VirtualAppliance("ID3", startproc, bgLoad, true, baseVASize);
 		VirtualAppliance va4 = va3.newCopy("ID3Copy");
-		Assert.assertEquals("Background load mismatch", bgLoad,
-				va1.getBgNetworkLoad());
-		Assert.assertEquals("Startup delay mismatch", startproc,
-				va2.getStartupProcessing(), 0);
+		Assert.assertEquals("Background load mismatch", bgLoad, va1.getBgNetworkLoad());
+		Assert.assertEquals("Startup delay mismatch", startproc, va2.getStartupProcessing(), 0);
 		Assert.assertEquals("Size mismatch", va3.size, va4.size);
 		Assert.assertTrue("Size variance failure", va2.size != va3.size);
-		Assert.assertTrue(
-				"Virtual appliance should contain its name in its toString",
+		Assert.assertTrue("Virtual appliance should contain its name in its toString",
 				va1.toString().contains(initialID));
 	}
 
@@ -72,8 +66,11 @@ public class StorageArtifactsTest extends TestFoundation {
 		Assert.assertEquals("Size mismatch", so3.size, so4.size);
 		Assert.assertTrue("Size variance failure", so2.size != so3.size);
 		Assert.assertTrue("Size variance failure", so1.size != so2.size);
-		Assert.assertTrue(
-				"Storage object should contain its name in its toString", so1
-						.toString().contains(initialID));
+		Assert.assertTrue("Storage object should contain its name in its toString", so1.toString().contains(initialID));
+	}
+
+	@Test(timeout = 100, expected = IllegalArgumentException.class)
+	public void negLenRegistration() {
+		new StorageObject("NEGATIVE!!", -1, false);
 	}
 }

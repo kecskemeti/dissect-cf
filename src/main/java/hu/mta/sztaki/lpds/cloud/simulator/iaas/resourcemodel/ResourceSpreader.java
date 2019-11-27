@@ -51,8 +51,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
  * statements in its core. While it also allows to efficiently add new features
  * later on.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2012"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2012"
  * 
  */
 public abstract class ResourceSpreader {
@@ -116,8 +117,7 @@ public abstract class ResourceSpreader {
 	 * resource spreader. Resource spreaders use this object to handle power
 	 * state related events.
 	 */
-	private final StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> powerBehaviorListenerManager = PowerStateChangeNotificationHandler
-			.getHandlerInstance();
+	private StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> powerBehaviorListenerManager;
 
 	/**
 	 * The last time there were some processing operations done by this object.
@@ -153,8 +153,9 @@ public abstract class ResourceSpreader {
 	 * consumptions complete), and then make sure that all spreaders in the
 	 * influence group receive timing events at the same time instance.
 	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
-	 *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group,
+	 *         University of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory
+	 *         of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
 	 *
 	 */
 	public static class FreqSyncer extends Timed {
@@ -404,8 +405,8 @@ public abstract class ResourceSpreader {
 		}
 
 		/**
-		 * Implementation of Algorithm 1 from
-		 * "DISSECT-CF: a simulator to foster energy-aware scheduling in infrastructure clouds"
+		 * Implementation of Algorithm 1 from "DISSECT-CF: a simulator to foster
+		 * energy-aware scheduling in infrastructure clouds"
 		 * 
 		 * Manages the influence group's growth and decomposition.
 		 * 
@@ -439,23 +440,21 @@ public abstract class ResourceSpreader {
 					// managing removals
 					if (!rs.underRemoval.isEmpty()) {
 						didRemovals = true;
-						int rsuLen = rs.toProcess.size();
 						final int urLen = rs.underRemoval.size();
 						final boolean isConsumer = rs.isConsumer();
 						for (int urIndex = 0; urIndex < urLen; urIndex++) {
 							final ResourceConsumption con = rs.underRemoval.get(urIndex);
 							if (ArrayHandler.removeAndReplaceWithLast(rs.toProcess, con)) {
-								rsuLen--;
+								rs.underProcessingLen--;
 							}
 							if (isConsumer) {
 								if (con.getUnProcessed() == 0) {
-									con.ev.conComplete();
+									con.fireCompleteEvent();
 								} else if (!con.isResumable()) {
-									con.ev.conCancelled(con);
+									con.fireCancelEvent();
 								}
 							}
 						}
-						rs.underProcessingLen = rsuLen;
 						rs.underRemoval.clear();
 					}
 					// managing additions
@@ -633,12 +632,11 @@ public abstract class ResourceSpreader {
 		 *            should be constructured.
 		 */
 		private void buildDepGroup(final ResourceSpreader startingItem) {
-			final int upLen;
-			if ((upLen = startingItem.toProcess.size()) == 0 || startingItem.stillInDepGroup) {
+			if (startingItem.underProcessingLen == 0 || startingItem.stillInDepGroup) {
 				return;
 			}
 			startingItem.stillInDepGroup = true;
-			for (int i = 0; i < upLen; i++) {
+			for (int i = 0; i < startingItem.underProcessingLen; i++) {
 				buildDepGroup(startingItem.getCounterPart(startingItem.toProcess.get(i)));
 			}
 		}
@@ -688,7 +686,9 @@ public abstract class ResourceSpreader {
 	 */
 	protected final void removeTheseConsumptions(final ResourceConsumption[] conList, final int len) {
 		for (int i = 0; i < len; i++) {
-			underRemoval.add(conList[i]);
+			if(!underRemoval.contains(conList[i])) {
+				underRemoval.add(conList[i]);
+			}
 			ArrayHandler.removeAndReplaceWithLast(underAddition, conList[i]);
 		}
 		if (mySyncer != null) {
@@ -711,7 +711,7 @@ public abstract class ResourceSpreader {
 	 * @param con
 	 *            The consumption object to be registered
 	 * @return
-	 * 		<ul>
+	 *         <ul>
 	 *         <li><i>true</i> if the registration was successful
 	 *         <li><i>false</i> if the consumption was already registered or if
 	 *         the consumption is not acceptable by its set provider or
@@ -980,6 +980,9 @@ public abstract class ResourceSpreader {
 		// FIXME: this might be protected later on.
 		if (newPowerBehavior == null) {
 			throw new IllegalStateException("Trying to set an unknown power behavior");
+		}
+		if (currentPowerBehavior == null) {
+			powerBehaviorListenerManager = PowerStateChangeNotificationHandler.getHandlerInstance();
 		}
 		if (currentPowerBehavior != newPowerBehavior) {
 			currentPowerBehavior = newPowerBehavior;

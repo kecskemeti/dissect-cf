@@ -19,6 +19,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
  *  
+ *  (C) Copyright 2016, Gabor Kecskemeti (g.kecskemeti@ljmu.ac.uk)
  *  (C) Copyright 2014, Gabor Kecskemeti (gkecskem@dps.uibk.ac.at,
  *   									  kecskemeti.gabor@sztaki.mta.hu)
  */
@@ -28,8 +29,8 @@ import java.util.ArrayList;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 
 /**
@@ -46,7 +47,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
  * <i>WARNING:</i> this is an experimental class, it is not widely tested,
  * handle with care
  * 
- * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
+ *         Moores University, (c) 2016"
+ * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+ *         MTA SZTAKI (c) 2015"
  */
 
 public class MultiPMController extends SchedulingDependentMachines {
@@ -55,6 +59,19 @@ public class MultiPMController extends SchedulingDependentMachines {
 	 * the list of machines that are currently turned on by this controller.
 	 */
 	private final ArrayList<PhysicalMachine> currentlyStartingPMs = new ArrayList<PhysicalMachine>();
+
+	/**
+	 * Removes PMs from the currentlyStartingPMs list if they started properly
+	 */
+	private final PhysicalMachine.StateChangeListener sweeper = new PhysicalMachine.StateChangeListener() {
+		@Override
+		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
+			if (newState.equals(PhysicalMachine.State.RUNNING)) {
+				currentlyStartingPMs.remove(pm);
+				pm.unsubscribeStateChangeEvents(this);
+			}
+		}
+	};
 
 	/**
 	 * Constructs the scheduler and passes the parent IaaSService to the
@@ -90,15 +107,23 @@ public class MultiPMController extends SchedulingDependentMachines {
 	}
 
 	/**
+	 * Allows the controller to ignore PM requests until the PM startup loop
+	 * from a previous PM request is complete
+	 */
+	private boolean notInTurnonLoop = true;
+	
+	/**
 	 * Turns on as many PMs as many required to fulfill the total resource
 	 * requirements of the queued VMs at the VM scheduler of the parent
 	 * IaasService
 	 */
 	protected void turnOnSomeMachines() {
 		final int pmsize = parent.machines.size();
-		if (parent.runningMachines.size() != pmsize) {
+		if (parent.runningMachines.size() != pmsize && notInTurnonLoop) {
+			notInTurnonLoop = false;
 			final AlterableResourceConstraints toSwitchOn = new AlterableResourceConstraints(
 					parent.sched.getTotalQueued());
+			final double fltfix=toSwitchOn.getRequiredCPUs()/(pmsize*1000);
 			final int startingLen = currentlyStartingPMs.size();
 			for (int i = 0; i < startingLen; i++) {
 				final PhysicalMachine pm = currentlyStartingPMs.get(i);
@@ -106,14 +131,16 @@ public class MultiPMController extends SchedulingDependentMachines {
 					toSwitchOn.subtract(currentlyStartingPMs.get(i).getCapacities());
 				}
 			}
-			for (int i = 0; i < pmsize && toSwitchOn.compareTo(ConstantConstraints.noResources) > 0; i++) {
+			for (int i = 0; i < pmsize && toSwitchOn.getRequiredCPUs() > fltfix; i++) {
 				final PhysicalMachine n = parent.machines.get(i);
 				if (PhysicalMachine.ToOfforOff.contains(n.getState())) {
 					currentlyStartingPMs.add(n);
 					n.turnon();
+					n.subscribeStateChangeEvents(sweeper);
 					toSwitchOn.subtract(n.getCapacities());
 				}
 			}
+			notInTurnonLoop = true;
 		}
 	}
 

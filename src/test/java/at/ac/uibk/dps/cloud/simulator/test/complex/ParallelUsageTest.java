@@ -74,11 +74,13 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		String repoID = cloudName + "-Repo", machineID = cloudName + "-Machine";
 		lmap.put(repoID, lat);
 		lmap.put(machineID, lat);
-		Repository repo = new Repository(6000000000000L, repoID, repoNBW, repoNBW, repoDBW, lmap);
-		Repository disk = new Repository(6000000000000L, machineID, diskNBW, diskNBW, repoDBW, lmap);
+		Repository repo = new Repository(6000000000000L, repoID, repoNBW, repoNBW, repoDBW, lmap,
+				defaultStorageTransitions, defaultNetworkTransitions);
+		Repository disk = new Repository(6000000000000L, machineID, diskNBW, diskNBW, repoDBW, lmap,
+				defaultStorageTransitions, defaultNetworkTransitions);
 		repo.registerObject(initialVA);
 		iaas.registerRepository(repo);
-		PhysicalMachine pm = new PhysicalMachine(cores, 1.0, 128000000000L, disk, 89000, 29000, defaultTransitions);
+		PhysicalMachine pm = new PhysicalMachine(cores, 1.0, 128000000000L, disk, 89000, 29000, defaultHostTransitions);
 		iaas.registerHost(pm);
 		return iaas;
 	}
@@ -193,19 +195,19 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 						try {
 							vm.newComputeTask(300 * aSecond, ResourceConsumption.unlimitedProcessing,
 									new ResourceConsumption.ConsumptionEvent() {
-								@Override
-								public void conComplete() {
-									try {
-										vm.destroy(false);
-									} catch (VMManagementException e) {
-										e.printStackTrace();
-									}
-								}
+										@Override
+										public void conComplete() {
+											try {
+												vm.destroy(false);
+											} catch (VMManagementException e) {
+												e.printStackTrace();
+											}
+										}
 
-								@Override
-								public void conCancelled(ResourceConsumption problematic) {
-								}
-							});
+										@Override
+										public void conCancelled(ResourceConsumption problematic) {
+										}
+									});
 						} catch (Exception e) {
 							throw new IllegalStateException(e);
 						}
