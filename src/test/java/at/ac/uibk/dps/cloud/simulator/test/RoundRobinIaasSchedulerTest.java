@@ -6,7 +6,7 @@
 package at.ac.uibk.dps.cloud.simulator.test;
 
 import static at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation.vaSize;
-import static at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation.defaultTransitions;
+import static at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation.defaultHostTransitions;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
@@ -181,7 +181,7 @@ public class RoundRobinIaasSchedulerTest extends IaaSRelatedFoundation {
 		for (i = 0; i < numberOfPMs; i++) {
 			pms.add(new PhysicalMachine(2, 1, vaSize * 40,
 					new Repository(vaSize * 200, names[i], 1, 1, 1,
-							getGlobalLatencyMapInternal()), 1, 1, defaultTransitions));
+							getGlobalLatencyMapInternal(),defaultStorageTransitions,defaultNetworkTransitions), 1, 1, defaultHostTransitions));
 		}
 
 		return pms;
@@ -196,7 +196,7 @@ public class RoundRobinIaasSchedulerTest extends IaaSRelatedFoundation {
 
 			iaas.registerHostDinamyc(new PhysicalMachine(2, 1, vaSize * 40,
 					new Repository(vaSize * 200, names[i], 1, 1, 1,
-							getGlobalLatencyMapInternal()), 1, 1, defaultTransitions));
+							getGlobalLatencyMapInternal(),defaultStorageTransitions,defaultNetworkTransitions), 1, 1, defaultHostTransitions));
 
 		}
 
