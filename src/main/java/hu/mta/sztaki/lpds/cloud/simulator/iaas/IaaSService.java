@@ -39,6 +39,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.PhysicalMachineController;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.IaasScheduler;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.iaasscheduling.MaxNumberOfPMsReachedException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -203,6 +205,18 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 		sched = s.getConstructor(IaaSService.class).newInstance(this);
 		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
 	}
+	
+	public IaaSService(ArrayList<Class<? extends IaasScheduler>> hierarchy,
+			Class<? extends PhysicalMachineController> c,
+			int hierarchyLevel)
+			throws InstantiationException, IllegalAccessException,
+			IllegalArgumentException, InvocationTargetException,
+			NoSuchMethodException, SecurityException {
+		
+		sched = hierarchy.get(hierarchyLevel).getConstructor(IaaSService.class, ArrayList.class, int.class).newInstance(this, hierarchy, hierarchyLevel);
+		pmcontroller = c.getConstructor(IaaSService.class).newInstance(this);
+		
+	}
 
 	/**
 	 * Not implemented! Will allow migrating VMs across IaaSServices.
@@ -359,6 +373,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	public void registerHost(final PhysicalMachine pm) {
 		bulkHostRegistration(Collections.singletonList(pm));
 	}
+	
+	public void registerHostDinamyc(final PhysicalMachine pm) throws MaxNumberOfPMsReachedException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, IaaSHandlingException {
+		sched.registerPM(pm);
+		bulkHostRegistration(Collections.singletonList(pm));
+		
+	}
 
 	/**
 	 * This function allows rapid registration of several PMs
@@ -378,9 +398,12 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 			}
 			pm.subscribeStateChangeEvents(this);
 			caps[i] = pm.getCapacities();
+			
+			
 		}
 		totalCapacity.add(caps);
 		capacityListenerManager.notifyListeners(newPMs);
+		
 	}
 
 	/**
@@ -474,6 +497,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 				}
 			}
 			realDeregistration(pm);
+			sched.deregisterPM(pm);
 		} else {
 			throw new IaaSHandlingException(
 					"No such registered physical machine");
@@ -488,6 +512,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 	 */
 	public void registerRepository(final Repository r) {
 		internalRepositories.add(r);
+		//sched.registerRepository(r);
 	}
 
 	/**
@@ -587,5 +612,13 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>,
 				runningCapacity.subtract(pm.getCapacities());
 			}
 		}
+	}
+	
+	public ArrayList<IaaSService> getIaases() {
+		return sched.getIaases();
+	}
+	
+	public Scheduler getScheduler() {
+		return sched;
 	}
 }

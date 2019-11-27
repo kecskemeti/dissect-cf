@@ -74,6 +74,12 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 		globalLatencyMapInternal.clear();
 	}
 
+	public static HashMap<String, Integer> getGlobalLatencyMapInternal() {
+		return globalLatencyMapInternal;
+	}
+
+	
+	
 	public static String generateName(final String prefix, final int latency) {
 		return generateNames(1, prefix, latency)[0];
 	}
