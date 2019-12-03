@@ -29,6 +29,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -719,6 +720,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * (in general it is only usable for external users when the PM is running)
 	 */
 	private boolean directConsumerUsageMoratory = true;
+	
+	public final long id;
 
 	private boolean secureExtensions = false;
 
@@ -808,6 +811,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk,
 			double[] turnonOperations, double[] switchoffOperations, Map<String, PowerState> cpuPowerTransitions) {
 		super(cores * perCorePocessing);
+		
+		id = System.nanoTime();
+		
 		if (cpuPowerTransitions == null) {
 			throw new IllegalStateException("Cannot initialize physical machine without a complete power behavior set");
 		}

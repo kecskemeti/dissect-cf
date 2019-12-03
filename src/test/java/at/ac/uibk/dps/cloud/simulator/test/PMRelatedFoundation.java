@@ -41,8 +41,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 
 public class PMRelatedFoundation extends ConsumptionEventFoundation {
-	public final static PrintStream realStdOut = System.out;
-	public final static PrintStream realStdErr = System.err;
+	//public final static PrintStream realStdOut = System.out;
+	//public final static PrintStream realStdErr = System.err;
 	public static final double minpower = 20;
 	public static final double idlepower = 200;
 	public static final double maxpower = 300;
@@ -79,20 +79,20 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 	@Before
 	public void introduceRedirections() {
 		try {
-			System.setOut(new PrintStream(new OutputStream() {
-
-				@Override
-				public void write(int arg0) throws IOException {
-
-				}
-			}));
-			System.setErr(new PrintStream(new OutputStream() {
-
-				@Override
-				public void write(int arg0) throws IOException {
-
-				}
-			}));
+//			System.setOut(new PrintStream(new OutputStream() {
+//
+//				@Override
+//				public void write(int arg0) throws IOException {
+//
+//				}
+//			}));
+//			System.setErr(new PrintStream(new OutputStream() {
+//
+//				@Override
+//				public void write(int arg0) throws IOException {
+//
+//				}
+//			}));
 
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -101,8 +101,8 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 
 	@After
 	public void revertRedirects() {
-		System.setOut(realStdOut);
-		System.setErr(realStdErr);
+//		System.setOut(realStdOut);
+//		System.setErr(realStdErr);
 	}
 
 }
