@@ -40,6 +40,7 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
@@ -64,19 +65,18 @@ public class CloudLoader {
 	 * Offers the IaaSService creator functionality by defining the sax parser for
 	 * the XML cloud configuration.
 	 * 
-	 * @param fileName
-	 *            the name of the xml file containing the configuration of the cloud
-	 *            (a samlple xml can be found in
-	 *            at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
+	 * @param fileName the name of the xml file containing the configuration of the
+	 *                 cloud (a samlple xml can be found in
+	 *                 at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
 	 * @return the instantiated IaaSservice that complies with the configuration
 	 *         specified in the XML file received as the parameter
-	 * @throws IOException
-	 *             if there was some problem with finding/accessing the xml file
-	 * @throws SAXException
-	 *             if there was some problem parsing the configuration file
+	 * @throws IOException                  if there was some problem with
+	 *                                      finding/accessing the xml file
+	 * @throws SAXException                 if there was some problem parsing the
+	 *                                      configuration file
 	 * @throws ParserConfigurationException
 	 */
-	public static IaaSService loadNodes(String fileName)
+	public static IaaSService loadNodes(final String fileName)
 			throws IOException, SAXException, ParserConfigurationException {
 		Calendar c = Calendar.getInstance();
 		System.out.println("Cloud Loader starts for: " + fileName + " at " + c.getTimeInMillis());
@@ -103,6 +103,12 @@ public class CloudLoader {
 			EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
 					PowerTransitionGenerator.PowerStateKind.class);
 			PowerTransitionGenerator.PowerStateKind currentKind;
+
+			private Locator locator;
+
+			public void setDocumentLocator(Locator locator) {
+				this.locator = locator;
+			}
 
 			@SuppressWarnings("unchecked")
 			@Override
@@ -166,8 +172,7 @@ public class CloudLoader {
 													.forName(attributes.getValue("model"))));
 						} catch (Exception e) {
 							throw new SAXException(
-									"Cannot instantiate PowerStatee because of a consumption model type designation",
-									e);
+									"Cannot instantiate PowerState because of a consumption model type designation", e);
 						}
 					}
 				}
@@ -178,31 +183,35 @@ public class CloudLoader {
 				if (qName.equals("cloud")) {
 					incloud = false;
 				}
-				if (incloud) {
-					if (qName.equals("repository")) {
-						inrepo = false;
-						if (!inmachine) {
-							Repository newRepo = new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
-									powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
-									powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network));
-							returner.get(0).registerRepository(newRepo);
+				try {
+					if (incloud) {
+						if (qName.equals("repository")) {
+							inrepo = false;
+							if (!inmachine) {
+								Repository newRepo = new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
+										powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
+										powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network));
+								returner.get(0).registerRepository(newRepo);
+							}
+						}
+						if (qName.equals("machine")) {
+							inmachine = false;
+							returner.get(0).registerHost(new PhysicalMachine(cores, processing, memory,
+									new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
+											powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
+											powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network)),
+									startuptime, shutdowntime,
+									powerTransitions.get(PowerTransitionGenerator.PowerStateKind.host)));
+							powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
+									PowerTransitionGenerator.PowerStateKind.class);
+						}
+						if (qName.equals("powerstates")) {
+							currentKind = null;
 						}
 					}
-					if (qName.equals("machine")) {
-						inmachine = false;
-						returner.get(0)
-								.registerHost(new PhysicalMachine(cores, processing, memory,
-										new Repository(disksize, rid, inbw, outbw, diskbw, latencymap,
-												powerTransitions.get(PowerTransitionGenerator.PowerStateKind.storage),
-												powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network)),
-										startuptime, shutdowntime,
-										powerTransitions.get(PowerTransitionGenerator.PowerStateKind.host)));
-						powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
-								PowerTransitionGenerator.PowerStateKind.class);
-					}
-					if (qName.equals("powerstates")) {
-						currentKind = null;
-					}
+				} catch (IllegalStateException ise) {
+					System.err.println("PARSING ERROR in XML file" + fileName + " at line " + locator.getLineNumber());
+					throw ise;
 				}
 			}
 		});
