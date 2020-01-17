@@ -31,38 +31,37 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
  * This class provides the implementation of the core scheduling logic in the
  * simulator. The logic is based on the max-min fairness algorithm.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
- *         "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems, MTA SZTAKI (c) 2015"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
+ *         Distributed Systems, MTA SZTAKI (c) 2015"
  * 
  */
 public abstract class MaxMinFairSpreader extends ResourceSpreader {
 
 	/**
 	 * Determines the amount of processing that still remains unspent in this
-	 * spreader. This value is always smaller than the perTickProcessingPower of
-	 * the spreader.
+	 * spreader. This value is always smaller than the perTickProcessingPower of the
+	 * spreader.
 	 */
 	private double currentUnProcessed;
 	/**
 	 * The number of resource consumptions for which this spreader still did not
 	 * assign temporal resource utilization limits - see: p(c,s,t) in the paper
-	 * titled
-	 * "DISSECT-CF: a simulator to foster energy-aware scheduling in infrastructure clouds"
-	 * .
+	 * titled "DISSECT-CF: a simulator to foster energy-aware scheduling in
+	 * infrastructure clouds" .
 	 */
 	private int unassignedNum;
 	/**
-	 * Offers a temporary storage for the size of the current resource
-	 * consumption list. This is updated once in every freq update cycle.
+	 * Offers a temporary storage for the size of the current resource consumption
+	 * list. This is updated once in every freq update cycle.
 	 */
 	private int upLen;
 
 	/**
 	 * Constructs a generic Max Min fairness based resource spreader.
 	 * 
-	 * @param perSecondProcessing
-	 *            determines the amount of resources this resource spreader
-	 *            could handle in a single tick
+	 * @param perSecondProcessing determines the amount of resources this resource
+	 *                            spreader could handle in a single tick
 	 */
 	public MaxMinFairSpreader(final double perSecondProcessing) {
 		super(perSecondProcessing);
@@ -72,39 +71,34 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	 * At the beginning of a freq update cycle, every influence group member is
 	 * initialised with this function.
 	 * 
-	 * The function assures that the private fields of this class are
-	 * initialised, as well as all resource consumptions in the influence group
-	 * are set as unassigned and their processing limits are set to 0. This step
-	 * actually allows the max-min fairness algorithm to gradually increase the
-	 * processing limits for each resource consumption that could play a role in
-	 * bottleneck situations.
+	 * The function assures that the private fields of this class are initialised,
+	 * as well as all resource consumptions in the influence group are set as
+	 * unassigned and their processing limits are set to 0. This step actually
+	 * allows the max-min fairness algorithm to gradually increase the processing
+	 * limits for each resource consumption that could play a role in bottleneck
+	 * situations.
 	 * 
-	 * @return <i>true</i> if there were some resource consumptions to be
-	 *         processed by this spreader.
+	 * @return <i>true</i> if there were some resource consumptions to be processed
+	 *         by this spreader.
 	 */
-	private boolean initializeFreqUpdate() {
+	private void initializeFreqUpdate() {
 		unassignedNum = upLen = underProcessing.size();
-		if (unassignedNum == 0) {
-			return false;
-		}
+		currentUnProcessed = perTickProcessingPower;
 		for (int i = 0; i < upLen; i++) {
 			final ResourceConsumption con = underProcessing.get(i);
 			con.limithelper = 0;
 			con.unassigned = true;
 		}
-		currentUnProcessed = perTickProcessingPower;
-		return true;
 	}
 
 	/**
 	 * Manages the gradual increase of the processing limits for each resource
 	 * consumption related to this spreader. The increase is started from the
 	 * limithelper of each resource consumption. This limithelper tells to what
-	 * amount the particular consumption was able to already process (i.e. it is
-	 * the maximum consumption limit of some of its peers). If a resource
-	 * consumption is still unassigned then its limithelper should be still
-	 * lower than the maximum amount of processing possible by its
-	 * provider/consumer.
+	 * amount the particular consumption was able to already process (i.e. it is the
+	 * maximum consumption limit of some of its peers). If a resource consumption is
+	 * still unassigned then its limithelper should be still lower than the maximum
+	 * amount of processing possible by its provider/consumer.
 	 */
 	private void assignProcessingPower() {
 		if (currentUnProcessed > negligableProcessing && unassignedNum > 0) {
@@ -150,14 +144,12 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	}
 
 	/**
-	 * This function is the entrance to the lowest level scheduling in
-	 * DISSECT-CF.
+	 * This function is the entrance to the lowest level scheduling in DISSECT-CF.
 	 * 
-	 * The function ensures that each resource consumption is assigned a
-	 * processing limit and determines what is the resource consumption which
-	 * will finish earliest with that particular limit. The earliest completion
-	 * time is then returned to the main resource spreading logic of the
-	 * simulator.
+	 * The function ensures that each resource consumption is assigned a processing
+	 * limit and determines what is the resource consumption which will finish
+	 * earliest with that particular limit. The earliest completion time is then
+	 * returned to the main resource spreading logic of the simulator.
 	 */
 	@Override
 	protected long singleGroupwiseFreqUpdater() {
@@ -195,7 +187,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 			// Phase 2c: single filling
 			someConsumptionIsStillUnderUtilized = false;
 			for (int i = 0; i < providerCount; i++) {
-				MaxMinFairSpreader mmfs = (MaxMinFairSpreader) depgroup[i];
+				final MaxMinFairSpreader mmfs = (MaxMinFairSpreader) depgroup[i];
 				for (int j = 0; j < mmfs.upLen; j++) {
 					final ResourceConsumption con = mmfs.underProcessing.get(j);
 					if (con.unassigned) {
@@ -203,7 +195,9 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 						final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs.getCounterPart(con);
 						mmfs.currentUnProcessed -= minProcessing;
 						counterpart.currentUnProcessed -= minProcessing;
-						if (Math.abs(con.getRealLimit() - minProcessing) <= minProcessing * 0.000000001) {
+						double rlMin = con.getRealLimit() - minProcessing;
+						rlMin = rlMin < 0 ? -rlMin : rlMin;
+						if (rlMin <= minProcessing * 0.000000001) {
 							con.unassigned = false;
 							mmfs.unassignedNum--;
 							counterpart.unassignedNum--;
@@ -231,16 +225,14 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	/**
 	 * Supposed to update the consumer/provider specific consumption details.
 	 * 
-	 * Allows differentiation between consumers and providers without
-	 * conditional statement (instead it requires that this class is subclassed
-	 * for both consumers and providers).
+	 * Allows differentiation between consumers and providers without conditional
+	 * statement (instead it requires that this class is subclassed for both
+	 * consumers and providers).
 	 * 
-	 * @param con
-	 *            the resource consumption object to be updated with the limit
-	 *            value
-	 * @param limit
-	 *            the limit value to be propagated to the resource consumption
-	 *            object's relevant (i.e. provider/consumer specific) field
+	 * @param con   the resource consumption object to be updated with the limit
+	 *              value
+	 * @param limit the limit value to be propagated to the resource consumption
+	 *              object's relevant (i.e. provider/consumer specific) field
 	 */
 	protected abstract void updateConsumptionLimit(final ResourceConsumption con, final double limit);
 }

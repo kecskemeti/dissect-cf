@@ -27,10 +27,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.PriorityQueue;
-
-import org.apache.commons.lang3.tuple.MutablePair;
 
 import gnu.trove.map.hash.TLongObjectHashMap;
 
