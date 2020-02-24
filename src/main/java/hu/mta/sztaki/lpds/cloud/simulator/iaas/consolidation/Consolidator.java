@@ -61,8 +61,7 @@ public abstract class Consolidator extends Timed {
 		/**
 		 * Subscribes for free capacity change events.
 		 * 
-		 * @param forMe
-		 *            The to be observed PhysicalMachine object.
+		 * @param forMe The to be observed PhysicalMachine object.
 		 */
 		public VMListObserver(PhysicalMachine forMe) {
 			forMe.subscribeToDecreasingFreeapacityChanges(this);
@@ -98,21 +97,20 @@ public abstract class Consolidator extends Timed {
 	 * All PMs in the to be consolidated IaaSService are observed by these observer
 	 * objects.
 	 */
-	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<PhysicalMachine, VMListObserver>();
+	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<>();
 
 	/**
 	 * This constructor ensures the proper maintenance of the observer list - ie.,
 	 * the list of objects that ensure we start to receive periodic events for
 	 * consolidation as soon as we have some VMs running on the infrastructure.
 	 * 
-	 * @param toConsolidate
-	 *            The cloud infrastructure to be continuously consolidated
-	 * @param consFreq
-	 *            The frequency with which the actual consolidator algorithm should
-	 *            be called. Note: this class does not necessarily hold on to this
-	 *            frequency. But guarantees there will be no more frequent events.
-	 *            In cases when the infrastructure is not used, the actual applied
-	 *            frequency could be dramatically lengthened.
+	 * @param toConsolidate The cloud infrastructure to be continuously consolidated
+	 * @param consFreq      The frequency with which the actual consolidator
+	 *                      algorithm should be called. Note: this class does not
+	 *                      necessarily hold on to this frequency. But guarantees
+	 *                      there will be no more frequent events. In cases when the
+	 *                      infrastructure is not used, the actual applied frequency
+	 *                      could be dramatically lengthened.
 	 */
 	public Consolidator(IaaSService toConsolidate, long consFreq) {
 		// TODO: merge some of the below functionality with several similar
@@ -127,27 +125,24 @@ public abstract class Consolidator extends Timed {
 		}
 		// Let's make sure we observe all machines even if they are added to the
 		// system later on
-		toConsolidate.subscribeToCapacityChanges(new VMManager.CapacityChangeEvent<PhysicalMachine>() {
-			@Override
-			public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> affectedCapacity) {
-				final boolean newRegistration = Consolidator.this.toConsolidate
-						.isRegisteredHost(affectedCapacity.get(0));
-				final int pmNum = affectedCapacity.size();
-				if (newRegistration) {
-					// Management of capacity increase
-					for (int i = pmNum - 1; i >= 0; i--) {
-						final PhysicalMachine pm = affectedCapacity.get(i);
-						observers.put(pm, new VMListObserver(pm));
+		toConsolidate.subscribeToCapacityChanges(
+				(ResourceConstraints newCapacity, List<PhysicalMachine> affectedCapacity) -> {
+					final boolean newRegistration = Consolidator.this.toConsolidate
+							.isRegisteredHost(affectedCapacity.get(0));
+					final int pmNum = affectedCapacity.size();
+					if (newRegistration) {
+						// Management of capacity increase
+						for (int i = pmNum - 1; i >= 0; i--) {
+							final PhysicalMachine pm = affectedCapacity.get(i);
+							observers.put(pm, new VMListObserver(pm));
+						}
+					} else {
+						// Management of capacity decrease
+						for (int i = pmNum - 1; i >= 0; i--) {
+							observers.remove(affectedCapacity.get(i)).cancelSubscriptions();
+						}
 					}
-				} else {
-					// Management of capacity decrease
-					for (int i = pmNum - 1; i >= 0; i--) {
-						observers.remove(affectedCapacity.get(i)).cancelSubscriptions();
-					}
-				}
-
-			}
-		});
+				});
 	}
 
 	/**
@@ -210,11 +205,10 @@ public abstract class Consolidator extends Timed {
 	 * The implementations of this function should provide the actual consolidation
 	 * algorithm.
 	 * 
-	 * @param pmList
-	 *            the list of PMs that are currently in the IaaS service. The list
-	 *            can be modified at the will of the consolidator algorithm, as it
-	 *            is a copy of the state of the machine list before the
-	 *            consolidation was invoked.
+	 * @param pmList the list of PMs that are currently in the IaaS service. The
+	 *               list can be modified at the will of the consolidator algorithm,
+	 *               as it is a copy of the state of the machine list before the
+	 *               consolidation was invoked.
 	 */
 	protected abstract void doConsolidation(PhysicalMachine[] pmList);
 }

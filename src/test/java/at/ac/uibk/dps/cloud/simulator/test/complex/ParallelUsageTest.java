@@ -70,7 +70,7 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 	private IaaSService createMiniCloud(String cloudName, VirtualAppliance initialVA, long repoNBW, long repoDBW,
 			int lat, double cores, long diskNBW, long diskDBW) throws Exception {
 		IaaSService iaas = new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class);
-		HashMap<String, Integer> lmap = new HashMap<String, Integer>();
+		HashMap<String, Integer> lmap = new HashMap<>();
 		String repoID = cloudName + "-Repo", machineID = cloudName + "-Machine";
 		lmap.put(repoID, lat);
 		lmap.put(machineID, lat);
@@ -91,7 +91,7 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		VirtualAppliance va = new VirtualAppliance("a", 1000, 0);
 		IaaSService iaas = createMiniCloud("TestCloud", va, 250000L, 100000L, 11, 48.0, 125000L, 50000L);
 		Repository repo = iaas.repositories.get(0);
-		final Vector<ResourceConsumption> cons = new Vector<ResourceConsumption>();
+		final Vector<ResourceConsumption> cons = new Vector<>();
 		final long offset = Timed.getFireCount();
 		final VirtualMachine[] vms = iaas.requestVM(va,
 				new UnalterableConstraintsPropagator(new AlterableResourceConstraints(1, 1, 512000000)), repo, mxvms);
@@ -169,48 +169,45 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 			final int isaved = i;
 			Repository repoToUse = iaass[i].repositories.get(0);
 			final VirtualMachine vm = iaass[i].requestVM(vas[i], rc, repoToUse, 1)[0];
-			vm.subscribeStateChange(new VirtualMachine.StateChange() {
-				@Override
-				public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
-					switch (newState) {
-					case INITIAL_TR:
-						Assert.assertEquals("INITIAL_TR not on time", itr[isaved] + offset, Timed.getFireCount());
-						break;
-					case STARTUP:
-						Assert.assertEquals("STARTUP not on time", str[isaved] + offset, Timed.getFireCount());
-						break;
-					case RUNNING:
-						Assert.assertEquals("RUNNING not on time", run[isaved] + offset, Timed.getFireCount());
-						break;
-					case SHUTDOWN:
-						Assert.assertEquals("SHUTDOWN not on time", shd[isaved] + offset, Timed.getFireCount());
-						break;
-					case DESTROYED:
-						Assert.assertEquals("DESTROYED not on time", dst[isaved] + offset, Timed.getFireCount());
-						break;
-					default:
-						Assert.fail("Unexpected VM state");
-					}
-					if (newState.equals(VirtualMachine.State.RUNNING)) {
-						try {
-							vm.newComputeTask(300 * aSecond, ResourceConsumption.unlimitedProcessing,
-									new ResourceConsumption.ConsumptionEvent() {
-										@Override
-										public void conComplete() {
-											try {
-												vm.destroy(false);
-											} catch (VMManagementException e) {
-												e.printStackTrace();
-											}
+			vm.subscribeStateChange((VirtualMachine vmInt, State oldState, State newState) -> {
+				switch (newState) {
+				case INITIAL_TR:
+					Assert.assertEquals("INITIAL_TR not on time", itr[isaved] + offset, Timed.getFireCount());
+					break;
+				case STARTUP:
+					Assert.assertEquals("STARTUP not on time", str[isaved] + offset, Timed.getFireCount());
+					break;
+				case RUNNING:
+					Assert.assertEquals("RUNNING not on time", run[isaved] + offset, Timed.getFireCount());
+					break;
+				case SHUTDOWN:
+					Assert.assertEquals("SHUTDOWN not on time", shd[isaved] + offset, Timed.getFireCount());
+					break;
+				case DESTROYED:
+					Assert.assertEquals("DESTROYED not on time", dst[isaved] + offset, Timed.getFireCount());
+					break;
+				default:
+					Assert.fail("Unexpected VM state");
+				}
+				if (newState.equals(VirtualMachine.State.RUNNING)) {
+					try {
+						vm.newComputeTask(300 * aSecond, ResourceConsumption.unlimitedProcessing,
+								new ResourceConsumption.ConsumptionEvent() {
+									@Override
+									public void conComplete() {
+										try {
+											vm.destroy(false);
+										} catch (VMManagementException e) {
+											e.printStackTrace();
 										}
+									}
 
-										@Override
-										public void conCancelled(ResourceConsumption problematic) {
-										}
-									});
-						} catch (Exception e) {
-							throw new IllegalStateException(e);
-						}
+									@Override
+									public void conCancelled(ResourceConsumption problematic) {
+									}
+								});
+					} catch (Exception e) {
+						throw new IllegalStateException(e);
 					}
 				}
 			});

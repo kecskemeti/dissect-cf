@@ -44,11 +44,9 @@ import java.util.ArrayList;
  * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
  *         MTA SZTAKI (c) 2015"
  *
- * @param <T>
- *            the kind of state change for which this handler is prepared to
+ * @param <T> the kind of state change for which this handler is prepared to
  *            notify about.
- * @param <P>
- *            the kind of data to be passed on to the notified party
+ * @param <P> the kind of data to be passed on to the notified party
  */
 public class StateDependentEventHandler<T, P> {
 
@@ -56,12 +54,12 @@ public class StateDependentEventHandler<T, P> {
 	 * The listeners that will receive notifications if the notify listeners
 	 * function is called
 	 */
-	final ArrayList<T> listeners = new ArrayList<T>();
+	final ArrayList<T> listeners = new ArrayList<>();
 	/**
-	 * if the notificaiton process is underway, then new and cancelled listeners
-	 * are registered here (they will not receive notifications in the current
-	 * notification round as their registration is actually a result of the
-	 * current notification round).
+	 * if the notificaiton process is underway, then new and cancelled listeners are
+	 * registered here (they will not receive notifications in the current
+	 * notification round as their registration is actually a result of the current
+	 * notification round).
 	 */
 	private ArrayList<T> changedListeners;
 	int newCount = 0;
@@ -81,30 +79,28 @@ public class StateDependentEventHandler<T, P> {
 	/**
 	 * Initialization of the event handling mechanism.
 	 * 
-	 * @param handler
-	 *            via this interface's implementation will the actual observed
-	 *            object be capable of dispatching custom events abouts its
-	 *            state change
+	 * @param handler via this interface's implementation will the actual observed
+	 *                object be capable of dispatching custom events abouts its
+	 *                state change
 	 */
 	public StateDependentEventHandler(final SingleNotificationHandler<T, P> handler) {
 		myHandler = handler;
 	}
 
 	/**
-	 * To get state dependent events one must subscribe to them via this
-	 * function. The listener will be called every time when the observed object
-	 * changes its particular state and uses the notifylisteners function below.
+	 * To get state dependent events one must subscribe to them via this function.
+	 * The listener will be called every time when the observed object changes its
+	 * particular state and uses the notifylisteners function below.
 	 * 
-	 * @param listener
-	 *            who should receive notifications upon state changes in the
-	 *            observed object
+	 * @param listener who should receive notifications upon state changes in the
+	 *                 observed object
 	 */
 	public void subscribeToEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
 			eventing.add(StateDependentEventHandler.this, listener);
 		} else {
 			if (changedListeners == null) {
-				changedListeners = new ArrayList<T>();
+				changedListeners = new ArrayList<>();
 			} else if (checkAndRemoveFromListeners(newCount, changedListeners.size(), listener)) {
 				// Was it about to be removed?
 				return;
@@ -139,16 +135,15 @@ public class StateDependentEventHandler<T, P> {
 	 * If there are no events needed for a particular listener then they can be
 	 * cancelled here.
 	 * 
-	 * @param listener
-	 *            the listener which does not need the state related events
-	 *            anymore
+	 * @param listener the listener which does not need the state related events
+	 *                 anymore
 	 */
 	public void unsubscribeFromEvents(final T listener) {
 		if (noEventDispatchingInProcess) {
 			eventing.remove(StateDependentEventHandler.this, listener);
 		} else {
 			if (changedListeners == null) {
-				changedListeners = new ArrayList<T>();
+				changedListeners = new ArrayList<>();
 			} else if (checkAndRemoveFromListeners(0, newCount, listener)) {
 				int cls = changedListeners.size();
 				if (cls > newCount) {
@@ -165,12 +160,11 @@ public class StateDependentEventHandler<T, P> {
 	/**
 	 * Sends out the notifications via the user defined event handler for all
 	 * currently listed listeners. If there are new/cancelled subscriptions then
-	 * they are added/removed to/from the list of listeners at the end of the
-	 * event dispatching loop.
+	 * they are added/removed to/from the list of listeners at the end of the event
+	 * dispatching loop.
 	 * 
-	 * @param payload
-	 *            to be sent out for all interested parties upon receiving this
-	 *            notification
+	 * @param payload to be sent out for all interested parties upon receiving this
+	 *                notification
 	 */
 	public void notifyListeners(final P payload) {
 		if (eventing != NullDispatcher.instance) {

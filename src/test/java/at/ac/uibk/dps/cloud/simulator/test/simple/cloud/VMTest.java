@@ -263,13 +263,9 @@ public class VMTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void subscriptionTest() throws VMManagementException, NetworkException {
 		switchOnVMwithMaxCapacity(centralVM, true);
-		final ArrayList<VirtualMachine.State> receivedStates = new ArrayList<VirtualMachine.State>();
-		VirtualMachine.StateChange sc = new VirtualMachine.StateChange() {
-			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
-				receivedStates.add(newState);
-			}
-		};
+		final ArrayList<VirtualMachine.State> receivedStates = new ArrayList<>();
+		VirtualMachine.StateChange sc = (VirtualMachine vmInt, State oldState, State newState) -> receivedStates
+				.add(newState);
 		centralVM.subscribeStateChange(sc);
 		centralVM.destroy(false);
 		centralVM.unsubscribeStateChange(sc);
@@ -289,12 +285,9 @@ public class VMTest extends IaaSRelatedFoundation {
 		Assert.assertFalse("Consumption registration should not succeed in inital transfer phase",
 				con.registerConsumption());
 		Assert.assertEquals("Unprocessed consumption mismatch", initialUnpr, con.getUnProcessed(), 0);
-		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
-			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
-				if (VirtualMachine.consumingStates.contains(newState) && !con.isRegistered()) {
-					Assert.assertTrue("Consumption registration should now proceed", con.registerConsumption());
-				}
+		centralVM.subscribeStateChange((VirtualMachine vmInt, State oldState, State newState) -> {
+			if (VirtualMachine.consumingStates.contains(newState) && !con.isRegistered()) {
+				Assert.assertTrue("Consumption registration should now proceed", con.registerConsumption());
 			}
 		});
 		Timed.simulateUntilLastEvent();
@@ -455,22 +448,19 @@ public class VMTest extends IaaSRelatedFoundation {
 		doMigration(pm, pmtarget, centralVM, false);
 		final boolean[] haveNotBeenThere = new boolean[1];
 		haveNotBeenThere[0] = true;
-		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
-			@Override
-			public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
-				if (newState.equals(VirtualMachine.State.RUNNING) && haveNotBeenThere[0]) {
-					haveNotBeenThere[0] = false;
-					new DeferredEvent(aSecond) {
-						@Override
-						protected void eventAction() {
-							try {
-								doMigration(pmtarget, pm, centralVM, false);
-							} catch (Exception e) {
-								throw new IllegalStateException("Second migration failed", e);
-							}
+		centralVM.subscribeStateChange((VirtualMachine vmInt, State oldState, State newState) -> {
+			if (newState.equals(VirtualMachine.State.RUNNING) && haveNotBeenThere[0]) {
+				haveNotBeenThere[0] = false;
+				new DeferredEvent(aSecond) {
+					@Override
+					protected void eventAction() {
+						try {
+							doMigration(pmtarget, pm, centralVM, false);
+						} catch (Exception e) {
+							throw new IllegalStateException("Second migration failed", e);
 						}
-					};
-				}
+					}
+				};
 			}
 		});
 		Timed.simulateUntilLastEvent();
@@ -604,14 +594,11 @@ public class VMTest extends IaaSRelatedFoundation {
 			switchOnVMwithMaxCapacity(centralVM, false);
 			try {
 				if (!vmDestroyerinState(st, centralVM)) {
-					centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
-						@Override
-						public void stateChanged(VirtualMachine vmInt, State oldState, State newState) {
-							try {
-								vmDestroyerinState(st, centralVM);
-							} catch (VMManagementException ex) {
-								marker[0] = true;
-							}
+					centralVM.subscribeStateChange((VirtualMachine vmInt, State oldState, State newState) -> {
+						try {
+							vmDestroyerinState(st, centralVM);
+						} catch (VMManagementException ex) {
+							marker[0] = true;
 						}
 					});
 				}
@@ -642,13 +629,10 @@ public class VMTest extends IaaSRelatedFoundation {
 		PhysicalMachine target = createAndExecutePM();
 		switchOnVMwithMaxCapacity(centralVM, true);
 		final ConstantConstraints needToKeepThisCapacity = new ConstantConstraints(pm.freeCapacities);
-		centralVM.subscribeStateChange(new VirtualMachine.StateChange() {
-			@Override
-			public void stateChanged(VirtualMachine vm, State oldState, State newState) {
-				if (needsAllocationOnSource.contains(newState)) {
-					Assert.assertTrue("Allocation for source disappeared prematurely, current VM state is " + newState,
-							needToKeepThisCapacity.compareTo(pm.freeCapacities) == 0);
-				}
+		centralVM.subscribeStateChange((VirtualMachine vm, State oldState, State newState) -> {
+			if (needsAllocationOnSource.contains(newState)) {
+				Assert.assertTrue("Allocation for source disappeared prematurely, current VM state is " + newState,
+						needToKeepThisCapacity.compareTo(pm.freeCapacities) == 0);
 			}
 		});
 		pm.migrateVM(centralVM, target);

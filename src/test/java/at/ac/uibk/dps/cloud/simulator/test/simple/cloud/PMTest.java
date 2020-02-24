@@ -64,12 +64,12 @@ public class PMTest extends IaaSRelatedFoundation {
 	final static String pmid = "TestingPM";
 	PhysicalMachine pm;
 	Repository reqDisk;
-	HashMap<String, Integer> latmap = new HashMap<String, Integer>();
+	HashMap<String, Integer> latmap = new HashMap<>();
 
 	@Before
 	public void initializeTests() throws Exception {
 		latmap.put(pmid, 1);
-		reqDisk = new Repository(123, pmid, 456, 789, 12, new HashMap<String, Integer>(), defaultStorageTransitions,
+		reqDisk = new Repository(123, pmid, 456, 789, 12, new HashMap<>(), defaultStorageTransitions,
 				defaultNetworkTransitions);
 		pm = new PhysicalMachine(reqcores, reqProcessing, reqmem, reqDisk, reqond, reqoffd, defaultHostTransitions);
 	}
@@ -93,13 +93,9 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void regularSwitchOnOffTest() throws VMManagementException, NetworkException {
-		final ArrayList<String> list = new ArrayList<String>();
-		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
-			@Override
-			public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-				list.add(newState.toString());
-			}
-		});
+		final ArrayList<String> list = new ArrayList<>();
+		pm.subscribeStateChangeEvents(
+				(PhysicalMachine pmInt, State oldState, State newState) -> list.add(newState.toString()));
 		Assert.assertFalse("The PM should not be running now", pm.isRunning());
 		Assert.assertEquals("So far we should not have any events", 0, list.size());
 		pm.turnon();
@@ -115,12 +111,7 @@ public class PMTest extends IaaSRelatedFoundation {
 	}
 
 	private PhysicalMachine.StateChangeListener getFailingListener(final String message) {
-		return new PhysicalMachine.StateChangeListener() {
-			@Override
-			public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-				Assert.fail(message);
-			}
-		};
+		return (PhysicalMachine pm, State oldState, State newState) -> Assert.fail(message);
 	}
 
 	@Test(timeout = 100)
@@ -296,13 +287,9 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertTrue("PM should report that it hosts VMs", pm.isHostingVMs());
 		Assert.assertTrue("Unallocated resource capacity should not change after request",
 				afterRequest.compareTo(pm.freeCapacities) == 0);
-		final ArrayList<ResourceConstraints> eventReceived = new ArrayList<ResourceConstraints>();
-		PhysicalMachine.CapacityChangeEvent<ResourceConstraints> ev = new PhysicalMachine.CapacityChangeEvent<ResourceConstraints>() {
-			@Override
-			public void capacityChanged(ResourceConstraints newCapacity, List<ResourceConstraints> newlyFreeCapacity) {
-				eventReceived.add(newCapacity);
-			}
-		};
+		final ArrayList<ResourceConstraints> eventReceived = new ArrayList<>();
+		PhysicalMachine.CapacityChangeEvent<ResourceConstraints> ev = (ResourceConstraints newCapacity,
+				List<ResourceConstraints> newlyFreeCapacity) -> eventReceived.add(newCapacity);
 		pm.subscribeToIncreasingFreeapacityChanges(ev);
 		vm[0].destroy(false);
 		Timed.simulateUntilLastEvent();
@@ -481,7 +468,7 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void unsubscriptionInStateChangeEventHandler() throws VMManagementException, NetworkException {
-		final ArrayList<PhysicalMachine.State> changehits = new ArrayList<PhysicalMachine.State>();
+		final ArrayList<PhysicalMachine.State> changehits = new ArrayList<>();
 		PhysicalMachine.StateChangeListener sl = new PhysicalMachine.StateChangeListener() {
 			@Override
 			public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
@@ -503,19 +490,17 @@ public class PMTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void doubleStateChangeEntry() {
-		final ArrayList<PhysicalMachine.State> statelist = new ArrayList<PhysicalMachine.State>();
-		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
-			@Override
-			public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-				statelist.add(newState);
-				try {
-					if (newState.equals(PhysicalMachine.State.RUNNING)) {
-						pm.switchoff(null);
-					}
-				} catch (Exception e) {
-					throw new RuntimeException(e);
+		final ArrayList<PhysicalMachine.State> statelist = new ArrayList<>();
+		pm.subscribeStateChangeEvents((PhysicalMachine pmInt, State oldState, State newState) -> {
+			statelist.add(newState);
+			try {
+				if (newState.equals(PhysicalMachine.State.RUNNING)) {
+					pmInt.switchoff(null);
 				}
+			} catch (Exception e) {
+				throw new RuntimeException(e);
 			}
+
 		});
 		Assert.assertEquals("Should not have any state updates yet", 0, statelist.size());
 		pm.turnon();
@@ -585,13 +570,10 @@ public class PMTest extends IaaSRelatedFoundation {
 		long currentTime = Timed.getFireCount();
 		Timed.simulateUntil(currentTime + (Timed.getNextFire() - currentTime) / 2);
 		pm.switchoff(null);
-		final ArrayList<Long> lastHit = new ArrayList<Long>();
-		pm.subscribeStateChangeEvents(new PhysicalMachine.StateChangeListener() {
-			@Override
-			public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-				if (newState.equals(PhysicalMachine.State.OFF)) {
-					lastHit.add(Timed.getFireCount());
-				}
+		final ArrayList<Long> lastHit = new ArrayList<>();
+		pm.subscribeStateChangeEvents((PhysicalMachine pmInt, State oldState, State newState) -> {
+			if (newState.equals(PhysicalMachine.State.OFF)) {
+				lastHit.add(Timed.getFireCount());
 			}
 		});
 		Timed.simulateUntilLastEvent();
@@ -702,17 +684,18 @@ public class PMTest extends IaaSRelatedFoundation {
 		Assert.assertEquals("Should have no free capacity change", 0, pm.getCapacities().compareTo(pm.freeCapacities));
 	}
 
-	@Test(timeout=100, expected=VMManager.VMManagementException.class)
+	@Test(timeout = 100, expected = VMManager.VMManagementException.class)
 	public void explainMigrationFailure() throws VMManagementException, NetworkException {
-		PhysicalMachine firstPM=dummyPMcreator();
-		PhysicalMachine otherPM=dummyPMcreator();
+		PhysicalMachine firstPM = dummyPMcreator();
+		PhysicalMachine otherPM = dummyPMcreator();
 		firstPM.turnon();
 		otherPM.turnon();
 		Timed.simulateUntilLastEvent();
-		VirtualAppliance va=new VirtualAppliance("occupy", 1, 0,false, firstPM.localDisk.getMaxStorageCapacity()/10);
+		VirtualAppliance va = new VirtualAppliance("occupy", 1, 0, false,
+				firstPM.localDisk.getMaxStorageCapacity() / 10);
 		firstPM.localDisk.registerObject(va);
 		firstPM.requestVM(va, firstPM.getCapacities(), firstPM.localDisk, 1);
-		VirtualMachine vm=otherPM.requestVM(va, otherPM.getCapacities(), firstPM.localDisk, 1)[0];
+		VirtualMachine vm = otherPM.requestVM(va, otherPM.getCapacities(), firstPM.localDisk, 1)[0];
 		Timed.simulateUntilLastEvent();
 		otherPM.migrateVM(vm, firstPM);
 	}

@@ -176,7 +176,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		for (long i = startAt; i < startAt + vmNum; i++) {
 			fireVMat(iaas, i, 400, parallelThreads);
 		}
-		final ArrayList<EnergyMeter> meters = new ArrayList<EnergyMeter>();
+		final ArrayList<EnergyMeter> meters = new ArrayList<>();
 		for (PhysicalMachine pm : iaas.machines) {
 			meters.add(new PhysicalMachineEnergyMeter(pm));
 		}
@@ -193,7 +193,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		final double[] process = { 6, 13, 17, 17, 5, 16, 6, 5, 5, 6, 9, 964, 5 };
 		final int[] cores = { 1, 1, 20, 1, 4, 1, 1, 1, 1, 80, 80, 80, 1 };
 		final IaaSService iaas = new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class);
-		final ArrayList<EnergyMeter> meters = new ArrayList<EnergyMeter>();
+		final ArrayList<EnergyMeter> meters = new ArrayList<>();
 		for (int i = 0; i < 7; i++) {
 			final PhysicalMachine pm = new PhysicalMachine(
 					64, 1, 64 * 1024, new Repository(vaSize, generateName("M", 1), 1, 1, 1, globalLatencyMap,

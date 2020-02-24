@@ -65,7 +65,7 @@ public class VMStateChangeNotificationHandler
 	 * @return the eventh handler
 	 */
 	public static StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> getHandlerInstance() {
-		return new StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>>(handlerSingleton);
+		return new StateDependentEventHandler<>(handlerSingleton);
 	}
 
 	/**

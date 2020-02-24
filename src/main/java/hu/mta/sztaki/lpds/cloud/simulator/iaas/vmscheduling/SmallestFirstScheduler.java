@@ -25,13 +25,13 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.PriorityQueue;
+
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 
 /**
  * This class offers a VM scheduler that keeps the VM request queue in order and
@@ -39,37 +39,36 @@ import java.util.PriorityQueue;
  * demands. <i>WARNING:</i> this scheduler could potentially starve bigger VM
  * requests in the queue.
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
  * 
  */
 public class SmallestFirstScheduler extends FirstFitScheduler {
 	/**
-	 * This comparator allows ordering the VM request queue primarily by
-	 * cumulative resource request size and secondarily by request arrival time.
-	 * (e.g. a request with the same size but earlier arrival time will be
-	 * ordered to be ahead of the other)
+	 * This comparator allows ordering the VM request queue primarily by cumulative
+	 * resource request size and secondarily by request arrival time. (e.g. a
+	 * request with the same size but earlier arrival time will be ordered to be
+	 * ahead of the other)
 	 */
-	public static final Comparator<QueueingData> vmQueueSmallestFirstComparator = new Comparator<QueueingData>() {
-		@Override
-		public int compare(final QueueingData o1, final QueueingData o2) {
-			final int compRC = o1.cumulativeRC.compareTo(o2.cumulativeRC);
-			return compRC == 0 ? Long.signum(o1.receivedTime - o2.receivedTime) : compRC;
-		}
+	public static final Comparator<QueueingData> vmQueueSmallestFirstComparator = (final QueueingData o1,
+			final QueueingData o2) -> {
+		final int compRC = o1.cumulativeRC.compareTo(o2.cumulativeRC);
+		return compRC == 0 ? Long.signum(o1.receivedTime - o2.receivedTime) : compRC;
 	};
 
 	/**
-	 * A priority queue that implements the necessary list related operations
-	 * used in the first fit scheduler and scheduler classes.
+	 * A priority queue that implements the necessary list related operations used
+	 * in the first fit scheduler and scheduler classes.
 	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed
-	 *         Systems, MTA SZTAKI (c) 2014"
+	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
+	 *         MTA SZTAKI (c) 2014"
 	 *
 	 */
 	public static class SFQueue extends PriorityQueue<QueueingData> implements List<QueueingData> {
 		/**
-		 * A message to show if the scheduler/first fit scheduler implementation
-		 * would try to use previously unused List operations that were not
-		 * implmeneted so far.
+		 * A message to show if the scheduler/first fit scheduler implementation would
+		 * try to use previously unused List operations that were not implmeneted so
+		 * far.
 		 */
 		private static String UFCmessage = "Unexpected function call";
 		private static final long serialVersionUID = 2693241597335321816L;
@@ -81,12 +80,16 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 			super(5, vmQueueSmallestFirstComparator);
 		}
 
+		private IllegalStateException genISE() {
+			return new IllegalStateException(UFCmessage);
+		}
+
 		/**
 		 * Not supported operation
 		 */
 		@Override
 		public boolean addAll(int index, Collection<? extends QueueingData> c) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -96,7 +99,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		public QueueingData get(int index) {
 			if (index == 0)
 				return peek();
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -104,7 +107,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public QueueingData set(int index, QueueingData element) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -112,7 +115,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public void add(int index, QueueingData element) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -122,7 +125,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		public QueueingData remove(int index) {
 			if (index == 0)
 				return poll();
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -130,7 +133,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public int indexOf(Object o) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -138,7 +141,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public int lastIndexOf(Object o) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -146,7 +149,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public ListIterator<QueueingData> listIterator() {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -154,7 +157,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public ListIterator<QueueingData> listIterator(int index) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 		/**
@@ -162,7 +165,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 		 */
 		@Override
 		public List<QueueingData> subList(int fromIndex, int toIndex) {
-			throw new IllegalStateException(UFCmessage);
+			throw genISE();
 		}
 
 	}
@@ -172,8 +175,7 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 	 * queuing mechanism with one that orders the VM requests according to their
 	 * total resource requirements.
 	 * 
-	 * @param parent
-	 *            the IaaS Service which this SmallestFirstScheduler operates on
+	 * @param parent the IaaS Service which this SmallestFirstScheduler operates on
 	 */
 	public SmallestFirstScheduler(final IaaSService parent) {
 		super(parent);

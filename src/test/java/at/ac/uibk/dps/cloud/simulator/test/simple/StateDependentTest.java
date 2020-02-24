@@ -45,11 +45,8 @@ public class StateDependentTest extends TestFoundation {
 
 	@Before
 	public void setupSDEH() {
-		sdeh = new StateDependentEventHandler<MyHandler, String>(new SingleNotificationHandler<MyHandler, String>() {
-			public void sendNotification(MyHandler onObject, String data) {
-				onObject.handle(data);
-			};
-		});
+		sdeh = new StateDependentEventHandler<MyHandler, String>(
+				(MyHandler onObject, String data) -> onObject.handle(data));
 	}
 
 	@Test(timeout = 100)
@@ -87,12 +84,7 @@ public class StateDependentTest extends TestFoundation {
 				}
 			}
 		};
-		MyHandler easyListener = new MyHandler() {
-			@Override
-			public void handle(String data) {
-				handled[1] = true;
-			}
-		};
+		MyHandler easyListener = (String data) -> handled[1] = true;
 		sdeh.subscribeToEvents(listener);
 		sdeh.subscribeToEvents(easyListener);
 		sdeh.notifyListeners(null);

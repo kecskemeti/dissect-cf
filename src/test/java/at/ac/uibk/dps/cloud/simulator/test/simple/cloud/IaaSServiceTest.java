@@ -54,7 +54,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 public class IaaSServiceTest extends IaaSRelatedFoundation {
-	ArrayList<IaaSService> services = new ArrayList<IaaSService>();
+	ArrayList<IaaSService> services = new ArrayList<>();
 
 	@Before
 	public void resetSim() throws Exception {
@@ -76,7 +76,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void faultyRegistrationTest() {
-		ArrayList<Exception> exs = new ArrayList<Exception>();
+		ArrayList<Exception> exs = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			try {
 				iaas.deregisterHost(dummyPMcreator());
@@ -124,7 +124,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void capacityIncreaseSubscriptionTest() throws IaaSHandlingException {
-		ArrayList<Capchanger> ccs = new ArrayList<Capchanger>();
+		ArrayList<Capchanger> ccs = new ArrayList<>();
 		for (int i = 0; i < services.size(); i++) {
 			ccs.add(new Capchanger() {
 				protected void doAssertion(ResourceConstraints newCapacity) {
@@ -152,7 +152,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void capacityDecreaseSubscriptionTest() throws IaaSHandlingException {
-		ArrayList<Capchanger> ccs = new ArrayList<Capchanger>();
+		ArrayList<Capchanger> ccs = new ArrayList<>();
 		for (int i = 0; i < services.size(); i++) {
 			ccs.add(new Capchanger() {
 				protected void doAssertion(ResourceConstraints newCapacity) {
@@ -212,7 +212,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	}
 
 	private ArrayList<VirtualMachine> requestVMs() throws VMManagementException, NetworkException {
-		ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>();
+		ArrayList<VirtualMachine> vms = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			vms.add(iaas.requestVM((VirtualAppliance) iaas.repositories.get(0).contents().iterator().next(),
 					iaas.getCapacities(), iaas.repositories.get(0), 1)[0]);
@@ -259,7 +259,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void notRunVMTerminationTest() {
-		ArrayList<Exception> exs = new ArrayList<Exception>();
+		ArrayList<Exception> exs = new ArrayList<>();
 		constructMinimalIaaS();
 		for (IaaSService iaas : services) {
 			try {
@@ -277,7 +277,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
 		int i = services.size() - 1;
-		ArrayList<Exception> exs = new ArrayList<Exception>();
+		ArrayList<Exception> exs = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			try {
 				iaas.terminateVM(vms.get(i--), false);
@@ -311,7 +311,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
-		ArrayList<VirtualMachine> reportedvms = new ArrayList<VirtualMachine>();
+		ArrayList<VirtualMachine> reportedvms = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			reportedvms.addAll(iaas.listVMs());
 		}
@@ -325,7 +325,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		ArrayList<VirtualMachine> vms = requestVMs();
 		vms.addAll(requestVMs()); // second unfulfillable vm set
 		Timed.simulateUntilLastEvent();
-		ArrayList<VirtualMachine> reportedvms = new ArrayList<VirtualMachine>(vms.size());
+		ArrayList<VirtualMachine> reportedvms = new ArrayList<>(vms.size());
 		for (IaaSService iaas : services) {
 			reportedvms.addAll(iaas.listVMs());
 		}
@@ -356,7 +356,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	@Test(timeout = 100)
 	public void deregisterHostWithMigration() throws VMManagementException, NetworkException, IaaSHandlingException {
 		constructMinimalIaaS();
-		final ArrayList<Integer> markers = new ArrayList<Integer>();
+		final ArrayList<Integer> markers = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			iaas.registerHost(dummyPMcreator());
 			Repository repo = iaas.repositories.get(0);

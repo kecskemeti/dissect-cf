@@ -54,7 +54,7 @@ public abstract class Timed implements Comparable<Timed> {
 	/**
 	 * The main container for all recurring events in the system
 	 */
-	private static final PriorityQueue<Timed> timedlist = new PriorityQueue<Timed>();
+	private static final PriorityQueue<Timed> timedlist = new PriorityQueue<>();
 	/**
 	 * the event that is currently processed by the event loop.
 	 */

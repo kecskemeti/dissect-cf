@@ -58,13 +58,11 @@ public class ResourceConsumption {
 	 * This comparator class provides a simple comparison tool for two resource
 	 * consumptions based on their real limits. Useful for sorting the consumptions.
 	 */
-	public static final Comparator<ResourceConsumption> limitComparator = new Comparator<ResourceConsumption>() {
-		@Override
-		public int compare(final ResourceConsumption o1, final ResourceConsumption o2) {
-			final double upOth = o1.realLimit;
-			final double upThis = o2.realLimit;
-			return upOth < upThis ? -1 : (upOth == upThis ? 0 : 1);
-		}
+	public static final Comparator<ResourceConsumption> limitComparator = (final ResourceConsumption o1,
+			final ResourceConsumption o2) -> {
+		final double upOth = o1.realLimit;
+		final double upThis = o2.realLimit;
+		return upOth < upThis ? -1 : (upOth == upThis ? 0 : 1);
 	};
 
 	/**
@@ -236,29 +234,25 @@ public class ResourceConsumption {
 	 * This constructor describes the basic properties of an individual resource
 	 * consumption.
 	 * 
-	 * @param total
-	 *            The amount of processing to be done during the lifetime of the
-	 *            just created object
-	 * @param limit
-	 *            the maximum amount of processing allowable for this particular
-	 *            resource consumption (this allows the specification of an upper
-	 *            limit of any consumption). If there is no upper limit needed then
-	 *            this value should be set with the value of the unlimitedProcessing
-	 *            field.
-	 * @param consumer
-	 *            the consumer that will benefit from the resource consumption. This
-	 *            field could be null, then the consumer must be set with the
-	 *            setConsumer() function.
-	 * @param provider
-	 *            the provider which will offer its resources for the consumer. This
-	 *            field could be null, then the provider must be set with the
-	 *            setProvider() function.
-	 * @param e
-	 *            Specify here the event to be fired when the just created object
-	 *            completes its transfers. With this event it is possible to notify
-	 *            the entity who initiated the transfer. This event object cannot be
-	 *            null. If there is no special event handling is needed then just
-	 *            create a ConsumptionEventAdapter.
+	 * @param total    The amount of processing to be done during the lifetime of
+	 *                 the just created object
+	 * @param limit    the maximum amount of processing allowable for this
+	 *                 particular resource consumption (this allows the
+	 *                 specification of an upper limit of any consumption). If there
+	 *                 is no upper limit needed then this value should be set with
+	 *                 the value of the unlimitedProcessing field.
+	 * @param consumer the consumer that will benefit from the resource consumption.
+	 *                 This field could be null, then the consumer must be set with
+	 *                 the setConsumer() function.
+	 * @param provider the provider which will offer its resources for the consumer.
+	 *                 This field could be null, then the provider must be set with
+	 *                 the setProvider() function.
+	 * @param e        Specify here the event to be fired when the just created
+	 *                 object completes its transfers. With this event it is
+	 *                 possible to notify the entity who initiated the transfer.
+	 *                 This event object cannot be null. If there is no special
+	 *                 event handling is needed then just create a
+	 *                 ConsumptionEventAdapter.
 	 */
 	public ResourceConsumption(final double total, final double limit, final ResourceSpreader consumer,
 			final ResourceSpreader provider, final ConsumptionEvent e) {
@@ -369,9 +363,8 @@ public class ResourceConsumption {
 	 * Allows to set a provider for the consumption if the consumption is not yet
 	 * under way.
 	 * 
-	 * @param provider
-	 *            the provider to be used for offering the resources for the
-	 *            consumption
+	 * @param provider the provider to be used for offering the resources for the
+	 *                 consumption
 	 */
 	public void setProvider(final ResourceSpreader provider) {
 		if (!registered) {
@@ -387,9 +380,8 @@ public class ResourceConsumption {
 	 * Allows to set a consumer for the consumption if the consumption is not yet
 	 * under way.
 	 * 
-	 * @param consumer
-	 *            the consumer to be used for utilizing the resources received
-	 *            through this resource consumption object.
+	 * @param consumer the consumer to be used for utilizing the resources received
+	 *                 through this resource consumption object.
 	 */
 	public void setConsumer(final ResourceSpreader consumer) {
 		if (!registered) {
@@ -422,10 +414,9 @@ public class ResourceConsumption {
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
 	 * 
-	 * @param ticksPassed
-	 *            the number of ticks to be simulated (i.e. how many times we should
-	 *            multiply realLimit) before offering the resources to the
-	 *            underprocessing field.
+	 * @param ticksPassed the number of ticks to be simulated (i.e. how many times
+	 *                    we should multiply realLimit) before offering the
+	 *                    resources to the underprocessing field.
 	 * @return the amount of resources actually offered for consumption. Negative
 	 *         values mark the end of this resource consumption (i.e. when there is
 	 *         no more processing to be done for this consumption). Albeit such
@@ -462,10 +453,9 @@ public class ResourceConsumption {
 	 * <i>WARNING:</i> this is necessary for the internal behavior of
 	 * MaxMinFairSpreader
 	 * 
-	 * @param ticksPassed
-	 *            the number of ticks to be simulated (i.e. how many times we should
-	 *            multiply realLimit) before utilizing the resources from the
-	 *            underprocessing field.
+	 * @param ticksPassed the number of ticks to be simulated (i.e. how many times
+	 *                    we should multiply realLimit) before utilizing the
+	 *                    resources from the underprocessing field.
 	 * @return the amount of resources actually utilized by the consumer. Negative
 	 *         values mark the end of this resource consumption (i.e. when there is
 	 *         no more processing to be done for this consumption). Albeit such
@@ -562,8 +552,7 @@ public class ResourceConsumption {
 	 * determined by the low level scheduler of the unified resoruce sharing model
 	 * of DISSECT-CF) value as well as the halfreallimit field.
 	 * 
-	 * @param rL
-	 *            the value to be set as real limit
+	 * @param rL the value to be set as real limit
 	 */
 	private void setRealLimit(final double rL) {
 		realLimit = rL;
@@ -576,18 +565,17 @@ public class ResourceConsumption {
 	 * 
 	 * Updates the completion distance if instructed.
 	 * 
-	 * @param updateCD
-	 *            <i>true</i> tells the system to update the completion distance
-	 *            alongside the real limit setup. This more frequent update on the
-	 *            real limit than the completion distance is calculated.
+	 * @param updateCD <i>true</i> tells the system to update the completion
+	 *                 distance alongside the real limit setup. This more frequent
+	 *                 update on the real limit than the completion distance is
+	 *                 calculated.
 	 * 
-	 *            <i>IMPORTANT:</i> if set to false then it is expected that the
-	 *            scheduler will call the updateRealLimit at least once more with a
-	 *            true parameter. Failing to do so the consumption object will
-	 *            become broken.
+	 *                 <i>IMPORTANT:</i> if set to false then it is expected that
+	 *                 the scheduler will call the updateRealLimit at least once
+	 *                 more with a true parameter. Failing to do so the consumption
+	 *                 object will become broken.
 	 * @return the real limit that was actually determined and set by this function
-	 * @throws IllegalStateException
-	 *             if the real limit would become 0
+	 * @throws IllegalStateException if the real limit would become 0
 	 */
 	double updateRealLimit(final boolean updateCD) {
 		final double rlTrial = providerLimit < consumerLimit ? providerLimit : consumerLimit;

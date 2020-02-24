@@ -74,7 +74,7 @@ public abstract class ResourceSpreader {
 	 * The array of consumption objects that will share the processing power of
 	 * this spreader. The order is not guaranteed!
 	 */
-	private final ArrayList<ResourceConsumption> toProcess = new ArrayList<ResourceConsumption>();
+	private final ArrayList<ResourceConsumption> toProcess = new ArrayList<>();
 	/**
 	 * The unalterable array of resource consumption objects.
 	 */
@@ -92,12 +92,12 @@ public abstract class ResourceSpreader {
 	 * The resource consumptions that got registered to this spreader in the
 	 * last tick
 	 */
-	private ArrayList<ResourceConsumption> underAddition = new ArrayList<ResourceConsumption>();
+	private ArrayList<ResourceConsumption> underAddition = new ArrayList<>();
 	/**
 	 * The resource consumptions that got deregistered from this spreader in the
 	 * last tick
 	 */
-	private ArrayList<ResourceConsumption> underRemoval = new ArrayList<ResourceConsumption>();
+	private ArrayList<ResourceConsumption> underRemoval = new ArrayList<>();
 	/**
 	 * Public, unmodifiable list of just registered resource consumptions
 	 */
@@ -188,7 +188,7 @@ public abstract class ResourceSpreader {
 		 * those resource spreaders that need to be added to the influence group
 		 * at the particular time instance
 		 */
-		private final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<ResourceSpreader>();
+		private final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<>();
 		/**
 		 * if there are some external activities that could lead to influence
 		 * group changes this field will be turned to true

@@ -54,7 +54,7 @@ public class NetworkNodeTest extends PMRelatedFoundation {
 	static final long dataToBeStored = aSecond * diskBW / 2;
 
 	public static HashMap<String, Integer> setupALatencyMap() {
-		HashMap<String, Integer> lm = new HashMap<String, Integer>();
+		HashMap<String, Integer> lm = new HashMap<>();
 		lm.put(sourceName, sourcelat);
 		lm.put(targetName, targetlat);
 		return lm;
