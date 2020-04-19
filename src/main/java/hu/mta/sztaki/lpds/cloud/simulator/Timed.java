@@ -56,9 +56,9 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	private static final PriorityQueue<Timed> timedlist = new PriorityQueue<Timed>();
 	/**
-	 * the event that is currently processed by the event loop.
+	 * If set to true, the event loop is processing this object at the moment.
 	 */
-	private static Timed underProcessing = null;
+	private boolean underProcessing = false;
 	/**
 	 * The actual time in the system. This is maintained in ticks!
 	 */
@@ -112,9 +112,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 * frequency. This function is protected so no external entities should be able
 	 * to modify the subscription for a timed object.
 	 * 
-	 * @param freq
-	 *            the event frequency with which the tick() function should be
-	 *            called on the particular implementation of timed.
+	 * @param freq the event frequency with which the tick() function should be
+	 *             called on the particular implementation of timed.
 	 * @return
 	 *         <ul>
 	 *         <li><i>true</i> if the subscription succeeded
@@ -134,9 +133,8 @@ public abstract class Timed implements Comparable<Timed> {
 	/**
 	 * The actual subscription function that is behind updateFreq or subcribe
 	 * 
-	 * @param freq
-	 *            the event frequency with which the tick() function should be
-	 *            called on the particular implementation of timed.
+	 * @param freq the event frequency with which the tick() function should be
+	 *             called on the particular implementation of timed.
 	 */
 	private void realSubscribe(final long freq) {
 		activeSubscription = true;
@@ -157,7 +155,7 @@ public abstract class Timed implements Comparable<Timed> {
 	protected final boolean unsubscribe() {
 		if (activeSubscription) {
 			activeSubscription = false;
-			if (this == underProcessing) {
+			if (underProcessing) {
 				// because of the poll during the fire function there is nothing
 				// to remove from the list
 				return true;
@@ -173,9 +171,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 * If the Timed object is not subscribed then the update function will ensure
 	 * the subscription happens
 	 * 
-	 * @param freq
-	 *            the event frequency with which the tick() function should be
-	 *            called on the particular implementation of timed.
+	 * @param freq the event frequency with which the tick() function should be
+	 *             called on the particular implementation of timed.
 	 * @return the earilest time instance (in ticks) when the tick() function will
 	 *         be called.
 	 */
@@ -183,7 +180,7 @@ public abstract class Timed implements Comparable<Timed> {
 		if (activeSubscription) {
 			final long oldNE = nextEvent;
 			updateEvent(freq);
-			if (underProcessing != this && oldNE != nextEvent) {
+			if (!underProcessing && oldNE != nextEvent) {
 				timedlist.remove(this);
 				timedlist.offer(this);
 			}
@@ -197,12 +194,11 @@ public abstract class Timed implements Comparable<Timed> {
 	 * A core function that actually manages the frequency and nextevent fields. It
 	 * contains several checks to reveal inproper handling of the Timed object.
 	 * 
-	 * @param freq
-	 *            the event frequency with which the tick() function should be
-	 *            called on the particular implementation of timed.
-	 * @throws IllegalStateException
-	 *             if the frequency specified is negative, or if the next event
-	 *             would be in the indefinite future
+	 * @param freq the event frequency with which the tick() function should be
+	 *             called on the particular implementation of timed.
+	 * @throws IllegalStateException if the frequency specified is negative, or if
+	 *                               the next event would be in the indefinite
+	 *                               future
 	 */
 	private void updateEvent(final long freq) {
 		if (freq < 0) {
@@ -268,13 +264,13 @@ public abstract class Timed implements Comparable<Timed> {
 	 * Enables to set the back preference of a particular timed object.
 	 * 
 	 * @param backPreference
-	 *            <ul>
-	 *            <li><i>true</i> if this event should be processed amongst the last
-	 *            events at any given time instance
-	 *            <li><i>false</i> if the event should be processed before the
-	 *            backpreferred events - this is the default case for all events
-	 *            before calling this function!
-	 *            </ul>
+	 *                       <ul>
+	 *                       <li><i>true</i> if this event should be processed
+	 *                       amongst the last events at any given time instance
+	 *                       <li><i>false</i> if the event should be processed
+	 *                       before the backpreferred events - this is the default
+	 *                       case for all events before calling this function!
+	 *                       </ul>
 	 */
 	protected void setBackPreference(final boolean backPreference) {
 		this.backPreference = backPreference;
@@ -289,22 +285,22 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	public static final void fire() {
 		while (!timedlist.isEmpty() && timedlist.peek().nextEvent == fireCounter) {
-			final Timed t = underProcessing = timedlist.poll();
+			final Timed t = timedlist.poll();
+			t.underProcessing = true;
 			t.tick(fireCounter);
 			if (t.activeSubscription) {
 				t.updateEvent(t.frequency);
 				timedlist.offer(t);
 			}
+			t.underProcessing = false;
 		}
-		underProcessing = null;
 		fireCounter++;
 	}
 
 	/**
 	 * A simple approach to calculate time advances in the system
 	 * 
-	 * @param jump
-	 *            the time (in ticks) to be advanced with
+	 * @param jump the time (in ticks) to be advanced with
 	 * @return the time (in ticks) at which point the particular jump will be
 	 *         complete
 	 */
@@ -322,8 +318,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * This function allows a more manual handling of the simulation. But it is also
 	 * used by the simulateUntil* functions.
 	 * 
-	 * @param desiredJump
-	 *            the amount of time to be jumped ahead.
+	 * @param desiredJump the amount of time to be jumped ahead.
 	 * @return the amount of time that still remains until desiredjump.
 	 */
 	public static final long jumpTime(long desiredJump) {
@@ -345,10 +340,9 @@ public abstract class Timed implements Comparable<Timed> {
 	 * of the event will be after the given time instance. If the given time
 	 * instance has already occurred then this function does nothing!
 	 * 
-	 * @param desiredTime
-	 *            the time at which the simulation should continue after this call.
-	 *            If the time given here already happened then this function will
-	 *            have no effect.
+	 * @param desiredTime the time at which the simulation should continue after
+	 *                    this call. If the time given here already happened then
+	 *                    this function will have no effect.
 	 */
 	public static final void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
@@ -420,9 +414,8 @@ public abstract class Timed implements Comparable<Timed> {
 	 * 
 	 * The function is ensuring that all events are fired during its operation.
 	 * 
-	 * @param time
-	 *            the time instance that should not happen but the time should
-	 *            advance to this point.
+	 * @param time the time instance that should not happen but the time should
+	 *             advance to this point.
 	 */
 	public static final void simulateUntil(final long time) {
 		while (timedlist.peek() != null && fireCounter < time) {
@@ -439,7 +432,6 @@ public abstract class Timed implements Comparable<Timed> {
 	public static final void resetTimed() {
 		timedlist.clear();
 		DeferredEvent.reset();
-		underProcessing = null;
 		fireCounter = 0;
 	}
 
@@ -457,10 +449,9 @@ public abstract class Timed implements Comparable<Timed> {
 	 * This function will be called on all timed objects which asked for a recurring
 	 * event notification at a given time instance.
 	 * 
-	 * @param fires
-	 *            The particular time instance when the function was called. The
-	 *            time instance is passed so the tick functions will not need to
-	 *            call getFireCount() if they need to operate on the actual time.
+	 * @param fires The particular time instance when the function was called. The
+	 *              time instance is passed so the tick functions will not need to
+	 *              call getFireCount() if they need to operate on the actual time.
 	 */
 	public abstract void tick(long fires);
 
