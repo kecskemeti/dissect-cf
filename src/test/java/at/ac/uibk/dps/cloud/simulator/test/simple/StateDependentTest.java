@@ -33,7 +33,6 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
 public class StateDependentTest extends TestFoundation {

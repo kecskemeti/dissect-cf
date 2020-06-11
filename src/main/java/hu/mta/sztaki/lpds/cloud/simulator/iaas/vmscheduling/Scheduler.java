@@ -45,7 +45,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.helpers.PMComparators;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
-import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
 /**
@@ -112,9 +111,7 @@ public abstract class Scheduler {
 	 * event notifications
 	 */
 	private final StateDependentEventHandler<QueueingEvent, Integer> queueListenerManager = new StateDependentEventHandler<>(
-			(QueueingEvent onObject, Integer ignore) -> {
-				onObject.queueingStarted();
-			});
+			(QueueingEvent onObject, Integer ignore) -> onObject.queueingStarted());
 
 	/**
 	 * Here we keep an account of the amount of resources a particular scheduler

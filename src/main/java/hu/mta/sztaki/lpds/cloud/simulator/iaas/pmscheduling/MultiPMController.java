@@ -88,7 +88,7 @@ public class MultiPMController extends SchedulingDependentMachines {
 	 */
 	@Override
 	protected Scheduler.QueueingEvent getQueueingEvent() {
-		return () -> turnOnSomeMachines();
+		return this::turnOnSomeMachines;
 	}
 
 	/**

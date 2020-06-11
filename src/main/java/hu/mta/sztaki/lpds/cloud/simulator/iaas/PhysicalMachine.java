@@ -38,7 +38,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import gnu.trove.list.linked.TDoubleLinkedList;
+import gnu.trove.list.array.TDoubleArrayList;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
@@ -411,7 +411,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 * done in a single tick for the above task.
 		 * </ul>
 		 */
-		final TDoubleLinkedList tasksDue;
+		final TDoubleArrayList tasksDue;
 		/**
 		 * when did the particular power state transition start
 		 */
@@ -445,8 +445,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		public PowerStateDelayer(final double[] tasklist, final State newPowerState) {
 			onOffEvent = this;
 			newState = newPowerState;
-			tasksDue = new TDoubleLinkedList();
-			tasksDue.add(tasklist);
+			tasksDue = new TDoubleArrayList(tasklist);
 			sendTask();
 			transitionStart = Timed.getFireCount();
 		}
@@ -461,8 +460,9 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 * power state of the physical machine with the PM's corresponding function.
 		 */
 		private void sendTask() {
+			int currSize = tasksDue.size();
 			// Did we finish all the tasks for the state change?
-			if (tasksDue.size() == 0) {
+			if (currSize == 0) {
 				// Mark the completion of the state change
 				onOffEvent = null;
 				class NetworkCausedStateDelay extends Timed {
@@ -495,8 +495,8 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			}
 
 			// No we did not, lets send some more to our direct consumer
-			final double totalConsumption = tasksDue.removeAt(0);
-			final double limit = tasksDue.removeAt(0);
+			final double totalConsumption = tasksDue.removeAt(--currSize);
+			final double limit = tasksDue.removeAt(--currSize);
 			currentConsumption = new ResourceConsumption(totalConsumption, limit, directConsumer, PhysicalMachine.this,
 					this);
 			if (!currentConsumption.registerConsumption()) {
@@ -538,7 +538,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 * @param tasklist the new tasks to be included
 		 */
 		public void addFurtherTasks(final double[] tasklist) {
-			tasksDue.add(tasklist);
+			tasksDue.insert(0, tasklist);
 		}
 
 		/**
@@ -556,7 +556,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * the complete resouce set of the pm
+	 * the complete resource set of the pm
 	 */
 	private final ConstantConstraints totalCapacities;
 	/**
