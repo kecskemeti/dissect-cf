@@ -36,7 +36,8 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
  * use (e.g. network/cpu). It can even be used to model usual resource
  * bottlenecks in computing environments (e.g. memory bandwidth, GPU).
  * 
- * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University of Innsbruck (c) 2013"
+ * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
+ *         of Innsbruck (c) 2013"
  *
  */
 public class MaxMinConsumer extends MaxMinFairSpreader {
@@ -44,21 +45,20 @@ public class MaxMinConsumer extends MaxMinFairSpreader {
 	/**
 	 * Constructs a generic Max Min fairness based resource consumer.
 	 * 
-	 * @param initialProcessing
-	 *            determines the amount of resources this consumer could utilize
-	 *            in a single tick
+	 * @param initialProcessing determines the amount of resources this consumer
+	 *                          could utilize in a single tick
 	 */
 	public MaxMinConsumer(final double initialProcessing) {
 		super(initialProcessing);
 	}
 
 	/**
-	 * Translates the consumption limit update request to actually changing a
-	 * field in the resource consumption that is related to consumers.
+	 * Translates the consumption limit update request to actually changing a field
+	 * in the resource consumption that is related to consumers.
 	 * 
-	 * The limit set here is expected to reflect the processing this consumer
-	 * could utilize in the particular time instance with regards to the
-	 * particular resource consumption.
+	 * The limit set here is expected to reflect the processing this consumer could
+	 * utilize in the particular time instance with regards to the particular
+	 * resource consumption.
 	 */
 	@Override
 	protected void updateConsumptionLimit(final ResourceConsumption con, final double limit) {
@@ -85,11 +85,10 @@ public class MaxMinConsumer extends MaxMinFairSpreader {
 
 	/**
 	 * Uses the resource consumption's consumer related processing operation to
-	 * actually use the results of a resource consumption (e.g. in case of a
-	 * network transfer this means the consumer actually receives the data that
-	 * so far just traveled through the network. In case of a virtual machine
-	 * this could mean that the virtual CPU of the VM actually executes some
-	 * instructions)
+	 * actually use the results of a resource consumption (e.g. in case of a network
+	 * transfer this means the consumer actually receives the data that so far just
+	 * traveled through the network. In case of a virtual machine this could mean
+	 * that the virtual CPU of the VM actually executes some instructions)
 	 */
 	@Override
 	protected double processSingleConsumption(final ResourceConsumption con, final long ticksPassed) {
@@ -104,9 +103,18 @@ public class MaxMinConsumer extends MaxMinFairSpreader {
 		return true;
 	}
 
+	@Override
+	protected void manageRemoval(final ResourceConsumption con) {
+		if (con.getUnProcessed() == 0) {
+			con.fireCompleteEvent();
+		} else if (!con.isResumable()) {
+			con.fireCancelEvent();
+		}
+	}
+
 	/**
-	 * provides some textual representation of this consumer, good for debugging
-	 * and tracing
+	 * provides some textual representation of this consumer, good for debugging and
+	 * tracing
 	 */
 	@Override
 	public String toString() {

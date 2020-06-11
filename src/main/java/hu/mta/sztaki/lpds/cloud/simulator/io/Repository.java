@@ -217,7 +217,7 @@ public class Repository extends NetworkNode {
 		if (totransfer == null) {
 			return null;
 		}
-		return manageStoragePromise(totransfer.size, id, target, () -> {
+		if (manageStoragePromise(totransfer, target)) {
 			underTransfer.add(id);
 			return initTransfer(totransfer.size, ResourceConsumption.unlimitedProcessing, Repository.this, target,
 					new ResourceConsumption.ConsumptionEvent() {
@@ -245,26 +245,8 @@ public class Repository extends NetworkNode {
 							}
 						}
 					});
-		});
-	}
-
-	/**
-	 * An internal interface for managing storage related operations
-	 * 
-	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
-	 *         MTA SZTAKI (c) 2015"
-	 *
-	 */
-	private static interface MainStorageActivity {
-		/**
-		 * The action that actually does the depositing of the requested content
-		 * 
-		 * @return the consumption object that represents the appropriate data transfer
-		 *         or <b>null</b> if it is not possible to initiate
-		 * @throws NetworkException if there are connectivity errors amongst
-		 *                          repositories
-		 */
-		ResourceConsumption doStorage() throws NetworkException;
+		}
+		return null;
 	}
 
 	/**
@@ -272,29 +254,29 @@ public class Repository extends NetworkNode {
 	 * internally to uniformly manage the promised storage from the various
 	 * functions of the repository.
 	 * 
-	 * WARNING: tis function only manages the increase of the promised storage, the
+	 * WARNING: this function only manages the increase of the promised storage, the
 	 * decrease must be handled by the entity implementing the actual storage
 	 * activity
 	 * 
-	 * @param size         the amount of size to be deposited in the repository
-	 * @param id           the storage object's id to be deposited
-	 * @param target       the repository in which the storage object will be
-	 *                     deposited
-	 * @param mainActivity the storage activity to be done if there is enough
-	 *                     promised storage on the target repository
-	 * @return the consumption object that represents the appropriate data transfer
-	 *         or <b>null</b> if it is not possible to initiate
-	 * @throws NetworkException if there were connectivity problems with the target
-	 *                          reppository
+	 * @param so     the storage object to be deposited in the repository specified
+	 *               in the next parameter
+	 * @param target the repository in which the storage object will be deposited
+	 * @return
+	 *         <ul>
+	 *         <li>true, if the storage promise is made (i.e., the promisedStorage
+	 *         field is now reflecting the to be deposited size of the so
+	 *         parameter),
+	 *         <li>false if there is not enough space to store such a storage object
+	 *         in the target repository
+	 *         </ul>
 	 */
-	private static ResourceConsumption manageStoragePromise(final long size, final String id, final Repository target,
-			final MainStorageActivity mainActivity) throws NetworkException {
-		final long increasedpromise = target.promisedStorage + size;
+	private static boolean manageStoragePromise(final StorageObject so, final Repository target) {
+		final long increasedpromise = target.promisedStorage + so.size;
 		if (increasedpromise + target.currentStorageUse <= target.maxStorageCapacity) {
 			target.promisedStorage = increasedpromise;
-			return mainActivity.doStorage();
+			return true;
 		}
-		return null;
+		return false;
 
 	}
 
@@ -312,28 +294,29 @@ public class Repository extends NetworkNode {
 	 */
 	public ResourceConsumption storeInMemoryObject(final StorageObject so,
 			final ResourceConsumption.ConsumptionEvent ev) throws NetworkException {
-		if (lookup(so.id) != null) {
+		if (lookup(so.id) == null && manageStoragePromise(so, this)) {
+			return pushFromMemory(so.size, ResourceConsumption.unlimitedProcessing, true,
+					new ResourceConsumption.ConsumptionEvent() {
+						@Override
+						public void conComplete() {
+							promisedStorage -= so.size;
+							registerObject(so);
+							if (ev != null) {
+								ev.conComplete();
+							}
+						}
+
+						@Override
+						public void conCancelled(ResourceConsumption problematic) {
+							promisedStorage -= so.size;
+							if (ev != null) {
+								ev.conCancelled(problematic);
+							}
+						}
+					});
+		} else {
 			return null;
 		}
-		return manageStoragePromise(so.size, so.id, this, () -> pushFromMemory(so.size,
-				ResourceConsumption.unlimitedProcessing, true, new ResourceConsumption.ConsumptionEvent() {
-					@Override
-					public void conComplete() {
-						promisedStorage -= so.size;
-						registerObject(so);
-						if (ev != null) {
-							ev.conComplete();
-						}
-					}
-
-					@Override
-					public void conCancelled(ResourceConsumption problematic) {
-						promisedStorage -= so.size;
-						if (ev != null) {
-							ev.conCancelled(problematic);
-						}
-					}
-				}));
 	}
 
 	/**

@@ -79,27 +79,21 @@ public class NetworkNode {
 		/**
 		 * This constructor describes the basic properties of an individual transfer.
 		 * 
-		 * @param tottr
-		 *            The amount of data to be transferred during the lifetime of the
-		 *            just created object
-		 * @param e
-		 *            Specify here the event to be fired when the just created object
-		 *            completes its transfers. With this event it is possible to notify
-		 *            the entity who initiated the transfer.
+		 * @param tottr The amount of data to be transferred during the lifetime of the
+		 *              just created object
+		 * @param e     Specify here the event to be fired when the just created object
+		 *              completes its transfers. With this event it is possible to
+		 *              notify the entity who initiated the transfer.
 		 */
 		private SingleTransfer(final int latency, final long tottr, final double limit, final MaxMinConsumer in,
 				final MaxMinProvider out, final ResourceConsumption.ConsumptionEvent e) {
 			super(tottr, limit, in, out, e);
-			if (latency != 0) {
-				new DeferredEvent(latency) {
-					@Override
-					protected void eventAction() {
-						regAndCancelOnFailure();
-					}
-				};
-			} else {
-				regAndCancelOnFailure();
-			}
+			new DeferredEvent(latency) {
+				@Override
+				protected void eventAction() {
+					regAndCancelOnFailure();
+				}
+			};
 		}
 
 		private void regAndCancelOnFailure() {
@@ -189,12 +183,9 @@ public class NetworkNode {
 	 * This function initializes the bandwidth spreaders for the node to ensure
 	 * equal network share for each transfer occurring on the node.
 	 * 
-	 * @param maxInBW
-	 *            the input bw of the node
-	 * @param maxOutBW
-	 *            the output bw of the node
-	 * @param diskBW
-	 *            the disk bw of the node
+	 * @param maxInBW  the input bw of the node
+	 * @param maxOutBW the output bw of the node
+	 * @param diskBW   the disk bw of the node
 	 */
 	public NetworkNode(final String id, final long maxInBW, final long maxOutBW, final long diskBW,
 			final Map<String, Integer> latencymap, Map<String, PowerState> diskPowerTransitions,
@@ -256,15 +247,11 @@ public class NetworkNode {
 	/**
 	 * This function ensures the proper initialization of an individual transfer.
 	 * 
-	 * @param size
-	 *            defines the size of the transfer to be simulated
-	 * @param from
-	 *            defines the source of the transfer
-	 * @param to
-	 *            defines the destination of the transfer
-	 * @param e
-	 *            defines the way the initiator will be notified upon the completion
-	 *            of the transfer
+	 * @param size defines the size of the transfer to be simulated
+	 * @param from defines the source of the transfer
+	 * @param to   defines the destination of the transfer
+	 * @param e    defines the way the initiator will be notified upon the
+	 *             completion of the transfer
 	 * @return the resource consumption object representing the transfer. This is
 	 *         returned to allow the cancellation of the object or to allow the
 	 *         observation of its state.
@@ -291,21 +278,18 @@ public class NetworkNode {
 	 * modeling the operation of writing data to the disk/network of this node from
 	 * its memory.
 	 * 
-	 * @param size
-	 *            the amount of data to be transferred from the memory to the
-	 *            disk/network (in bytes)
-	 * @param limit
-	 *            the maximum bandwidth allowed to be available for this particular
-	 *            transfer (in bytes/tick)
+	 * @param size   the amount of data to be transferred from the memory to the
+	 *               disk/network (in bytes)
+	 * @param limit  the maximum bandwidth allowed to be available for this
+	 *               particular transfer (in bytes/tick)
 	 * @param toDisk
-	 *            <ul>
-	 *            <li><i>true</i> if the transfer should be managed to the network
-	 *            node's disk
-	 *            <li><i>false</i> if the bytes read from memory should be sent over
-	 *            the network
-	 *            </ul>
-	 * @param e
-	 *            to be fired when the transfer completes
+	 *               <ul>
+	 *               <li><i>true</i> if the transfer should be managed to the
+	 *               network node's disk
+	 *               <li><i>false</i> if the bytes read from memory should be sent
+	 *               over the network
+	 *               </ul>
+	 * @param e      to be fired when the transfer completes
 	 * @return the resource consumption object that models the transfer. This is
 	 *         returned to allow the cancellation of the object or to allow the
 	 *         observation of its state.
@@ -321,21 +305,18 @@ public class NetworkNode {
 	 * modeling the operation of reading data from the disk/network of this node to
 	 * its memory.
 	 * 
-	 * @param size
-	 *            the amount of data to be transferred to the memory from the
-	 *            disk/network (in bytes)
-	 * @param limit
-	 *            the maximum bandwidth allowed to be available for this particular
-	 *            transfer (in bytes/tick)
+	 * @param size     the amount of data to be transferred to the memory from the
+	 *                 disk/network (in bytes)
+	 * @param limit    the maximum bandwidth allowed to be available for this
+	 *                 particular transfer (in bytes/tick)
 	 * @param fromDisk
-	 *            <ul>
-	 *            <li><i>true</i> if the transfer should be managed from the network
-	 *            node's disk
-	 *            <li><i>false</i> if the bytes written to memory should be received
-	 *            over the network
-	 *            </ul>
-	 * @param e
-	 *            to be fired when the transfer completes
+	 *                 <ul>
+	 *                 <li><i>true</i> if the transfer should be managed from the
+	 *                 network node's disk
+	 *                 <li><i>false</i> if the bytes written to memory should be
+	 *                 received over the network
+	 *                 </ul>
+	 * @param e        to be fired when the transfer completes
 	 * @return the resource consumption object that models the transfer. This is
 	 *         returned to allow the cancellation of the object or to allow the
 	 *         observation of its state.
@@ -350,14 +331,11 @@ public class NetworkNode {
 	 * Determines if there is direct network connection possible between two network
 	 * nodes
 	 * 
-	 * @param from
-	 *            the network node which is expected to send some data
-	 * @param to
-	 *            the network node which is expected to receive the sent data
+	 * @param from the network node which is expected to send some data
+	 * @param to   the network node which is expected to receive the sent data
 	 * @return the network latency of the connection between the two
-	 * @throws NetworkException
-	 *             if there is no direct connection possible between the two
-	 *             specified nodes.
+	 * @throws NetworkException if there is no direct connection possible between
+	 *                          the two specified nodes.
 	 */
 	public static int checkConnectivity(final NetworkNode from, final NetworkNode to) throws NetworkException {
 		if (from == to) {

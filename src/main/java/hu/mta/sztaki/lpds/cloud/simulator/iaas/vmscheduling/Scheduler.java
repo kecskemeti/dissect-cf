@@ -226,6 +226,9 @@ public abstract class Scheduler {
 	public final void scheduleVMrequest(final VirtualMachine[] vms, final ResourceConstraints rc,
 			final Repository vaSource, final HashMap<String, Object> schedulingConstraints)
 			throws VMManagementException {
+		if (vaSource.lookup(vms[0].getVa().id) == null) {
+			throw new VMManagementException("VA is not stored on source!");
+		}
 		final long currentTime = Timed.getFireCount();
 		final QueueingData qd = new QueueingData(vms, rc, vaSource, schedulingConstraints, currentTime);
 
