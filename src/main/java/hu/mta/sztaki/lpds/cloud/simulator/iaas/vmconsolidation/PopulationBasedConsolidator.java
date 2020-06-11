@@ -23,12 +23,16 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
+import java.lang.reflect.Field;
+
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel.Improver;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMassigner;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.FirstFitBFD;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.InfrequentImproveApplicator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.SimpleConsImprover;
 import it.unimi.dsi.util.XoShiRo256PlusRandom;
@@ -62,8 +66,6 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 
 	/** True if at least one solution has improved during the current iteration */
 	protected boolean improved;
-
-	protected GenHelper mutator;
 
 	public static final FitCompare baseComp = new FitCompare() {
 		@Override
@@ -122,14 +124,40 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 
 	@Override
 	protected void processProps() {
-		prepareMutator(Double.parseDouble(props.getProperty("mutationProb")));
 		random = new XoShiRo256PlusRandom(Long.parseLong(props.getProperty("seed")));
-		if (Boolean.parseBoolean(props.getProperty("doLocalSearch1"))) {
-			localSearch = FirstFitBFD.singleton;
-		} else if (Boolean.parseBoolean(props.getProperty("doLocalSearch2"))) {
-			localSearch = SimpleConsImprover.singleton;
+		String impClassName = props.getProperty("improver");
+		if (impClassName == null) {
+			if (Boolean.parseBoolean(props.getProperty("doLocalSearch1"))) {
+				localSearch = FirstFitBFD.singleton;
+			} else if (Boolean.parseBoolean(props.getProperty("doLocalSearch2"))) {
+				localSearch = SimpleConsImprover.singleton;
+			} else {
+				localSearch = NonImprover.singleton;
+			}
 		} else {
-			localSearch = NonImprover.singleton;
+			try {
+				@SuppressWarnings("rawtypes")
+				Class impClass = Class.forName(impClassName);
+				Field singletonField = impClass.getField("singleton");
+				localSearch = (Improver) singletonField.get(impClass);
+				System.err.println("Improver loaded and applied: " + impClassName);
+			} catch (ClassNotFoundException e) {
+				System.err.println("The configured improver class is not available: " + impClassName);
+				System.exit(1);
+			} catch (NoSuchFieldException e) {
+				System.err
+						.println("The configured improver class does not have a singleton data field: " + impClassName);
+				System.exit(1);
+			} catch (ClassCastException e) {
+				System.err.println(
+						"The configured improver class's singleton data field is not implementing the Improver interface: "
+								+ impClassName);
+				System.exit(1);
+			} catch (Exception e) {
+				// Unknown reason
+				e.printStackTrace();
+				System.exit(1);
+			}
 		}
 		createPopArray(Integer.parseInt(props.getProperty("populationSize")));
 		this.nrIterations = Integer.parseInt(props.getProperty("nrIterations"));
@@ -187,21 +215,6 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 	}
 
 	/**
-	 * Create a new solution by mutating the current one. Each gene (i.e., the
-	 * mapping of each VM) is replaced by a random one with probability mutationProb
-	 * and simply copied otherwise. Note that the current solution (this) is not
-	 * changed.
-	 */
-	private void prepareMutator(final double mutationProb) {
-		mutator = new RandomVMassigner() {
-			@Override
-			public boolean shouldUseDifferent() {
-				return PopulationBasedConsolidator.random.nextDoubleFast() < mutationProb;
-			}
-		};
-	}
-
-	/**
 	 * String representation of the whole population (for debugging purposes).
 	 */
 	public String populationToString() {
@@ -218,7 +231,7 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 	protected abstract void singleIteration();
 
 	protected abstract T transformInput(InfrastructureModel input);
-	
+
 	protected T getBestResult() {
 		return population[findBestSolution(baseComp)];
 	}

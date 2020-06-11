@@ -3,7 +3,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 import java.util.Arrays;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_PB_Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMassigner;
 
@@ -12,7 +12,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMass
  * 
  * @author Zoltan Mann
  */
-public class AbcConsolidator extends IM_ML_Consolidator {
+public class AbcConsolidator extends IM_PB_Consolidator {
 	public static final int probTestCount = 15;
 	public static final double probBase = 2;
 

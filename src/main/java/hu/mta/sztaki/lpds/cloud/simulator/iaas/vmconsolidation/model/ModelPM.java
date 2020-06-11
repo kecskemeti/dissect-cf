@@ -52,6 +52,7 @@ public class ModelPM {
 			final double upperThreshold) {
 		basedetails = new ImmutablePMComponents(pm, lowerThreshold, number, upperThreshold);
 
+		mpHelper = new AlterableResourceConstraints(basedetails.upperThrResources);
 		vmList = new ArrayList<>(pm.publicVms.size());
 		consumedResources = genEmptyConsumed();
 		freeResources = genCompletelyFree();
@@ -74,6 +75,7 @@ public class ModelPM {
 	public ModelPM(final ModelPM toCopy) {
 		// Shallow copy on basedetails:
 		this.basedetails = toCopy.basedetails;
+		mpHelper = new AlterableResourceConstraints(basedetails.upperThrResources);
 		// Proper copy (except VMlist on the rest)
 		final int ll = toCopy.vmList.size();
 		this.vmList = new ArrayList<>(ll);
@@ -91,8 +93,9 @@ public class ModelPM {
 	 *         state and its vms.
 	 */
 	public String toString() {
-		String result = "PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString() + ",\n curr="
-				+ consumedResources.toString() + ",\n state=" + (isHostingVMs() ? "ON" : "OFF") + ",\n VMs=";
+		String result = "PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString()
+				+ ",\n curr=" + consumedResources.toString() + ",\n state=" + (isHostingVMs() ? "ON" : "OFF")
+				+ ",\n VMs=";
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)
@@ -187,6 +190,8 @@ public class ModelPM {
 		return consumedResources.compareTo(basedetails.lowerThrResources) == -1;
 	}
 
+	private final AlterableResourceConstraints mpHelper;
+
 	/**
 	 * This method checks if a given vm can be hosted on this pm without changing
 	 * the state to overAllocated.
@@ -196,11 +201,12 @@ public class ModelPM {
 	 * @return True if the vm can be added.
 	 */
 	public boolean isMigrationPossible(final ModelVM toAdd) {
-		final AlterableResourceConstraints available = new AlterableResourceConstraints(basedetails.upperThrResources);
-		available.subtract(consumedResources);
+		mpHelper.subtract(consumedResources);
 		// Logger.getGlobal().info("available: "+available.toString());
-		return toAdd.getResources().getTotalProcessingPower() <= available.getTotalProcessingPower()
-				&& toAdd.getResources().getRequiredMemory() <= available.getRequiredMemory();
+		boolean ret = toAdd.getResources().getTotalProcessingPower() <= mpHelper.getTotalProcessingPower()
+				&& toAdd.getResources().getRequiredMemory() <= mpHelper.getRequiredMemory();
+		mpHelper.singleAdd(consumedResources);
+		return ret;
 	}
 
 	/**

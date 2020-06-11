@@ -2,7 +2,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_ML_Consolidator;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_PB_Consolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 
@@ -20,7 +20,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.Infrastruct
  * 
  * @author Zoltan Mann
  */
-public class GaConsolidator extends IM_ML_Consolidator {
+public class GaConsolidator extends IM_PB_Consolidator {
 
 	/** Number of recombinations to perform in each generation */
 	private int nrCrossovers;

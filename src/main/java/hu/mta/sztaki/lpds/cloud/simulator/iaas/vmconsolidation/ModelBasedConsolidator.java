@@ -42,6 +42,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 	protected double lowerThreshold, upperThreshold;
 
+	private boolean alwaysEnact;
+
 	protected Properties props;
 
 	private Action[] previousActions = Action.actArrSample;
@@ -91,7 +93,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		// consolidators directly change the input model
 		final InfrastructureModel solution = optimize(
 				new InfrastructureModel(input, PreserveAllocations.singleton, NonImprover.singleton));
-		if (solution.isBetterThan(input)) {
+		if (solution.isBetterThan(input) || alwaysEnact) {
 			previousActions = modelDiff(solution);
 			// Logger.getGlobal().info("Number of actions: "+actions.size());
 			createGraph();
@@ -112,6 +114,12 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		fileInput.close();
 		lowerThreshold = Double.parseDouble(props.getProperty("lowerThreshold"));
 		upperThreshold = Double.parseDouble(props.getProperty("upperThreshold"));
+		final String alwaysEnactStr = props.getProperty("alwaysEnact");
+		alwaysEnact = alwaysEnactStr == null ? false : Boolean.parseBoolean(alwaysEnactStr);
+		if (alwaysEnact) {
+			System.err.println(
+					"WARNING: Consolidation results are always enacted even if they lead to the same ore worse infrastructure state");
+		}
 		processProps();
 	}
 

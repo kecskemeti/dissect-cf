@@ -1,10 +1,9 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.SimpleConsolidator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelPM;
@@ -15,8 +14,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
  *         Moores University, (c) 2018"
  */
-public class SimpleConsImprover extends InfrastructureModel implements InfrastructureModel.Improver {
-	public static final SimpleConsImprover singleton = new SimpleConsImprover();
+public class UPAwareSimpleConsImprover extends SimpleConsImprover {
+	public static final UPAwareSimpleConsImprover singleton = new UPAwareSimpleConsImprover();
 
 	final private static Comparator<ModelPM> mpmFreeComp = new Comparator<ModelPM>() {
 		@Override
@@ -25,8 +24,8 @@ public class SimpleConsImprover extends InfrastructureModel implements Infrastru
 		}
 	};
 
-	public SimpleConsImprover() {
-		super(new PhysicalMachine[0], 0, false, 0);
+	public UPAwareSimpleConsImprover() {
+		super();
 	}
 
 	/**
@@ -35,71 +34,59 @@ public class SimpleConsImprover extends InfrastructureModel implements Infrastru
 	 */
 	@Override
 	public void improve(final InfrastructureModel toImprove) {
-//		Logger.getGlobal().info("starting to improve with second local search");
 
-		// create an array out of the bins
-		ModelPM[] pmList = new ModelPM[toImprove.bins.length];
-		int runningLen = 0;
+		// Cleaning up over-used PMs
+		final ArrayList<ModelPM> underProvisioned = new ArrayList<>(toImprove.bins.length);
+		final ArrayList<ModelPM> otherPMs = new ArrayList<>(toImprove.bins.length);
 		for (final ModelPM curr : toImprove.bins) {
-			if (curr.isHostingVMs() && curr.free.getTotalProcessingPower() > SimpleConsolidator.pmFullLimit) {
-				pmList[runningLen++] = curr;
+			if (curr.isHostingVMs() && curr.free.getTotalProcessingPower() < 0) {
+				underProvisioned.add(curr);
+			} else if (curr.free.getTotalProcessingPower() > SimpleConsolidator.pmFullLimit) {
+				otherPMs.add(curr);
 			}
 		}
 
-//		Logger.getGlobal().info("size of the pmList: " + pmList.length);
 
 		boolean didMove;
-		runningLen--;
-		int beginIndex = 0;
 		final HashSet<ModelVM> alreadyMoved = new HashSet<>();
 		do {
 			didMove = false;
 
-			// sort the array from highest to lowest free capacity with an adjusted version
-			// of the fitting pm comparator
-			Arrays.sort(pmList, beginIndex, runningLen + 1, mpmFreeComp);
+			// Tries to fill in the heaviest loaded PMs first.
+			otherPMs.sort(mpmFreeComp);
 
-//			Logger.getGlobal().info("filtered array: " + Arrays.toString(pmList));
-
-			for (int i = beginIndex; i < runningLen; i++) {
-				final ModelPM source = pmList[i];
+			undLoop: for (int i = underProvisioned.size()-1; i >= 0; i--) {
+				final ModelPM source = underProvisioned.get(i);
 				final ModelVM[] vmList = source.getVMs().toArray(ModelVM.mvmArrSample);
-				int vmc = 0;
 				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
 					final ModelVM vm = vmList[vmidx];
 					if (alreadyMoved.contains(vm))
 						continue;
 					// ModelVMs can only run, so we need not to check the state (there is none
 					// either)
-					for (int j = runningLen; j > i; j--) {
-						final ModelPM target = pmList[j];
+					for (int j = otherPMs.size()-1; j >= 0; j--) {
+						final ModelPM target = otherPMs.get(j);
 
 						if (target.isMigrationPossible(vm)) {
 							source.migrateVM(vm, target);
 							alreadyMoved.add(vm);
-
-							if (target.free.getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
-								// Ensures that those PMs that barely have resources will not be
-								// considered in future runs of this loop
-								if (j != runningLen) {
-									if (j == runningLen - 1) {
-										pmList[j] = pmList[runningLen];
-									} else {
-										System.arraycopy(pmList, j + 1, pmList, j, runningLen - j);
-									}
-								}
-								runningLen--;
-							}
-							vmc++;
 							didMove = true;
+							if (target.free.getTotalProcessingPower() < SimpleConsolidator.pmFullLimit) {
+								otherPMs.remove(j);
+							}
+							if (source.free.getTotalProcessingPower() > 0) {
+								// The source PM is now capable to serve its hosted VMs.
+								underProvisioned.remove(i);
+								continue undLoop;
+							}
 							break;
 						}
 					}
 				}
-				if (vmc == vmList.length) {
-					pmList[i] = pmList[beginIndex++];
-				}
 			}
 		} while (didMove);
+		
+		// There are no underprovisioned VMs now. We can head to the simple consolidator's core algorithm.
+		super.improve(toImprove);
 	}
 }
