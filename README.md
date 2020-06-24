@@ -2,6 +2,9 @@
 <img src="http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF/logo.jpg"/>
 </p>
 
+[![Build Status][travis-badge]][travis-link]
+[![CodeFactor][codefactor-badge]][codefactor-link]
+
 ## Overview
 
 This package represents the DIScrete event baSed Energy Consumption simulaTor
@@ -96,7 +99,7 @@ Do you still have some questions? If so, then please share them with the simulat
 
 ##### Warning: the master branch of the simulator is intended as a development branch, and might not contain a functional version!
 
-<p align="left">
-Build and testing status of the code in the repository:
-<img src="https://travis-ci.org/kecskemeti/dissect-cf.svg?branch=master"/>
-</p>
+[travis-badge]:       https://travis-ci.org/kecskemeti/dissect-cf.svg?branch=master
+[travis-link]:        https://travis-ci.org/github/kecskemeti/dissect-cf
+[codefactor-badge]:   https://www.codefactor.io/repository/github/kecskemeti/dissect-cf/badge/master
+[codefactor-link]:    https://www.codefactor.io/repository/github/kecskemeti/dissect-cf/overview/master
