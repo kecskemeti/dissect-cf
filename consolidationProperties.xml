@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+<entry key="upperThreshold">1.0</entry>
+<entry key="seed">123</entry>
+<entry key="mutationProb">0.9999999999999999</entry>
+<entry key="nrIterations">1</entry>
+<entry key="doLocalSearch">true</entry>
+<entry key="gaNrCrossovers">81</entry>
+<entry key="psoC1">9</entry>
+<entry key="populationSize">13</entry>
+<entry key="psoC2">9</entry>
+<entry key="lowerThreshold">0.2</entry>
+<entry key="doLocalSearch2">false</entry>
+<entry key="doLocalSearch1">true</entry>
+<entry key="abcLimitTrials">10</entry>
+</properties>
