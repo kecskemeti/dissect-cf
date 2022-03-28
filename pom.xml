@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>at.ac.uibk.dps.cloud.simulator</groupId>
 	<artifactId>dissect-cf</artifactId>
-	<version>0.9.7-SNAPSHOT-rp</version>
+	<version>0.9.8-SNAPSHOT</version>
 	<name>DISSECT-CF</name>
 	<description>DIScrete event baSed Energy Consumption simulaTor for Clouds and Federations</description>
 	<dependencies>
