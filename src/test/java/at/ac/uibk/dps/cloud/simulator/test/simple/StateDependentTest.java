@@ -33,7 +33,6 @@ import org.junit.Test;
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.notifications.SingleNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
 
 public class StateDependentTest extends TestFoundation {
@@ -45,11 +44,8 @@ public class StateDependentTest extends TestFoundation {
 
 	@Before
 	public void setupSDEH() {
-		sdeh = new StateDependentEventHandler<MyHandler, String>(new SingleNotificationHandler<MyHandler, String>() {
-			public void sendNotification(MyHandler onObject, String data) {
-				onObject.handle(data);
-			};
-		});
+		sdeh = new StateDependentEventHandler<MyHandler, String>(
+				(MyHandler onObject, String data) -> onObject.handle(data));
 	}
 
 	@Test(timeout = 100)
@@ -87,12 +83,7 @@ public class StateDependentTest extends TestFoundation {
 				}
 			}
 		};
-		MyHandler easyListener = new MyHandler() {
-			@Override
-			public void handle(String data) {
-				handled[1] = true;
-			}
-		};
+		MyHandler easyListener = (String data) -> handled[1] = true;
 		sdeh.subscribeToEvents(listener);
 		sdeh.subscribeToEvents(easyListener);
 		sdeh.notifyListeners(null);

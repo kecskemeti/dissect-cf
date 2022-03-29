@@ -103,6 +103,11 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 		return false;
 	}
 
+	@Override
+	protected void manageRemoval(final ResourceConsumption con) {
+		// Do nothing, consumers can do everything
+	}
+	
 	/**
 	 * provides some textual representation of this provider, good for debugging
 	 * and tracing

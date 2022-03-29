@@ -39,6 +39,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.statenotifications.VMStateChangeNotificationHandler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
@@ -109,8 +110,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * The constructor allows a textual message so users of this class can see the
 		 * reason of the exception more clearly without debugging.
 		 * 
-		 * @param e
-		 *            the message to be sent for the users of the simulator
+		 * @param e the message to be sent for the users of the simulator
 		 */
 		public StateChangeException(final String e) {
 			super(e);
@@ -133,10 +133,8 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * If the state of a VM is changed this function is called on all subscribing
 		 * implementations.
 		 * 
-		 * @param oldState
-		 *            the state before the change was issued
-		 * @param newState
-		 *            the state after the change took effect
+		 * @param oldState the state before the change was issued
+		 * @param newState the state after the change took effect
 		 */
 		void stateChanged(VirtualMachine vm, State oldState, State newState);
 	}
@@ -373,16 +371,20 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * represents operations required for handling the virtual machine monitor
 	 */
-	private HashMap<String, ResourceConsumption> currentVMMOperations = new HashMap<String, ResourceConsumption>();
+	private HashMap<String, ResourceConsumption> currentVMMOperations = new HashMap<>();
+
+	/**
+	 * Allows easy ignoration of compute task completion in case the VM's storage is
+	 * network backed (ignores network comm failures!)
+	 */
+	private ConsumptionEvent computeTaskHelper = new ConsumptionEventAdapter();
 
 	/**
 	 * Instantiates a VM object
 	 * 
-	 * @param va
-	 *            the virtual appliance that should be the base for this VM,
+	 * @param va the virtual appliance that should be the base for this VM,
 	 * 
-	 * @throws IllegalStateException
-	 *             if the va is <i>null</i>
+	 * @throws IllegalStateException if the va is <i>null</i>
 	 */
 	public VirtualMachine(final VirtualAppliance va) {
 		super(0);
@@ -396,8 +398,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * Always use this function to set the current VM state. This way all the
 	 * interested parties get notified on the changes.
 	 * 
-	 * @param newstate
-	 *            The new state the VM is in.
+	 * @param newstate The new state the VM is in.
 	 */
 	private void setState(final State newstate) {
 		final State oldState = currState;
@@ -427,15 +428,13 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * Prepares the VM so it can be started without the need to clone its VA first.
 	 * This function is useful in advanced scheduling situations.
 	 * 
-	 * @param vatarget
-	 *            the disk that will host the VM.
-	 * @param vasource
-	 *            the repository where the VA for this VM is found. If null, the
-	 *            function assumes it is found in the hosting PM's repository.
-	 * @throws StateChangeException
-	 *             if the VM is not destroyed
-	 * @throws VMManagementException
-	 *             if the VA transfer failed and the state change was reverted
+	 * @param vatarget the disk that will host the VM.
+	 * @param vasource the repository where the VA for this VM is found. If null,
+	 *                 the function assumes it is found in the hosting PM's
+	 *                 repository.
+	 * @throws StateChangeException  if the VM is not destroyed
+	 * @throws VMManagementException if the VA transfer failed and the state change
+	 *                               was reverted
 	 */
 	public void prepare(final Repository vasource, final Repository vatarget)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -471,13 +470,10 @@ public class VirtualMachine extends MaxMinConsumer {
 		/**
 		 * Initiates the event handler object
 		 * 
-		 * @param t
-		 *            the repository to observe
-		 * @param event
-		 *            the event to fire after the transfer to the target repo happened
-		 * @param did
-		 *            the disk id of the newly created storage object in the target repo
-		 *            for the new runnable VA.
+		 * @param t     the repository to observe
+		 * @param event the event to fire after the transfer to the target repo happened
+		 * @param did   the disk id of the newly created storage object in the target
+		 *              repo for the new runnable VA.
 		 */
 		public InitialTransferEvent(final Repository t, final EventSetup event, final String did) {
 			target = t;
@@ -518,20 +514,18 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * state beforehand. If successful it allows the caller to change the event on
 	 * the way it sees fit.
 	 * 
-	 * @param vatarget
-	 *            the storage that will host the VM's working image (typically this
-	 *            is going to be the disk of the PM that will host the VM).
-	 * @param vasource
-	 *            the repository where the VA for this VM is found. If null, the
-	 *            function assumes it is found in the hosting PM's repository.
-	 * @param es
-	 *            The way the VM's state should be changed the function will fire an
-	 *            event on this channel if the VA is cloned properly
-	 * @throws VMManagementException
-	 *             if the VA transfer failed and the state change was reverted
-	 * @throws NetworkException
-	 *             if the VA's transfer cannot be completed (e.g., because of
-	 *             connectivity issues)
+	 * @param vatarget the storage that will host the VM's working image (typically
+	 *                 this is going to be the disk of the PM that will host the
+	 *                 VM).
+	 * @param vasource the repository where the VA for this VM is found. If null,
+	 *                 the function assumes it is found in the hosting PM's
+	 *                 repository.
+	 * @param es       The way the VM's state should be changed the function will
+	 *                 fire an event on this channel if the VA is cloned properly
+	 * @throws VMManagementException if the VA transfer failed and the state change
+	 *                               was reverted
+	 * @throws NetworkException      if the VA's transfer cannot be completed (e.g.,
+	 *                               because of connectivity issues)
 	 */
 	private void initialTransfer(final Repository vasource, final Repository vatarget, final EventSetup es)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -580,15 +574,14 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * it ensures the disk image for the VM is ready to be used (i.e. first it
 	 * starts the inittransfer procedure).
 	 * 
-	 * @param allocation
-	 *            the resource allocation which will be used to deploy the VM on.
-	 * @param vasource
-	 *            the repository where the VA for this VM is found. If null, the
-	 *            function assumes it is found in the hosting PM's repository.
-	 * @throws StateChangeException
-	 *             if the VM is not destroyed or shutdown
-	 * @throws VMManagementException
-	 *             if the VA transfer failed and the state change was reverted
+	 * @param allocation the resource allocation which will be used to deploy the VM
+	 *                   on.
+	 * @param vasource   the repository where the VA for this VM is found. If null,
+	 *                   the function assumes it is found in the hosting PM's
+	 *                   repository.
+	 * @throws StateChangeException  if the VM is not destroyed or shutdown
+	 * @throws VMManagementException if the VA transfer failed and the state change
+	 *                               was reverted
 	 */
 	public void switchOn(final PhysicalMachine.ResourceAllocation allocation, final Repository vasource)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -615,13 +608,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * Forwards the migration call internally allowing both live/non-live migrations
 	 * 
-	 * @param target
-	 *            the new resource allocation on which the resume operation should
-	 *            take place
-	 * @throws StateChangeException
-	 *             if the VM is not in running state currently
-	 * @throws VMManagementException
-	 *             if the system have had troubles during the suspend operation.
+	 * @param target the new resource allocation on which the resume operation
+	 *               should take place
+	 * @throws StateChangeException  if the VM is not in running state currently
+	 * @throws VMManagementException if the system have had troubles during the
+	 *                               suspend operation.
 	 */
 	public void migrate(final PhysicalMachine.ResourceAllocation target)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -632,21 +623,21 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * Moves all data necessary for the VMs execution from its current physical
 	 * machine to another. Supports migration from suspended state.
 	 * 
-	 * @param target
-	 *            the new resource allocation on which the resume operation should
-	 *            take place
+	 * @param target            the new resource allocation on which the resume
+	 *                          operation should take place
 	 * @param onlyLiveMigration
-	 *            <ul>
-	 *            <li><i>true</i> live migration is explicitly requested (if not
-	 *            possible, a VMManagementException will be thrown)
-	 *            <li><i>false</i> if live migration is priorised but if not
-	 *            possible, non-live will be performed
-	 *            </ul>
-	 * @throws StateChangeException
-	 *             if the VM is not in running or suspended state currently
-	 * @throws VMManagementException
-	 *             if the system have had troubles during the migration operation
-	 *             (e.g., storage and connectivity issues).
+	 *                          <ul>
+	 *                          <li><i>true</i> live migration is explicitly
+	 *                          requested (if not possible, a VMManagementException
+	 *                          will be thrown)
+	 *                          <li><i>false</i> if live migration is priorised but
+	 *                          if not possible, non-live will be performed
+	 *                          </ul>
+	 * @throws StateChangeException  if the VM is not in running or suspended state
+	 *                               currently
+	 * @throws VMManagementException if the system have had troubles during the
+	 *                               migration operation (e.g., storage and
+	 *                               connectivity issues).
 	 */
 	public void migrate(final PhysicalMachine.ResourceAllocation target, boolean onlyLiveMigration)
 			throws VMManagementException, NetworkNode.NetworkException {
@@ -858,15 +849,12 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * VMs and initiate the migration procedure to someplace else.
 	 *
 	 *
-	 * @param target
-	 *            the new resource allocation on which the resume operation should
-	 *            take place
-	 * @throws StateChangeException
-	 *             if the VM is not in running state currently
-	 * @throws VMManagementException
-	 *             if the system have had troubles during the suspend operation.
-	 * @throws NetworkException
-	 *             if target host is not reachable
+	 * @param target the new resource allocation on which the resume operation
+	 *               should take place
+	 * @throws StateChangeException  if the VM is not in running state currently
+	 * @throws VMManagementException if the system have had troubles during the
+	 *                               suspend operation.
+	 * @throws NetworkException      if target host is not reachable
 	 */
 
 	public void migrateLive(final PhysicalMachine.ResourceAllocation target)
@@ -878,9 +866,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * Destroys the VM, and cleans up all repositories that could contain disk or
 	 * memory states.
 	 * 
-	 * @throws StateChangeException
-	 *             if some parts of the VM are under transfer so it cannot be
-	 *             determined what to clean up.
+	 * @throws StateChangeException if some parts of the VM are under transfer so it
+	 *                              cannot be determined what to clean up.
 	 */
 	public void destroy(final boolean killTasks) throws VMManagementException {
 		if (!currentVMMOperations.isEmpty()) {
@@ -932,15 +919,14 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * Switches off an already running machine. After the successful execution of
 	 * this function, the VM's state will be shutdown.
 	 * 
-	 * @throws StateChangeException
-	 *             if is not running currently
+	 * @throws StateChangeException if is not running currently
 	 */
 	public void switchoff(final boolean killTasks) throws StateChangeException {
 		if (currState != State.RUNNING && currState != State.STARTUP) {
 			throw new StateChangeException("Cannot switch off a not running machine");
 		}
 		if (killTasks) {
-			suspendedTasks = new ArrayList<ResourceConsumption>(underProcessing);
+			suspendedTasks = new ArrayList<>(underProcessing);
 			for (final ResourceConsumption con : suspendedTasks) {
 				con.cancel();
 			}
@@ -954,8 +940,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * When the VM is about to decouple from a PM this function is called.
 	 * 
-	 * @param newState
-	 *            the state the VM needs to be in after the decoupling is done
+	 * @param newState the state the VM needs to be in after the decoupling is done
 	 */
 	private void releaseRa(State newState) {
 		if (ra != null) {
@@ -972,12 +957,11 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * The VM's memory state is first created as a storage object on the PM's local
 	 * repository then transferred to its designated location.
 	 * 
-	 * @throws StateChangeException
-	 *             if the machine is not in running state
-	 * @throws VMManagementException
-	 *             if there is not enough space to store the memory state (first
-	 *             locally, then locally/remotely depending on the VM storage
-	 *             scenario
+	 * @throws StateChangeException  if the machine is not in running state
+	 * @throws VMManagementException if there is not enough space to store the
+	 *                               memory state (first locally, then
+	 *                               locally/remotely depending on the VM storage
+	 *                               scenario
 	 */
 	public void suspend() throws VMManagementException, NetworkNode.NetworkException {
 		if (currState != State.RUNNING) {
@@ -1019,7 +1003,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	private void suspendTasks() {
 		if (toBeAdded.size() + underProcessing.size() > 0) {
 			if (suspendedTasks == null) {
-				suspendedTasks = new ArrayList<ResourceConsumption>(underProcessing);
+				suspendedTasks = new ArrayList<>(underProcessing);
 			} else {
 				suspendedTasks.addAll(underProcessing);
 			}
@@ -1055,11 +1039,9 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * its loading to the VM's memory). Afterwards, this function cleans up the
 	 * memory states as after startup the VM already changes them.
 	 * 
-	 * @throws StateChangeException
-	 *             if the machine is not in suspended state
-	 * @throws VMManagementException
-	 *             if there is not enough space to retreive the memory state to the
-	 *             PM's repository
+	 * @throws StateChangeException  if the machine is not in suspended state
+	 * @throws VMManagementException if there is not enough space to retreive the
+	 *                               memory state to the PM's repository
 	 */
 	public void resume() throws VMManagementException, NetworkNode.NetworkException {
 		if (!currState.equals(State.SUSPENDED)) {
@@ -1103,8 +1085,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * Use this function to get notified about state changes on this VM
 	 * 
-	 * @param consumer
-	 *            the party to be notified when the state changes
+	 * @param consumer the party to be notified when the state changes
 	 */
 	public void subscribeStateChange(final StateChange consumer) {
 		vmStateChangelistenerManager.subscribeToEvents(consumer);
@@ -1113,8 +1094,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * Use this function to be no longer notified about state changes on this VM
 	 * 
-	 * @param consumer
-	 *            the party who previously received notifications
+	 * @param consumer the party who previously received notifications
 	 */
 	public void unsubscribeStateChange(final StateChange consumer) {
 		vmStateChangelistenerManager.unsubscribeFromEvents(consumer);
@@ -1143,21 +1123,18 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * therefore one who creates the VA should know its disk related activities when
 	 * the application is executed)
 	 * 
-	 * @param total
-	 *            the amount of processing to be done (in number of instructions)
-	 * @param limit
-	 *            the amount of processing this new compute task is allowed to do in
-	 *            a single tick (in instructions/tick). If there should be no limit
-	 *            for the processing then one can use the constant named
-	 *            ResourceConsumption.unlimitedProcessing.
-	 * @param e
-	 *            the object to be notified about the completion of the computation
-	 *            ordered here
+	 * @param total the amount of processing to be done (in number of instructions)
+	 * @param limit the amount of processing this new compute task is allowed to do
+	 *              in a single tick (in instructions/tick). If there should be no
+	 *              limit for the processing then one can use the constant named
+	 *              ResourceConsumption.unlimitedProcessing.
+	 * @param e     the object to be notified about the completion of the
+	 *              computation ordered here
 	 * @return the resource consumption object that will represent the CPU
 	 *         consumption. Could return null if the consumption cannot be
 	 *         registered or when there is no resoruce for the VM
-	 * @throws NetworkException
-	 *             if the background network load is not possible to simulate.
+	 * @throws NetworkException if the background network load is not possible to
+	 *                          simulate.
 	 */
 	public ResourceConsumption newComputeTask(final double total, final double limit,
 			final ResourceConsumption.ConsumptionEvent e) throws NetworkException {
@@ -1171,7 +1148,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				final long minBW = Math.min(bgnwload,
 						Math.min(ra.getHost().localDisk.getOutputbw(), vasource.getInputbw()));
 				NetworkNode.initTransfer(minBW * cons.getCompletionDistance(), minBW, ra.getHost().localDisk, vasource,
-						new ConsumptionEventAdapter());
+						computeTaskHelper);
 			}
 			return cons;
 		} else {
@@ -1196,10 +1173,8 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * This function will notify the resource allocation about the acquiration of
 	 * the resources by utilizing the use function!
 	 * 
-	 * @param newRA
-	 *            the allocation to be used later on
-	 * @throws VMManagementException
-	 *             if the VM is already running using a host
+	 * @param newRA the allocation to be used later on
+	 * @throws VMManagementException if the VM is already running using a host
 	 */
 	public void setResourceAllocation(PhysicalMachine.ResourceAllocation newRA) throws VMManagementException {
 		switch (currState) {

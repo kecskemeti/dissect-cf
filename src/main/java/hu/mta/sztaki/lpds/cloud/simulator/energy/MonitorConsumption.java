@@ -79,11 +79,11 @@ public class MonitorConsumption extends Timed {
 	/**
 	 * all spreading records that were collected during the past hour
 	 */
-	private PriorityQueue<SpreadingRecord> subHourRecords = new PriorityQueue<SpreadingRecord>();
+	private PriorityQueue<SpreadingRecord> subHourRecords = new PriorityQueue<>();
 	/**
 	 * all spreading records collected during the past day
 	 */
-	private PriorityQueue<SpreadingRecord> subDayRecords = new PriorityQueue<SpreadingRecord>();
+	private PriorityQueue<SpreadingRecord> subDayRecords = new PriorityQueue<>();
 	/**
 	 * the total processing accomplished in the last hour
 	 */

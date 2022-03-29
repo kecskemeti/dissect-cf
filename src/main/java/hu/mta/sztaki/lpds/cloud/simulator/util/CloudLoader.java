@@ -64,23 +64,22 @@ public class CloudLoader {
 	 * Offers the IaaSService creator functionality by defining the sax parser for
 	 * the XML cloud configuration.
 	 * 
-	 * @param fileName
-	 *            the name of the xml file containing the configuration of the cloud
-	 *            (a samlple xml can be found in
-	 *            at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
+	 * @param fileName the name of the xml file containing the configuration of the
+	 *                 cloud (a samlple xml can be found in
+	 *                 at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
 	 * @return the instantiated IaaSservice that complies with the configuration
 	 *         specified in the XML file received as the parameter
-	 * @throws IOException
-	 *             if there was some problem with finding/accessing the xml file
-	 * @throws SAXException
-	 *             if there was some problem parsing the configuration file
+	 * @throws IOException                  if there was some problem with
+	 *                                      finding/accessing the xml file
+	 * @throws SAXException                 if there was some problem parsing the
+	 *                                      configuration file
 	 * @throws ParserConfigurationException
 	 */
 	public static IaaSService loadNodes(String fileName)
 			throws IOException, SAXException, ParserConfigurationException {
 		Calendar c = Calendar.getInstance();
 		System.out.println("Cloud Loader starts for: " + fileName + " at " + c.getTimeInMillis());
-		final ArrayList<IaaSService> returner = new ArrayList<IaaSService>();
+		final ArrayList<IaaSService> returner = new ArrayList<>();
 		SAXParserFactory spf = SAXParserFactory.newInstance();
 		SAXParser saxParser = spf.newSAXParser();
 		XMLReader xmlReader = saxParser.getXMLReader();
@@ -100,7 +99,7 @@ public class CloudLoader {
 			long outbw;
 			long diskbw;
 			HashMap<String, Integer> latencymap;
-			EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
+			EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> powerTransitions = new EnumMap<>(
 					PowerTransitionGenerator.PowerStateKind.class);
 			PowerTransitionGenerator.PowerStateKind currentKind;
 
@@ -123,7 +122,7 @@ public class CloudLoader {
 				if (incloud) {
 					if (qName.equals("machine")) {
 						inmachine = true;
-						latencymap = new HashMap<String, Integer>();
+						latencymap = new HashMap<>();
 						cores = Double.parseDouble(attributes.getValue("cores"));
 						processing = Double.parseDouble(attributes.getValue("processing"));
 						memory = Long.parseLong(attributes.getValue("memory"));
@@ -148,8 +147,7 @@ public class CloudLoader {
 					}
 					if (qName.equals("powerstates")) {
 						currentKind = PowerTransitionGenerator.PowerStateKind.valueOf(attributes.getValue("kind"));
-						powerTransitions.put(currentKind,
-								new HashMap<String, PowerState>(PhysicalMachine.State.values().length));
+						powerTransitions.put(currentKind, new HashMap<>(PhysicalMachine.State.values().length));
 					}
 					if (qName.equals("power") && currentKind != null) {
 						Map<String, PowerState> stateSet = powerTransitions.get(currentKind);
@@ -197,8 +195,7 @@ public class CloudLoader {
 												powerTransitions.get(PowerTransitionGenerator.PowerStateKind.network)),
 										startuptime, shutdowntime,
 										powerTransitions.get(PowerTransitionGenerator.PowerStateKind.host)));
-						powerTransitions = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
-								PowerTransitionGenerator.PowerStateKind.class);
+						powerTransitions = new EnumMap<>(PowerTransitionGenerator.PowerStateKind.class);
 					}
 					if (qName.equals("powerstates")) {
 						currentKind = null;

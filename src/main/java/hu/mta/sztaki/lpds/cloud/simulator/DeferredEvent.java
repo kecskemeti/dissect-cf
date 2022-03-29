@@ -27,10 +27,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.PriorityQueue;
-
-import org.apache.commons.lang3.tuple.MutablePair;
 
 import gnu.trove.map.hash.TLongObjectHashMap;
 
@@ -63,7 +59,7 @@ public abstract class DeferredEvent {
 	/**
 	 * the aggregator that handles the event list stored in toSweep.
 	 */
-	private static final TLongObjectHashMap<AggregatedEventDispatcher> dispatchers = new TLongObjectHashMap<AggregatedEventDispatcher>();
+	private static final TLongObjectHashMap<AggregatedEventDispatcher> dispatchers = new TLongObjectHashMap<>();
 
 	/**
 	 * handles the event aggregations, actual subscriptions to timed events and
@@ -78,7 +74,7 @@ public abstract class DeferredEvent {
 	 *
 	 */
 	private static class AggregatedEventDispatcher extends Timed {
-		private ArrayList<DeferredEvent> simultaneouslyOccurringDEs = new ArrayList<DeferredEvent>();
+		private ArrayList<DeferredEvent> simultaneouslyOccurringDEs = new ArrayList<>();
 		private final long myEv;
 
 		private AggregatedEventDispatcher(long event) {

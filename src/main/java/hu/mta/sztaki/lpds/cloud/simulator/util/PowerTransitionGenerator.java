@@ -30,6 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,41 +79,40 @@ public class PowerTransitionGenerator {
 	 * definitions from a few simple parameters. The generated power states will all
 	 * be based on the linear consumption model (except during power off state).
 	 * 
-	 * @param minpower
-	 *            the power (in W) to be drawn by the PM while it is completely
-	 *            switched off (but plugged into the wall socket)
-	 * @param idlepower
-	 *            the power (in W) to be drawn by the PM's CPU while it is running
-	 *            but not doing any useful tasks.
-	 * @param maxpower
-	 *            the power (in W) to be drawn by the PM's CPU if it's CPU is
-	 *            completely utilized
-	 * @param diskDivider
-	 *            the ratio of the PM's disk power draw values compared to the it's
-	 *            CPU's power draw values
-	 * @param netDivider
-	 *            the ratio of the PM's network power draw values compared to the
-	 *            it's CPU's power draw values
+	 * @param minpower    the power (in W) to be drawn by the PM while it is
+	 *                    completely switched off (but plugged into the wall socket)
+	 * @param idlepower   the power (in W) to be drawn by the PM's CPU while it is
+	 *                    running but not doing any useful tasks.
+	 * @param maxpower    the power (in W) to be drawn by the PM's CPU if it's CPU
+	 *                    is completely utilized
+	 * @param diskDivider the ratio of the PM's disk power draw values compared to
+	 *                    the it's CPU's power draw values
+	 * @param netDivider  the ratio of the PM's network power draw values compared
+	 *                    to the it's CPU's power draw values
 	 * @return a power state setup useful for instantiating PMs
-	 * @throws SecurityException
-	 *             if the power state to be created failed to instantiate properly
-	 * @throws InstantiationException
-	 *             if the power state to be created failed to instantiate properly
-	 * @throws IllegalAccessException
-	 *             if the power state to be created failed to instantiate properly
-	 * @throws NoSuchFieldException
-	 *             if the power state to be created failed to instantiate properly
+	 * @throws SecurityException         if the power state to be created failed to
+	 *                                   instantiate properly
+	 * @throws InstantiationException    if the power state to be created failed to
+	 *                                   instantiate properly
+	 * @throws IllegalAccessException    if the power state to be created failed to
+	 *                                   instantiate properly
+	 * @throws NoSuchFieldException      if the power state to be created failed to
+	 *                                   instantiate properly
+	 * @throws NoSuchMethodException
+	 * @throws InvocationTargetException
+	 * @throws IllegalArgumentException
 	 */
 	public static EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> generateTransitions(
 			double minpower, double idlepower, double maxpower, double diskDivider, double netDivider)
-			throws SecurityException, InstantiationException, IllegalAccessException, NoSuchFieldException {
-		EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> returner = new EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>>(
+			throws SecurityException, InstantiationException, IllegalAccessException, NoSuchFieldException,
+			IllegalArgumentException, InvocationTargetException, NoSuchMethodException {
+		EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> returner = new EnumMap<>(
 				PowerTransitionGenerator.PowerStateKind.class);
-		HashMap<String, PowerState> hostStates = new HashMap<String, PowerState>();
+		HashMap<String, PowerState> hostStates = new HashMap<>();
 		returner.put(PowerTransitionGenerator.PowerStateKind.host, hostStates);
-		HashMap<String, PowerState> diskStates = new HashMap<String, PowerState>();
+		HashMap<String, PowerState> diskStates = new HashMap<>();
 		returner.put(PowerTransitionGenerator.PowerStateKind.storage, diskStates);
-		HashMap<String, PowerState> netStates = new HashMap<String, PowerState>();
+		HashMap<String, PowerState> netStates = new HashMap<>();
 		returner.put(PowerTransitionGenerator.PowerStateKind.network, netStates);
 		PowerState hostDefault = new PowerState(idlepower, maxpower - idlepower, LinearConsumptionModel.class);
 		for (PhysicalMachine.State aState : PhysicalMachine.StatesOfHighEnergyConsumption) {
@@ -133,10 +133,8 @@ public class PowerTransitionGenerator {
 	 * fetches the required power state from the corresponding power state map. If
 	 * the new state is not listed, it serves back the default mapping
 	 * 
-	 * @param theMap
-	 *            The map to look up the new power state
-	 * @param newState
-	 *            the textual spec of the power state
+	 * @param theMap   The map to look up the new power state
+	 * @param newState the textual spec of the power state
 	 * @return the power state to be used in accordance to the textual spec
 	 */
 	public static PowerState getPowerStateFromMap(final Map<String, PowerState> theMap, final String newState) {

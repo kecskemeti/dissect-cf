@@ -77,7 +77,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.
 	 */
 	private static List<EnergyMeter> subMeterCreator(List<PhysicalMachine> machines) {
 		final int machineCount = machines.size();
-		ArrayList<EnergyMeter> meters = new ArrayList<EnergyMeter>(machineCount);
+		ArrayList<EnergyMeter> meters = new ArrayList<>(machineCount);
 		for (int i = 0; i < machineCount; i++) {
 			meters.add(new PhysicalMachineEnergyMeter(machines.get(i)));
 		}

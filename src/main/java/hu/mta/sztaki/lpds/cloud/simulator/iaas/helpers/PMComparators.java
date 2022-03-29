@@ -39,27 +39,18 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
  */
 public class PMComparators {
 	/**
-	 * A PM comparator that offers inverse ordering of PMs in terms of free
-	 * capacity (this is not the actual utilisation of the PM, but unallocated
-	 * capacities left on the PM!)
+	 * A PM comparator that offers inverse ordering of PMs in terms of free capacity
+	 * (this is not the actual utilisation of the PM, but unallocated capacities
+	 * left on the PM!)
 	 */
-	public static final Comparator<PhysicalMachine> highestToLowestFreeCapacity = new Comparator<PhysicalMachine>() {
-		@Override
-		public int compare(PhysicalMachine o1, PhysicalMachine o2) {
-			return -o1.freeCapacities.compareTo(o2.freeCapacities);
-		}
-	};
+	public static final Comparator<PhysicalMachine> highestToLowestFreeCapacity = (PhysicalMachine o1,
+			PhysicalMachine o2) -> -o1.freeCapacities.compareTo(o2.freeCapacities);
 
 	/**
 	 * A PM comparator that offers inverse ordering of PMs in terms of total
-	 * capacity
+	 * capacity. Ensures inverse order based on capacities.	
 	 */
-	public final static Comparator<PhysicalMachine> highestToLowestTotalCapacity = new Comparator<PhysicalMachine>() {
-		@Override
-		public int compare(final PhysicalMachine o1, final PhysicalMachine o2) {
-			// Ensures inverse order based on capacities
-			return -o1.getCapacities().compareTo(o2.getCapacities());
-		}
-	};
+	public final static Comparator<PhysicalMachine> highestToLowestTotalCapacity = (final PhysicalMachine o1,
+			final PhysicalMachine o2) -> -o1.getCapacities().compareTo(o2.getCapacities());
 
 }

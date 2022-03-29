@@ -206,7 +206,7 @@ public class RepositoryTest extends PMRelatedFoundation {
 			throws NetworkException {
 		SeedSyncer.resetCentral();
 		final long bandwidth = 111111; // bytes/ms
-		HashMap<String, Integer> latencyMap = new HashMap<String, Integer>();
+		HashMap<String, Integer> latencyMap = new HashMap<>();
 		for (int i = 0; i < repoCount; i++) {
 			latencyMap.put("Repo" + i, 6);
 		}
@@ -270,31 +270,25 @@ public class RepositoryTest extends PMRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void immediateCancelTransferTest() throws NetworkException {
-		genericCancelTransferTest(new CancelAction() {
-			@Override
-			public void doCancel(ResourceConsumption con) {
-				Assert.assertFalse("Should not have registered yet", con.isRegistered());
-				con.cancel();
-			}
+		genericCancelTransferTest((ResourceConsumption con) -> {
+			Assert.assertFalse("Should not have registered yet", con.isRegistered());
+			con.cancel();
 		});
 	}
 
 	@Test(timeout = 100)
 	public void delayedCancelTransferTest() throws NetworkException {
-		genericCancelTransferTest(new CancelAction() {
-			@Override
-			public void doCancel(final ResourceConsumption con) {
-				try {
-					new DeferredEvent(NetworkNode.checkConnectivity(target, source) + 1l) {
-						@Override
-						protected void eventAction() {
-							Assert.assertTrue("By this time the registration should have happened", con.isRegistered());
-							con.cancel();
-						}
-					};
-				} catch (NetworkException e) {
-					throw new RuntimeException(e);
-				}
+		genericCancelTransferTest((final ResourceConsumption con) -> {
+			try {
+				new DeferredEvent(NetworkNode.checkConnectivity(target, source) + 1l) {
+					@Override
+					protected void eventAction() {
+						Assert.assertTrue("By this time the registration should have happened", con.isRegistered());
+						con.cancel();
+					}
+				};
+			} catch (NetworkException e) {
+				throw new RuntimeException(e);
 			}
 		});
 	}

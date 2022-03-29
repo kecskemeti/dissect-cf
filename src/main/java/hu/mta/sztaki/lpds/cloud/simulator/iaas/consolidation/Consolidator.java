@@ -98,7 +98,7 @@ public abstract class Consolidator extends Timed {
 	 * All PMs in the to be consolidated IaaSService are observed by these observer
 	 * objects.
 	 */
-	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<PhysicalMachine, VMListObserver>();
+	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<>();
 
 	/**
 	 * This constructor ensures the proper maintenance of the observer list - ie.,
@@ -126,27 +126,24 @@ public abstract class Consolidator extends Timed {
 		}
 		// Let's make sure we observe all machines even if they are added to the
 		// system later on
-		toConsolidate.subscribeToCapacityChanges(new VMManager.CapacityChangeEvent<PhysicalMachine>() {
-			@Override
-			public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> affectedCapacity) {
-				final boolean newRegistration = Consolidator.this.toConsolidate
-						.isRegisteredHost(affectedCapacity.get(0));
-				final int pmNum = affectedCapacity.size();
-				if (newRegistration) {
-					// Management of capacity increase
-					for (int i = pmNum - 1; i >= 0; i--) {
-						final PhysicalMachine pm = affectedCapacity.get(i);
-						observers.put(pm, new VMListObserver(pm));
+		toConsolidate.subscribeToCapacityChanges(
+				(ResourceConstraints newCapacity, List<PhysicalMachine> affectedCapacity) -> {
+					final boolean newRegistration = Consolidator.this.toConsolidate
+							.isRegisteredHost(affectedCapacity.get(0));
+					final int pmNum = affectedCapacity.size();
+					if (newRegistration) {
+						// Management of capacity increase
+						for (int i = pmNum - 1; i >= 0; i--) {
+							final PhysicalMachine pm = affectedCapacity.get(i);
+							observers.put(pm, new VMListObserver(pm));
+						}
+					} else {
+						// Management of capacity decrease
+						for (int i = pmNum - 1; i >= 0; i--) {
+							observers.remove(affectedCapacity.get(i)).cancelSubscriptions();
+						}
 					}
-				} else {
-					// Management of capacity decrease
-					for (int i = pmNum - 1; i >= 0; i--) {
-						observers.remove(affectedCapacity.get(i)).cancelSubscriptions();
-					}
-				}
-
-			}
-		});
+				});
 	}
 
 	/**

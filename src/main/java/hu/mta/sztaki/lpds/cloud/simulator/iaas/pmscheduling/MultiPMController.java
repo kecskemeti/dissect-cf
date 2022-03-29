@@ -58,7 +58,7 @@ public class MultiPMController extends SchedulingDependentMachines {
 	/**
 	 * the list of machines that are currently turned on by this controller.
 	 */
-	private final ArrayList<PhysicalMachine> currentlyStartingPMs = new ArrayList<PhysicalMachine>();
+	private final ArrayList<PhysicalMachine> currentlyStartingPMs = new ArrayList<>();
 
 	/**
 	 * Removes PMs from the currentlyStartingPMs list if they started properly
@@ -74,28 +74,21 @@ public class MultiPMController extends SchedulingDependentMachines {
 	};
 
 	/**
-	 * Constructs the scheduler and passes the parent IaaSService to the
-	 * superclass.
+	 * Constructs the scheduler and passes the parent IaaSService to the superclass.
 	 * 
-	 * @param parent
-	 *            the IaaSService to serve
+	 * @param parent the IaaSService to serve
 	 */
 	public MultiPMController(final IaaSService parent) {
 		super(parent);
 	}
 
 	/**
-	 * Implements a reaction to the starting of the VM queue that is capable to
-	 * turn on multiple PMs in parallel.
+	 * Implements a reaction to the starting of the VM queue that is capable to turn
+	 * on multiple PMs in parallel.
 	 */
 	@Override
 	protected Scheduler.QueueingEvent getQueueingEvent() {
-		return new Scheduler.QueueingEvent() {
-			@Override
-			public void queueingStarted() {
-				turnOnSomeMachines();
-			}
-		};
+		return this::turnOnSomeMachines;
 	}
 
 	/**
@@ -107,15 +100,14 @@ public class MultiPMController extends SchedulingDependentMachines {
 	}
 
 	/**
-	 * Allows the controller to ignore PM requests until the PM startup loop
-	 * from a previous PM request is complete
+	 * Allows the controller to ignore PM requests until the PM startup loop from a
+	 * previous PM request is complete
 	 */
 	private boolean notInTurnonLoop = true;
-	
+
 	/**
 	 * Turns on as many PMs as many required to fulfill the total resource
-	 * requirements of the queued VMs at the VM scheduler of the parent
-	 * IaasService
+	 * requirements of the queued VMs at the VM scheduler of the parent IaasService
 	 */
 	protected void turnOnSomeMachines() {
 		final int pmsize = parent.machines.size();
@@ -123,7 +115,7 @@ public class MultiPMController extends SchedulingDependentMachines {
 			notInTurnonLoop = false;
 			final AlterableResourceConstraints toSwitchOn = new AlterableResourceConstraints(
 					parent.sched.getTotalQueued());
-			final double fltfix=toSwitchOn.getRequiredCPUs()/(pmsize*1000);
+			final double fltfix = toSwitchOn.getRequiredCPUs() / (pmsize * 1000);
 			final int startingLen = currentlyStartingPMs.size();
 			for (int i = 0; i < startingLen; i++) {
 				final PhysicalMachine pm = currentlyStartingPMs.get(i);
