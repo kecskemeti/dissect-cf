@@ -37,7 +37,7 @@ Optimisations on the code were done using the java profiler called [jprofiler](h
 
 ## Compilation & Installation
 
-Prerequisites: [Apache Maven 3.](http://maven.apache.org/), Java 1.6
+Prerequisites: [Apache Maven 3](http://maven.apache.org/), Java 11
 
 After cloning, run the following in the main dir of the checkout:
 
@@ -59,9 +59,10 @@ The documentation for the simulator's java API will be generated in the followin
 
 ### Minimum runtime dependencies
 DISSECT-CF depends on the following libraries during its runtime: 
-* Java 1.6
+* Java 11
 * [GNU trove4j 3.0.3](http://trove.starlight-systems.com)
-* [Apache Commons Lang3 3.4](https://commons.apache.org/proper/commons-lang/)
+* [Apache Commons Lang3 3.12](https://commons.apache.org/proper/commons-lang/)
+* [DSIutils 2.5.1](https://dsiutils.di.unimi.it/)
 
 ###### Hint:
 Although these dependencies can be collected individually. If one installed the simulator according to description above, then except for Java6, all dependencies are located in the local maven repository (e.g., `~/.m2/repository`).  
@@ -92,8 +93,6 @@ The test cases of the simulator contain many useful examples so one can start wo
 More elaborate examples can be found in the [dissect-cf-examples project](https://github.com/kecskemeti/dissect-cf-examples) and in the [dcf-exercises project](https://github.com/kecskemeti/dcf-exercises).
 
 Also, the [wiki](https://github.com/kecskemeti/dissect-cf/wiki) provides further insights to advanced topics (like creating custom schedulers) and offers a [FAQ](https://github.com/kecskemeti/dissect-cf/wiki/Frequently-Asked-Questions). Apart from contributing with code, feel free to contribute there with documentation as well.
-
-Do you still have some questions? If so, then please share them with the simulator's user and developer community at our [Q&A forum](https://groups.google.com/forum/#!forum/dissect-cf-discuss) - a registration is needed to send your questions in.
 
 ## Remarks
 
