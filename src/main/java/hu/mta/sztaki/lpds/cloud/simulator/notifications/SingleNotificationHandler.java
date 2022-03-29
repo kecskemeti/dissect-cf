@@ -35,8 +35,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.notifications;
  * @param <T>
  *            the kind of state change for which this handler is prepared to
  *            notify about.
- * @param
- * 			<P>
+ * @param <P>
  *            the kind of data to be passed on to the notified party
  * 
  */
@@ -51,5 +50,5 @@ public interface SingleNotificationHandler<T, P> {
 	 * @param payload
 	 *            the data to be sent alongside the notification
 	 */
-	public void sendNotification(final T onObject, final P payload);
+	void sendNotification(final T onObject, final P payload);
 }

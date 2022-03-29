@@ -173,7 +173,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * 
 	 * @param freq the event frequency with which the tick() function should be
 	 *             called on the particular implementation of timed.
-	 * @return the earilest time instance (in ticks) when the tick() function will
+	 * @return the earliest time instance (in ticks) when the tick() function will
 	 *         be called.
 	 */
 	protected final long updateFrequency(final long freq) {
@@ -192,7 +192,7 @@ public abstract class Timed implements Comparable<Timed> {
 
 	/**
 	 * A core function that actually manages the frequency and nextevent fields. It
-	 * contains several checks to reveal inproper handling of the Timed object.
+	 * contains several checks to reveal improper handling of the Timed object.
 	 * 
 	 * @param freq the event frequency with which the tick() function should be
 	 *             called on the particular implementation of timed.
@@ -252,7 +252,7 @@ public abstract class Timed implements Comparable<Timed> {
 	/**
 	 * a comparator for timed objects based on next events and back preference
 	 * (those objects will be specified smaller that have an earlier next event - if
-	 * nextevents are the same then backpreference decides betwen events)
+	 * nextevents are the same then backpreference decides between events)
 	 */
 	@Override
 	public int compareTo(final Timed o) {
@@ -283,7 +283,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * are no events due at the particular time instance then this function just
 	 * advances the time by one tick.
 	 */
-	public static final void fire() {
+	public static void fire() {
 		while (!timedlist.isEmpty() && timedlist.peek().nextEvent == fireCounter) {
 			final Timed t = timedlist.poll();
 			t.underProcessing = true;
@@ -321,7 +321,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * @param desiredJump the amount of time to be jumped ahead.
 	 * @return the amount of time that still remains until desiredjump.
 	 */
-	public static final long jumpTime(long desiredJump) {
+	public static long jumpTime(long desiredJump) {
 		final long targettime = calcTimeJump(desiredJump);
 		final long nextFire = getNextFire();
 		if (targettime <= nextFire) {
@@ -344,11 +344,10 @@ public abstract class Timed implements Comparable<Timed> {
 	 *                    this call. If the time given here already happened then
 	 *                    this function will have no effect.
 	 */
-	public static final void skipEventsTill(final long desiredTime) {
+	public static void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
 		if (distance > 0) {
-			if (timedlist.peek() != null) {
-				while (timedlist.peek().nextEvent < desiredTime) {
+				while (timedlist.peek() != null && timedlist.peek().nextEvent < desiredTime) {
 					final Timed t = timedlist.poll();
 					t.skip();
 					final long oldfreq = t.frequency;
@@ -359,7 +358,6 @@ public abstract class Timed implements Comparable<Timed> {
 					t.updateFrequency(tempFreq);
 					t.frequency = oldfreq;
 				}
-			}
 			fireCounter = desiredTime;
 		}
 	}
@@ -370,7 +368,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * 
 	 * @return The number of ticks that has passed since the beginning of time.
 	 */
-	public static final long getFireCount() {
+	public static long getFireCount() {
 		return fireCounter;
 	}
 
@@ -380,7 +378,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * 
 	 * @return the time instance in ticks
 	 */
-	public static final long getNextFire() {
+	public static long getNextFire() {
 		final Timed head = timedlist.peek();
 		return head == null ? -1 : head.nextEvent;
 	}
@@ -398,9 +396,9 @@ public abstract class Timed implements Comparable<Timed> {
 	 * loops if at least one of the timed objects in the system does not call its
 	 * unsubscribe() function.
 	 */
-	public static final void simulateUntilLastEvent() {
+	public static void simulateUntilLastEvent() {
 		long pnf = -1;
-		long cnf = 0;
+		long cnf;
 		while ((cnf = getNextFire()) >= 0 && (cnf > pnf)) {
 			jumpTime(Long.MAX_VALUE);
 			fire();
@@ -417,7 +415,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 * @param time the time instance that should not happen but the time should
 	 *             advance to this point.
 	 */
-	public static final void simulateUntil(final long time) {
+	public static void simulateUntil(final long time) {
 		while (timedlist.peek() != null && fireCounter < time) {
 			jumpTime(time - fireCounter);
 			if (getNextFire() == fireCounter) {
@@ -429,7 +427,7 @@ public abstract class Timed implements Comparable<Timed> {
 	/**
 	 * Cancels all timed events and sets back the time to 0.
 	 */
-	public static final void resetTimed() {
+	public static void resetTimed() {
 		timedlist.clear();
 		DeferredEvent.reset();
 		fireCounter = 0;
@@ -441,8 +439,7 @@ public abstract class Timed implements Comparable<Timed> {
 	 */
 	@Override
 	public String toString() {
-		return new StringBuilder("Timed(Freq: ").append(frequency).append(" NE:").append(nextEvent).append(")")
-				.toString();
+		return "Timed(Freq: "+frequency+" NE:"+nextEvent+")";
 	}
 
 	/**

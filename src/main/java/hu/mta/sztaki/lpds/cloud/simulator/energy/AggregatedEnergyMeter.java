@@ -46,7 +46,7 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	 * top.
 	 * 
 	 * @param toAggregate
-	 *            the list of energy meters to sopervise
+	 *            the list of energy meters to supervise
 	 */
 	public AggregatedEnergyMeter(List<EnergyMeter> toAggregate) {
 		supervised = toAggregate;
@@ -69,7 +69,7 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 			}
 		}
 		if (i != supSize) {
-			// Some of the meters did not start because they already did some
+			// Some meters did not start because they already did some
 			// metering prior to this startmeter request
 			for (int j = 0; j < i; j++) {
 				supervised.get(j).stopMeter();

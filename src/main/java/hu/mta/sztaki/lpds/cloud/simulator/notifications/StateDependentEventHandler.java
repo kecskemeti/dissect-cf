@@ -56,7 +56,7 @@ public class StateDependentEventHandler<T, P> {
 	 */
 	final ArrayList<T> listeners = new ArrayList<>();
 	/**
-	 * if the notificaiton process is underway, then new and cancelled listeners are
+	 * if the notification process is underway, then new and cancelled listeners are
 	 * registered here (they will not receive notifications in the current
 	 * notification round as their registration is actually a result of the current
 	 * notification round).

@@ -18,7 +18,7 @@ public class StartAction extends Action implements PhysicalMachine.StateChangeLi
 	/**
 	 * Constructor of an action to start a PM.
 	 * 
-	 * @param pmToStart The modelled PM respresenting the PM which shall start.
+	 * @param pmToStart The modelled PM representing the PM which shall start.
 	 */
 	public StartAction(final ModelPM pmToStart, final IControllablePmScheduler pmScheduler) {
 		super(Type.START);

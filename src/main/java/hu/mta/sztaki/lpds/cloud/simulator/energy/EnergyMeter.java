@@ -45,7 +45,7 @@ public abstract class EnergyMeter extends Timed {
 	 * determines the time instance when the current metering session has
 	 * started. This does not actually specify the time instance when the first
 	 * metering session starts if there are gaps between metering sessions.
-	 * instead it gives the time instance when a continuous metering session
+	 * instead, it gives the time instance when a continuous metering session
 	 * would start.
 	 */
 	private long meteringStarted;

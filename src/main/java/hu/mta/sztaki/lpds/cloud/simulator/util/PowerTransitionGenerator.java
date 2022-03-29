@@ -30,7 +30,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,7 +58,7 @@ public class PowerTransitionGenerator {
 	 *         MTA SZTAKI (c) 2014"
 	 * 
 	 */
-	public static enum PowerStateKind {
+	public enum PowerStateKind {
 		/**
 		 * the powerstate definitions belong to the cpu and memory resources of the PM
 		 */
@@ -90,22 +89,10 @@ public class PowerTransitionGenerator {
 	 * @param netDivider  the ratio of the PM's network power draw values compared
 	 *                    to the it's CPU's power draw values
 	 * @return a power state setup useful for instantiating PMs
-	 * @throws SecurityException         if the power state to be created failed to
-	 *                                   instantiate properly
-	 * @throws InstantiationException    if the power state to be created failed to
-	 *                                   instantiate properly
-	 * @throws IllegalAccessException    if the power state to be created failed to
-	 *                                   instantiate properly
-	 * @throws NoSuchFieldException      if the power state to be created failed to
-	 *                                   instantiate properly
-	 * @throws NoSuchMethodException
-	 * @throws InvocationTargetException
-	 * @throws IllegalArgumentException
 	 */
 	public static EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> generateTransitions(
 			double minpower, double idlepower, double maxpower, double diskDivider, double netDivider)
-			throws SecurityException, InstantiationException, IllegalAccessException, NoSuchFieldException,
-			IllegalArgumentException, InvocationTargetException, NoSuchMethodException {
+			{
 		EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> returner = new EnumMap<>(
 				PowerTransitionGenerator.PowerStateKind.class);
 		HashMap<String, PowerState> hostStates = new HashMap<>();
@@ -114,18 +101,18 @@ public class PowerTransitionGenerator {
 		returner.put(PowerTransitionGenerator.PowerStateKind.storage, diskStates);
 		HashMap<String, PowerState> netStates = new HashMap<>();
 		returner.put(PowerTransitionGenerator.PowerStateKind.network, netStates);
-		PowerState hostDefault = new PowerState(idlepower, maxpower - idlepower, LinearConsumptionModel.class);
+		PowerState hostDefault = new PowerState(idlepower, maxpower - idlepower, LinearConsumptionModel::new);
 		for (PhysicalMachine.State aState : PhysicalMachine.StatesOfHighEnergyConsumption) {
 			hostStates.put(aState.toString(), hostDefault);
 		}
 		hostStates.put(PhysicalMachine.State.OFF.toString(),
-				new PowerState(minpower, 0, ConstantConsumptionModel.class));
-		diskStates.put(NetworkNode.State.OFF.toString(), new PowerState(0, 0, ConstantConsumptionModel.class));
+				new PowerState(minpower, 0, ConstantConsumptionModel::new));
+		diskStates.put(NetworkNode.State.OFF.toString(), new PowerState(0, 0, ConstantConsumptionModel::new));
 		diskStates.put(NetworkNode.State.RUNNING.toString(), new PowerState(idlepower / diskDivider / 2,
-				(maxpower - idlepower) / diskDivider / 2, LinearConsumptionModel.class));
-		netStates.put(NetworkNode.State.OFF.toString(), new PowerState(0, 0, ConstantConsumptionModel.class));
+				(maxpower - idlepower) / diskDivider / 2, LinearConsumptionModel::new));
+		netStates.put(NetworkNode.State.OFF.toString(), new PowerState(0, 0, ConstantConsumptionModel::new));
 		netStates.put(NetworkNode.State.RUNNING.toString(), new PowerState(idlepower / netDivider / 2,
-				(maxpower - idlepower) / netDivider / 2, LinearConsumptionModel.class));
+				(maxpower - idlepower) / netDivider / 2, LinearConsumptionModel::new));
 		return returner;
 	}
 

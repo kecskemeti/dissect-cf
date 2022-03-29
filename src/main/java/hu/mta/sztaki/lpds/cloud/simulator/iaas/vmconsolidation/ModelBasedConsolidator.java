@@ -62,8 +62,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 
 		try {
 			loadProps();
-		} catch (InvalidPropertiesFormatException e) {
-			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -106,7 +104,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		SimpleConsolidator.migrationCount = 0;
 	}
 
-	private void loadProps() throws InvalidPropertiesFormatException, IOException {
+	private void loadProps() throws IOException {
 		props = new Properties();
 		final File file = new File("consolidationProperties.xml");
 		final FileInputStream fileInput = new FileInputStream(file);
@@ -115,7 +113,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 		lowerThreshold = Double.parseDouble(props.getProperty("lowerThreshold"));
 		upperThreshold = Double.parseDouble(props.getProperty("upperThreshold"));
 		final String alwaysEnactStr = props.getProperty("alwaysEnact");
-		alwaysEnact = alwaysEnactStr == null ? false : Boolean.parseBoolean(alwaysEnactStr);
+		alwaysEnact = Boolean.parseBoolean(alwaysEnactStr);
 		if (alwaysEnact) {
 			System.err.println(
 					"WARNING: Consolidation results are always enacted even if they lead to the same ore worse infrastructure state");
@@ -124,7 +122,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	}
 
 	/**
-	 * To be implemented by all model based consolidator derivatives so they can
+	 * To be implemented by all model based consolidator derivatives, so they can
 	 * load the relevant parameters from the file
 	 */
 	protected abstract void processProps();
@@ -172,8 +170,6 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * Determines the dependencies between the actions.
 	 * 
-	 * @param actions The action-list with all changes that have to be done inside
-	 *                the simulator.
 	 */
 	private void createGraph() {
 		for (final Action action : previousActions) {
@@ -184,9 +180,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	/**
 	 * Checks if there are any predecessors of the actual action. If not, its
 	 * execute()-method is called.
-	 * 
-	 * @param actions The action-list with all changes that have to be done inside
-	 *                the simulator.
+	 *
 	 */
 	private void performActions() {
 		for (final Action action : previousActions) {

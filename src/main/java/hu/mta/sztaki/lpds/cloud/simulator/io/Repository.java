@@ -101,7 +101,7 @@ public class Repository extends NetworkNode {
 	 * StorageObject is only stored once.
 	 * 
 	 * @param so is the object to be stored
-	 * @return true if the reuqested object was stored, false when there is not
+	 * @return true if the requested object was stored, false when there is not
 	 *         enough space to store the object
 	 */
 	public boolean registerObject(final StorageObject so) {

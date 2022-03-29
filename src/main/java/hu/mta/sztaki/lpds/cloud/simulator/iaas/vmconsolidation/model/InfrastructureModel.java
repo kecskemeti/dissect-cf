@@ -134,7 +134,7 @@ public class InfrastructureModel {
 				other.nrActivePms, other.nrMigrations);
 	}
 
-	protected static final boolean betterThan(final double oA1, final int nAPM1, final int nMg1, final double oA2,
+	protected static boolean betterThan(final double oA1, final int nAPM1, final int nMg1, final double oA2,
 			final int nAPM2, final int nMg2) {
 		// The primary objective is the total overload. If there is a clear
 		// difference (>1%) in that, this decides which is better.

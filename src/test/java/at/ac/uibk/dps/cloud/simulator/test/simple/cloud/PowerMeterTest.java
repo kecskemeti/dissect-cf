@@ -122,8 +122,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 
 	@Test(timeout = 100)
 	public void PSTest() throws Exception {
-		PowerState psLinear = new PowerState(1, 1, LinearConsumptionModel.class);
-		PowerState psConstant = new PowerState(1, 1, ConstantConsumptionModel.class);
+		PowerState psLinear = new PowerState(1, 1, LinearConsumptionModel::new);
+		PowerState psConstant = new PowerState(1, 1, ConstantConsumptionModel::new);
 		Assert.assertEquals("Linear consumption model is not behaving as expected", 1.5, psLinear.getCurrentPower(0.5),
 				0.001);
 		Assert.assertEquals("Constant consumption model is not behaving as expected", 1,

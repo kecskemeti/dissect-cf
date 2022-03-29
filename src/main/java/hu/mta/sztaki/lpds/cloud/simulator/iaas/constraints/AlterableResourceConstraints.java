@@ -40,7 +40,7 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	// data members to represent the state required for the standard RC calls
 	private double requiredCPUs;
 	private double requiredProcessingPower;
-	private boolean requiredProcessingIsMinimum;
+	private final boolean requiredProcessingIsMinimum;
 	private long requiredMemory;
 	private double totalProcessingPower;
 
@@ -109,7 +109,7 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	}
 
 	/**
-	 * Allows to increase/decrease the amount of cpu cores and required memory
+	 * Allows increasing/decreasing the amount of cpu cores and required memory
 	 * by this constraints object linearly
 	 * 
 	 * @param times

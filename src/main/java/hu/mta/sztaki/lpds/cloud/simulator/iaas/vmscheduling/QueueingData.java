@@ -47,11 +47,11 @@ public class QueueingData {
 	 */
 	public final VirtualMachine[] queuedVMs;
 	/**
-	 * A single VM should have this much resources allocated to it
+	 * A single VM should have this many resources allocated to it
 	 */
 	public final ResourceConstraints queuedRC;
 	/**
-	 * All VMs in the request should have this much resources in total
+	 * All VMs in the request should have this many resources in total
 	 */
 	public final ResourceConstraints cumulativeRC;
 	/**

@@ -66,10 +66,10 @@ public abstract class ResourceSpreader {
 	protected double perTickProcessingPower;
 	/**
 	 * For floating point operations using the perTickProcessingPower this defines
-	 * the precision, ie. the amount of processing to be considered 0. It is defined
+	 * the precision, i.e. the amount of processing to be considered 0. It is defined
 	 * to be 1 billionth of the perTickProcessingPower.
 	 */
-	protected double negligableProcessing;
+	protected double negligibleProcessing;
 	/**
 	 * The array of consumption objects that will share the processing power of this
 	 * spreader. The order is not guaranteed!
@@ -91,12 +91,12 @@ public abstract class ResourceSpreader {
 	 * The resource consumptions that got registered to this spreader in the last
 	 * tick
 	 */
-	private ArrayList<ResourceConsumption> underAddition = new ArrayList<>();
+	private final ArrayList<ResourceConsumption> underAddition = new ArrayList<>();
 	/**
 	 * The resource consumptions that got deregistered from this spreader in the
 	 * last tick
 	 */
-	private ArrayList<ResourceConsumption> underRemoval = new ArrayList<>();
+	private final ArrayList<ResourceConsumption> underRemoval = new ArrayList<>();
 	/**
 	 * Public, unmodifiable list of just registered resource consumptions
 	 */
@@ -139,7 +139,7 @@ public abstract class ResourceSpreader {
 	 * DISSECT-CF.
 	 * 
 	 * The main purpose of this class is to create and manage influence groups from
-	 * resource spreaders that are connected with resource consumptions. Also the
+	 * resource spreaders that are connected with resource consumptions. Also, the
 	 * class is also expected to coordinate the processing of the resource
 	 * consumptions within the entire influence group. Finally, the class is
 	 * responsible to deliver the completion or failure events for the resource
@@ -343,7 +343,7 @@ public abstract class ResourceSpreader {
 		/**
 		 * This will always give a fresh copy of the depgroup which can be changed as
 		 * the user desires. Because of the always copying behavior it will reduce the
-		 * performance a little. Of course it results in significant performance
+		 * performance a little. Of course, it results in significant performance
 		 * penalties for those who only would like to read from the array.
 		 * 
 		 * @return a new copy of the influence group's internal array this array can be
@@ -475,7 +475,7 @@ public abstract class ResourceSpreader {
 
 			// Phase II. managing separation of influence groups
 			if (didRemovals) {
-				// Marking all current members of the depgroup as non members
+				// Marking all current members of the depgroup as non-members
 				for (int i = 0; i < depgrouplen; i++) {
 					myDepGroup[i].stillInDepGroup = false;
 				}
@@ -524,7 +524,7 @@ public abstract class ResourceSpreader {
 								i--;
 							}
 						}
-						// We now have the new groups so we can start
+						// We now have the new groups, so we can start
 						// subscribing
 						FreqSyncer subscribeMe;
 						if (notClassified == myDepGroup) {
@@ -713,11 +713,10 @@ public abstract class ResourceSpreader {
 	}
 
 	/**
-	 * Allows the rejection of the registration of some resource consumptions. By
-	 * default this function this function only checks whether the registration is
-	 * actually happening for the resource spreader that the consumption refers to.
-	 * Also the default function stops registrations if the processing power of this
-	 * spreader is 0.
+	 * Allows the rejection of the registration of some resource consumptions. By default,
+	 * this function only checks whether the registration is actually happening for the
+	 * resource spreader that the consumption refers to. Also, the default function stops
+	 * registrations if the processing power of this spreader is 0.
 	 * 
 	 * <i>NOTE:</i> by further implementing this function one can block
 	 * registrations in even more cases (e.g. no registration of CPU utilization is
@@ -744,16 +743,16 @@ public abstract class ResourceSpreader {
 	static void cancelConsumption(final ResourceConsumption con) {
 		final ResourceSpreader provider = con.getProvider();
 		final ResourceSpreader consumer = con.getConsumer();
-		ResourceConsumption[] sinlgeConsumption = new ResourceConsumption[] { con };
-		provider.removeTheseConsumptions(sinlgeConsumption, 1);
-		consumer.removeTheseConsumptions(sinlgeConsumption, 1);
+		ResourceConsumption[] singeConsumption = new ResourceConsumption[] { con };
+		provider.removeTheseConsumptions(singeConsumption, 1);
+		consumer.removeTheseConsumptions(singeConsumption, 1);
 	}
 
 	/**
 	 * The main resource processing loop. This loop is responsible for actually
 	 * offering resources to consumers in case of providers or in case of consumers
 	 * it is responsible to actually utilize the offered resources. The loop does
-	 * not make decisions on how much resources to use/offer for a particular
+	 * not make decisions on how many resources to use/offer for a particular
 	 * resource consumption, it is assumed that by the time this function is called
 	 * all resource consumption objects are allocated their share of the complete
 	 * available resource set.
@@ -800,7 +799,7 @@ public abstract class ResourceSpreader {
 	 * 
 	 * All subclasses that embody consumer/provider roles must implement this method
 	 * so the doProcessing function above could uniformly process all resource
-	 * consumptions independently from being a provider/consumer.
+	 * consumptions independently of being a provider/consumer.
 	 * 
 	 * @param con         the resource consumption to be realigned
 	 * @param ticksPassed the time passed since the last processing request
@@ -811,9 +810,9 @@ public abstract class ResourceSpreader {
 
 	/**
 	 * If it is unknown whether we are a provider or a consumer (this is usually the
-	 * case in the generic resource spreader class or anyone outsed the actual
+	 * case in the generic resource spreader class or anyone outside the actual
 	 * provider/consumer implementations) then it is useful to figure out the
-	 * counter part who also participates in the same resource consumption
+	 * counterpart who also participates in the same resource consumption
 	 * processing operation.
 	 * 
 	 * @param con The consumption object for which we would like to know the other
@@ -912,7 +911,7 @@ public abstract class ResourceSpreader {
 		// while it is subscribed!");
 		// }
 		this.perTickProcessingPower = perTickProcessingPower;
-		this.negligableProcessing = this.perTickProcessingPower / 1000000000;
+		this.negligibleProcessing = this.perTickProcessingPower / 1000000000;
 	}
 
 	/**
@@ -978,7 +977,7 @@ public abstract class ResourceSpreader {
 	 */
 	@Override
 	public String toString() {
-		return "RS(processing: " + toProcess.toString() + " in power state: "
+		return "RS(processing: " + toProcess + " in power state: "
 				+ (currentPowerBehavior == null ? "-" : currentPowerBehavior.toString()) + ")";
 	}
 
@@ -988,7 +987,7 @@ public abstract class ResourceSpreader {
 	 */
 	static int hashCounter = 0;
 	/**
-	 * The hashcode of the actual resource spreader to be used in java's built in
+	 * The hashcode of the actual resource spreader to be used in java's built-in
 	 * hashCode function
 	 */
 	private final int myHashCode = getHashandIncCounter();

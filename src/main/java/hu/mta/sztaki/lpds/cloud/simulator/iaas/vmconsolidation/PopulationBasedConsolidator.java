@@ -32,7 +32,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.Infrastruct
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.PreserveAllocations;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.RandomVMassigner;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.FirstFitBFD;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.InfrequentImproveApplicator;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.NonImprover;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.SimpleConsImprover;
 import it.unimi.dsi.util.XoShiRo256PlusRandom;
@@ -67,12 +66,7 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 	/** True if at least one solution has improved during the current iteration */
 	protected boolean improved;
 
-	public static final FitCompare baseComp = new FitCompare() {
-		@Override
-		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
-			return a.isBetterThan(b);
-		}
-	};
+	public static final FitCompare baseComp = InfrastructureModel::isBetterThan;
 
 	protected interface FitCompare {
 		boolean isBetterThan(InfrastructureModel a, InfrastructureModel b);

@@ -60,14 +60,14 @@ public class AbcConsolidator extends IM_PB_Consolidator {
 		for (int i = 0; i < population.length; i++) {
 			final InfrastructureModel s = population[i];
 			final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]) + 1;
-			// Don't test against the same item..
+			// Don't test against the same item.
 			probTestIndexes[0] = i;
 			for (int j = 1; j < maxj; j++) {
 				int popidx;
 				int k;
 				do {
 					popidx = random.nextInt(population.length);
-					// Don't test against something we arleady tested with before..
+					// Don't test against something we already tested with before.
 					for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
 						;
 				} while (k != j);

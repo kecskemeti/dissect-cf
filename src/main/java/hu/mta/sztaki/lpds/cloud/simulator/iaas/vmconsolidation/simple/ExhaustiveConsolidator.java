@@ -77,7 +77,7 @@ public class ExhaustiveConsolidator extends ModelBasedConsolidator {
 				final double totcaps = aPM.getTotalResources().getTotalProcessingPower();
 				// There is no point of checking completely empty machines that have the same
 				// spec we have checked before as this is just a useless permutation. With the
-				// typical completely homogeneous infras, we will only have a single item here..
+				// typical completely homogeneous infras, we will only have a single item here.
 				for (int i = 0; i < alreadyCheckedLen; i++) {
 					// Not so efficient, but likely not contain too many elements anyways
 					if (totcaps == alreadyCheckedCompletelyFreeCapacityPMs[i]) {

@@ -55,7 +55,7 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 	 * field in the resource consumption that is related to providers.
 	 * 
 	 * The limit set here is expected to reflect the processing this provider
-	 * could offer in the particular time instance with regards to the
+	 * could offer in the particular time instance in regard to the
 	 * particular resource consumption.
 	 */
 

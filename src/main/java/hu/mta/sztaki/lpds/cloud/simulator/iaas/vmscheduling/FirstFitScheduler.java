@@ -105,7 +105,7 @@ public class FirstFitScheduler extends Scheduler {
 	/**
 	 * The actual first fit scheduling implementation. This implementation
 	 * supports requests with multiple VMs. It assumes that users want to deploy
-	 * all VMs or nothing so it waits until all VMs could be deployed at once.
+	 * all VMs or nothing, so it waits until all VMs could be deployed at once.
 	 */
 	@Override
 	protected ConstantConstraints scheduleQueued() {
@@ -157,6 +157,7 @@ public class FirstFitScheduler extends Scheduler {
 									}
 								}
 							} catch (VMManagementException e) {
+								//ignore
 							}
 						}
 					} while (currIterator.hasNext());

@@ -55,7 +55,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 						// Cancels circular migrations
 						cancelMigration = true;
 					} else {
-						// Deeper circules should be efficiently detected
+						// Deeper circles should be efficiently detected
 //						if (!this.addPredecessor(action)) {
 //							cancelMigration = true;
 //						}
@@ -96,9 +96,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 					SimpleConsolidator.migrationCount++;
 					simSourcePM.migrateVM(simVM, simTargetPM);
 					return;
-				} catch (VMManagementException e) {
-					e.printStackTrace();
-				} catch (NetworkException e) {
+				} catch (VMManagementException | NetworkException e) {
 					e.printStackTrace();
 				}
 			}
@@ -108,7 +106,7 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 
 	/**
 	 * The stateChanged-logic, if the VM changes its state to RUNNING after
-	 * migrating, then it do not has to be observed any longer.
+	 * migrating, then it does not have to be observed any longer.
 	 */
 	@Override
 	public void stateChanged(final VirtualMachine vm, final State oldState, final State newState) {

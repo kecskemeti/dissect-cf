@@ -26,9 +26,6 @@ public class ModelVM {
 	 * 
 	 * @param vm    The real Virtual Machine in the Simulator.
 	 * @param pm    The hosting PM.
-	 * @param cores The cores of the PM.
-	 * @param pCP   The Power of one core.
-	 * @param mem   The memory of this PM.
 	 * @param id    The ID of the original VM.
 	 */
 	public ModelVM(final VirtualMachine vm, final ModelPM pm, final int id) {

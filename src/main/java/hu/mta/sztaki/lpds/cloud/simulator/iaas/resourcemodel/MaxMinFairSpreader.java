@@ -77,9 +77,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	 * allows the max-min fairness algorithm to gradually increase the processing
 	 * limits for each resource consumption that could play a role in bottleneck
 	 * situations.
-	 * 
-	 * @return <i>true</i> if there were some resource consumptions to be processed
-	 *         by this spreader.
+	 *
 	 */
 	private void initializeFreqUpdate() {
 		unassignedNum = upLen = underProcessing.size();
@@ -101,7 +99,7 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	 * amount of processing possible by its provider/consumer.
 	 */
 	private void assignProcessingPower() {
-		if (currentUnProcessed > negligableProcessing && unassignedNum > 0) {
+		if (currentUnProcessed > negligibleProcessing && unassignedNum > 0) {
 			int currlen = unassignedNum;
 			for (int i = 0; i < upLen; i++) {
 				ResourceConsumption con = underProcessing.get(i);

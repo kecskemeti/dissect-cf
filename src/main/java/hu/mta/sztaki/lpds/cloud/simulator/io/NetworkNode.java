@@ -110,7 +110,7 @@ public class NetworkNode {
 	 *         Moores University, (c) 2017"
 	 * 
 	 */
-	public static enum State {
+	public enum State {
 		/**
 		 * The machine is completely switched off, minimal consumption is recorded.
 		 */
@@ -120,7 +120,7 @@ public class NetworkNode {
 		 * energy.
 		 */
 		RUNNING
-	};
+	}
 
 	State currState;
 	/**

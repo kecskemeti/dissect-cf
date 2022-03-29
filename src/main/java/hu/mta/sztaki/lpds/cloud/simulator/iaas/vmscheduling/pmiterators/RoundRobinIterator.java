@@ -29,7 +29,7 @@ import java.util.List;
 
 /**
  * This iterator alters the restart operator so it no longer resets the pointer
- * of the PM iterator but instead it marks the last PM encountered during the
+ * of the PM iterator, but instead it marks the last PM encountered during the
  * previous iteration. This ensures that the first next operation of the new
  * iteration cycle will continue just as it would be the next operation of the
  * last iteration cycle.
@@ -50,7 +50,7 @@ public class RoundRobinIterator extends PMIterator {
 	int stopIndex = -1;
 
 	/**
-	 * The constructor of the round robin iterator just passes the pm list to
+	 * The constructor of the round-robin iterator just passes the pm list to
 	 * its superclass.
 	 * 
 	 * @param pmList
@@ -65,7 +65,7 @@ public class RoundRobinIterator extends PMIterator {
 	@Override
 	public void restart(boolean fromMarked) {
 		stopIndex = index + maxIndex;
-	};
+	}
 
 	/**
 	 * Other than doing regular PM iterator reset, it also reinstantiates the

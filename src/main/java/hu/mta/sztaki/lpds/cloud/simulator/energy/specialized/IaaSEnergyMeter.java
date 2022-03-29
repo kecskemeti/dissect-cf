@@ -72,7 +72,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.
 	 * physical machines.
 	 * 
 	 * @param machines
-	 *            the list of machines from which the meter set must be crearted
+	 *            the list of machines from which the meter set must be created
 	 * @return the list of meters
 	 */
 	private static List<EnergyMeter> subMeterCreator(List<PhysicalMachine> machines) {
@@ -116,7 +116,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.
 	}
 
 	/**
-	 * Allows to determine what is the
+	 * Allows determining what is the
 	 * 
 	 * @return the observed IaaS system
 	 */

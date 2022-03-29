@@ -8,6 +8,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
  * @author Zoltan Mann
  */
 public interface IControllablePmScheduler {
-	public void switchOn(PhysicalMachine pm);
-	public void switchOff(PhysicalMachine pm);
+	void switchOn(PhysicalMachine pm);
+	void switchOff(PhysicalMachine pm);
 }

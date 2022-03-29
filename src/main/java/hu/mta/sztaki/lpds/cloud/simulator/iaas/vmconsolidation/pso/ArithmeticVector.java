@@ -58,7 +58,6 @@ public final class ArithmeticVector {
 	 * Method to multiply every value of this class with a constant.
 	 * 
 	 * @param scale The double Value to multiply with.
-	 * @return The solution of this operation as a new ArithmeticVector.
 	 */
 	public void scale(final double scale) {
 		for (int i = 0; i < data.length; i++) {

@@ -17,12 +17,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 public class UPAwareSimpleConsImprover extends SimpleConsImprover {
 	public static final UPAwareSimpleConsImprover singleton = new UPAwareSimpleConsImprover();
 
-	final private static Comparator<ModelPM> mpmFreeComp = new Comparator<ModelPM>() {
-		@Override
-		public int compare(final ModelPM pm1, final ModelPM pm2) {
-			return -pm1.free.compareTo(pm2.free);
-		}
-	};
+	final private static Comparator<ModelPM> mpmFreeComp = (pm1, pm2) -> -pm1.free.compareTo(pm2.free);
 
 	public UPAwareSimpleConsImprover() {
 		super();

@@ -112,33 +112,31 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * the total capacity of all machines in this iaas service, for use only
 	 * internally in the IaaS service class
 	 */
-	private AlterableResourceConstraints totalCapacity = AlterableResourceConstraints.getNoResources();
+	private final AlterableResourceConstraints totalCapacity = AlterableResourceConstraints.getNoResources();
 	/**
 	 * the total capacity to be reported for external users. This field propagates
 	 * the totalCapacity field. Keep in mind that the capacity reported by this
 	 * field could change without notification.
 	 */
-	private ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(totalCapacity);
+	private final ResourceConstraints publicTCap = new UnalterableConstraintsPropagator(totalCapacity);
 	/**
 	 * the capacity of the machines that are actually running in the system - this
 	 * is for internal use only again
 	 */
-	private AlterableResourceConstraints runningCapacity = AlterableResourceConstraints.getNoResources();
+	private final AlterableResourceConstraints runningCapacity = AlterableResourceConstraints.getNoResources();
 	/**
 	 * The capacity of the running machines to be reported externally. This is
 	 * implemented with a propagator thus changes in runningcapacity will be
 	 * immediately reflected here as well without notification.
 	 */
-	private ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(runningCapacity);
+	private final ResourceConstraints publicRCap = new UnalterableConstraintsPropagator(runningCapacity);
 
 	/**
 	 * event handler for capacity changes in terms of added/removed physical
 	 * machines
 	 */
 	private final StateDependentEventHandler<CapacityChangeEvent<PhysicalMachine>, List<PhysicalMachine>> capacityListenerManager = new StateDependentEventHandler<>(
-			(CapacityChangeEvent<PhysicalMachine> onObject, List<PhysicalMachine> pmsetchange) -> {
-				onObject.capacityChanged(totalCapacity, pmsetchange);
-			});
+			(CapacityChangeEvent<PhysicalMachine> onObject, List<PhysicalMachine> pmsetchange) -> onObject.capacityChanged(totalCapacity, pmsetchange));
 
 	/**
 	 * The list of repositories under direct control of this IaaS service - this is
@@ -193,7 +191,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 
 	/**
 	 * Determines if the VM is hosted locally in one of the physical machines of
-	 * this IaaSServie
+	 * this IaaSService
 	 * 
 	 * @param vm the VM to be checked
 	 * @return the PM that hosts the VM
@@ -215,7 +213,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public void reallocateResources(VirtualMachine vm, ResourceConstraints newresources)
-			throws NoSuchVMException, VMManagementException {
+			throws VMManagementException {
 		checkVMHost(vm).reallocateResources(vm, newresources);
 	}
 
@@ -270,7 +268,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	public VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc, Repository vaSource, int count,
 			HashMap<String, Object> schedulingConstraints) throws VMManager.VMManagementException, NetworkException {
 		if (machines.isEmpty()) {
-			throw new VMManagementException("There are no phyisical machines that can run VMs!");
+			throw new VMManagementException("There are no physical machines that can run VMs!");
 		}
 		VirtualMachine[] vms = new VirtualMachine[count];
 		for (int i = 0; i < count; i++) {
@@ -287,7 +285,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public void terminateVM(final VirtualMachine vm, final boolean killTasks)
-			throws NoSuchVMException, VMManagementException {
+			throws VMManagementException {
 		if (VirtualMachine.State.DESTROYED.equals(vm.getState())) {
 			// The VM is still under scheduling, the queue needs to be cleared
 			if (!sched.dropVMrequest(vm)) {
@@ -373,7 +371,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * in the system. If the deregistered host contains VMs that cannot be migrated,
 	 * or there is nowhere to migrate the VMs then the function throws an exception.
 	 * 
-	 * Currently there is no migration implemented!
+	 * Currently, there is no migration implemented!
 	 * 
 	 * @param pm the physical machine to be dropped from the control of the system
 	 */
@@ -411,9 +409,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 											if (newState.equals(PhysicalMachine.State.RUNNING)) {
 												pmInt.switchoff(rcopy);
 											}
-										} catch (VMManagementException e) {
-											e.printStackTrace();
-										} catch (NetworkNode.NetworkException e) {
+										} catch (VMManagementException | NetworkException e) {
 											e.printStackTrace();
 										}
 									});
@@ -456,11 +452,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 * objects that cannot be transferred, or there is nowhere to transfer a few
 	 * storage objects then the function throws an exception.
 	 * 
-	 * Currently there is no transfer implemented!
+	 * Currently, there is no transfer implemented!
 	 * 
 	 * @param r the repository to be dropped from the control of the system
 	 */
-	public void deregisterRepository(final Repository r) throws IaaSHandlingException {
+	public void deregisterRepository(final Repository r) {
 		ArrayHandler.removeAndReplaceWithLast(internalRepositories, r);
 	}
 
@@ -528,13 +524,11 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-		switch (newState) {
-		case RUNNING:
+		if (newState == State.RUNNING) {
 			internalRunningMachines.add(pm);
 			runningCapacity.singleAdd(pm.getCapacities());
-			return;
-		default:
-			if (oldState.equals(PhysicalMachine.State.RUNNING)) {
+		} else {
+			if (oldState.equals(State.RUNNING)) {
 				internalRunningMachines.remove(pm);
 				runningCapacity.subtract(pm.getCapacities());
 			}

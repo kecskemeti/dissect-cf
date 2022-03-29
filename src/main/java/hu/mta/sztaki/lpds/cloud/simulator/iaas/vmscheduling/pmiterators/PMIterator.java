@@ -37,7 +37,7 @@ import java.util.List;
  * The iterator also allows to repeatedly use the same list for multiple times.
  * This is accomplished by the reset function which sets the iterator to its
  * starting position. The implementation of all iterators assume that after the
- * reset function is called there will be no change in the over seen PM list -
+ * reset function is called there will be no change in the overseen PM list -
  * e.g., while calling the next function there are no cases when the PM list
  * gets new PMs.
  * 
@@ -62,7 +62,7 @@ public class PMIterator implements Iterator<PhysicalMachine> {
 	protected int marked = 0;
 	/**
 	 * The PM list to be operated on. This list is not altered by the iterator.
-	 * It is assumed to not to change while a single iteration is in progress.
+	 * It is assumed to not change while a single iteration is in progress.
 	 */
 	protected List<PhysicalMachine> pmList;
 

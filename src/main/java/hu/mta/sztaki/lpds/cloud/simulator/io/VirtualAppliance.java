@@ -40,7 +40,7 @@ public class VirtualAppliance extends StorageObject {
 	 * 
 	 * Unit: bytes/tick
 	 * 
-	 * Ratinale: if the VM is backed by a shared storage, then all its disk
+	 * Rationale: if the VM is backed by a shared storage, then all its disk
 	 * operations (while doing compute intensive tasks) are expected to generate
 	 * network activities as well.
 	 */
@@ -100,7 +100,7 @@ public class VirtualAppliance extends StorageObject {
 	 * @param reqDisk
 	 *            the size of the disk image to host the virtual appliance (this
 	 *            might not be the actual size, but could be used for generating
-	 *            varying sizes according to the param <i>vary</i>. Unit: bytes.
+	 *            varying sizes according to the param <i>vary</i>). Unit: bytes.
 	 */
 	public VirtualAppliance(final String id, final double startupProcess, final long nl, boolean vary,
 			final long reqDisk) {

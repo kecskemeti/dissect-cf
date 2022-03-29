@@ -27,7 +27,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
 /**
  * This class defines the basic properties (cpu core count, per core processing
- * power, and memory size) and operations on resoruce constraints. These
+ * power, and memory size) and operations on resource constraints. These
  * constraints are expected to be used to express resource capacities of
  * physical/virtual machines or complete infrastructures, as well as requests
  * for resource allocations/virtual machines.
@@ -56,12 +56,11 @@ public abstract class ResourceConstraints implements Comparable<ResourceConstrai
 	 */
 	@Override
 	public int compareTo(ResourceConstraints o) {
-		return ((Double) (this.getTotalProcessingPower() * this.getRequiredMemory()))
-				.compareTo(o.getTotalProcessingPower() * o.getRequiredMemory());
+		return Double.compare((this.getTotalProcessingPower() * this.getRequiredMemory()), o.getTotalProcessingPower() * o.getRequiredMemory());
 	}
 
 	/**
-	 * Allows to query how many CPUs this constraints object represent
+	 * Allows querying how many CPUs this constraints object represent
 	 * 
 	 * @return the amount of CPU cores represented by the object
 	 */
@@ -90,7 +89,7 @@ public abstract class ResourceConstraints implements Comparable<ResourceConstrai
 	public abstract boolean isRequiredProcessingIsMinimum();
 
 	/**
-	 * Allows to query how much memory this constraints object represent
+	 * Allows querying how much memory this constraints object represent
 	 * 
 	 * @return the amount in bytes
 	 */

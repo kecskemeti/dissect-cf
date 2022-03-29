@@ -26,9 +26,8 @@ package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.function.Supplier;
 
 /**
  * Represents a particular power state of a resource spreader
@@ -50,7 +49,19 @@ public class PowerState {
 		 * backlink to the power state with useful data to determine the consumption
 		 * model
 		 */
-		protected final PowerState myPowerState = null;
+		private PowerState myPowerState;
+
+		/**
+		 * This allows power state to inject itself to consumption models without
+		 * @param ps
+		 */
+		private void setMyPowerState(PowerState ps) {
+			myPowerState=ps;
+		}
+
+		protected PowerState getMyPowerState() {
+			return myPowerState;
+		}
 
 		/**
 		 * calculates the instantaneous power draw of a resource spreader under a
@@ -99,7 +110,7 @@ public class PowerState {
 	private long pastNotification = -1;
 	/**
 	 * The current consumption model (which transforms the load to wattage based on
-	 * the power state's charactheristics (e.g., mincons/range)
+	 * the power state's characteristics (e.g., mincons/range)
 	 */
 	private final ConsumptionModel model;
 	/**
@@ -118,33 +129,17 @@ public class PowerState {
 	 *                         still reported by this power state object. (e.g., the
 	 *                         max-idle power if we define a Physical Machine) - in
 	 *                         watts
-	 * @param modelclass       Defines the consumption model which transforms a load
+	 * @param modelSupplier    Defines the consumption model which transforms a load
 	 *                         value and is capable of outputting arbitrary
 	 *                         instantaneous power draw estimates between
 	 *                         minConsumption and minConsumption+consumptionRange
-	 * @throws InstantiationException    if the modelclass is not existent
-	 * @throws IllegalAccessException    if the modelclass is not accessible
-	 * @throws NoSuchFieldException      if the modelclass does not have a
-	 *                                   myPowerState field (this is most likely
-	 *                                   impossible as all subclasses will have that
-	 *                                   field because of the baseclass)
-	 * @throws SecurityException         if visibility changes are not possible to
-	 *                                   do on the myPowerState field
-	 * @throws NoSuchMethodException
-	 * @throws InvocationTargetException
-	 * @throws IllegalArgumentException
 	 */
 	public PowerState(final double minConsumption, final double consumptionRange,
-			Class<? extends ConsumptionModel> modelclass)
-			throws InstantiationException, IllegalAccessException, NoSuchFieldException, SecurityException,
-			IllegalArgumentException, InvocationTargetException, NoSuchMethodException {
+			Supplier<? extends ConsumptionModel> modelSupplier) {
 		this.minConsumption = minConsumption;
 		this.consumptionRange = consumptionRange;
-		model = modelclass.getDeclaredConstructor(null).newInstance(null);
-		Field f = ConsumptionModel.class.getDeclaredField("myPowerState");
-		f.setAccessible(true);
-		f.set(model, this);
-		f.setAccessible(false);
+		model = modelSupplier.get();
+		model.setMyPowerState(this);
 	}
 
 	/**
@@ -185,7 +180,7 @@ public class PowerState {
 	 * used to send out notifications before any of the power state characteristics
 	 * change
 	 */
-	private void notifyCharacteristisListeners() {
+	private void notifyCharacteristicsListeners() {
 		final long currentTime = Timed.getFireCount();
 		if (currentTime != pastNotification) {
 			for (PowerCharacteristicsChange l : listeners) {
@@ -203,7 +198,7 @@ public class PowerState {
 	 * @param minConsumption the new consumption value to be set in W
 	 */
 	public void setMinConsumption(final double minConsumption) {
-		notifyCharacteristisListeners();
+		notifyCharacteristicsListeners();
 		this.minConsumption = minConsumption;
 	}
 
@@ -215,7 +210,7 @@ public class PowerState {
 	 * @param cr the new consumption range value to be set in W
 	 */
 	public void setConsumptionRange(final double cr) {
-		notifyCharacteristisListeners();
+		notifyCharacteristicsListeners();
 		this.consumptionRange = cr;
 	}
 
@@ -230,7 +225,7 @@ public class PowerState {
 	}
 
 	/**
-	 * if some pary gets uninterested in power state changes this is the way to
+	 * if some party gets uninterested in power state changes this is the way to
 	 * cancel event notifications about them
 	 * 
 	 * @param listener the object which no longer needs notification event

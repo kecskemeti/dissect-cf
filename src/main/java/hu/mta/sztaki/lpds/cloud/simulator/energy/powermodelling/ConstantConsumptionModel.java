@@ -34,6 +34,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
 public class ConstantConsumptionModel extends PowerState.ConsumptionModel {
 	@Override
 	protected double evaluateConsumption(final double load) {
-		return myPowerState.getMinConsumption();
+		return getMyPowerState().getMinConsumption();
 	}
 }

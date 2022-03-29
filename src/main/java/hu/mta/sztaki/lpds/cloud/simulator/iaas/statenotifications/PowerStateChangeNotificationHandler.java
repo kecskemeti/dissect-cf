@@ -52,7 +52,7 @@ public class PowerStateChangeNotificationHandler
 	private static final PowerStateChangeNotificationHandler handlerSingleton = new PowerStateChangeNotificationHandler();
 
 	/**
-	 * disables the instantiation of the handler so we really just have a single
+	 * disables the instantiation of the handler, so we really just have a single
 	 * instance for all handling operations
 	 */
 
@@ -63,7 +63,7 @@ public class PowerStateChangeNotificationHandler
 	 * gets the event handler that will manage the notification subscriptions for
 	 * the particular resource spreader object that asked for the handler.
 	 * 
-	 * @return the eventh handler
+	 * @return the event handler
 	 */
 	public static StateDependentEventHandler<PowerBehaviorChangeListener, Pair<ResourceSpreader, PowerState>> getHandlerInstance() {
 		return new StateDependentEventHandler<>(handlerSingleton);

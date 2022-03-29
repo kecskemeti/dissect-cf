@@ -26,7 +26,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -89,7 +88,7 @@ public abstract class Scheduler {
 	/**
 	 * the amount of resources needed for fulfilling all VM requests in the queue
 	 */
-	private AlterableResourceConstraints totalQueued = AlterableResourceConstraints.getNoResources();
+	private final AlterableResourceConstraints totalQueued = AlterableResourceConstraints.getNoResources();
 	/**
 	 * the public version of totalQueued that mirrors its contents but does not
 	 * allow changes on it
@@ -100,9 +99,9 @@ public abstract class Scheduler {
 	 * parent IaaS. The list is kept in the order of the PM's size to allow rapid
 	 * decisions on the possible fitting of VM requests.
 	 */
-	private ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<>();
+	private final ArrayList<PhysicalMachine> orderedPMcache = new ArrayList<>();
 	/**
-	 * current length of the pm cache so we don't need to query its size all the
+	 * current length of the pm cache, so we don't need to query its size all the
 	 * time
 	 */
 	private int pmCacheLen;
@@ -122,7 +121,7 @@ public abstract class Scheduler {
 	 * In this field the simulator maintains those recently freed up resources that
 	 * could be allowing a new scheduling run
 	 */
-	private AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints.getNoResources();
+	private final AlterableResourceConstraints freeResourcesSinceLastSchedule = AlterableResourceConstraints.getNoResources();
 
 	/**
 	 * This is the action that takes place when one of the PMs at the IaaS changes
@@ -130,7 +129,7 @@ public abstract class Scheduler {
 	 * scheduler is again given a chance to allocate some VMs.
 	 * 
 	 * If there are some queued requests even after doing the scheduling then the
-	 * queuelisteners are notified so they can improve the IaaS's infrastructure
+	 * queuelisteners are notified, so they can improve the IaaS's infrastructure
 	 * setup.
 	 */
 	protected PhysicalMachine.StateChangeListener pmstateChanged = (PhysicalMachine pm, State oldState,
@@ -172,7 +171,7 @@ public abstract class Scheduler {
 
 	/**
 	 * The main constructor of all schedulers. This constructor ensures that the
-	 * orderedPMcache is maintained and it also connects the scheduler's free
+	 * orderedPMcache is maintained, and it also connects the scheduler's free
 	 * capacity and pm state listeners.
 	 * 
 	 * @param parent the IaaS service for which this scheduler is expected to act as
@@ -187,7 +186,7 @@ public abstract class Scheduler {
 					if (newRegistration) {
 						// Increased pm count
 						orderedPMcache.addAll(alteredPMs);
-						Collections.sort(orderedPMcache, PMComparators.highestToLowestTotalCapacity);
+						orderedPMcache.sort(PMComparators.highestToLowestTotalCapacity);
 						pmCacheLen += pmNum;
 						for (int i = 0; i < pmNum; i++) {
 							final PhysicalMachine pm = alteredPMs.get(i);

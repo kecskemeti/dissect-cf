@@ -25,19 +25,9 @@ public class PsoConsolidator extends PopulationBasedConsolidator<Particle> {
 	/** learning factor two */
 	private double c2;
 
-	public static final FitCompare bestComp = new FitCompare() {
-		@Override
-		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
-			return ((Particle) a).isBetterBest((Particle) b);
-		}
-	};
+	public static final FitCompare bestComp = (a, b) -> ((Particle) a).isBetterBest((Particle) b);
 
-	public static final FitCompare worstCurrentComp = new FitCompare() {
-		@Override
-		public boolean isBetterThan(final InfrastructureModel a, final InfrastructureModel b) {
-			return b.isBetterThan(a);
-		}
-	};
+	public static final FitCompare worstCurrentComp = (a, b) -> b.isBetterThan(a);
 
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model
@@ -107,7 +97,7 @@ public class PsoConsolidator extends PopulationBasedConsolidator<Particle> {
 		// The best particle is updated last as all others were directed towards this
 		// one in the current iteration
 		updateSingleParticle(bestParticleIndex, bestParticleIndex);
-		// Bit of non-basic PSO tweaking
+		// A bit of non-basic PSO tweaking
 		// the worst particle is eliminated and replaced with an average particle
 		population[findBestSolution(worstCurrentComp)]=new Particle(population);
 	}

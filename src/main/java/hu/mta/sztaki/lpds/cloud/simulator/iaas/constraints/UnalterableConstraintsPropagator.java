@@ -35,7 +35,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
  * (unlike constant constraints).
  * 
  * 
- * This class is intentionally non mutable, allowing those users (e.g. the class
+ * This class is intentionally non-mutable, allowing those users (e.g. the class
  * of IaaSService or Scheduler) who would want to share their current capacities
  * not to create a new instance for every new query.
  * 
@@ -45,7 +45,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
  */
 public class UnalterableConstraintsPropagator extends ResourceConstraints {
 	/**
-	 * The other resource constraints object to encapsulate. Typically this will
+	 * The other resource constraints object to encapsulate. Typically, this will
 	 * be an alterableresourceconstraints object.
 	 */
 	private final ResourceConstraints whatToPropagate;

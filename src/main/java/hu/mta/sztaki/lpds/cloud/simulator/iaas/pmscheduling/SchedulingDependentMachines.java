@@ -102,8 +102,8 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 				observed.switchoff(null);
 				// These exceptions below are only relevant if migration
 				// is requested now they will never come.
-			} catch (VMManagementException e) {
-			} catch (NetworkException e) {
+			} catch (VMManagementException | NetworkException e) {
+				// ignore
 			}
 		}
 
@@ -149,7 +149,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 				} else {
 					ResourceConstraints runningCapacities = parent.getRunningCapacities();
 					if (!parent.runningMachines.contains(observed)) {
-						// parent have not recognize this PM's startup yet
+						// parent have not recognized this PM's startup yet
 						runningCapacities = new AlterableResourceConstraints(runningCapacities);
 						((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
 					}
@@ -166,7 +166,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 	/**
 	 * this map lists all the currently controlled PMs and their controllers.
 	 */
-	private HashMap<PhysicalMachine, CapacityChangeManager> capacityManagers = new HashMap<>();
+	private final HashMap<PhysicalMachine, CapacityChangeManager> capacityManagers = new HashMap<>();
 	/**
 	 * ensures that we only have a single machine switching on at a time and shows
 	 * what is the actual machine that is switching on.
@@ -227,7 +227,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 		return () -> {
 			if (currentlyStartingPM == null || PhysicalMachine.State.RUNNING.equals(currentlyStartingPM.getState())) {
 				// If there are no machines under their startup procedure,
-				// or the currently started up machine is already running
+				// or the currently started up machine is already running,
 				// and we still receive the queueingstarted event
 				turnOnAMachine();
 			}

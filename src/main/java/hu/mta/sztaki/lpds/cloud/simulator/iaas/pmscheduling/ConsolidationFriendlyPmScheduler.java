@@ -1,8 +1,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Vector;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -10,14 +8,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.CapacityChangeEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler.QueueingEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
  * A PM scheduler that (i) can be controlled by a VM consolidator for switching
- * on/off PMs and (ii) reacts to requests from a VM scheduler for switching on
+ * on/off PMs and (ii) reacts to request from a VM scheduler for switching on
  * PMs.
  * 
  * @author Zoltan Mann
@@ -60,10 +57,7 @@ public class ConsolidationFriendlyPmScheduler extends PhysicalMachineController 
 	 */
 	@Override
 	protected CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
-		return new CapacityChangeEvent<PhysicalMachine>() {
-			@Override
-			public void capacityChanged(final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) {
-			}
+		return (newCapacity, alteredPMs) -> {
 		};
 	}
 

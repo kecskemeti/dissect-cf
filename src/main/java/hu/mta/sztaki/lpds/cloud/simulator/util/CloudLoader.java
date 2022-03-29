@@ -25,7 +25,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.util;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,7 +64,7 @@ public class CloudLoader {
 	 * the XML cloud configuration.
 	 * 
 	 * @param fileName the name of the xml file containing the configuration of the
-	 *                 cloud (a samlple xml can be found in
+	 *                 cloud (a sample xml can be found in
 	 *                 at.ac.uibk.dps.cloud.simulator.test.simple.UtilTest)
 	 * @return the instantiated IaaSservice that complies with the configuration
 	 *         specified in the XML file received as the parameter
@@ -158,13 +157,19 @@ public class CloudLoader {
 						try {
 							double idleCon = Double.parseDouble(attributes.getValue("idle")) / currentDivider;
 							double maxCon = Double.parseDouble(attributes.getValue("max")) / currentDivider;
+							Class<? extends PowerState.ConsumptionModel> consumptionmodel= (Class<? extends PowerState.ConsumptionModel>) Class
+									.forName(attributes.getValue("model"));
 							stateSet.put(currentStateString,
-									new PowerState(idleCon, maxCon - idleCon,
-											(Class<? extends PowerState.ConsumptionModel>) Class
-													.forName(attributes.getValue("model"))));
+									new PowerState(idleCon, maxCon - idleCon, () -> {
+										try {
+											return consumptionmodel.getDeclaredConstructor(null).newInstance(null);
+										} catch (Exception e) {
+											throw new RuntimeException(e);
+										}
+									}));
 						} catch (Exception e) {
 							throw new SAXException(
-									"Cannot instantiate PowerStatee because of a consumption model type designation",
+									"Cannot instantiate PowerState because of a consumption model type designation",
 									e);
 						}
 					}
@@ -172,7 +177,7 @@ public class CloudLoader {
 			}
 
 			@Override
-			public void endElement(String uri, String localName, String qName) throws SAXException {
+			public void endElement(String uri, String localName, String qName) {
 				if (qName.equals("cloud")) {
 					incloud = false;
 				}
@@ -203,7 +208,7 @@ public class CloudLoader {
 				}
 			}
 		});
-		BufferedReader br = new BufferedReader(new FileReader(new File(fileName)));
+		BufferedReader br = new BufferedReader(new FileReader(fileName));
 		xmlReader.parse(new InputSource(br));
 		br.close();
 		c = Calendar.getInstance();

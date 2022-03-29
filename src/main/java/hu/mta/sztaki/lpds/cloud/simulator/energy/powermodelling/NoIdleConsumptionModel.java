@@ -33,7 +33,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling;
  */
 public class NoIdleConsumptionModel extends LinearConsumptionModel {
 	@Override
-	protected double evaluateConsumption(double load) {
+	protected double evaluateConsumption(final double load) {
 		return load == 0 ? 0 : super.evaluateConsumption(load);
 	}
 }

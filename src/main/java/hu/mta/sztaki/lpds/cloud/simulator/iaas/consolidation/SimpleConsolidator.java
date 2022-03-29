@@ -86,12 +86,12 @@ public class SimpleConsolidator extends Consolidator {
 		int beginIndex = 0;
 		do {
 			didMove = false;
-			// Reorders the machine array so it has the heaviest loaded machines last
+			// Reorders the machine array, so it has the heaviest loaded machines last
 			Arrays.sort(pmList, beginIndex, lastItem + 1, PMComparators.highestToLowestFreeCapacity);
 			for (int i = beginIndex; i < lastItem; i++) {
 				// Tries to move VMs from the lightest loaded PMs
 				PhysicalMachine source = pmList[i];
-				VirtualMachine[] vmList = source.publicVms.toArray(new VirtualMachine[source.publicVms.size()]);
+				VirtualMachine[] vmList = source.publicVms.toArray(new VirtualMachine[0]);
 				int vmc = 0;
 				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
 					VirtualMachine vm = vmList[vmidx];

@@ -56,9 +56,6 @@ public abstract class DeferredEvent {
 	 * item (which is actually the list of events that should be delivered at the
 	 * particular time instance identified by the key of the map).
 	 */
-	/**
-	 * the aggregator that handles the event list stored in toSweep.
-	 */
 	private static final TLongObjectHashMap<AggregatedEventDispatcher> dispatchers = new TLongObjectHashMap<>();
 
 	/**
@@ -74,7 +71,7 @@ public abstract class DeferredEvent {
 	 *
 	 */
 	private static class AggregatedEventDispatcher extends Timed {
-		private ArrayList<DeferredEvent> simultaneouslyOccurringDEs = new ArrayList<>();
+		private final ArrayList<DeferredEvent> simultaneouslyOccurringDEs = new ArrayList<>();
 		private final long myEv;
 
 		private AggregatedEventDispatcher(long event) {
@@ -175,7 +172,7 @@ public abstract class DeferredEvent {
 		if (received)
 			return;
 		if (!cancelled) {
-			dispatchers.get(eventArrival).remove(this);;
+			dispatchers.get(eventArrival).remove(this);
 		}
 	}
 

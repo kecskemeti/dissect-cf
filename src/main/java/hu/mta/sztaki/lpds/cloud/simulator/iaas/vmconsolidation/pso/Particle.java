@@ -14,7 +14,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.No
  * @author Rene Ponto
  *
  *         The idea for particles is to have a list of double values where all
- *         hostPMs in order of their hosted VMs are. Therefore the id of the
+ *         hostPMs in order of their hosted VMs are. Therefore, the id of the
  *         specific PM is used. On the given list mathematical operations can be
  *         done, like addition and substraction. For that list an
  *         ArithmeticVector is used.
@@ -49,20 +49,12 @@ public class Particle extends InfrastructureModel {
 	 * Creates a new Particle and sets the bins list with the values out of the
 	 * model. For that the constructor of the superclass "Solution" is used.
 	 * 
-	 * @param bins   The currently existing pms.
-	 * @param number The id of this particle.
 	 */
 	public Particle(final InfrastructureModel base, final GenHelper vmAssignment,
 			final InfrastructureModel.Improver localsearch) {
 		super(base, vmAssignment, NonImprover.singleton);
 		final ModelPM[] srtPMs = bins.clone();
-		Arrays.sort(srtPMs, new Comparator<ModelPM>() {
-			@Override
-			public int compare(final ModelPM arg0, final ModelPM arg1) {
-				return Double.compare(arg0.basedetails.pm.freeCapacities.getTotalProcessingPower(),
-						arg1.basedetails.pm.freeCapacities.getTotalProcessingPower());
-			}
-		});
+		Arrays.sort(srtPMs, Comparator.comparingDouble(arg0 -> arg0.basedetails.pm.freeCapacities.getTotalProcessingPower()));
 		pmFromHashToLocalIdx = new int[srtPMs.length];
 		for (int i = 0; i < srtPMs.length; i++) {
 			pmFromHashToLocalIdx[srtPMs[i].hashCode()] = i;
@@ -73,13 +65,8 @@ public class Particle extends InfrastructureModel {
 		}
 
 		final ModelVM[] sorted = items.clone();
-		Arrays.sort(sorted, new Comparator<ModelVM>() {
-			@Override
-			public int compare(final ModelVM arg0, final ModelVM arg1) {
-				return -Double.compare(arg0.getResources().getTotalProcessingPower(),
-						arg1.getResources().getTotalProcessingPower());
-			}
-		});
+		Arrays.sort(sorted, (arg0, arg1) -> -Double.compare(arg0.getResources().getTotalProcessingPower(),
+				arg1.getResources().getTotalProcessingPower()));
 		vmFromHashToLocalIdx = new int[sorted.length];
 		for (int i = 0; i < sorted.length; i++) {
 			vmFromHashToLocalIdx[sorted[i].basedetails.id] = i;
@@ -115,7 +102,7 @@ public class Particle extends InfrastructureModel {
 	 */
 	public Particle(final Particle[] baseSwarm) {
 		super(baseSwarm[0], new GenHelper() {
-			double[] locBase = genLocBase();
+			final double[] locBase = genLocBase();
 
 			private double[] genLocBase() {
 				double[] returner = new double[baseSwarm[0].items.length];
@@ -164,7 +151,7 @@ public class Particle extends InfrastructureModel {
 	 * inside the location.
 	 */
 	private boolean updateLocationFromMapping() {
-		// Saves the previous location so we can determine where we came from to the
+		// Saves the previous location, so we can determine where we came from to the
 		// current location represented in mapping
 //		System.arraycopy(currentLocation.data, 0, currentVelocity.data, 0, currentLocation.data.length);
 		for (int i = 0; i < items.length; i++) {
@@ -201,7 +188,7 @@ public class Particle extends InfrastructureModel {
 			final ModelPM mappedPm = items[orI].gethostPM();
 
 			// now we have to check if both hosts are similar, then we can move on with the
-			// next. Otherwise we have to adjust the mappings
+			// next. Otherwise, we have to adjust the mappings
 			if (locPm.hashCode() != mappedPm.hashCode()) {
 				// pms are not the same
 				mappedPm.migrateVM(items[orI], locPm);

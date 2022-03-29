@@ -41,7 +41,7 @@ public class DirectEnergyMeter extends EnergyMeter
 	/**
 	 * the resource spreader that needs to be measured energywise
 	 */
-	private ResourceSpreader measuredResource;
+	private final ResourceSpreader measuredResource;
 	/**
 	 * the power state the particular measuredResource is in
 	 */
@@ -69,9 +69,9 @@ public class DirectEnergyMeter extends EnergyMeter
 	}
 
 	/**
-	 * offers a convenient human readable output for debugging energy meters and
+	 * offers a convenient human-readable output for debugging energy meters and
 	 * their readings where both the metered resource and its currently reported
-	 * total consumpiton is printed out
+	 * total consumption is printed out
 	 */
 	@Override
 	public String toString() {
@@ -124,7 +124,7 @@ public class DirectEnergyMeter extends EnergyMeter
 	/**
 	 * if the power state of the resource spreader changes then the meter is
 	 * readjusted for the new power state - this usually means the meter
-	 * collects all uncolledted resource consumption related information from
+	 * collects all uncollected resource consumption related information from
 	 * the spreader
 	 */
 	@Override

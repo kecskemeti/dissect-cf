@@ -72,7 +72,7 @@ public class RandomIterator extends PMIterator {
 			randomIndexes = new int[maxIndex];
 			for (int i = 0; i < maxIndex; i++) {
 				boolean regen;
-				int proposedIndex = -1;
+				int proposedIndex;
 				do {
 					regen = false;
 					proposedIndex = SeedSyncer.centralRnd.nextInt(maxIndex);

@@ -67,10 +67,10 @@ public class SmallestFirstScheduler extends FirstFitScheduler {
 	public static class SFQueue extends PriorityQueue<QueueingData> implements List<QueueingData> {
 		/**
 		 * A message to show if the scheduler/first fit scheduler implementation would
-		 * try to use previously unused List operations that were not implmeneted so
+		 * try to use previously unused List operations that were not implemented so
 		 * far.
 		 */
-		private static String UFCmessage = "Unexpected function call";
+		private static final String UFCmessage = "Unexpected function call";
 		private static final long serialVersionUID = 2693241597335321816L;
 
 		/**

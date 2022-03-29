@@ -108,7 +108,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *         of Innsbruck (c) 2013"
 	 * 
 	 */
-	public static enum State {
+	public enum State {
 		/**
 		 * The machine is completely switched off, minimal consumption is recorded.
 		 */
@@ -128,7 +128,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 * it still consumes energy.
 		 */
 		SWITCHINGOFF
-	};
+	}
 
 	/**
 	 * These are the PM states which are either leading to running or already
@@ -156,7 +156,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		/**
 		 * This function is called by the PM on subscribed objects when a PM's state
 		 * changes. To simplify the implementation of the receiver objects, this state
-		 * changed function actually propagates all state infromation (pre and post) as
+		 * changed function actually propagates all state information (pre and post) as
 		 * well as the physical machine's reference which just went through the state
 		 * change.
 		 * 
@@ -232,7 +232,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			allocated = alloc;
 			realAllocated = realAlloc;
 			int prLen = promisedResources.length;
-			int i = 0;
+			int i;
 			for (i = 0; i < prLen && promisedResources[i] != null; i++)
 				;
 			if (i == prLen) {
@@ -297,7 +297,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 		/**
 		 * To complete the allocation process the VM must be told to use a particular
-		 * allocation (e.g. in its migration or starup calls). The VM then automatically
+		 * allocation (e.g. in its migration or startup calls). The VM then automatically
 		 * tells this resource allocation object to finalize the allocation process by
 		 * calling this use function.
 		 * 
@@ -331,7 +331,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 
 		/**
 		 * If a VM no longer needs the resources then this function must be called. As a
-		 * result, the PM ensures that the relesed resources are again available to all
+		 * result, the PM ensures that the released resources are again available to all
 		 * interested parties.
 		 */
 		void release() {
@@ -393,7 +393,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * This class handles the delays and activites during the power state change
+	 * This class handles the delays and activities during the power state change
 	 * procedures (e.g., switching off/turning on)
 	 * 
 	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
@@ -403,7 +403,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	public class PowerStateDelayer extends ConsumptionEventAdapter {
 		/**
 		 * The state that the delayer must switch to after the power state change has
-		 * finished its activites.
+		 * finished its activities.
 		 */
 		private State newState;
 		/**
@@ -435,7 +435,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 		 * the power state can be achieved.
 		 * 
 		 * @param tasklist
-		 *            the tasks to execute in a serial order before the the specific
+		 *            the tasks to execute in a serial order before the specific
 		 *            power state can be set.
 		 * 
 		 *            IMPORTANT: For performance reasons, the list is handled from its
@@ -566,13 +566,13 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	/**
-	 * the complete resouce set of the pm
+	 * the complete resource set of the pm
 	 */
 	private final ConstantConstraints totalCapacities;
 	/**
 	 * the resource set that does not have a VM running on it
 	 * 
-	 * avaiableCapacities = freeCapacities + promisedCapacities
+	 * availableCapacities = freeCapacities + promisedCapacities
 	 */
 	private final AlterableResourceConstraints internalAvailableCaps;
 	/**
@@ -587,7 +587,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * the amount of resources currently allocated but that have no VM assigned to
 	 * them
 	 */
-	private AlterableResourceConstraints promisedCapacities = AlterableResourceConstraints.getNoResources();
+	private final AlterableResourceConstraints promisedCapacities = AlterableResourceConstraints.getNoResources();
 	/**
 	 * the amount of resources that are not running a VM or not allocated by some
 	 * resource allocation
@@ -653,18 +653,15 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	/**
 	 * the manager of the PM's state change notifications.
 	 */
-	private final StateDependentEventHandler<StateChangeListener, Pair<State, State>> stateListenerManager = new StateDependentEventHandler<PhysicalMachine.StateChangeListener, Pair<State, State>>(
-			new SingleNotificationHandler<StateChangeListener, Pair<State, State>>() {
-				@Override
-				public void sendNotification(final StateChangeListener onObject, final Pair<State, State> states) {
-					onObject.stateChanged(PhysicalMachine.this, states.getLeft(), states.getRight());
-				}
-			});
+	private final StateDependentEventHandler<StateChangeListener, Pair<State, State>> stateListenerManager=new StateDependentEventHandler<>(
+			(final StateChangeListener onObject, final Pair<State, State> states) ->
+				onObject.stateChanged(PhysicalMachine.this, states.getLeft(), states.getRight())
+			);
 
 	/**
 	 * the set of currently running virtual machines on this PM
 	 */
-	private final HashSet<VirtualMachine> vms = new HashSet<VirtualMachine>(); // current
+	private final HashSet<VirtualMachine> vms = new HashSet<>(); // current
 	/**
 	 * the publicly available, read only set of currently running virtual machines
 	 * on this PM
@@ -687,26 +684,12 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * this notification handler is used to send out events when some of the PM's
 	 * resources are getting available for others to use
 	 */
-	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> increasingFreeCapacityListenerManager = new StateDependentEventHandler<VMManager.CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>(
-			new SingleNotificationHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>() {
-				@Override
-				public void sendNotification(final CapacityChangeEvent<ResourceConstraints> onObject,
-						final List<ResourceConstraints> recentlyFreedUpResources) {
-					onObject.capacityChanged(freeCapacities, recentlyFreedUpResources);
-				}
-			});
+	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> increasingFreeCapacityListenerManager=new StateDependentEventHandler<>(this::sendCapacityUpdate);
 	/**
 	 * this notification handler is used to send out events when some of the PM's
 	 * resources are getting used
 	 */
-	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> decreasingFreeCapacityListenerManager = new StateDependentEventHandler<VMManager.CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>(
-			new SingleNotificationHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>>() {
-				@Override
-				public void sendNotification(final CapacityChangeEvent<ResourceConstraints> onObject,
-						final List<ResourceConstraints> recentlyUsedResources) {
-					onObject.capacityChanged(freeCapacities, recentlyUsedResources);
-				}
-			});
+	private final StateDependentEventHandler<CapacityChangeEvent<ResourceConstraints>, List<ResourceConstraints>> decreasingFreeCapacityListenerManager=new StateDependentEventHandler<>(this::sendCapacityUpdate);
 
 	/**
 	 * This consumer is added to the PM help simulate the pure (VM less) operations
@@ -727,7 +710,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * 
 	 * @param cores
 	 *            defines the number of CPU cores this machine has under control
-	 * @param perCorePocessing
+	 * @param perCoreProcessing
 	 *            defines the processing capabilities of a single CPU core in this
 	 *            machine (in instructions/tick)
 	 * @param memory
@@ -747,11 +730,11 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            machine state changes. This is the principal way to alter a PM's
 	 *            energy consumption behaviour.
 	 */
-	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk, int onD, int offD,
+	public PhysicalMachine(double cores, double perCoreProcessing, long memory, Repository disk, int onD, int offD,
 			Map<String, PowerState> cpuPowerTransitions) {
-		this(cores, perCorePocessing, memory, disk,
-				new double[] { onD * perCorePocessing * smallUtilization, perCorePocessing * smallUtilization },
-				new double[] { offD * perCorePocessing * smallUtilization, perCorePocessing * smallUtilization },
+		this(cores, perCoreProcessing, memory, disk,
+				new double[] { onD * perCoreProcessing * smallUtilization, perCoreProcessing * smallUtilization },
+				new double[] { offD * perCoreProcessing * smallUtilization, perCoreProcessing * smallUtilization },
 				cpuPowerTransitions);
 	}
 
@@ -780,7 +763,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * 
 	 * @param cores
 	 *            defines the number of CPU cores this machine has under control
-	 * @param perCorePocessing
+	 * @param perCoreProcessing
 	 *            defines the processing capabilities of a single CPU core in this
 	 *            machine (in instructions/tick)
 	 * @param memory
@@ -805,15 +788,15 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *            energy consumption behaviour.
 	 */
 
-	public PhysicalMachine(double cores, double perCorePocessing, long memory, Repository disk,
+	public PhysicalMachine(double cores, double perCoreProcessing, long memory, Repository disk,
 			double[] turnonOperations, double[] switchoffOperations, Map<String, PowerState> cpuPowerTransitions) {
-		super(cores * perCorePocessing);
+		super(cores * perCoreProcessing);
 		if (cpuPowerTransitions == null) {
 			throw new IllegalStateException("Cannot initialize physical machine without a complete power behavior set");
 		}
 
 		// Init resources:
-		totalCapacities = new ConstantConstraints(cores, perCorePocessing, memory);
+		totalCapacities = new ConstantConstraints(cores, perCoreProcessing, memory);
 		internalAvailableCaps = new AlterableResourceConstraints(totalCapacities);
 		availableCapacities = new UnalterableConstraintsPropagator(internalAvailableCaps);
 		internalReallyFreeCaps = new AlterableResourceConstraints(totalCapacities);
@@ -833,6 +816,16 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			throw new RuntimeException(e);
 		}
 		directConsumer = new MaxMinConsumer(getPerTickProcessingPower());
+	}
+
+	/**
+	 * Helper method to send notifications to particular objects about resource utilisation changes
+	 * @param onObject The receiver of the notification
+	 * @param recentResources The resource usage changes
+	 */
+	private void sendCapacityUpdate(final CapacityChangeEvent<ResourceConstraints> onObject,
+								   final List<ResourceConstraints> recentResources) {
+		onObject.capacityChanged(freeCapacities, recentResources);
 	}
 
 	/**
@@ -857,7 +850,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 */
 	public boolean switchoff(final PhysicalMachine migrateHere) throws VMManagementException, NetworkException {
 		if (migrateHere != null) {
-			final VirtualMachine[] vmarr = vms.toArray(new VirtualMachine[vms.size()]);
+			final VirtualMachine[] vmarr = vms.toArray(new VirtualMachine[0]);
 			class MultiMigrate implements VirtualMachine.StateChange {
 				private int counter = 0;
 
@@ -1013,7 +1006,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	}
 
 	private ResourceAllocation prepareMigration(final VirtualMachine vm, final PhysicalMachine target)
-			throws VMManagementException, NetworkNode.NetworkException {
+			throws VMManagementException {
 		if (vms.contains(vm)) {
 			ResourceAllocation ra = target.allocateResources(vm.getResourceAllocation().allocated, true,
 					migrationAllocLen);
@@ -1178,7 +1171,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 * @param vm
 	 *            the VM to be deployed on the PM
 	 * @param ra
-	 *            the resource allocation to be uesed for the VM
+	 *            the resource allocation to be used for the VM
 	 * @param vaSource
 	 *            the repository that stores the virtual appliance of the VM
 	 * @throws VMManagementException
@@ -1186,7 +1179,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	 *             specified is already expired/used, or if the VM cannot be
 	 *             switched on for some reason
 	 * @throws NetworkNode.NetworkException
-	 *             if the VA is not transferrable from the vaSource to its
+	 *             if the VA is not transferable from the vaSource to its
 	 *             destination
 	 */
 	public void deployVM(final VirtualMachine vm, final ResourceAllocation ra, final Repository vaSource)
@@ -1319,8 +1312,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 	protected boolean isAcceptableConsumption(final ResourceConsumption con) {
 		final ResourceSpreader consumer = con.getConsumer();
 		final boolean internalConsumer = (consumer == directConsumer)
-				&& (directConsumerUsageMoratory ? (onOffEvent == null ? false : onOffEvent.currentConsumption == con)
-						: true);
+				&& (!directConsumerUsageMoratory || (onOffEvent != null && onOffEvent.currentConsumption == con));
 		final boolean runningVirtualMachine;
 		if (internalConsumer) {
 			runningVirtualMachine = false;
@@ -1331,7 +1323,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 				runningVirtualMachine = false;
 			}
 		}
-		return internalConsumer || runningVirtualMachine ? super.isAcceptableConsumption(con) : false;
+		return (internalConsumer || runningVirtualMachine) && super.isAcceptableConsumption(con);
 	}
 
 	/**

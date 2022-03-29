@@ -41,8 +41,8 @@ import java.util.Comparator;
  * registrations should be dropped.
  * 
  * WARNING this is an internal representation of the consumption. This class is
- * not supposed to be used outside of the context of the Unified resource
- * consumption model of DISSECT-CF. Instead one should use:
+ * not supposed to be used outside the context of the Unified resource
+ * consumption model of DISSECT-CF. Instead, one should use:
  * VirtualMachine.newComputeTask(), NetworkNode.initTransfer() and similar
  * functions.
  * 
@@ -62,7 +62,7 @@ public class ResourceConsumption {
 			final ResourceConsumption o2) -> {
 		final double upOth = o1.realLimit;
 		final double upThis = o2.realLimit;
-		return upOth < upThis ? -1 : (upOth == upThis ? 0 : 1);
+		return Double.compare(upOth, upThis);
 	};
 
 	/**
@@ -75,7 +75,7 @@ public class ResourceConsumption {
 	/**
 	 * This interface allows its implementors to get notified when a consumption
 	 * completes. Note: the objects will only receive a single call on the below
-	 * interfaces depending on the outcome of the resouece consumption's execution.
+	 * interfaces depending on the outcome of the resource consumption's execution.
 	 * 
 	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
 	 *         of Innsbruck (c) 2013"
@@ -91,7 +91,7 @@ public class ResourceConsumption {
 		/**
 		 * This function is called when the resource consumption cannot be handled
 		 * properly - if a consumption is suspended (allowing its migration to some
-		 * other consumers/providers then this function is <b>not</b> called.
+		 * other consumers/providers) then this function is <b>not</b> called.
 		 */
 		void conCancelled(ResourceConsumption problematic);
 	}
@@ -119,7 +119,7 @@ public class ResourceConsumption {
 	/**
 	 * the user requested processing limit
 	 */
-	private double requestedLimit;
+	private final double requestedLimit;
 	/**
 	 * the minimum of the perTickProcessing power of the provider/consumer
 	 */
@@ -222,7 +222,7 @@ public class ResourceConsumption {
 	private boolean resumable = true;
 	/**
 	 * shows if the consumption object actually participates in the resource sharing
-	 * machanism.
+	 * mechanism.
 	 */
 	private boolean registered = false;
 	/**
@@ -370,7 +370,6 @@ public class ResourceConsumption {
 		if (!registered) {
 			this.provider = provider;
 			updateHardLimit();
-			return;
 		} else {
 			throw new IllegalStateException("Attempted consumer change with a registered consumption");
 		}
@@ -387,7 +386,6 @@ public class ResourceConsumption {
 		if (!registered) {
 			this.consumer = consumer;
 			updateHardLimit();
-			return;
 		} else {
 			throw new IllegalStateException("Attempted consumer change with a registered consumption");
 		}
@@ -491,7 +489,7 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Determines the amount of resoruces already offered by the provider but not
+	 * Determines the amount of resources already offered by the provider but not
 	 * yet used by the consumer.
 	 * 
 	 * @return the underprocessing value
@@ -549,7 +547,7 @@ public class ResourceConsumption {
 
 	/**
 	 * Simultaneously updates the real limit (the instantaneous processing limit
-	 * determined by the low level scheduler of the unified resoruce sharing model
+	 * determined by the low level scheduler of the unified resource sharing model
 	 * of DISSECT-CF) value as well as the halfreallimit field.
 	 * 
 	 * @param rL the value to be set as real limit
@@ -660,9 +658,9 @@ public class ResourceConsumption {
 	}
 
 	/**
-	 * Allows to query whether this resource consumption was cancelled or not
+	 * Allows querying whether this resource consumption was cancelled or not
 	 * 
-	 * @return <i>false</i> if the resource consumption was cancelled and it can no
+	 * @return <i>false</i> if the resource consumption was cancelled, and it can no
 	 *         longer be registered within the unified resource sharing model of the
 	 *         simulator.
 	 */

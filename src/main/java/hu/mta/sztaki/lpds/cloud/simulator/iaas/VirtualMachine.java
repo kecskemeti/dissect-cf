@@ -169,7 +169,7 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	/**
 	 * Provides an implementation of the eventsetup class for the startup procedure
-	 * which is modelled with a single taks that utilizes a single core of the VM
+	 * which is modelled with a single task that utilizes a single core of the VM
 	 * for a specified amount of time (in ticks)
 	 * 
 	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
@@ -216,7 +216,7 @@ public class VirtualMachine extends MaxMinConsumer {
 				// Otherwise we leave it as any other part of the simulation required it
 			}
 		}
-	};
+	}
 
 	/**
 	 * The operations to do on shutdown
@@ -230,7 +230,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * the virtual appliance that this VM is using for its disk
 	 */
-	private VirtualAppliance va;
+	private final VirtualAppliance va;
 	/**
 	 * the resource allocation of this VM (this is only not null when the VM is
 	 * actually running on a pm, or about to run)
@@ -262,7 +262,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * @author "Gabor Kecskemeti, Laboratory of Parallel and Distributed Systems,
 	 *         MTA SZTAKI (c) 2012"
 	 */
-	public static enum State {
+	public enum State {
 		/**
 		 * The VA of the machine is arranged to be usable for the execution. The VM is
 		 * not consuming energy. There is no used storage.
@@ -303,7 +303,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		 */
 		RESUME_TR,
 		/**
-		 * The VM is on the move between two Phisical machines. During this operation it
+		 * The VM is on the move between two Physical machines. During this operation it
 		 * could happen that the VM and its serialized memory occupies disk space in two
 		 * repositories. The VM starts to consume energy during the deserialization of
 		 * its memory on the target PM.
@@ -326,7 +326,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		 * possible to instantiate it in the cloud)
 		 */
 		NONSERVABLE
-	};
+	}
 
 	/**
 	 * the set of those VM states that are expected to consume energy
@@ -343,7 +343,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	public final static EnumSet<State> suspendedStates = EnumSet.of(State.SUSPENDED, State.SUSPENDED_MIG);
 	/**
-	 * the states that can preceed the startup phase
+	 * the states that can precede the startup phase
 	 */
 	public final static EnumSet<State> preStartupStates = EnumSet.of(State.DESTROYED, State.SHUTDOWN);
 	/**
@@ -371,13 +371,13 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * represents operations required for handling the virtual machine monitor
 	 */
-	private HashMap<String, ResourceConsumption> currentVMMOperations = new HashMap<>();
+	private final HashMap<String, ResourceConsumption> currentVMMOperations = new HashMap<>();
 
 	/**
 	 * Allows easy ignoration of compute task completion in case the VM's storage is
 	 * network backed (ignores network comm failures!)
 	 */
-	private ConsumptionEvent computeTaskHelper = new ConsumptionEventAdapter();
+	private final ConsumptionEvent computeTaskHelper = new ConsumptionEventAdapter();
 
 	/**
 	 * Instantiates a VM object
@@ -541,7 +541,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		if (State.INITIAL_TR.equals(currState)) {
 			this.vasource = vasource;
 			this.vatarget = vatarget;
-			final String diskid = "VMDisk-of-" + Integer.toString(hashCode());
+			final String diskid = "VMDisk-of-" + hashCode();
 			ResourceConsumption currentVMMOperation = null;
 			if (bgnwload > 0) {
 				// Remote scenario
@@ -630,7 +630,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *                          <li><i>true</i> live migration is explicitly
 	 *                          requested (if not possible, a VMManagementException
 	 *                          will be thrown)
-	 *                          <li><i>false</i> if live migration is priorised but
+	 *                          <li><i>false</i> if live migration is prioritised but
 	 *                          if not possible, non-live will be performed
 	 *                          </ul>
 	 * @throws StateChangeException  if the VM is not in running or suspended state
@@ -784,7 +784,7 @@ public class VirtualMachine extends MaxMinConsumer {
 							setNonLive();
 						}
 					} catch (NetworkException ne) {
-						// These exceptions should have occured while
+						// These exceptions should have occurred while
 						// registering the first transfer
 						throw new RuntimeException(ne);
 					}
@@ -872,7 +872,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	public void destroy(final boolean killTasks) throws VMManagementException {
 		if (!currentVMMOperations.isEmpty()) {
 			ResourceConsumption[] rcList = currentVMMOperations.values()
-					.toArray(new ResourceConsumption[currentVMMOperations.size()]);
+					.toArray(new ResourceConsumption[0]);
 			boolean wasRegistered = false;
 			for (ResourceConsumption currentVMMOperation : rcList) {
 				wasRegistered |= currentVMMOperation.isRegistered();
@@ -971,7 +971,7 @@ public class VirtualMachine extends MaxMinConsumer {
 		final Repository pmdisk = ra.getHost().localDisk;
 		savedmemory = new StorageObject("VM-Memory-State-of-" + hashCode(), getMemSize(), false);
 		setState(State.SUSPEND_TR);
-		ResourceConsumption currentVMMOperation = null;
+		ResourceConsumption currentVMMOperation;
 		if ((currentVMMOperation = pmdisk.storeInMemoryObject(savedmemory, new ConsumptionEventAdapter() {
 			@Override
 			public void conComplete() {
@@ -1040,7 +1040,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * memory states as after startup the VM already changes them.
 	 * 
 	 * @throws StateChangeException  if the machine is not in suspended state
-	 * @throws VMManagementException if there is not enough space to retreive the
+	 * @throws VMManagementException if there is not enough space to retrieve the
 	 *                               memory state to the PM's repository
 	 */
 	public void resume() throws VMManagementException, NetworkNode.NetworkException {
@@ -1107,7 +1107,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 */
 	@Override
 	protected boolean isAcceptableConsumption(ResourceConsumption con) {
-		return consumingStates.contains(currState) ? super.isAcceptableConsumption(con) : false;
+		return consumingStates.contains(currState) && super.isAcceptableConsumption(con);
 	}
 
 	/**
@@ -1118,7 +1118,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 * related activities there will be constant network activities modelled as
 	 * well. The background network load represents cases when the VM's disk is
 	 * hosted on the network (and thus inherent disk activities that would occur
-	 * during CPU related activities can be modeled). Please note the backgorund
+	 * during CPU related activities can be modeled). Please note the background
 	 * load is the property of the VA (i.e. the VA represents an application and
 	 * therefore one who creates the VA should know its disk related activities when
 	 * the application is executed)
@@ -1132,7 +1132,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	 *              computation ordered here
 	 * @return the resource consumption object that will represent the CPU
 	 *         consumption. Could return null if the consumption cannot be
-	 *         registered or when there is no resoruce for the VM
+	 *         registered or when there is no resource for the VM
 	 * @throws NetworkException if the background network load is not possible to
 	 *                          simulate.
 	 */
@@ -1158,7 +1158,7 @@ public class VirtualMachine extends MaxMinConsumer {
 
 	public ResourceConsumption newComputeTask(final double total, final double limit,
 			final ResourceConsumption.ConsumptionEvent e, final double dirtyingRate, final long memSize)
-			throws StateChangeException, NetworkException {
+			throws NetworkException {
 		ResourceConsumption rc = newComputeTask(total, limit, e);
 		if (rc != null) {
 			rc.setMemDirtyingRate(dirtyingRate);
@@ -1170,7 +1170,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	/**
 	 * Allows to set a new resource allocation for the VM
 	 * 
-	 * This function will notify the resource allocation about the acquiration of
+	 * This function will notify the resource allocation about the acquisition of
 	 * the resources by utilizing the use function!
 	 * 
 	 * @param newRA the allocation to be used later on

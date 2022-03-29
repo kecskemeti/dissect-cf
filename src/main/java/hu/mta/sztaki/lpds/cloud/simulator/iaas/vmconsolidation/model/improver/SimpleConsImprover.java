@@ -18,12 +18,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.ModelVM;
 public class SimpleConsImprover extends InfrastructureModel implements InfrastructureModel.Improver {
 	public static final SimpleConsImprover singleton = new SimpleConsImprover();
 
-	final private static Comparator<ModelPM> mpmFreeComp = new Comparator<ModelPM>() {
-		@Override
-		public int compare(final ModelPM pm1, final ModelPM pm2) {
-			return -pm1.free.compareTo(pm2.free);
-		}
-	};
+	final private static Comparator<ModelPM> mpmFreeComp = (pm1, pm2) -> -pm1.free.compareTo(pm2.free);
 
 	public SimpleConsImprover() {
 		super(new PhysicalMachine[0], 0, false, 0);

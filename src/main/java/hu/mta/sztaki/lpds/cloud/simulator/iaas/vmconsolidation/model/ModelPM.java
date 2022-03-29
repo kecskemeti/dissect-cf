@@ -40,10 +40,6 @@ public class ModelPM {
 	 * PM switches to OVERALLOCATED or UNDERALLOCATED.
 	 * 
 	 * @param pm             The real Physical Machine in the Simulator.
-	 * @param mvm            An array which contains all VMs running on this PM.
-	 * @param cores          The cores of the PM.
-	 * @param pCP            The Power of one core.
-	 * @param mem            The memory of this PM.
 	 * @param number         The number of the PM in its IaaS, used for debugging.
 	 * @param upperThreshold The upperThreshold out of the properties.
 	 * @param lowerThreshold The lowerThreshold out of the properties.
@@ -128,7 +124,7 @@ public class ModelPM {
 		freeResources.subtract(rc);
 		vm.sethostPM(this);
 
-		// adding was succesful
+		// adding was successful
 		return true;
 	}
 
@@ -146,7 +142,7 @@ public class ModelPM {
 		vm.sethostPM(null);
 		vm.prevPM = this;
 
-		// removing was succesful
+		// removing was successful
 		return true;
 	}
 
@@ -187,7 +183,7 @@ public class ModelPM {
 	 * @return True if it is underAllocated, false otherwise.
 	 */
 	public boolean isUnderAllocated() {
-		return consumedResources.compareTo(basedetails.lowerThrResources) == -1;
+		return consumedResources.compareTo(basedetails.lowerThrResources) < 0;
 	}
 
 	private final AlterableResourceConstraints mpHelper;

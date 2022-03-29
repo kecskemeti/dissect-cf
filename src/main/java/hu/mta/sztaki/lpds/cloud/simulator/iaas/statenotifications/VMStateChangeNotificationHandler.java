@@ -50,7 +50,7 @@ public class VMStateChangeNotificationHandler
 	private static final VMStateChangeNotificationHandler handlerSingleton = new VMStateChangeNotificationHandler();
 
 	/**
-	 * disables the instantiation of the handler so we really just have a single
+	 * disables the instantiation of the handler, so we really just have a single
 	 * instance for all handling operations
 	 */
 	private VMStateChangeNotificationHandler() {
@@ -62,7 +62,7 @@ public class VMStateChangeNotificationHandler
 	 * particular VM object that asked for the handler. One should be requested for
 	 * every VM that expects to send out state change notifications.
 	 * 
-	 * @return the eventh handler
+	 * @return the event handler
 	 */
 	public static StateDependentEventHandler<StateChange, Triple<VirtualMachine, State, State>> getHandlerInstance() {
 		return new StateDependentEventHandler<>(handlerSingleton);
@@ -74,7 +74,7 @@ public class VMStateChangeNotificationHandler
 	 * @param onObject
 	 *            The listener to send the event to
 	 * @param stateData
-	 *            a data triplet containing the VM and its the past and future
+	 *            a data triplet containing the VM and its past and future
 	 *            states.
 	 */
 	@Override

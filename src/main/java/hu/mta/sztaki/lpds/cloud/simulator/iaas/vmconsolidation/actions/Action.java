@@ -10,7 +10,7 @@ import java.util.List;
 public abstract class Action {
 	public static final Action[] actArrSample = new Action[0];
 
-	public static enum Type {
+	public enum Type {
 		/**
 		 * The current action needs to start another PM.
 		 */

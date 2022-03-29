@@ -57,7 +57,7 @@ public class MaxMinConsumer extends MaxMinFairSpreader {
 	 * in the resource consumption that is related to consumers.
 	 * 
 	 * The limit set here is expected to reflect the processing this consumer could
-	 * utilize in the particular time instance with regards to the particular
+	 * utilize in the particular time instance in regard to the particular
 	 * resource consumption.
 	 */
 	@Override

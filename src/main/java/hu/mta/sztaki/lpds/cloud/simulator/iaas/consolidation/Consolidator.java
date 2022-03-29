@@ -36,7 +36,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 /**
  * This class is to be sub-classed by all workload consolidators. The only focus
  * of this class is to make sure we have a consolidation algorithm running
- * periodically when there is a need for it (ie., there are machines hosting
+ * periodically when there is a need for it (i.e., there are machines hosting
  * virtual machines in the underlying IaaS)
  * 
  * @author "Gabor Kecskemeti, Department of Computer Science, Liverpool John
@@ -85,7 +85,7 @@ public abstract class Consolidator extends Timed {
 		}
 
 		/**
-		 * To be called so we don't keep the observer object in the pm's subscriber list
+		 * To be called, so we don't keep the observer object in the pm's subscriber list
 		 * if there is no need for observing anymore.
 		 */
 		public void cancelSubscriptions() {
@@ -101,7 +101,7 @@ public abstract class Consolidator extends Timed {
 	private final HashMap<PhysicalMachine, VMListObserver> observers = new HashMap<>();
 
 	/**
-	 * This constructor ensures the proper maintenance of the observer list - ie.,
+	 * This constructor ensures the proper maintenance of the observer list - i.e.,
 	 * the list of objects that ensure we start to receive periodic events for
 	 * consolidation as soon as we have some VMs running on the infrastructure.
 	 * 
@@ -156,7 +156,7 @@ public abstract class Consolidator extends Timed {
 	 * If allocation checks are not omitted then the consolidation algorithm is only
 	 * called when VM allocation changes were made. Notice that this is not
 	 * necessarily related to the VM's workload or its impact on the PM's actual
-	 * resource utilisation. Thus consolidators which want to take into account
+	 * resource utilisation. Thus, consolidators which want to take into account
 	 * actual resource usage for their decisions should always set the allocation
 	 * check omission to true!
 	 */
@@ -170,7 +170,7 @@ public abstract class Consolidator extends Timed {
 			// Make a copy as machines could be sold/removed if they are not used because of
 			// consolidation...
 			PhysicalMachine[] pmList = toConsolidate.machines
-					.toArray(new PhysicalMachine[toConsolidate.machines.size()]);
+					.toArray(new PhysicalMachine[0]);
 			// Should we consolidate next time?
 			boolean thereAreVMs = false;
 			for (int i = 0; i < pmList.length && !thereAreVMs; i++) {
@@ -187,7 +187,7 @@ public abstract class Consolidator extends Timed {
 	}
 
 	/**
-	 * Allows to query if allocation checks could limit consolidator calls
+	 * Allows querying if allocation checks could limit consolidator calls
 	 * 
 	 * @return
 	 */

@@ -25,7 +25,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 	/**
 	 * The constructor for the First-Fit-Consolidator. Only the consolidation has to
 	 * be done. All things like creating the model, doing the changes in the
-	 * simulator etc are done by the ModelBasedConsolidator.
+	 * simulator etc. are done by the ModelBasedConsolidator.
 	 * 
 	 * @param toConsolidate The IaaSService of the superclass Consolidator.
 	 * @param consFreq      This value determines, how often the consolidation
@@ -74,17 +74,9 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 		boolean check(ModelPM pm);
 	}
 
-	private static final PMCheck oaChecker = new PMCheck() {
-		public boolean check(final ModelPM pm) {
-			return pm.isOverAllocated();
-		};
-	};
+	private static final PMCheck oaChecker = ModelPM::isOverAllocated;
 
-	private static final PMCheck uaChecker = new PMCheck() {
-		public boolean check(final ModelPM pm) {
-			return pm.isUnderAllocated();
-		};
-	};
+	private static final PMCheck uaChecker = ModelPM::isUnderAllocated;
 
 	private boolean checkifStateExists(final PMCheck chk, final InfrastructureModel sol) {
 		for (final ModelPM bin : sol.bins) {
@@ -185,7 +177,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 															// target
 			final ModelPM pm = getMigPm(actual, sol);
 			// if there is no PM to host the actual VM of the source PM, change the state
-			// depending on its acutal state
+			// depending on its actual state
 			if (pm == null) {
 				unchangeableBins.add(source);
 			} else {
@@ -196,8 +188,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 
 	/**
 	 * This method handles the migration of all VMs of an underAllocated PM. To do
-	 * that, a targetPM will be find for every VM on this PM and then the migrations
-	 * will be performed, but if not all of the hosted VMs can be migrated (after
+	 * that, a targetPM will be found for every VM on this PM and then the migrations
+	 * will be performed, but if not all the hosted VMs can be migrated (after
 	 * this process the PM would still host running VMs), nothing will be changed.
 	 * 
 	 * @param source The source PM which host the VMs to migrate.

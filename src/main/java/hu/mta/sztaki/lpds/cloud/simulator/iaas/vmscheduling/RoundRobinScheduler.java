@@ -30,7 +30,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterat
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.RoundRobinIterator;
 
 /**
- * Provides a scheduler that uses the round robin PM iterator to traverse
+ * Provides a scheduler that uses the round-robin PM iterator to traverse
  * through the IaaS's running machines list. This ensures uniform use of the PMs
  * on the long run. Other than the random PM selection this class utilizes the
  * FirstFitScheduler's logic of VM placement and queue management.

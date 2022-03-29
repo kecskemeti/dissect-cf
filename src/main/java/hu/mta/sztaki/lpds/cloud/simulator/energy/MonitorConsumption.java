@@ -79,11 +79,11 @@ public class MonitorConsumption extends Timed {
 	/**
 	 * all spreading records that were collected during the past hour
 	 */
-	private PriorityQueue<SpreadingRecord> subHourRecords = new PriorityQueue<>();
+	private final PriorityQueue<SpreadingRecord> subHourRecords = new PriorityQueue<>();
 	/**
 	 * all spreading records collected during the past day
 	 */
-	private PriorityQueue<SpreadingRecord> subDayRecords = new PriorityQueue<>();
+	private final PriorityQueue<SpreadingRecord> subDayRecords = new PriorityQueue<>();
 	/**
 	 * the total processing accomplished in the last hour
 	 */
@@ -126,7 +126,7 @@ public class MonitorConsumption extends Timed {
 	}
 
 	/**
-	 * the amount of processing done in a the past day (this is a rolling day
+	 * the amount of processing done in the past day (this is a rolling day
 	 * always assumed to start a day before this function was called)
 	 * 
 	 * @return the processing done in the past day
@@ -136,7 +136,7 @@ public class MonitorConsumption extends Timed {
 	}
 
 	/**
-	 * the amount of processing done in a the past hour (this is a rolling hour
+	 * the amount of processing done in the past hour (this is a rolling hour
 	 * always assumed to start a hour before this function was called)
 	 * 
 	 * @return the processing done in the past hour
@@ -146,7 +146,7 @@ public class MonitorConsumption extends Timed {
 	}
 
 	/**
-	 * the amount of processing done in a the past second (this is a rolling
+	 * the amount of processing done in the past second (this is a rolling
 	 * second always assumed to start a second before this function was called)
 	 * 
 	 * @return the processing done in the past second
@@ -187,7 +187,7 @@ public class MonitorConsumption extends Timed {
 
 	/**
 	 * allows the monitoring to be terminated at any arbitrary point of time.
-	 * The processing data reports are not going to be update anymore and they
+	 * The processing data reports are not going to be updated anymore, and they
 	 * are going to be always valid for the time instance where the cancel
 	 * operation was called.
 	 */
