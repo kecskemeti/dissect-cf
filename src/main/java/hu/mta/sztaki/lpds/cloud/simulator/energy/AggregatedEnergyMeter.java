@@ -61,22 +61,14 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	public boolean startMeter(long interval, boolean dropPriorReading) {
 		// Make sure the meteringstarted field is updated correctly.
 		super.startMeter(interval, dropPriorReading);
-		final int supSize = supervised.size();
-		int i = 0;
-		for (; i < supSize; i++) {
-			if (!supervised.get(i).startMeter(interval, dropPriorReading)) {
-				break;
-			}
-		}
-		if (i != supSize) {
+		boolean ret=true;
+		if(supervised.stream().anyMatch(s -> !s.startMeter(interval,dropPriorReading))) {
 			// Some meters did not start because they already did some
 			// metering prior to this startmeter request
-			for (int j = 0; j < i; j++) {
-				supervised.get(j).stopMeter();
-			}
-			return false;
+			stopMeter();
+			ret=false;
 		}
-		return true;
+		return ret;
 	}
 
 	/**
@@ -86,10 +78,7 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	public void stopMeter() {
 		// Make sure the meteringstopped field is updated correctly.
 		super.stopMeter();
-		final int supSize = supervised.size();
-		for (int i = 0; i < supSize; i++) {
-			supervised.get(i).stopMeter();
-		}
+		supervised.forEach(EnergyMeter::stopMeter);
 	}
 
 	/**
@@ -98,12 +87,7 @@ public class AggregatedEnergyMeter extends EnergyMeter {
 	 */
 	@Override
 	public double getTotalConsumption() {
-		double sum = 0;
-		final int supSize = supervised.size();
-		for (int i = 0; i < supSize; i++) {
-			sum += supervised.get(i).getTotalConsumption();
-		}
-		return sum;
+		return supervised.stream().mapToDouble(EnergyMeter::getTotalConsumption).sum();
 	}
 
 	/**
