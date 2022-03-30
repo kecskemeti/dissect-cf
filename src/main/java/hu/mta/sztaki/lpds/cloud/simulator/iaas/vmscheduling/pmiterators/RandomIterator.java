@@ -26,6 +26,7 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -70,17 +71,13 @@ public class RandomIterator extends PMIterator {
 		resetCounter++;
 		if (maxIndex != randomIndexes.length || resetCounter % 10000 == 0) {
 			randomIndexes = new int[maxIndex];
+			final boolean[] usedidxs=new boolean[maxIndex];
+			Arrays.fill(usedidxs,false);
 			for (int i = 0; i < maxIndex; i++) {
-				boolean regen;
-				int proposedIndex;
 				do {
-					regen = false;
-					proposedIndex = SeedSyncer.centralRnd.nextInt(maxIndex);
-					for (int j = 0; j < i && !regen; j++) {
-						regen |= proposedIndex == randomIndexes[j];
-					}
-				} while (regen);
-				randomIndexes[i] = proposedIndex;
+					randomIndexes[i]=SeedSyncer.centralRnd.nextInt(maxIndex);
+				} while(usedidxs[randomIndexes[i]]);
+				usedidxs[randomIndexes[i]]=true;
 			}
 		}
 	}
