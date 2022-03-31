@@ -29,10 +29,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.LinearConsumptio
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
+import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This helper class provides a simple way to generate the necessary power
@@ -68,17 +71,12 @@ public class PowerTransitionGenerator {
      */
     public static EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> generateTransitions(
             double minpower, double idlepower, double maxpower, double diskDivider, double netDivider) {
-        final EnumMap<PowerStateKind, Map<String, PowerState>> returner = new EnumMap<>(
-                PowerStateKind.class);
-        for (final PowerStateKind kind : PowerStateKind.values()) {
+        return new EnumMap<>(Arrays.stream(PowerStateKind.values()).map(kind -> {
             final HashMap<String, PowerState> statemap = new HashMap<>();
-            returner.put(kind, statemap);
             switch (kind) {
                 case host:
                     final PowerState hostDefault = new PowerState(idlepower, maxpower - idlepower, LinearConsumptionModel::new);
-                    for (PhysicalMachine.State aState : PhysicalMachine.StatesOfHighEnergyConsumption) {
-                        statemap.put(aState.toString(), hostDefault);
-                    }
+                    statemap.putAll(PhysicalMachine.StatesOfHighEnergyConsumption.stream().collect(Collectors.toMap(Enum::toString, astate -> hostDefault)));
                     statemap.put(PhysicalMachine.State.OFF.toString(),
                             new PowerState(minpower, 0, ConstantConsumptionModel::new));
                     break;
@@ -89,19 +87,19 @@ public class PowerTransitionGenerator {
                     putBasicStateBehaviour(statemap, idlepower, maxpower, diskDivider);
                     break;
             }
-        }
-        return returner;
+            return Pair.of(kind, statemap);
+        }).collect(Collectors.toMap(Pair::getLeft, Pair::getRight)));
     }
 
     /**
      * Generates basic power behaviour properties for off/running states. Generates off states with no consumption, and
-	 * running/on states with consumption derived from the overall consumption of the machine. So the individual
-	 * consumptions of the various components are assumed to be linearly proportional to the overall consumption of a machine.
+     * running/on states with consumption derived from the overall consumption of the machine. So the individual
+     * consumptions of the various components are assumed to be linearly proportional to the overall consumption of a machine.
      *
-     * @param statemap The output will go here
+     * @param statemap  The output will go here
      * @param idlepower The machine's idle power draw
-     * @param maxpower The machine's maximum power draw
-     * @param divider The ratio between the total power draw figures of the machine and the per component power draw figures
+     * @param maxpower  The machine's maximum power draw
+     * @param divider   The ratio between the total power draw figures of the machine and the per component power draw figures
      */
     private static void putBasicStateBehaviour(HashMap<String, PowerState> statemap, double idlepower, double maxpower, double divider) {
         statemap.put(NetworkNode.State.OFF.toString(), new PowerState(0, 0, ConstantConsumptionModel::new));
