@@ -125,8 +125,4 @@ public class MultiPMController extends SchedulingDependentMachines {
         n.turnon();
         n.subscribeStateChangeEvents(sweeper);
     }
-
-
-
-
 }
