@@ -25,6 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.io;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
@@ -207,11 +208,7 @@ public class NetworkNode {
 		memoutbws = new MaxMinProvider(memBW);
 		latencies = latencymap;
 		allSpreaders = new ResourceSpreader[] { diskinbws, diskoutbws, outbws, inbws, meminbws, memoutbws };
-		try {
-			setState(State.OFF);
-		} catch (NetworkException nex) {
-			// Not expected
-		}
+		forceState(State.OFF);
 	}
 
 	/**
@@ -367,19 +364,19 @@ public class NetworkNode {
 	}
 
 	public void setState(State newState) throws NetworkException {
-		if (currState != null) {
-			if (currState.equals(newState)) {
-				return;
-			}
+		if (!currState.equals(newState)) {
 			if (currState.equals(State.RUNNING)) {
-				for (ResourceSpreader rs : allSpreaders) {
-					if (rs.toBeAdded.size() + rs.underProcessing.size() > 0) {
-						throw new NetworkException(
-								"There is still some network activity in progress, cannot transition to a non-running state");
-					}
+				if (Arrays.stream(allSpreaders)
+						.anyMatch(rs -> rs.toBeAdded.size() + rs.underProcessing.size() > 0)) {
+					throw new NetworkException(
+							"There is still some network activity in progress, cannot transition to a non-running state");
 				}
 			}
+			forceState(newState);
 		}
+	}
+
+	private void forceState(State newState) {
 		currState = newState;
 		PowerState curStBehaviour = PowerTransitionGenerator.getPowerStateFromMap(storagePowerBehavior,
 				newState.toString());
