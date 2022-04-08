@@ -365,12 +365,10 @@ public class NetworkNode {
 
 	public void setState(State newState) throws NetworkException {
 		if (!currState.equals(newState)) {
-			if (currState.equals(State.RUNNING)) {
-				if (Arrays.stream(allSpreaders)
-						.anyMatch(rs -> rs.toBeAdded.size() + rs.underProcessing.size() > 0)) {
-					throw new NetworkException(
-							"There is still some network activity in progress, cannot transition to a non-running state");
-				}
+			if (currState.equals(State.RUNNING) &&
+				Arrays.stream(allSpreaders).anyMatch(rs -> rs.toBeAdded.size() + rs.underProcessing.size() > 0)) {
+				throw new NetworkException(
+						"There is still some network activity in progress, cannot transition to a non-running state");
 			}
 			forceState(newState);
 		}
