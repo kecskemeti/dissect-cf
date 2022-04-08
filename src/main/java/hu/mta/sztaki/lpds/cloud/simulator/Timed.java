@@ -347,17 +347,12 @@ public abstract class Timed implements Comparable<Timed> {
 	public static void skipEventsTill(final long desiredTime) {
 		final long distance = desiredTime - fireCounter;
 		if (distance > 0) {
-				while (timedlist.peek() != null && timedlist.peek().nextEvent < desiredTime) {
-					final Timed t = timedlist.poll();
-					t.skip();
-					final long oldfreq = t.frequency;
-					long tempFreq = distance;
-					if (oldfreq != 0) {
-						tempFreq += oldfreq - distance % oldfreq;
-					}
-					t.updateFrequency(tempFreq);
-					t.frequency = oldfreq;
-				}
+			while (timedlist.peek() != null && timedlist.peek().nextEvent < desiredTime) {
+				final Timed t = timedlist.poll();
+				t.skip();
+				t.nextEvent = t.frequency==0?desiredTime:calcTimeJump(t.frequency * (1 + distance / t.frequency));
+				timedlist.offer(t);
+			}
 			fireCounter = desiredTime;
 		}
 	}

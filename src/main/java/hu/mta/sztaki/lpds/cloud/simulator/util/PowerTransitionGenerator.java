@@ -71,7 +71,7 @@ public class PowerTransitionGenerator {
      */
     public static EnumMap<PowerTransitionGenerator.PowerStateKind, Map<String, PowerState>> generateTransitions(
             double minpower, double idlepower, double maxpower, double diskDivider, double netDivider) {
-        return new EnumMap<>(Arrays.stream(PowerStateKind.values()).map(kind -> {
+        return new EnumMap<PowerStateKind, Map<String, PowerState>>(Arrays.stream(PowerStateKind.values()).map(kind -> {
             final HashMap<String, PowerState> statemap = new HashMap<>();
             switch (kind) {
                 case host:
