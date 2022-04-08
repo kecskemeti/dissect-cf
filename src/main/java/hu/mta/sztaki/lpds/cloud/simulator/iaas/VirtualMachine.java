@@ -1009,11 +1009,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 			suspendedTasks.addAll(toBeAdded);
 
-			final int currlistsize = suspendedTasks.size();
-			for (int idx = 0; idx < currlistsize; idx++) {
-				final ResourceConsumption con = suspendedTasks.get(idx);
-				con.suspend();
-			}
+			suspendedTasks.stream().forEach(ResourceConsumption::suspend);
 		}
 	}
 
@@ -1023,10 +1019,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	private void resumeTasks() {
 		setState(State.RUNNING);
 		if (suspendedTasks != null) {
-			int size = suspendedTasks.size();
-			for (int i = 0; i < size; i++) {
-				suspendedTasks.get(i).registerConsumption();
-			}
+			suspendedTasks.stream().forEach(ResourceConsumption::registerConsumption);
 			suspendedTasks = null;
 		}
 	}

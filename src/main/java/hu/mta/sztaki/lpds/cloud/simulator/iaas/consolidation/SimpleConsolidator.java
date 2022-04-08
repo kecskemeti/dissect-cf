@@ -93,8 +93,7 @@ public class SimpleConsolidator extends Consolidator {
 				PhysicalMachine source = pmList[i];
 				VirtualMachine[] vmList = source.publicVms.toArray(new VirtualMachine[0]);
 				int vmc = 0;
-				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-					VirtualMachine vm = vmList[vmidx];
+				for (VirtualMachine vm : vmList) {
 					if (!VirtualMachine.State.RUNNING.equals(vm.getState())) {
 						continue;
 					}

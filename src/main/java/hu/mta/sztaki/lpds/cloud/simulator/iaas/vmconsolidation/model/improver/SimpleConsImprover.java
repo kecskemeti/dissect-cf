@@ -60,8 +60,7 @@ public class SimpleConsImprover extends InfrastructureModel implements Infrastru
 				final ModelPM source = pmList[i];
 				final ModelVM[] vmList = source.getVMs().toArray(ModelVM.mvmArrSample);
 				int vmc = 0;
-				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-					final ModelVM vm = vmList[vmidx];
+				for (final ModelVM vm : vmList) {
 					if (alreadyMoved.contains(vm))
 						continue;
 					// ModelVMs can only run, so we need not to check the state (there is none

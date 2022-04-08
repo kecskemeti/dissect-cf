@@ -866,17 +866,17 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 					default:
 					}
 					if (counter == vmarr.length) {
-						for (int i = 0; i < vmarr.length; i++) {
-							vmarr[i].unsubscribeStateChange(this);
+						for (VirtualMachine virtualMachine : vmarr) {
+							virtualMachine.unsubscribeStateChange(this);
 						}
 						actualSwitchOff();
 					}
 				}
 			}
 			MultiMigrate mm = new MultiMigrate();
-			for (int i = 0; i < vmarr.length; i++) {
-				vmarr[i].subscribeStateChange(mm);
-				migrateVM(vmarr[i], migrateHere);
+			for (VirtualMachine virtualMachine : vmarr) {
+				virtualMachine.subscribeStateChange(mm);
+				migrateVM(virtualMachine, migrateHere);
 			}
 		} else {
 			if (vms.size() + promisedAllocationsCount > 0) {
@@ -1068,8 +1068,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 			return null;
 		}
 		// Allocation type test (i.e. do we allow underprovisioning?)
-		for (int i = 0; i < promisedResources.length; i++) {
-			ResourceAllocation olderAllocation = promisedResources[i];
+		for (ResourceAllocation olderAllocation : promisedResources) {
 			if (olderAllocation != null) {
 				if (olderAllocation.allocated.isRequiredProcessingIsMinimum() == requested
 						.isRequiredProcessingIsMinimum()) {

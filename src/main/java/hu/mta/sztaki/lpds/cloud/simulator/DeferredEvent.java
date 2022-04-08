@@ -88,9 +88,7 @@ public abstract class DeferredEvent {
 		 */
 		@Override
 		public void tick(long fires) {
-			int len = simultaneouslyOccurringDEs.size();
-			for (int i = 0; i < len; i++) {
-				DeferredEvent underDelivery = simultaneouslyOccurringDEs.get(i);
+			for (DeferredEvent underDelivery : simultaneouslyOccurringDEs) {
 				underDelivery.eventAction();
 				underDelivery.received = true;
 			}
@@ -100,9 +98,8 @@ public abstract class DeferredEvent {
 		@Override
 		protected void skip() {
 			super.skip();
-			int len = simultaneouslyOccurringDEs.size();
-			for (int i = 0; i < len; i++) {
-				simultaneouslyOccurringDEs.get(i).cancelled = true;
+			for (DeferredEvent simultaneouslyOccurringDE : simultaneouslyOccurringDEs) {
+				simultaneouslyOccurringDE.cancelled = true;
 			}
 			simultaneouslyOccurringDEs.clear();
 			terminate();

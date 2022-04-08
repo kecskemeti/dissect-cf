@@ -236,7 +236,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 *                                      problems within the infrastructure
 	 */
 	public VirtualMachine[] requestVM(final VirtualAppliance va, final ResourceConstraints rc,
-			final Repository vaSource, final int count) throws VMManagementException, NetworkNode.NetworkException {
+			final Repository vaSource, final int count) throws VMManagementException {
 		return requestVM(va, rc, vaSource, count, null);
 	}
 
@@ -302,12 +302,10 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public Collection<VirtualMachine> listVMs() {
-		final ArrayList<VirtualMachine> completeList = new ArrayList<>();
-		int imLen = internalMachines.size();
-		for (int i = 0; i < imLen; i++) {
-			completeList.addAll(internalMachines.get(i).listVMs());
+		final ArrayList<VirtualMachine> completeList = new ArrayList<>(sched.getQueuedVMs());
+		for (PhysicalMachine internalMachine : internalMachines) {
+			completeList.addAll(internalMachine.listVMs());
 		}
-		completeList.addAll(sched.getQueuedVMs());
 		return completeList;
 	}
 
@@ -355,11 +353,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 		final double suspectedmax = caps.getRequiredProcessingPower();
 		totalCapacity.subtract(caps);
 		if (totalCapacity.getRequiredProcessingPower() == suspectedmax) {
-			final int pms = internalMachines.size();
-			double maxPcPP = 0;
-			for (int i = 0; i < pms; i++) {
-				maxPcPP = Math.max(maxPcPP, internalMachines.get(i).getCapacities().getRequiredProcessingPower());
-			}
+			final double maxPcPP = internalMachines.stream().mapToDouble(im -> im.getCapacities().getRequiredProcessingPower()).max().getAsDouble();
 			totalCapacity.scaleProcessingPower(maxPcPP / suspectedmax);
 		}
 		capacityListenerManager.notifyListeners(Collections.singletonList(pm));

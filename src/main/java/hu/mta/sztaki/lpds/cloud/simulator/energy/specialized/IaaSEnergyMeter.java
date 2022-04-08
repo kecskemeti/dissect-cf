@@ -32,9 +32,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Allows a complete IaaS system to be monitored energywise with single energy
@@ -76,12 +76,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.
 	 * @return the list of meters
 	 */
 	private static List<EnergyMeter> subMeterCreator(List<PhysicalMachine> machines) {
-		final int machineCount = machines.size();
-		ArrayList<EnergyMeter> meters = new ArrayList<>(machineCount);
-		for (int i = 0; i < machineCount; i++) {
-			meters.add(new PhysicalMachineEnergyMeter(machines.get(i)));
-		}
-		return meters;
+		return machines.stream().map(PhysicalMachineEnergyMeter::new).collect(Collectors.toList());
 	}
 
 	/**

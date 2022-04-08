@@ -188,15 +188,13 @@ public abstract class Scheduler {
 						orderedPMcache.addAll(alteredPMs);
 						orderedPMcache.sort(PMComparators.highestToLowestTotalCapacity);
 						pmCacheLen += pmNum;
-						for (int i = 0; i < pmNum; i++) {
-							final PhysicalMachine pm = alteredPMs.get(i);
+						for (final PhysicalMachine pm : alteredPMs) {
 							pm.subscribeStateChangeEvents(pmstateChanged);
 							pm.subscribeToIncreasingFreeapacityChanges(freeCapacity);
 						}
 					} else {
 						// Decreased pm count
-						for (int i = 0; i < pmNum; i++) {
-							final PhysicalMachine pm = alteredPMs.get(i);
+						for (final PhysicalMachine pm : alteredPMs) {
 							orderedPMcache.remove(pm);
 							pm.unsubscribeStateChangeEvents(pmstateChanged);
 							pm.unsubscribeFromIncreasingFreeCapacityChanges(freeCapacity);

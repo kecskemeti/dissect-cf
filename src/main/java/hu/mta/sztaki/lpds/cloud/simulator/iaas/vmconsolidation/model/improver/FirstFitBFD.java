@@ -47,9 +47,7 @@ public class FirstFitBFD extends InfrastructureModel implements InfrastructureMo
 		tempvmlist.sort(mvmComp);
 		final ModelPM[] binsToTry = toImprove.bins.clone();
 		Arrays.sort(binsToTry, mpmComp);
-		final int tvmls = tempvmlist.size();
-		for (int i = 0; i < tvmls; i++) {
-			final ModelVM vm = tempvmlist.get(i);
+		for (final ModelVM vm : tempvmlist) {
 			ModelPM targetPm = null;
 			for (final ModelPM pm : binsToTry) {
 				if (pm.isMigrationPossible(vm)) {

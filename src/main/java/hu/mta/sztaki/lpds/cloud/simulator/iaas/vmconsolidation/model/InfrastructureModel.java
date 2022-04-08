@@ -70,9 +70,8 @@ public class InfrastructureModel {
 		final List<ModelPM> pminit = new ArrayList<>(pmList.length);
 		final List<ModelVM> vminit = new ArrayList<>(pmList.length);
 		int nonHostingRunningPMs = 0;
-		for (int i = 0; i < pmList.length; i++) {
+		for (final PhysicalMachine pm : pmList) {
 			// now every PM will be put inside the model with its hosted VMs
-			final PhysicalMachine pm = pmList[i];
 			// If using a non-externally-controlled PM scheduler, consider only non-empty
 			// PMs for consolidation
 			if (!pm.isHostingVMs()) {

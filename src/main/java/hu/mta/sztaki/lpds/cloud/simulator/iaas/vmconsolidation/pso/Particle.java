@@ -108,8 +108,8 @@ public class Particle extends InfrastructureModel {
 				double[] returner = new double[baseSwarm[0].items.length];
 				Arrays.fill(returner, 0);
 				for (int i = 0; i < returner.length; i++) {
-					for (int j = 0; j < baseSwarm.length; j++) {
-						returner[i] += baseSwarm[j].currentLocation.data[i];
+					for (Particle particle : baseSwarm) {
+						returner[i] += particle.currentLocation.data[i];
 					}
 					returner[i] /= baseSwarm.length;
 				}
@@ -133,8 +133,8 @@ public class Particle extends InfrastructureModel {
 		double[] velBase = new double[baseSwarm[0].items.length];
 		Arrays.fill(velBase, 0);
 		for (int i = 0; i < velBase.length; i++) {
-			for (int j = 0; j < baseSwarm.length; j++) {
-				velBase[i] += baseSwarm[j].currentVelocity.data[i];
+			for (Particle particle : baseSwarm) {
+				velBase[i] += particle.currentVelocity.data[i];
 			}
 			velBase[i] /= baseSwarm.length;
 		}

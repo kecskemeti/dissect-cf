@@ -265,9 +265,7 @@ public abstract class ResourceSpreader {
 		 * the influence group know their group membership.
 		 */
 		private void addToGroup() {
-			int size = depGroupExtension.size();
-			for (int i = 0; i < size; i++) {
-				final ResourceSpreader rs = depGroupExtension.get(i);
+			for (final ResourceSpreader rs : depGroupExtension) {
 				if (isInDepGroup(rs))
 					continue;
 				if (rs.isConsumer()) {

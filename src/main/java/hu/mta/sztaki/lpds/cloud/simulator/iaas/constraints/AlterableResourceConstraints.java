@@ -25,7 +25,9 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Provides an implementation of a resource constraints class that allows in
@@ -179,10 +181,7 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 *            several resource constraints objects to be added
 	 */
 	public void add(final ResourceConstraints... toAdd) {
-		for (int i = 0; i < toAdd.length; i++) {
-			simpleAddition(toAdd[i]);
-		}
-		updateTotal();
+		addStream(Arrays.stream(toAdd));
 	}
 
 	/**
@@ -196,10 +195,11 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	 *            A list of several resource constraints objects to be added
 	 */
 	public void add(final List<ResourceConstraints> toAdd) {
-		final int size = toAdd.size();
-		for (int i = 0; i < size; i++) {
-			simpleAddition(toAdd.get(i));
-		}
+		addStream(toAdd.stream());
+	}
+
+	private void addStream(final Stream<ResourceConstraints> toAdd) {
+		toAdd.forEach(this::simpleAddition);
 		updateTotal();
 	}
 

@@ -53,13 +53,12 @@ public class UPAwareSimpleConsImprover extends SimpleConsImprover {
 			undLoop: for (int i = underProvisioned.size()-1; i >= 0; i--) {
 				final ModelPM source = underProvisioned.get(i);
 				final ModelVM[] vmList = source.getVMs().toArray(ModelVM.mvmArrSample);
-				for (int vmidx = 0; vmidx < vmList.length; vmidx++) {
-					final ModelVM vm = vmList[vmidx];
+				for (final ModelVM vm : vmList) {
 					if (alreadyMoved.contains(vm))
 						continue;
 					// ModelVMs can only run, so we need not to check the state (there is none
 					// either)
-					for (int j = otherPMs.size()-1; j >= 0; j--) {
+					for (int j = otherPMs.size() - 1; j >= 0; j--) {
 						final ModelPM target = otherPMs.get(j);
 
 						if (target.isMigrationPossible(vm)) {
