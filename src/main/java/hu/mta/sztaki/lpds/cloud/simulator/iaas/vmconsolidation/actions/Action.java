@@ -32,7 +32,7 @@ public abstract class Action {
 	public final int id;
 	public final Type type;
 	// List of actions, which need to start after completion of this one
-	protected List<Action> successors;
+	protected final List<Action> successors;
 	private int remainingPredecessors;
 	private boolean finished = false;
 

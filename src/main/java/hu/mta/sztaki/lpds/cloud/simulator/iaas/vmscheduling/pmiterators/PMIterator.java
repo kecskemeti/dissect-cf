@@ -64,7 +64,7 @@ public class PMIterator implements Iterator<PhysicalMachine> {
 	 * The PM list to be operated on. This list is not altered by the iterator.
 	 * It is assumed to not change while a single iteration is in progress.
 	 */
-	protected List<PhysicalMachine> pmList;
+	protected final List<PhysicalMachine> pmList;
 
 	/**
 	 * Constructs the PM list and stores the received list internally. Only the

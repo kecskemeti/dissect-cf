@@ -21,12 +21,12 @@ public class InfrastructureModel {
 	 * List of all available bins, order is important, all models have the same bin
 	 * order at a particular consolidation run
 	 */
-	public ModelPM[] bins;
+	public final ModelPM[] bins;
 	/**
 	 * List of all available items, order is important, all models have the same
 	 * items order at a particular consolidation run
 	 */
-	public ModelVM[] items;
+	public final ModelVM[] items;
 
 	// Fitness of the solution...
 	/**
@@ -111,7 +111,7 @@ public class InfrastructureModel {
 				if (pm.consumed.getTotalProcessingPower() > ut.getTotalProcessingPower())
 					totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
 				if (pm.consumed.getRequiredMemory() > ut.getRequiredMemory())
-					totalOverAllocated += pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
+					totalOverAllocated += (double)pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
 			}
 		}
 		for (final ModelVM vm : items) {

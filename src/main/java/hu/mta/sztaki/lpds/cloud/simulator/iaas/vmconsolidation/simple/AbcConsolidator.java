@@ -25,7 +25,7 @@ public class AbcConsolidator extends IM_PB_Consolidator {
 	/** Probabilities for the onlooker bees */
 	private double[] probabilities;
 
-	private int[] probTestIndexes = new int[probTestCount + 1];
+	private final int[] probTestIndexes = new int[probTestCount + 1];
 	private int[] wincounts;
 	private int[] testcounts;
 

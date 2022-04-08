@@ -266,7 +266,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	@Override
 	public VirtualMachine[] requestVM(VirtualAppliance va, ResourceConstraints rc, Repository vaSource, int count,
-			HashMap<String, Object> schedulingConstraints) throws VMManager.VMManagementException, NetworkException {
+			HashMap<String, Object> schedulingConstraints) throws VMManager.VMManagementException {
 		if (machines.isEmpty()) {
 			throw new VMManagementException("There are no physical machines that can run VMs!");
 		}

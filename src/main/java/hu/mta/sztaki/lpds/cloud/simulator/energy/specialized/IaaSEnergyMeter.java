@@ -116,7 +116,7 @@ public class IaaSEnergyMeter extends AggregatedEnergyMeter implements VMManager.
 	}
 
 	/**
-	 * Allows determining what is the
+	 * Allows determining what is
 	 * 
 	 * @return the observed IaaS system
 	 */

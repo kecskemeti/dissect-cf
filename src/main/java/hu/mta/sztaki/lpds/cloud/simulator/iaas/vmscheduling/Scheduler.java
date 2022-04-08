@@ -93,7 +93,7 @@ public abstract class Scheduler {
 	 * the public version of totalQueued that mirrors its contents but does not
 	 * allow changes on it
 	 */
-	protected UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(totalQueued);
+	protected final UnalterableConstraintsPropagator publicTQ = new UnalterableConstraintsPropagator(totalQueued);
 	/**
 	 * This field contains an automatically updated list of all machines in the
 	 * parent IaaS. The list is kept in the order of the PM's size to allow rapid
@@ -132,7 +132,7 @@ public abstract class Scheduler {
 	 * queuelisteners are notified, so they can improve the IaaS's infrastructure
 	 * setup.
 	 */
-	protected PhysicalMachine.StateChangeListener pmstateChanged = (PhysicalMachine pm, State oldState,
+	protected final PhysicalMachine.StateChangeListener pmstateChanged = (PhysicalMachine pm, State oldState,
 			State newState) -> {
 		if (newState.equals(PhysicalMachine.State.RUNNING)) {
 			freeResourcesSinceLastSchedule.add(pm.freeCapacities);
@@ -152,7 +152,7 @@ public abstract class Scheduler {
 	 * invokes the scheduling and also notifies the queuing listeners about having a
 	 * VM queue despite newly free resources.
 	 */
-	protected VMManager.CapacityChangeEvent<ResourceConstraints> freeCapacity = new VMManager.CapacityChangeEvent<>() {
+	protected final VMManager.CapacityChangeEvent<ResourceConstraints> freeCapacity = new VMManager.CapacityChangeEvent<>() {
 		@Override
 		public void capacityChanged(final ResourceConstraints newCapacity,
 				final List<ResourceConstraints> newlyFreeResources) {

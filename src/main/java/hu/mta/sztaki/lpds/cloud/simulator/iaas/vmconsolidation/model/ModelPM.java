@@ -117,15 +117,12 @@ public class ModelPM {
 	 * 
 	 * @param vm The VM which is going to be put on this PM.
 	 */
-	public boolean addVM(final ModelVM vm) {
+	public void addVM(final ModelVM vm) {
 		vmList.add(vm);
 		final ResourceConstraints rc = vm.getResources();
 		consumedResources.singleAdd(rc);
 		freeResources.subtract(rc);
 		vm.sethostPM(this);
-
-		// adding was successful
-		return true;
 	}
 
 	/**
@@ -133,7 +130,7 @@ public class ModelPM {
 	 * 
 	 * @param vm The VM which is going to be removed of this PM.
 	 */
-	public boolean removeVM(final ModelVM vm) {
+	public void removeVM(final ModelVM vm) {
 		vmList.remove(vm);
 		// adapt the consumed resources
 		final ResourceConstraints rc = vm.getResources();
@@ -141,9 +138,6 @@ public class ModelPM {
 		freeResources.singleAdd(rc);
 		vm.sethostPM(null);
 		vm.prevPM = this;
-
-		// removing was successful
-		return true;
 	}
 
 	/**
