@@ -31,10 +31,7 @@ import java.util.Map;
 
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.*;
 import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 
 /**
@@ -389,7 +386,7 @@ public class NetworkNode {
 	public long getLastEvent() {
 		long latest = -1;
 		for (ResourceSpreader rs : allSpreaders) {
-			ResourceSpreader.FreqSyncer fs = rs.getSyncer();
+			FreqSyncer fs = rs.getSyncer();
 			if (fs.isSubscribed()) {
 				latest = Math.max(latest, fs.getNextEvent());
 			}

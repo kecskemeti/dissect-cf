@@ -55,7 +55,7 @@ public class SimpleConsolidator extends Consolidator {
 	 * This might need to be updated if the per core performance of a PM is
 	 * expressed in a different unit.
 	 */
-	public static double pmFullLimit = 0.00000001;
+	public static final double pmFullLimit = 0.00000001;
 
 	/**
 	 * Just passes its parameters to the superclass's constructor

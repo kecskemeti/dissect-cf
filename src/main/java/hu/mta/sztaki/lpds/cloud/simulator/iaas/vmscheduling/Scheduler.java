@@ -24,12 +24,7 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -84,7 +79,7 @@ public abstract class Scheduler {
 	 * subclasses could replace the list implementation to one that suits them
 	 * better.
 	 */
-	protected List<QueueingData> queue = new LinkedList<>();
+	protected Queue<QueueingData> queue = new LinkedList<>();
 	/**
 	 * the amount of resources needed for fulfilling all VM requests in the queue
 	 */
@@ -162,7 +157,7 @@ public abstract class Scheduler {
 					invokeRealScheduler();
 				}
 				if (totalQueued.getRequiredCPUs() != 0
-						&& queue.get(0).cumulativeRC.compareTo(parent.getRunningCapacities()) > 0) {
+						&& queue.peek().cumulativeRC.compareTo(parent.getRunningCapacities()) > 0) {
 					queueListenerManager.notifyListeners(null);
 				}
 			}
@@ -329,7 +324,7 @@ public abstract class Scheduler {
 		if (queue.isEmpty()) {
 			return null;
 		}
-		QueueingData removed = queue.remove(0);
+		QueueingData removed = queue.poll();
 		updateTotalQueuedAfterRemoval(removed);
 		return removed;
 	}

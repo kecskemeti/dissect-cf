@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -74,15 +75,11 @@ public abstract class ResourceSpreader {
 	 * The array of consumption objects that will share the processing power of this
 	 * spreader. The order is not guaranteed!
 	 */
-	private final ArrayList<ResourceConsumption> toProcess = new ArrayList<>();
+	final ArrayList<ResourceConsumption> toProcess = new ArrayList<>();
 	/**
 	 * The unalterable array of resource consumption objects.
 	 */
 	public final List<ResourceConsumption> underProcessing = Collections.unmodifiableList(toProcess);
-	/**
-	 * the length of the list of toProcess. This is updated for performance reasons.
-	 */
-	int underProcessingLen = 0;
 	/**
 	 * The influence group in which this resource spreader belongs.
 	 */
@@ -91,12 +88,12 @@ public abstract class ResourceSpreader {
 	 * The resource consumptions that got registered to this spreader in the last
 	 * tick
 	 */
-	private final ArrayList<ResourceConsumption> underAddition = new ArrayList<>();
+	final ArrayList<ResourceConsumption> underAddition = new ArrayList<>();
 	/**
 	 * The resource consumptions that got deregistered from this spreader in the
 	 * last tick
 	 */
-	private final ArrayList<ResourceConsumption> underRemoval = new ArrayList<>();
+	final ArrayList<ResourceConsumption> underRemoval = new ArrayList<>();
 	/**
 	 * Public, unmodifiable list of just registered resource consumptions
 	 */
@@ -132,481 +129,7 @@ public abstract class ResourceSpreader {
 	 * A helper field that allows the rapid discovery of influence groups by the
 	 * group's freq syncer object
 	 */
-	private boolean stillInDepGroup;
-
-	/**
-	 * This class is the core part of the unified resource consumption model of
-	 * DISSECT-CF.
-	 * 
-	 * The main purpose of this class is to create and manage influence groups from
-	 * resource spreaders that are connected with resource consumptions. Also, the
-	 * class is also expected to coordinate the processing of the resource
-	 * consumptions within the entire influence group. Finally, the class is
-	 * responsible to deliver the completion or failure events for the resource
-	 * consumptions deregistered from the influence group's resource spreaders.
-	 * 
-	 * The name FreqSyncer comes from the class's primary goal, identify the
-	 * earliest time there is a change in the scheduling (e.g., because a new
-	 * resource consumption is added to the group or because one of the consumptions
-	 * complete), and then make sure that all spreaders in the influence group
-	 * receive timing events at the same time instance.
-	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
-	 *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
-	 *         Distributed Systems, MTA SZTAKI (c) 2015"
-	 *
-	 */
-	public static class FreqSyncer extends Timed {
-		/**
-		 * The influence group managed by this freqsyncer object.
-		 * 
-		 * myDepGroup is always kept in order: first all the providers are listed, then
-		 * all the consumers, when dealing with this data member please keep in mind
-		 * this expected behavior. At the end of the array we have a padding with null
-		 * items.
-		 * 
-		 * Contents:
-		 * <ul>
-		 * <li>[0,firstConsumerId[ providers
-		 * <li>[firstConsumerId,depgrouplen[ consumers
-		 * <li>[depgrouplen,myDepGroup.length[ padding with null items
-		 * </ul>
-		 */
-		private ResourceSpreader[] myDepGroup;
-		/**
-		 * The current length of the myDepGroup array. This is the actual length without
-		 * counting the padding at the end of the java array.
-		 */
-		private int depgrouplen;
-		/**
-		 * The index of the first consumer in the myDepGroup array.
-		 */
-		private int firstConsumerId;
-		/**
-		 * those resource spreaders that need to be added to the influence group at the
-		 * particular time instance
-		 */
-		private final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<>();
-		/**
-		 * if there are some external activities that could lead to influence group
-		 * changes this field will be turned to true
-		 * 
-		 * the tick function then ensures it to return to false once it has completed
-		 * its management operations on the influence groups
-		 */
-		private boolean nudged = false;
-		/**
-		 * if the freqsyncer identifies the need to fire events with 0 frequency then it
-		 * turns this mode off. This allows ResourceSpreader.doProcessing to happen
-		 * multiple times in a single time instance.
-		 */
-		private boolean regularFreqMode = true;
-
-		/**
-		 * Constructor of a freqsyncer to be used when neither the provider nor the
-		 * consumer of a resource consumption belongs to an already existing influence
-		 * group.
-		 * 
-		 * @param provider the provider to be added to the initial influence group
-		 * @param consumer the consumer to be added to the initial influence group
-		 */
-		private FreqSyncer(final ResourceSpreader provider, final ResourceSpreader consumer) {
-			myDepGroup = new ResourceSpreader[2];
-			myDepGroup[0] = provider;
-			myDepGroup[1] = consumer;
-			firstConsumerId = 1;
-			depgrouplen = 2;
-			provider.mySyncer = consumer.mySyncer = this;
-			setBackPreference(true);
-		}
-
-		/**
-		 * The constructor to be used when a new influence group needs to be created
-		 * because the original group got fragmented.
-		 * 
-		 * @param myDepGroup the group members to take part in the new influence group
-		 * @param provcount  the number of providers in the group
-		 * @param dglen      the length of the influence group
-		 */
-		private FreqSyncer(ResourceSpreader[] myDepGroup, final int provcount, final int dglen) {
-			this.myDepGroup = myDepGroup;
-			firstConsumerId = provcount;
-			depgrouplen = dglen;
-			for (int i = 0; i < dglen; i++) {
-				myDepGroup[i].mySyncer = this;
-			}
-			setBackPreference(true);
-		}
-
-		/**
-		 * Allows a single spreader object to be added to the influence group.
-		 * 
-		 * <i>WARNING:</i> Should only be used from addToGroup, as there are some
-		 * management operations that only occure there for performance reasons
-		 * 
-		 * @param rs the spreader to be added to the influence group
-		 */
-		private void addSingleToDG(final ResourceSpreader rs) {
-			try {
-				myDepGroup[depgrouplen] = rs;
-				depgrouplen++;
-				rs.mySyncer = this;
-			} catch (ArrayIndexOutOfBoundsException e) {
-				ResourceSpreader[] newdg = new ResourceSpreader[myDepGroup.length * 7];
-				System.arraycopy(myDepGroup, 0, newdg, 0, depgrouplen);
-				myDepGroup = newdg;
-				addSingleToDG(rs);
-			}
-		}
-
-		/**
-		 * This function copies the contents of the depGroupExtension list to the array
-		 * representing the influence group and ensures that all newly added members of
-		 * the influence group know their group membership.
-		 */
-		private void addToGroup() {
-			for (final ResourceSpreader rs : depGroupExtension) {
-				if (isInDepGroup(rs))
-					continue;
-				if (rs.isConsumer()) {
-					addSingleToDG(rs);
-				} else {
-					if (firstConsumerId >= depgrouplen) {
-						addSingleToDG(rs);
-					} else {
-						addSingleToDG(myDepGroup[firstConsumerId]);
-						myDepGroup[firstConsumerId] = rs;
-					}
-					firstConsumerId++;
-				}
-				rs.mySyncer = this;
-			}
-		}
-
-		/**
-		 * Determines if the spreader in question is part of the current influence group
-		 * or not
-		 * 
-		 * @param lookfor the spreader in question
-		 * @return <i>true</i> if the group is part of the current influence group
-		 */
-		private boolean isInDepGroup(final ResourceSpreader lookfor) {
-			final int start = lookfor.isConsumer() ? firstConsumerId : 0;
-			final int stop = start == 0 ? firstConsumerId : depgrouplen;
-			// We will just check the part of the depgroup where
-			// consumers or providers are located
-			int i = start;
-			for (; i < stop && myDepGroup[i] != lookfor; i++)
-				;
-			return i != stop;
-		}
-
-		/**
-		 * To be used to initiate out of order frequency updates. This is useful when
-		 * one or more resource spreaders in the influence group have gone through
-		 * frequency altering changes (i.e., dropping or receiving a new resource
-		 * consumption) and the rest of the group needs to be rescheduled.
-		 */
-		void nudge() {
-			if (nudged)
-				return;
-			nudged = true;
-			updateFrequency(0);
-		}
-
-		/**
-		 * Only those should get the depgroup with this function who are not planning to
-		 * change it's contents. This function directly offers the array handled by the
-		 * freqsyncer to allow external read operations on the array to perform faster.
-		 * 
-		 * <i>WARNING:</i> If, for some reason, the contents of the returned array are
-		 * changed then the proper operation of FreqSyncer cannot be guaranteed anymore.
-		 * 
-		 * @return the reference to the influence group's internal array
-		 */
-		ResourceSpreader[] getDepGroup() {
-			return myDepGroup;
-		}
-
-		/**
-		 * queries the number of resource spreaders that are part of the influence group
-		 * managed by this freqsyncer.
-		 * 
-		 * @return the number of spreaders in the group
-		 */
-		public int getDGLen() {
-			return depgrouplen;
-		}
-
-		/**
-		 * This will always give a fresh copy of the depgroup which can be changed as
-		 * the user desires. Because of the always copying behavior it will reduce the
-		 * performance a little. Of course, it results in significant performance
-		 * penalties for those who only would like to read from the array.
-		 * 
-		 * @return a new copy of the influence group's internal array this array can be
-		 *         modified at the user's will
-		 */
-		public ResourceSpreader[] getClonedDepGroup() {
-			return Arrays.copyOfRange(myDepGroup, 0, depgrouplen);
-		}
-
-		/**
-		 * provides a textual overview of the influence group with all its members.
-		 * useful for debugging and tracing.
-		 */
-		@Override
-		public String toString() {
-			return "FreqSyncer(" + super.toString() + " depGroup: " + Arrays.toString(myDepGroup) + ")";
-		}
-
-		/**
-		 * query the index of the first consumer in the influence group's internal array
-		 * representation
-		 * 
-		 * @return the index of the first consumer
-		 */
-		public int getFirstConsumerId() {
-			return firstConsumerId;
-		}
-
-		/**
-		 * Goes through the entire influence group and for each member it initiates its
-		 * doProcessing function.
-		 * 
-		 * This is the actual function that does influence group wise resource
-		 * consumption processing.
-		 * 
-		 * @param currentTime the time instance for which the processing should be done
-		 */
-		protected final void outOfOrderProcessing(final long currentTime) {
-			for (int i = 0; i < depgrouplen; i++) {
-				myDepGroup[i].doProcessing(currentTime);
-			}
-		}
-
-		/**
-		 * Implementation of Algorithm 1 from "DISSECT-CF: a simulator to foster
-		 * energy-aware scheduling in infrastructure clouds"
-		 * 
-		 * Manages the influence group's growth and decomposition.
-		 * 
-		 * Sends out the notifications for completed or failed resource consumptions.
-		 * 
-		 * This is executed with the frequency identified by the low level scheduler.
-		 * The execution of this tick function is run at the very end of the event loop
-		 * in Timed (with the help of backpreference that is set up in the constructors
-		 * of this class). The backpreference ensures that frequency setup is only done
-		 * after all other events are handled by Timed (i.e., it is not expected that
-		 * new resource consumption objects and similar will occur because of other
-		 * activities). This actually ensures that the nudging of the freqsyncer will
-		 * not cause too frequent repetitions of this heavyweight algorithm.
-		 * 
-		 */
-		@Override
-		public void tick(final long fires) {
-			// Phase I. Identifying new influence group members, sending out
-			// consumption notification events
-			boolean didRemovals = false;
-			boolean didExtension;
-			do {
-				addToGroup();
-				outOfOrderProcessing(fires);
-				depGroupExtension.clear();
-				nudged = false;
-				didExtension = false;
-				for (int rsi = 0; rsi < depgrouplen; rsi++) {
-					final ResourceSpreader rs = myDepGroup[rsi];
-					// managing removals
-					final int urLen = rs.underRemoval.size();
-					if (urLen > 0) {
-						didRemovals = true;
-						for (int urIndex = 0; urIndex < urLen; urIndex++) {
-							final ResourceConsumption con = rs.underRemoval.get(urIndex);
-							if (ArrayHandler.removeAndReplaceWithLast(rs.toProcess, con)) {
-								rs.underProcessingLen--;
-							}
-							rs.manageRemoval(con);
-						}
-						rs.underRemoval.clear();
-					}
-					// managing additions
-					final int uaLen = rs.underAddition.size();
-					if (uaLen > 0) {
-						if (rs.underProcessingLen == 0) {
-							rs.lastNotifTime = fires;
-						}
-						for (int i = 0; i < uaLen; i++) {
-							final ResourceConsumption con = rs.underAddition.get(i);
-							final ResourceSpreader cp = rs.getCounterPart(con);
-							// Check if counterpart is in the dependency group
-							if (!isInDepGroup(cp)) {
-								// No it is not, we need an extension
-								didExtension = true;
-								if (cp.mySyncer == null || cp.mySyncer == this) {
-									// Just this single item is missing
-									if (!depGroupExtension.contains(cp)) {
-										depGroupExtension.add(cp);
-									}
-								} else {
-									// There are further items missing
-									cp.mySyncer.unsubscribe();
-									for (int j = 0; j < cp.mySyncer.depgrouplen; j++) {
-										final ResourceSpreader todepgroupextension = cp.mySyncer.myDepGroup[j];
-										if (!depGroupExtension.contains(todepgroupextension)) {
-											depGroupExtension.add(todepgroupextension);
-										}
-									}
-									// Make sure, that if we encounter this cp
-									// next time we will not try to add all its
-									// dep group
-									cp.mySyncer = null;
-								}
-							}
-						}
-						rs.toProcess.addAll(rs.underAddition);
-						rs.underProcessingLen += uaLen;
-						rs.underAddition.clear();
-					}
-				}
-			} while (didExtension || nudged);
-
-			// Phase II. managing separation of influence groups
-			if (didRemovals) {
-				// Marking all current members of the depgroup as non-members
-				for (int i = 0; i < depgrouplen; i++) {
-					myDepGroup[i].stillInDepGroup = false;
-				}
-				ResourceSpreader[] notClassified = myDepGroup;
-				int providerCount = firstConsumerId;
-				int notClassifiedLen = depgrouplen;
-				do {
-					int classifiableindex = 0;
-					// finding the first dependency group
-					for (; classifiableindex < notClassifiedLen; classifiableindex++) {
-						final ResourceSpreader rs = notClassified[classifiableindex];
-						buildDepGroup(rs);
-						if (rs.stillInDepGroup) {
-							break;
-						}
-						rs.mySyncer = null;
-					}
-					if (classifiableindex < notClassifiedLen) {
-						notClassifiedLen -= classifiableindex;
-						providerCount -= classifiableindex;
-						// Remove the unused front
-						System.arraycopy(notClassified, classifiableindex, notClassified, 0, notClassifiedLen);
-						// Remove the not classified items
-						ResourceSpreader[] stillNotClassified = null;
-						int newpc = 0;
-						int newlen = 0;
-						for (int i = 0; i < notClassifiedLen; i++) {
-							final ResourceSpreader rs = notClassified[i];
-							if (!rs.stillInDepGroup) {
-								notClassifiedLen--;
-								// Management of the new group
-								if (stillNotClassified == null) {
-									stillNotClassified = new ResourceSpreader[notClassifiedLen];
-								}
-								stillNotClassified[newlen++] = rs;
-								// Removals from the old group
-								if (rs.isConsumer()) {
-									notClassified[i] = notClassified[notClassifiedLen];
-								} else {
-									providerCount--;
-									notClassified[i] = notClassified[providerCount];
-									notClassified[providerCount] = notClassified[notClassifiedLen];
-									newpc++;
-								}
-								notClassified[notClassifiedLen] = null;
-								i--;
-							}
-						}
-						// We now have the new groups, so we can start
-						// subscribing
-						FreqSyncer subscribeMe;
-						if (notClassified == myDepGroup) {
-							depgrouplen = notClassifiedLen;
-							firstConsumerId = providerCount;
-							subscribeMe = this;
-						} else {
-							subscribeMe = new FreqSyncer(notClassified, providerCount, notClassifiedLen);
-						}
-						// Ensuring freq updates for every newly created group
-						subscribeMe.updateMyFreqNow();
-						if (stillNotClassified == null) {
-							// No further spreaders to process
-							break;
-						} else {
-							// let's work on the new spreaders
-							notClassified = stillNotClassified;
-							providerCount = newpc;
-							notClassifiedLen = newlen;
-						}
-					} else {
-						// nothing left in notclassified that can be use in
-						// dependency groups
-						notClassifiedLen = 0;
-						if (notClassified == myDepGroup) {
-							depgrouplen = 0;
-						}
-					}
-				} while (notClassifiedLen != 0);
-				if (notClassified == myDepGroup && depgrouplen == 0) {
-					// No group was created we have to unsubscribe
-					unsubscribe();
-				}
-			} else {
-				// No separation was needed we just update our freq
-				updateMyFreqNow();
-			}
-		}
-
-		/**
-		 * Calls out to the low level scheduler of the group to assign processing limits
-		 * for each consumption in the group and to identify the completion time of the
-		 * earliest terminating consumption. Then propagates this time to be the next
-		 * time Timed fires up our tick function. This technique reduces the number of
-		 * times influence group management has to be executed. Unless someone asks for
-		 * it explicitly, this process also reduces the frequency with which the
-		 * ResourceSpreader.doProcessing is called.
-		 */
-		private void updateMyFreqNow() {
-			final long newFreq = myDepGroup[0].singleGroupwiseFreqUpdater();
-			regularFreqMode = newFreq != 0;
-			updateFrequency(newFreq);
-		}
-
-		/**
-		 * Determines if the influence group is processing 0 ticks long consumptions.
-		 * 
-		 * @return <i>true</i> if the influence group is not processing 0 tick long
-		 *         consumptions - this is expected to be the usual case.
-		 */
-		public boolean isRegularFreqMode() {
-			return regularFreqMode;
-		}
-
-		/**
-		 * Marks all resource spreaders in the currently decomposing influence group
-		 * that the starting spreader has connections with. Before calling this function
-		 * it is expected that all past members of the influence group are marked not in
-		 * the group anymore. This function will then change these flags back only on
-		 * the relevant members from the point of view of the starting item.
-		 * 
-		 * @param startingItem the starting item from which point the influence group
-		 *                     should be constructured.
-		 */
-		private void buildDepGroup(final ResourceSpreader startingItem) {
-			if (startingItem.underProcessingLen == 0 || startingItem.stillInDepGroup) {
-				return;
-			}
-			startingItem.stillInDepGroup = true;
-			for (int i = 0; i < startingItem.underProcessingLen; i++) {
-				buildDepGroup(startingItem.getCounterPart(startingItem.toProcess.get(i)));
-			}
-		}
-	}
+	boolean stillInDepGroup;
 
 	/**
 	 * This constructor just saves the processing power that can be spread in every
@@ -645,17 +168,17 @@ public abstract class ResourceSpreader {
 	 * 
 	 * @param conList the resource consumptions that must be dropped (either because
 	 *                they complete or because they are cancelled)
-	 * @param len     the number of items in the consumption list.
 	 */
-	protected final void removeTheseConsumptions(final ResourceConsumption[] conList, final int len) {
-		for (int i = 0; i < len; i++) {
-			if (!underRemoval.contains(conList[i])) {
-				underRemoval.add(conList[i]);
+	protected final void removeTheseConsumptions(final Stream<ResourceConsumption> conList) {
+		final long removalCount=conList.filter(rem -> {
+			if (!underRemoval.contains(rem)) {
+				underRemoval.add(rem);
 			}
-			ArrayHandler.removeAndReplaceWithLast(underAddition, conList[i]);
-		}
-		if (mySyncer != null) {
-			mySyncer.nudge();
+			ArrayHandler.removeAndReplaceWithLast(underAddition, rem);
+			return true;
+		}).count();
+		if(removalCount>0 && mySyncer != null) {
+				mySyncer.nudge();
 		}
 	}
 
@@ -741,9 +264,8 @@ public abstract class ResourceSpreader {
 	static void cancelConsumption(final ResourceConsumption con) {
 		final ResourceSpreader provider = con.getProvider();
 		final ResourceSpreader consumer = con.getConsumer();
-		ResourceConsumption[] singeConsumption = new ResourceConsumption[] { con };
-		provider.removeTheseConsumptions(singeConsumption, 1);
-		consumer.removeTheseConsumptions(singeConsumption, 1);
+		provider.removeTheseConsumptions(Stream.of(con));
+		consumer.removeTheseConsumptions(Stream.of(con));
 	}
 
 	/**
@@ -761,31 +283,17 @@ public abstract class ResourceSpreader {
 	 * @param currentFireCount the time at which this processing task must take
 	 *                         place.
 	 */
-	private void doProcessing(final long currentFireCount) {
+	void doProcessing(final long currentFireCount) {
 		if (currentFireCount == lastNotifTime && mySyncer.isRegularFreqMode()) {
 			return;
 		}
-		ResourceConsumption[] toRemove = null;
-		boolean firsthit = true;
-		int remIdx = 0;
 		final long ticksPassed = currentFireCount - lastNotifTime;
-		for (int i = 0; i < underProcessingLen; i++) {
-			final ResourceConsumption con = underProcessing.get(i);
-			final double processed = processSingleConsumption(con, ticksPassed);
-			if (processed < 0) {
-				totalProcessed -= processed;
-				if (firsthit) {
-					toRemove = new ResourceConsumption[underProcessingLen - i];
-					firsthit = false;
+		removeTheseConsumptions(toProcess.stream().filter( con -> {
+					final double processed = processSingleConsumption(con, ticksPassed);
+					totalProcessed+=Math.abs(processed);
+					return processed < 0;
 				}
-				toRemove[remIdx++] = con;
-			} else {
-				totalProcessed += processed;
-			}
-		}
-		if (remIdx > 0) {
-			removeTheseConsumptions(toRemove, remIdx);
-		}
+		));
 		lastNotifTime = currentFireCount;
 	}
 
@@ -868,11 +376,7 @@ public abstract class ResourceSpreader {
 			if (isConsumer()) {
 				// We first have to make sure the providers provide the
 				// stuff that this consumer might need
-				final int len = mySyncer.getFirstConsumerId();
-				final ResourceSpreader[] dg = mySyncer.myDepGroup;
-				for (int i = 0; i < len; i++) {
-					dg[i].doProcessing(currTime);
-				}
+				Arrays.stream(mySyncer.myDepGroup).forEach( c -> c.doProcessing(currTime));
 			}
 			doProcessing(currTime);
 		}
@@ -1013,5 +517,9 @@ public abstract class ResourceSpreader {
 	@Override
 	public final int hashCode() {
 		return myHashCode;
+	}
+
+	void setSyncer(FreqSyncer syncer) {
+		mySyncer=syncer;
 	}
 }

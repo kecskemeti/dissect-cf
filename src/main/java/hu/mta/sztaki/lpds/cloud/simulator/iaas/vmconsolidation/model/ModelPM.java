@@ -1,3 +1,26 @@
+/*
+ *  ========================================================================
+ *  DIScrete event baSed Energy Consumption simulaTor
+ *    					             for Clouds and Federations (DISSECT-CF)
+ *  ========================================================================
+ *
+ *  This file is part of DISSECT-CF.
+ *
+ *  DISSECT-CF is free software: you can redistribute it and/or modify it
+ *  under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
+ *
+ *  DISSECT-CF is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ *  General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with DISSECT-CF.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  (C) Copyright 2019-20, Gabor Kecskemeti, Rene Ponto, Zoltan Mann
+ */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import java.util.ArrayList;
@@ -89,18 +112,18 @@ public class ModelPM {
 	 *         state and its vms.
 	 */
 	public String toString() {
-		String result = "PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString()
+		StringBuilder result = new StringBuilder("PM " + basedetails.number + ",\n cap=" + basedetails.pm.getCapacities().toString()
 				+ ",\n curr=" + consumedResources.toString() + ",\n state=" + (isHostingVMs() ? "ON" : "OFF")
-				+ ",\n VMs=";
+				+ ",\n VMs=");
 		boolean first = true;
 		for (ModelVM vm : vmList) {
 			if (!first)
-				result = result + " ";
-			result = result + vm.toShortString() + vm.getResources().toString();
+				result.append(" ");
+			result.append(vm.toShortString()).append(vm.getResources().toString());
 			first = false;
 		}
 		// result=result+" (running="+pm.isRunning()+")";
-		return result;
+		return result.toString();
 	}
 
 	/**

@@ -34,6 +34,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.pmiterators.PMIterator;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
+import java.util.ArrayList;
+
 /**
  * This class implements one of the simplest VM schedulers: it places every VM
  * on the first PM that would actually accept it. The scheduler does not
@@ -52,14 +54,14 @@ public class FirstFitScheduler extends Scheduler {
 	 * The set of resource allocations made for the current VM request (this is
 	 * important for multi VM requests)
 	 */
-	ResourceAllocation[] ras = new ResourceAllocation[5];
+	private final ArrayList<ResourceAllocation> ras = new ArrayList<>(5);
 	/**
 	 * the largest allocation that was possible to collect from all running PMs
 	 * in the infrastructure. this is important to determine the amount of
 	 * resources that need to become free before the scheduler would be able to
 	 * place the head of the queue to any of the PMs in the infrastructure.
 	 */
-	ResourceAllocation raBiggestNotSuitable = null;
+	private ResourceAllocation raBiggestNotSuitable = null;
 	/**
 	 * the iterator of the running PMs allowing to easily traverse the PM set in
 	 * a predefined order. The iterator plays a crucial role in this
@@ -113,20 +115,18 @@ public class FirstFitScheduler extends Scheduler {
 		ConstantConstraints returner = new ConstantConstraints(getTotalQueued());
 		if (currIterator.hasNext()) {
 			QueueingData request;
-			ResourceAllocation allocation;
 			boolean processableRequest = true;
-			int vmNum = 0;
 			while (queue.size() > 0 && processableRequest) {
-				request = queue.get(0);
+				request = queue.peek();
 				currIterator.restart(false);
-				vmNum = 0;
+				int vmNum = 0;
 				do {
 					processableRequest = false;
 					do {
 						final PhysicalMachine pm = currIterator.next();
 						if (pm.localDisk.getFreeStorageCapacity() >= request.queuedVMs[vmNum].getVa().size) {
 							try {
-								allocation = pm.allocateResources(request.queuedRC, false,
+								final ResourceAllocation allocation = pm.allocateResources(request.queuedRC, false,
 										PhysicalMachine.defaultAllocLen);
 								if (allocation != null) {
 									if (allocation.allocated.compareTo(request.queuedRC) >= 0) {
@@ -135,24 +135,17 @@ public class FirstFitScheduler extends Scheduler {
 											currIterator.next();
 										}
 										currIterator.markLastCollected();
-										if (vmNum == ras.length) {
-											ResourceAllocation[] rasnew = new ResourceAllocation[vmNum * 2];
-											System.arraycopy(ras, 0, rasnew, 0, vmNum);
-											ras = rasnew;
-										}
-										ras[vmNum] = allocation;
+										ras.add(allocation);
 										processableRequest = true;
 										break;
 									} else {
 										if (raBiggestNotSuitable == null) {
 											raBiggestNotSuitable = allocation;
+										} else if (allocation.allocated.compareTo(raBiggestNotSuitable.allocated) > 0) {
+											raBiggestNotSuitable.cancel();
+											raBiggestNotSuitable = allocation;
 										} else {
-											if (allocation.allocated.compareTo(raBiggestNotSuitable.allocated) > 0) {
-												raBiggestNotSuitable.cancel();
-												raBiggestNotSuitable = allocation;
-											} else {
-												allocation.cancel();
-											}
+											allocation.cancel();
 										}
 									}
 								}
@@ -166,10 +159,8 @@ public class FirstFitScheduler extends Scheduler {
 				if (processableRequest) {
 					try {
 						for (int i = request.queuedVMs.length - 1; i >= 0; i--) {
-							vmNum--;
-							allocation = ras[i];
+							final ResourceAllocation allocation = ras.remove(i);
 							allocation.getHost().deployVM(request.queuedVMs[i], allocation, request.queuedRepo);
-							ras[i]=null;
 						}
 						manageQueueRemoval(request);
 					} catch (VMManagementException e) {
@@ -181,10 +172,10 @@ public class FirstFitScheduler extends Scheduler {
 					}
 				} else {
 					AlterableResourceConstraints arc = new AlterableResourceConstraints(request.queuedRC);
-					arc.multiply(request.queuedVMs.length - vmNum + 1);
 					if (raBiggestNotSuitable != null) {
-						arc = new AlterableResourceConstraints(request.queuedRC);
 						arc.subtract(raBiggestNotSuitable.allocated);
+					} else {
+						arc.multiply(request.queuedVMs.length - vmNum + 1);
 					}
 					returner = new ConstantConstraints(arc);
 				}
@@ -193,11 +184,8 @@ public class FirstFitScheduler extends Scheduler {
 					raBiggestNotSuitable = null;
 				}
 			}
-			vmNum--;
-			for (int i = 0; i < vmNum; i++) {
-				ras[i].cancel();
-				ras[i] = null;
-			}
+			ras.forEach(ResourceAllocation::cancel);
+			ras.clear();
 		}
 		return returner;
 	}

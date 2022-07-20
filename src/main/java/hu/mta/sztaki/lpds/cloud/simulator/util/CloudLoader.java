@@ -162,7 +162,7 @@ public class CloudLoader {
 							stateSet.put(currentStateString,
 									new PowerState(idleCon, maxCon - idleCon, () -> {
 										try {
-											return consumptionmodel.getDeclaredConstructor(null).newInstance(null);
+											return consumptionmodel.getDeclaredConstructor().newInstance();
 										} catch (Exception e) {
 											throw new RuntimeException(e);
 										}

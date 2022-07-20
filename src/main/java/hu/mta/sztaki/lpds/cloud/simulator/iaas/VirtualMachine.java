@@ -1009,7 +1009,7 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 			suspendedTasks.addAll(toBeAdded);
 
-			suspendedTasks.stream().forEach(ResourceConsumption::suspend);
+			suspendedTasks.forEach(ResourceConsumption::suspend);
 		}
 	}
 
@@ -1019,7 +1019,7 @@ public class VirtualMachine extends MaxMinConsumer {
 	private void resumeTasks() {
 		setState(State.RUNNING);
 		if (suspendedTasks != null) {
-			suspendedTasks.stream().forEach(ResourceConsumption::registerConsumption);
+			suspendedTasks.forEach(ResourceConsumption::registerConsumption);
 			suspendedTasks = null;
 		}
 	}

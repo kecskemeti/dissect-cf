@@ -24,9 +24,9 @@ module hu.mta.sztaki.lpds.cloud.simulator.dissectcf {
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 
 	requires trove4j;
-	requires dsiutils;
 	requires java.xml;
 	requires org.apache.commons.lang3;
 	requires java.desktop;
 	requires java.logging;
+	requires it.unimi.dsi.dsiutils;
 }

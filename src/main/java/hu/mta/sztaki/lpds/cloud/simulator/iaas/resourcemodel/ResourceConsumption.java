@@ -27,6 +27,7 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import java.util.Comparator;
+import java.util.function.BooleanSupplier;
 
 /**
  * This class is part of the unified resource consumption model of DISSECT-CF.
@@ -281,11 +282,11 @@ public class ResourceConsumption {
 	private void updateHardLimit() {
 		final double provLimit = provider == null ? unlimitedProcessing : provider.perTickProcessingPower;
 		final double conLimit = consumer == null ? unlimitedProcessing : consumer.perTickProcessingPower;
-		hardLimit = requestedLimit < provLimit ? requestedLimit : provLimit;
+		hardLimit = Math.min(requestedLimit, provLimit);
 		if (hardLimit > conLimit) {
 			hardLimit = conLimit;
 		}
-		processingLimit = requestedLimit < hardLimit ? requestedLimit : hardLimit;
+		processingLimit = Math.min(requestedLimit, hardLimit);
 		setRealLimit(hardLimit);
 	}
 
@@ -311,8 +312,7 @@ public class ResourceConsumption {
 	public boolean registerConsumption() {
 		if (!registered) {
 			if (getUnProcessed() == 0) {
-				fireCompleteEvent();
-				return true;
+				return fireCompleteEvent();
 			} else if (resumable && provider != null && consumer != null) {
 				updateHardLimit();
 				if (ResourceSpreader.registerConsumption(this)) {
@@ -339,10 +339,8 @@ public class ResourceConsumption {
 	 * and ensures that it can no longer be registered
 	 */
 	public void cancel() {
-		boolean wasRegistered = registered;
-		suspend();
 		resumable = false;
-		if (!wasRegistered) {
+		if (!suspend()) {
 			fireCancelEvent();
 		}
 	}
@@ -351,12 +349,16 @@ public class ResourceConsumption {
 	 * Terminates the consumption but ensures that it will be resumable later on. If
 	 * a consumption needs to be resumed then it must be re-registered, there is no
 	 * special function for resume.
+	 *
+	 * @return if false, the suspension request came before registration
 	 */
-	public void suspend() {
+	public boolean suspend() {
 		if (registered) {
 			ResourceSpreader.cancelConsumption(this);
 			registered = false;
+			return true;
 		}
+		return false;
 	}
 
 	/**
@@ -425,7 +427,7 @@ public class ResourceConsumption {
 		double processed = 0;
 		if (toBeProcessed > 0) {
 			final double possiblePush = ticksPassed * realLimit;
-			processed = possiblePush < toBeProcessed ? possiblePush : toBeProcessed;
+			processed = Math.min(possiblePush, toBeProcessed);
 			toBeProcessed -= processed;
 			underProcessing += processed;
 			if (toBeProcessed < halfRealLimit) {
@@ -465,7 +467,7 @@ public class ResourceConsumption {
 		double processed = 0;
 		if (underProcessing > 0) {
 			final double possibleProcessing = ticksPassed * realLimit;
-			processed = possibleProcessing < underProcessing ? possibleProcessing : underProcessing;
+			processed = Math.min(possibleProcessing,underProcessing);
 			underProcessing -= processed;
 			calcCompletionDistance();
 			if (completionDistance == 0) {
@@ -576,7 +578,7 @@ public class ResourceConsumption {
 	 * @throws IllegalStateException if the real limit would become 0
 	 */
 	double updateRealLimit(final boolean updateCD) {
-		final double rlTrial = providerLimit < consumerLimit ? providerLimit : consumerLimit;
+		final double rlTrial = Math.min(providerLimit, consumerLimit);
 		if (rlTrial == 0) {
 			throw new IllegalStateException(
 					"Cannot calculate the completion distance for a consumption without a real limit! " + this);
@@ -683,12 +685,7 @@ public class ResourceConsumption {
 	 * @return false if the event was not sent
 	 */
 	boolean fireCompleteEvent() {
-		if (eventNotFired && getUnProcessed() == 0) {
-			eventNotFired = false;
-			ev.conComplete();
-			return true;
-		}
-		return false;
+		return fireEvent(() -> getUnProcessed()==0, ev::conComplete);
 	}
 
 	/**
@@ -696,12 +693,21 @@ public class ResourceConsumption {
 	 * 
 	 * @return false if the event was not sent
 	 */
-	boolean fireCancelEvent() {
-		if (eventNotFired) {
+	void fireCancelEvent() {
+		fireEvent(() -> true, () -> ev.conCancelled(this));
+	}
+
+	private boolean fireEvent(BooleanSupplier condition, Runnable action) {
+		if (eventNotFired && condition.getAsBoolean()) {
 			eventNotFired = false;
-			ev.conCancelled(this);
+			action.run();
 			return true;
 		}
 		return false;
+	}
+
+	void resetForFreqUpdate() {
+		limithelper=0;
+		unassigned=true;
 	}
 }

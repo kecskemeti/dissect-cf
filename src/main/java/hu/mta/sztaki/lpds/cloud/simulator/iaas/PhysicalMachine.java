@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.*;
 import org.apache.commons.lang3.tuple.Pair;
 
 import gnu.trove.list.linked.TDoubleLinkedList;
@@ -46,11 +47,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceCons
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.UnalterableConstraintsPropagator;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceSpreader;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode;
 import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
@@ -905,7 +901,7 @@ public class PhysicalMachine extends MaxMinProvider implements VMManager<Physica
 					@Override
 					public void tick(final long fires) {
 						if (State.SWITCHINGOFF.equals(currentState)) {
-							ResourceSpreader.FreqSyncer syncer = getSyncer();
+							FreqSyncer syncer = getSyncer();
 							// Ensures that the switching off activities are only
 							// started once all runtime activities complete for the
 							// directConsumer

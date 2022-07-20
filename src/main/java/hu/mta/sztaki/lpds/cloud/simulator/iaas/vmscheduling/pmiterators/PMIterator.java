@@ -124,12 +124,4 @@ public class PMIterator implements Iterator<PhysicalMachine> {
 	public PhysicalMachine next() {
 		return pmList.get(index++);
 	}
-
-	/**
-	 * Remove is not supported in PM iterators!
-	 */
-	@Override
-	public void remove() {
-		throw new UnsupportedOperationException();
-	}
 }

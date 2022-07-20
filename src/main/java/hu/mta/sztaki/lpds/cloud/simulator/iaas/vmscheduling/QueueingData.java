@@ -43,7 +43,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
  */
 public class QueueingData {
 	/**
-	 * The VMs to be placed on a PM
+	 * The VMs to be placed as part of the request
 	 */
 	public final VirtualMachine[] queuedVMs;
 	/**

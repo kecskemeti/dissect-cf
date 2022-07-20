@@ -25,6 +25,9 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
+import java.util.Arrays;
+import java.util.stream.Stream;
+
 /**
  * This class is part of the unified resource consumption model of DISSECT-CF.
  * 
@@ -51,11 +54,6 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	 * infrastructure clouds" .
 	 */
 	private int unassignedNum;
-	/**
-	 * Offers a temporary storage for the size of the current resource consumption
-	 * list. This is updated once in every freq update cycle.
-	 */
-	private int upLen;
 
 	/**
 	 * Constructs a generic Max Min fairness based resource spreader.
@@ -80,13 +78,9 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	 *
 	 */
 	private void initializeFreqUpdate() {
-		unassignedNum = upLen = underProcessing.size();
 		currentUnProcessed = perTickProcessingPower;
-		for (int i = 0; i < upLen; i++) {
-			final ResourceConsumption con = underProcessing.get(i);
-			con.limithelper = 0;
-			con.unassigned = true;
-		}
+		unassignedNum=underProcessing.size();
+		underProcessing.forEach(ResourceConsumption::resetForFreqUpdate);
 	}
 
 	/**
@@ -101,14 +95,11 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	private void assignProcessingPower() {
 		if (currentUnProcessed > negligibleProcessing && unassignedNum > 0) {
 			int currlen = unassignedNum;
-			for (int i = 0; i < upLen; i++) {
-				ResourceConsumption con = underProcessing.get(i);
-				con.inassginmentprocess = con.unassigned;
-			}
+			underProcessing.forEach(c -> c.inassginmentprocess=c.unassigned);
 			double currentProcessable = currentUnProcessed;
 			double pastProcessable;
 			int firstindex = 0;
-			int lastindex = upLen;
+			int lastindex = underProcessing.size();
 			do {
 				pastProcessable = currentProcessable;
 				final double maxShare = currentProcessable / currlen;
@@ -152,72 +143,52 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	@Override
 	protected long singleGroupwiseFreqUpdater() {
 		// Phase 1: preparation
-		final ResourceSpreader.FreqSyncer syncer = getSyncer();
-		final ResourceSpreader[] depgroup = syncer.getDepGroup();
+		final FreqSyncer syncer = getSyncer();
 		final int dglen = syncer.getDGLen();
 		final int providerCount = syncer.getFirstConsumerId();
-		for (int i = 0; i < dglen; i++) {
-			((MaxMinFairSpreader) depgroup[i]).initializeFreqUpdate();
-		}
+		getDepGroupStream(dglen).forEach(rs -> ((MaxMinFairSpreader)rs).initializeFreqUpdate());
 		boolean someConsumptionIsStillUnderUtilized;
 		// Phase 2: Progressive filling iteration
 		do {
 			// Phase 2a: determining maximum possible processing
 			// Determining wishes for providers and consumers
-			for (int i = 0; i < dglen; i++) {
-				((MaxMinFairSpreader) depgroup[i]).assignProcessingPower();
-			}
+			getDepGroupStream(dglen).forEach(rs -> ((MaxMinFairSpreader)rs).assignProcessingPower());
 			// Phase 2b: Finding minimum between providers and consumers
-			double minProcessing = Double.MAX_VALUE;
-			for (int i = 0; i < providerCount; i++) {
-				final int upLen = depgroup[i].underProcessing.size();
-				for (int j = 0; j < upLen; j++) {
-					final ResourceConsumption con = depgroup[i].underProcessing.get(j);
-					if (con.unassigned) {
-						final double currlimit = con.updateRealLimit(false);
-						if (currlimit < minProcessing) {
-							minProcessing = currlimit;
-						}
-					}
-				}
-			}
+			final double minProcessing = getDepGroupStream(providerCount).flatMapToDouble(
+					rs -> rs.underProcessing.stream().filter(c -> c.unassigned).mapToDouble(c -> c.updateRealLimit(false))).min().orElse(Double.MAX_VALUE);
 
+			final double mpLowLimit=minProcessing * 0.000000001;
 			// Phase 2c: single filling
-			someConsumptionIsStillUnderUtilized = false;
-			for (int i = 0; i < providerCount; i++) {
-				final MaxMinFairSpreader mmfs = (MaxMinFairSpreader) depgroup[i];
-				for (int j = 0; j < mmfs.upLen; j++) {
-					final ResourceConsumption con = mmfs.underProcessing.get(j);
-					if (con.unassigned) {
-						con.limithelper += minProcessing;
-						final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs.getCounterPart(con);
-						mmfs.currentUnProcessed -= minProcessing;
-						counterpart.currentUnProcessed -= minProcessing;
-						double rlMin = con.getRealLimit() - minProcessing;
-						rlMin = rlMin < 0 ? -rlMin : rlMin;
-						if (rlMin <= minProcessing * 0.000000001) {
-							con.unassigned = false;
-							mmfs.unassignedNum--;
-							counterpart.unassignedNum--;
-						}
+			someConsumptionIsStillUnderUtilized = getDepGroupStream(providerCount).filter(
+					rs -> {
+						final MaxMinFairSpreader mmfs = (MaxMinFairSpreader) rs;
+						mmfs.underProcessing.stream().filter(c -> c.unassigned).forEach( con -> {
+							con.limithelper += minProcessing;
+							final MaxMinFairSpreader counterpart = (MaxMinFairSpreader) mmfs.getCounterPart(con);
+							mmfs.currentUnProcessed -= minProcessing;
+							counterpart.currentUnProcessed -= minProcessing;
+							final double rlMin = Math.abs(con.getRealLimit() - minProcessing);
+							if (rlMin <= mpLowLimit) {
+								con.unassigned = false;
+								mmfs.unassignedNum--;
+								counterpart.unassignedNum--;
+							}
+						});
+						return mmfs.unassignedNum!=0;
 					}
-				}
-				someConsumptionIsStillUnderUtilized |= mmfs.unassignedNum > 0;
-			}
+			).count()!=0;
 		} while (someConsumptionIsStillUnderUtilized);
 		// Phase 3: Determining the earliest completion time
-		long minCompletionDistance = Long.MAX_VALUE;
-		for (int i = 0; i < providerCount; i++) {
-			final int upLen = depgroup[i].underProcessing.size();
-			for (int j = 0; j < upLen; j++) {
-				final ResourceConsumption con = depgroup[i].underProcessing.get(j);
-				con.consumerLimit = con.providerLimit = con.limithelper;
-				con.updateRealLimit(true);
-				final long conDistance = con.getCompletionDistance();
-				minCompletionDistance = conDistance < minCompletionDistance ? conDistance : minCompletionDistance;
-			}
-		}
-		return minCompletionDistance;
+		return getDepGroupStream(providerCount).flatMapToLong(
+				rs ->  rs.underProcessing.stream().mapToLong(con -> {
+					con.consumerLimit = con.providerLimit = con.limithelper;
+					con.updateRealLimit(true);
+					return con.getCompletionDistance();
+				})).min().orElse(Long.MAX_VALUE);
+	}
+
+	private Stream<ResourceSpreader> getDepGroupStream(int limit) {
+		return Arrays.stream(getSyncer().getDepGroup()).limit(limit);
 	}
 
 	/**
