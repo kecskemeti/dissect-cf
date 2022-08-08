@@ -650,7 +650,7 @@ public class VMTest extends IaaSRelatedFoundation {
 				} catch (VMManagementException e) {
 					throw new RuntimeException(e);
 				}
-			};
+			}
 		};
 		Timed.simulateUntilLastEvent();
 		Assert.assertEquals("Should get to destroyed", VirtualMachine.State.DESTROYED, centralVM.getState());

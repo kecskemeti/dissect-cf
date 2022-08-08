@@ -127,11 +127,9 @@ public class CloudLoader {
 						memory = Long.parseLong(attributes.getValue("memory"));
 						mid = attributes.getValue("id");
 					}
-					if (inmachine) {
-						if (qName.equals("statedelays")) {
-							startuptime = Integer.parseInt(attributes.getValue("startup"));
-							shutdowntime = Integer.parseInt(attributes.getValue("shutdown"));
-						}
+					if (inmachine && qName.equals("statedelays")) {
+						startuptime = Integer.parseInt(attributes.getValue("startup"));
+						shutdowntime = Integer.parseInt(attributes.getValue("shutdown"));
 					}
 					if (qName.equals("repository")) {
 						inrepo = true;

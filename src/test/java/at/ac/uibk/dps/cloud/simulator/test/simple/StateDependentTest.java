@@ -37,7 +37,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandl
 
 public class StateDependentTest extends TestFoundation {
 	interface MyHandler {
-		public void handle(String payload);
+		void handle(String payload);
 	}
 
 	StateDependentEventHandler<MyHandler, String> sdeh;

@@ -504,8 +504,8 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	@Test(timeout = 1000)
-	public void localSearchTest() throws VMManagementException, NetworkException, InterruptedException, 
-		InvalidPropertiesFormatException, IOException {
+	public void localSearchTest() throws VMManagementException, NetworkException, InterruptedException,
+			IOException {
 		
 		boolean finished = false;	// used to check if the test was succesful
 		

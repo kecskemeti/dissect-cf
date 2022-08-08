@@ -191,7 +191,7 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinProvider(1) {
 					protected boolean isAcceptableConsumption(ResourceConsumption con) {
 						return false;
-					};
+					}
 				}, utilize, new ConsumptionEventAssert()).registerConsumption());
 		Assert.assertFalse("Consumer should not accept this consumption",
 				new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinConsumer(1) {

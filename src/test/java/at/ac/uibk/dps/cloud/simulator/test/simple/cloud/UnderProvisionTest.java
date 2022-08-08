@@ -53,15 +53,15 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 		small = new ConstantConstraints(
 				total.getRequiredCPUs() / smallDivider,
 				total.getRequiredProcessingPower(),
-				(long) (total.getRequiredMemory() / smallDivider));
+				total.getRequiredMemory() / smallDivider);
 		bigger = new ConstantConstraints(
 				total.getRequiredCPUs() / bigDivider,
 				total.getRequiredProcessingPower() / smallestDivider, true,
-				(long) (total.getRequiredMemory() / smallestDivider));
+				total.getRequiredMemory() / smallestDivider);
 		biggerFittingCPU = new ConstantConstraints(
 				total.getRequiredCPUs() / smallestDivider,
 				total.getRequiredProcessingPower() / smallestDivider, true,
-				(long) (total.getRequiredMemory() / smallestDivider));
+				total.getRequiredMemory() / smallestDivider);
 	}
 
 	@Test(timeout = 100)
