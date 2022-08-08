@@ -35,6 +35,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.improver.No
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -202,15 +203,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
     private void migrateUnderAllocatedPM(final ModelPM source, final InfrastructureModel sol) {
         var mvms = new ArrayDeque<>(source.getVMs());
         try {
-            mvms.descendingIterator().forEachRemaining(v -> {
-                var t = getMigPm(v, sol);
-                if (t.isPresent()) {
-                    source.migrateVM(v, t.get());
-                } else {
-                    throw new RuntimeException();
-                }
-            });
-        } catch (RuntimeException rex) {
+            mvms.descendingIterator().forEachRemaining(v -> source.migrateVM(v, getMigPm(v, sol).orElseThrow()));
+        } catch (NoSuchElementException rex) {
             var incorrectlyMigrated = mvms.stream().filter(v -> v.gethostPM() != source).map(v -> {
                 v.migrate(source);
                 return 1;
