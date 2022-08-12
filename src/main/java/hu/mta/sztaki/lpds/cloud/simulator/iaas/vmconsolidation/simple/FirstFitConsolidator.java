@@ -48,7 +48,7 @@ import java.util.function.Predicate;
  */
 public class FirstFitConsolidator extends ModelBasedConsolidator {
 
-    private HashSet<ModelPM> unchangeableBins=new HashSet<>();
+    private final HashSet<ModelPM> unchangeableBins=new HashSet<>();
 
     /**
      * The constructor for the First-Fit-Consolidator. Only the consolidation has to

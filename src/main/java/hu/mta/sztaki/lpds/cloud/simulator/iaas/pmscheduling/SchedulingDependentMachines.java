@@ -26,17 +26,13 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Consumer;
 
-import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine.State;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
-import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.AlterableResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 
 /**
  * A reactive PM controller that increases/decreases the powered on pm set on
@@ -51,119 +47,6 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 public class SchedulingDependentMachines extends PhysicalMachineController {
 
 	/**
-	 * The main PM control mechanisms are implemented in this class
-	 * 
-	 * The class basically controls a single PM. It switches off its PM when the
-	 * PM's free resources reach its complete resource set and there are no VM
-	 * requests queuing at the IaaS service's VM scheduler.
-	 * 
-	 * @author "Gabor Kecskemeti, Distributed and Parallel Systems Group, University
-	 *         of Innsbruck (c) 2013" "Gabor Kecskemeti, Laboratory of Parallel and
-	 *         Distributed Systems, MTA SZTAKI (c) 2012"
-	 */
-	private class CapacityChangeManager
-			implements VMManager.CapacityChangeEvent<ResourceConstraints>, PhysicalMachine.StateChangeListener {
-
-		/**
-		 * the physical machine that this capacity manager will target with its
-		 * operations
-		 */
-		final PhysicalMachine observed;
-
-		/**
-		 * This constructor is expected to be used once a PM is registered to the parent
-		 * IaaSService. From that point on the newly registered PM will be considered
-		 * for switching off/turning on.
-		 * 
-		 * @param pm the PM to be managed to follow the demand patterns of the VM
-		 *           requests to the IaaSService.
-		 */
-		public CapacityChangeManager(final PhysicalMachine pm) {
-			observed = pm;
-			observed.subscribeToIncreasingFreeapacityChanges(this);
-			observed.subscribeStateChangeEvents(this);
-		}
-
-		/**
-		 * if the PM gets dropped from the parent IaaSService then we no longer need to
-		 * control its behavior. So the class's active behavior is disabled by calling
-		 * this function.
-		 */
-		private void cancelEvents() {
-			observed.unsubscribeFromIncreasingFreeCapacityChanges(this);
-			observed.unsubscribeStateChangeEvents(this);
-		}
-
-		/**
-		 * Allows the observed PM to be switched off and its exceptions handled
-		 */
-		private void switchoffmachine() {
-			try {
-				observed.switchoff(null);
-				// These exceptions below are only relevant if migration
-				// is requested now they will never come.
-			} catch (VMManagementException | NetworkException e) {
-				// ignore
-			}
-		}
-
-		/**
-		 * This function is called when the observed PM has newly freed up resources. It
-		 * ensures that the PM is switched off if the PM is completely free and there
-		 * are no more VMs queuing at the VM scheduler (i.e., there will be no chance to
-		 * receive a new VM for the capacities of this PM).
-		 */
-		@Override
-		public void capacityChanged(final ResourceConstraints newCapacity,
-				final List<ResourceConstraints> newlyFreeCapacities) {
-			if (observed.getCapacities().compareTo(newCapacity) <= 0
-					&& parent.sched.getTotalQueued().getRequiredCPUs() == 0) {
-				// Totally free machine and nothing queued
-				switchoffmachine();
-			}
-		}
-
-		/**
-		 * This function is called when the PM's power state changes. This event handler
-		 * manages situations when the PM is turned on but there are no longer tasks for
-		 * it. Also, it initiates a new PM's switchon if the newly switched on machine
-		 * will not be enough to host the queued VM requests found at the VM scheduler
-		 * of the parent IaaS service.
-		 */
-		@Override
-		public void stateChanged(PhysicalMachine pm, State oldState, State newState) {
-			if (PhysicalMachine.State.RUNNING.equals(newState)) {
-				currentlyStartingPM = null;
-				if (parent.sched.getQueueLength() == 0) {
-					new DeferredEvent(observed.getCurrentOnOffDelay()) {
-						// Keeps the just started PM on for a short while to
-						// allow some new VMs to arrive, otherwise it seems like
-						// we just started the PM for no reason
-						@Override
-						protected void eventAction() {
-							if (!observed.isHostingVMs() && observed.isRunning()) {
-								switchoffmachine();
-							}
-						}
-					};
-				} else {
-					ResourceConstraints runningCapacities = parent.getRunningCapacities();
-					if (!parent.runningMachines.contains(observed)) {
-						// parent have not recognized this PM's startup yet
-						runningCapacities = new AlterableResourceConstraints(runningCapacities);
-						((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
-					}
-					if (runningCapacities.compareTo(parent.sched.getTotalQueued()) < 0) {
-						// no capacities to handle the currently queued jobs, so
-						// we need to start up further machines
-						turnOnAMachine();
-					}
-				}
-			}
-		}
-	}
-
-	/**
 	 * this map lists all the currently controlled PMs and their controllers.
 	 */
 	private final HashMap<PhysicalMachine, CapacityChangeManager> capacityManagers = new HashMap<>();
@@ -171,7 +54,7 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 	 * ensures that we only have a single machine switching on at a time and shows
 	 * what is the actual machine that is switching on.
 	 */
-	private PhysicalMachine currentlyStartingPM = null;
+	PhysicalMachine currentlyStartingPM = null;
 
 	/**
 	 * Constructs the scheduler and passes the parent IaaSService to the superclass.
@@ -196,20 +79,15 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 	@Override
 	protected VMManager.CapacityChangeEvent<PhysicalMachine> getHostRegEvent() {
 		return (final ResourceConstraints newCapacity, final List<PhysicalMachine> alteredPMs) -> {
-			final boolean newRegistration = parent.isRegisteredHost(alteredPMs.get(0));
-			final int pmNum = alteredPMs.size();
-			if (newRegistration) {
+			Consumer<PhysicalMachine> pmaction;
+			if (parent.isRegisteredHost(alteredPMs.get(0))) {
 				// Management of capacity increase
-				for (int i = pmNum - 1; i >= 0; i--) {
-					final PhysicalMachine pm = alteredPMs.get(i);
-					capacityManagers.put(pm, new CapacityChangeManager(pm));
-				}
+				pmaction = pm -> capacityManagers.put(pm, new CapacityChangeManager(this, pm));
 			} else {
 				// Management of capacity decrease
-				for (int i = pmNum - 1; i >= 0; i--) {
-					capacityManagers.remove(alteredPMs.get(i)).cancelEvents();
-				}
+				pmaction = pm -> capacityManagers.remove(pm).cancelEvents();
 			}
+			alteredPMs.forEach(pmaction);
 		};
 	}
 
@@ -240,16 +118,9 @@ public class SchedulingDependentMachines extends PhysicalMachineController {
 	 * of this function is ignored.
 	 */
 	protected void turnOnAMachine() {
-		final int pmsize = parent.machines.size();
-		if (parent.runningMachines.size() != pmsize) {
-			for (int i = 0; i < pmsize; i++) {
-				final PhysicalMachine n = parent.machines.get(i);
-				if (PhysicalMachine.ToOfforOff.contains(n.getState())) {
-					currentlyStartingPM = n;
-					n.turnon();
-					break;
-				}
-			}
+		if (parent.runningMachines.size() != parent.machines.size()) {
+			var thePm=parent.machines.stream().filter(pm -> PhysicalMachine.ToOfforOff.contains(pm.getState())).findFirst();
+			thePm.ifPresent(pm -> { currentlyStartingPM=pm; pm.turnon(); });
 		}
 	}
 }
