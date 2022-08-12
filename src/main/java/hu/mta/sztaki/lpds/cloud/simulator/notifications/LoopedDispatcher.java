@@ -32,10 +32,7 @@ public class LoopedDispatcher implements EventDispatcherCore {
 
 	@Override
 	public <T, P> void mainNotificationLoop(final StateDependentEventHandler<T, P> handler, final P payload) {
-		final int size = handler.listeners.size();
-		for (int i = 0; i < size; i++) {
-			handler.myHandler.sendNotification(handler.listeners.get(i), payload);
-		}
+		handler.listeners.forEach(listener -> handler.myHandler.sendNotification(listener, payload));
 	}
 
 	@Override

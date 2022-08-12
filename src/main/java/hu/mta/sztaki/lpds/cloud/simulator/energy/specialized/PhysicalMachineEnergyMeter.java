@@ -57,9 +57,9 @@ public class PhysicalMachineEnergyMeter extends AggregatedEnergyMeter
 	 *            the physical machine to be metered
 	 */
 	public PhysicalMachineEnergyMeter(final PhysicalMachine pm) {
-		super(Arrays.asList(new EnergyMeter[] { new DirectEnergyMeter(pm),
+		super(List.of(new DirectEnergyMeter(pm),
 				new DirectEnergyMeter(pm.localDisk.diskinbws), new DirectEnergyMeter(pm.localDisk.diskoutbws),
-				new DirectEnergyMeter(pm.localDisk.inbws), new DirectEnergyMeter(pm.localDisk.outbws) }));
+				new DirectEnergyMeter(pm.localDisk.inbws), new DirectEnergyMeter(pm.localDisk.outbws)));
 		observed = pm;
 	}
 
