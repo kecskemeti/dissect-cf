@@ -48,7 +48,7 @@ import java.util.function.Predicate;
  */
 public class FirstFitConsolidator extends ModelBasedConsolidator {
 
-    HashSet<ModelPM> unchangeableBins;
+    private HashSet<ModelPM> unchangeableBins=new HashSet<>();
 
     /**
      * The constructor for the First-Fit-Consolidator. Only the consolidation has to
@@ -75,18 +75,18 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
      */
     @Override
     public InfrastructureModel optimize(final InfrastructureModel sol) {
-        unchangeableBins = new HashSet<>();
+        unchangeableBins.clear();
         if (isOverAllocated(sol) || isUnderAllocated(sol)) {
-            for (final ModelPM pm : sol.bins) {
-                if (isNothingToChange(pm))
-                    continue;
-                if (pm.isUnderAllocated()) {
-                    migrateUnderAllocatedPM(pm, sol);
+            Arrays.stream(sol.bins).forEach( pm -> {
+                if (!isNothingToChange(pm)) {
+                    if (pm.isUnderAllocated()) {
+                        migrateUnderAllocatedPM(pm, sol);
+                    }
+                    if (pm.isOverAllocated()) {
+                        migrateOverAllocatedPM(pm, sol);
+                    }
                 }
-                if (pm.isOverAllocated()) {
-                    migrateOverAllocatedPM(pm, sol);
-                }
-            }
+            });
         }
 
         /*
