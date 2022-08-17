@@ -29,6 +29,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * This class is the core part of the unified resource consumption model of
@@ -293,8 +295,21 @@ public class FreqSyncer extends Timed {
      */
     @Override
     public void tick(final long fires) {
-        // Phase I. Identifying new influence group members, sending out
-        // consumption notification events
+        if (identifyGroupMembers(fires)) {
+            groupSeparation();
+        } else {
+            // No separation was needed we just update our freq
+            updateMyFreqNow();
+        }
+    }
+
+    /**
+     * Phase I. Identifying new influence group members, sending out consumption notification events
+     *
+     * @param fires time at which we are working on this
+     * @return if we need to do the group separation phase
+     */
+    private boolean identifyGroupMembers(long fires) {
         boolean didRemovals = false;
         boolean didExtension;
         do {
@@ -305,145 +320,97 @@ public class FreqSyncer extends Timed {
             didExtension = false;
             for (int rsi = 0; rsi < depgrouplen; rsi++) {
                 final ResourceSpreader rs = myDepGroup[rsi];
-                // managing removals
-                final int urLen = rs.underRemoval.size();
-                if (urLen > 0) {
-                    didRemovals = true;
-                    for (int urIndex = 0; urIndex < urLen; urIndex++) {
-                        final ResourceConsumption con = rs.underRemoval.get(urIndex);
-                        ArrayHandler.removeAndReplaceWithLast(rs.toProcess, con);
-                        rs.manageRemoval(con);
-                    }
-                    rs.underRemoval.clear();
-                }
-                // managing additions
-                final int uaLen = rs.underAddition.size();
-                if (uaLen > 0) {
-                    if (rs.toProcess.size() == 0) {
-                        rs.lastNotifTime = fires;
-                    }
-                    for (int i = 0; i < uaLen; i++) {
-                        final ResourceConsumption con = rs.underAddition.get(i);
-                        final ResourceSpreader cp = rs.getCounterPart(con);
-                        // Check if counterpart is in the dependency group
-                        if (!isInDepGroup(cp)) {
-                            // No it is not, we need an extension
-                            didExtension = true;
-                            if (cp.getSyncer() == null || cp.getSyncer() == this) {
-                                // Just this single item is missing
-                                if (!depGroupExtension.contains(cp)) {
-                                    depGroupExtension.add(cp);
-                                }
-                            } else {
-                                // There are further items missing
-                                cp.getSyncer().unsubscribe();
-                                for (int j = 0; j < cp.getSyncer().depgrouplen; j++) {
-                                    final ResourceSpreader todepgroupextension = cp.getSyncer().myDepGroup[j];
-                                    if (!depGroupExtension.contains(todepgroupextension)) {
-                                        depGroupExtension.add(todepgroupextension);
-                                    }
-                                }
-                                // Make sure, that if we encounter this cp
-                                // next time we will not try to add all its
-                                // dep group
-                                cp.setSyncer(null);
-                            }
-                        }
-                    }
-                    rs.toProcess.addAll(rs.underAddition);
-                    rs.underAddition.clear();
-                }
+                didRemovals|=rs.handleRemovals();
+                didExtension|=rs.handleAdditions(fires);
             }
         } while (didExtension || nudged);
+        return didRemovals;
+    }
 
-        // Phase II. managing separation of influence groups
-        if (didRemovals) {
-            // Marking all current members of the depgroup as non-members
-            for (int i = 0; i < depgrouplen; i++) {
-                myDepGroup[i].stillInDepGroup = false;
-            }
-            ResourceSpreader[] notClassified = myDepGroup;
-            int providerCount = firstConsumerId;
-            int notClassifiedLen = depgrouplen;
-            do {
-                int classifiableindex = 0;
-                // finding the first dependency group
-                for (; classifiableindex < notClassifiedLen; classifiableindex++) {
-                    final ResourceSpreader rs = notClassified[classifiableindex];
-                    buildDepGroup(rs);
-                    if (rs.stillInDepGroup) {
-                        break;
-                    }
-                    rs.setSyncer(null);
+    /**
+     * Phase II. managing separation of influence groups
+     */
+    private void groupSeparation() {
+        // Marking all current members of the depgroup as non-members
+        Arrays.stream(myDepGroup).limit(depgrouplen).forEach( rs -> rs.stillInDepGroup = false);
+        var notClassified = myDepGroup;
+        var providerCount = firstConsumerId;
+        var notClassifiedLen = depgrouplen;
+        do {
+            var classifiableindex = 0;
+            // finding the first dependency group
+            for (; classifiableindex < notClassifiedLen; classifiableindex++) {
+                var rs = notClassified[classifiableindex];
+                buildDepGroup(rs);
+                if (rs.stillInDepGroup) {
+                    break;
                 }
-                if (classifiableindex < notClassifiedLen) {
-                    notClassifiedLen -= classifiableindex;
-                    providerCount -= classifiableindex;
-                    // Remove the unused front
-                    System.arraycopy(notClassified, classifiableindex, notClassified, 0, notClassifiedLen);
-                    // Remove the not classified items
-                    ResourceSpreader[] stillNotClassified = null;
-                    int newpc = 0;
-                    int newlen = 0;
-                    for (int i = 0; i < notClassifiedLen; i++) {
-                        final ResourceSpreader rs = notClassified[i];
-                        if (!rs.stillInDepGroup) {
-                            notClassifiedLen--;
-                            // Management of the new group
-                            if (stillNotClassified == null) {
-                                stillNotClassified = new ResourceSpreader[notClassifiedLen];
-                            }
-                            stillNotClassified[newlen++] = rs;
-                            // Removals from the old group
-                            if (rs.isConsumer()) {
-                                notClassified[i] = notClassified[notClassifiedLen];
-                            } else {
-                                providerCount--;
-                                notClassified[i] = notClassified[providerCount];
-                                notClassified[providerCount] = notClassified[notClassifiedLen];
-                                newpc++;
-                            }
-                            notClassified[notClassifiedLen] = null;
-                            i--;
+                rs.setSyncer(null);
+            }
+            if (classifiableindex < notClassifiedLen) {
+                notClassifiedLen -= classifiableindex;
+                providerCount -= classifiableindex;
+                // Remove the unused front
+                System.arraycopy(notClassified, classifiableindex, notClassified, 0, notClassifiedLen);
+                // Remove the not classified items
+                ResourceSpreader[] stillNotClassified = null;
+                int newpc = 0;
+                int newlen = 0;
+                for (int i = 0; i < notClassifiedLen; i++) {
+                    final ResourceSpreader rs = notClassified[i];
+                    if (!rs.stillInDepGroup) {
+                        notClassifiedLen--;
+                        // Management of the new group
+                        if (stillNotClassified == null) {
+                            stillNotClassified = new ResourceSpreader[notClassifiedLen];
                         }
-                    }
-                    // We now have the new groups, so we can start
-                    // subscribing
-                    FreqSyncer subscribeMe;
-                    if (notClassified == myDepGroup) {
-                        depgrouplen = notClassifiedLen;
-                        firstConsumerId = providerCount;
-                        subscribeMe = this;
-                    } else {
-                        subscribeMe = new FreqSyncer(notClassified, providerCount, notClassifiedLen);
-                    }
-                    // Ensuring freq updates for every newly created group
-                    subscribeMe.updateMyFreqNow();
-                    if (stillNotClassified == null) {
-                        // No further spreaders to process
-                        break;
-                    } else {
-                        // let's work on the new spreaders
-                        notClassified = stillNotClassified;
-                        providerCount = newpc;
-                        notClassifiedLen = newlen;
-                    }
-                } else {
-                    // nothing left in notclassified that can be use in
-                    // dependency groups
-                    notClassifiedLen = 0;
-                    if (notClassified == myDepGroup) {
-                        depgrouplen = 0;
+                        stillNotClassified[newlen++] = rs;
+                        // Removals from the old group
+                        if (rs.isConsumer()) {
+                            notClassified[i] = notClassified[notClassifiedLen];
+                        } else {
+                            providerCount--;
+                            notClassified[i] = notClassified[providerCount];
+                            notClassified[providerCount] = notClassified[notClassifiedLen];
+                            newpc++;
+                        }
+                        notClassified[notClassifiedLen] = null;
+                        i--;
                     }
                 }
-            } while (notClassifiedLen != 0);
-            if (notClassified == myDepGroup && depgrouplen == 0) {
-                // No group was created we have to unsubscribe
-                unsubscribe();
+                // We now have the new groups, so we can start
+                // subscribing
+                FreqSyncer subscribeMe;
+                if (notClassified == myDepGroup) {
+                    depgrouplen = notClassifiedLen;
+                    firstConsumerId = providerCount;
+                    subscribeMe = this;
+                } else {
+                    subscribeMe = new FreqSyncer(notClassified, providerCount, notClassifiedLen);
+                }
+                // Ensuring freq updates for every newly created group
+                subscribeMe.updateMyFreqNow();
+                if (stillNotClassified == null) {
+                    // No further spreaders to process
+                    break;
+                } else {
+                    // let's work on the new spreaders
+                    notClassified = stillNotClassified;
+                    providerCount = newpc;
+                    notClassifiedLen = newlen;
+                }
+            } else {
+                // nothing left in notclassified that can be use in
+                // dependency groups
+                notClassifiedLen = 0;
+                if (notClassified == myDepGroup) {
+                    depgrouplen = 0;
+                }
             }
-        } else {
-            // No separation was needed we just update our freq
-            updateMyFreqNow();
+        } while (notClassifiedLen != 0);
+        if (notClassified == myDepGroup && depgrouplen == 0) {
+            // No group was created we have to unsubscribe
+            unsubscribe();
         }
     }
 
@@ -457,7 +424,7 @@ public class FreqSyncer extends Timed {
      * ResourceSpreader.doProcessing is called.
      */
     private void updateMyFreqNow() {
-        final long newFreq = myDepGroup[0].singleGroupwiseFreqUpdater();
+        var newFreq = myDepGroup[0].singleGroupwiseFreqUpdater();
         regularFreqMode = newFreq != 0;
         updateFrequency(newFreq);
     }
@@ -488,5 +455,30 @@ public class FreqSyncer extends Timed {
         }
         startingItem.stillInDepGroup = true;
         startingItem.toProcess.stream().map(startingItem::getCounterPart).forEach(this::buildDepGroup);
+    }
+
+    boolean ensureDepGroupHasCounterPart(ResourceSpreader cp) {
+        // Check if counterpart is in the dependency group
+        if (!isInDepGroup(cp)) {
+            var cpSyncer=cp.getSyncer();
+            // No it is not, we need an extension
+            if (cpSyncer == null || cpSyncer == this) {
+                // Just this single item is missing
+                if (!depGroupExtension.contains(cp)) {
+                    depGroupExtension.add(cp);
+                }
+            } else {
+                // There are further items missing
+                cpSyncer.unsubscribe(); // we will remove its old syncer
+                depGroupExtension.addAll(Arrays.stream(cpSyncer.myDepGroup).filter(Predicate.not(depGroupExtension::contains)).collect(Collectors.toList()));
+                // Make sure, that if we encounter this cp
+                // next time we will not try to add all its
+                // dep group
+                cp.setSyncer(null);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 }

@@ -170,15 +170,15 @@ public abstract class ResourceSpreader {
 	 *                they complete or because they are cancelled)
 	 */
 	protected final void removeTheseConsumptions(final Stream<ResourceConsumption> conList) {
-		final long removalCount=conList.filter(rem -> {
+		var removalCount = conList.filter(rem -> {
 			if (!underRemoval.contains(rem)) {
 				underRemoval.add(rem);
 			}
 			ArrayHandler.removeAndReplaceWithLast(underAddition, rem);
 			return true;
 		}).count();
-		if(removalCount>0 && mySyncer != null) {
-				mySyncer.nudge();
+		if (removalCount > 0 && mySyncer != null) {
+			mySyncer.nudge();
 		}
 	}
 
@@ -203,34 +203,29 @@ public abstract class ResourceSpreader {
 	 *         </ul>
 	 */
 	static boolean registerConsumption(final ResourceConsumption con) {
-		final ResourceSpreader provider = con.getProvider();
-		final ResourceSpreader consumer = con.getConsumer();
+		var provider = con.getProvider();
+		var consumer = con.getConsumer();
 		if (con.isRegistered() || !(provider.isAcceptableConsumption(con) && consumer.isAcceptableConsumption(con))) {
 			return false;
 		}
 		// ResourceConsumption synchronization
-		ArrayHandler.removeAndReplaceWithLast(provider.underRemoval, con);
-		ArrayHandler.removeAndReplaceWithLast(consumer.underRemoval, con);
+		Stream.of(provider,consumer).forEach(rs -> {
+			ArrayHandler.removeAndReplaceWithLast(rs.underRemoval, con);
+			rs.underAddition.add(con);
+		});
+		nudgeSyncers(provider,consumer);
+		return true;
+	}
 
-		provider.underAddition.add(con);
-		consumer.underAddition.add(con);
-
-		boolean notnudged = true;
-		if (provider.mySyncer != null) {
-			provider.mySyncer.nudge();
-			notnudged = false;
-		}
-
-		if (consumer.mySyncer != null) {
-			consumer.mySyncer.nudge();
-			notnudged = false;
-		}
-		if (notnudged) {
+	private static void nudgeSyncers(ResourceSpreader provider, ResourceSpreader consumer) {
+		var nudgedCount = Stream.of(provider, consumer).filter(rs -> rs.mySyncer != null).mapToInt(rs -> {
+			rs.mySyncer.nudge();
+			return 1;
+		}).sum();
+		if (nudgedCount == 0) {
 			// We just form our new influence group
 			new FreqSyncer(provider, consumer).nudge();
 		}
-
-		return true;
 	}
 
 	/**
@@ -262,10 +257,7 @@ public abstract class ResourceSpreader {
 	 *            consumer/provider pair.
 	 */
 	static void cancelConsumption(final ResourceConsumption con) {
-		final ResourceSpreader provider = con.getProvider();
-		final ResourceSpreader consumer = con.getConsumer();
-		provider.removeTheseConsumptions(Stream.of(con));
-		consumer.removeTheseConsumptions(Stream.of(con));
+		Stream.of(con.getProvider(), con.getConsumer()).forEach(rs -> rs.removeTheseConsumptions(Stream.of(con)));
 	}
 
 	/**
@@ -287,10 +279,10 @@ public abstract class ResourceSpreader {
 		if (currentFireCount == lastNotifTime && mySyncer.isRegularFreqMode()) {
 			return;
 		}
-		final long ticksPassed = currentFireCount - lastNotifTime;
-		removeTheseConsumptions(toProcess.stream().filter( con -> {
+		var ticksPassed = currentFireCount - lastNotifTime;
+		removeTheseConsumptions(toProcess.stream().filter(con -> {
 					final double processed = processSingleConsumption(con, ticksPassed);
-					totalProcessed+=Math.abs(processed);
+					totalProcessed += Math.abs(processed);
 					return processed < 0;
 				}
 		));
@@ -372,7 +364,7 @@ public abstract class ResourceSpreader {
 	 */
 	public double getTotalProcessed() {
 		if (mySyncer != null) {
-			final long currTime = Timed.getFireCount();
+			var currTime = Timed.getFireCount();
 			if (isConsumer()) {
 				// We first have to make sure the providers provide the
 				// stuff that this consumer might need
@@ -521,5 +513,31 @@ public abstract class ResourceSpreader {
 
 	void setSyncer(FreqSyncer syncer) {
 		mySyncer=syncer;
+	}
+
+	/**
+	 * Making sure we send out the necessary notifications on removing the consumptions from the spreader's
+	 * responsibility
+	 * @return if there were any removals actually done
+	 */
+	boolean handleRemovals() {
+		// managing removals
+		underRemoval.forEach(con -> {
+			ArrayHandler.removeAndReplaceWithLast(toProcess, con);
+			manageRemoval(con);
+		});
+		var didRemovals=underRemoval.size()!=0;
+		underRemoval.clear();
+		return didRemovals;
+	}
+
+	boolean handleAdditions(long fires) {
+		if (toProcess.size() == 0) {
+			lastNotifTime = fires;
+		}
+		var added = underAddition.stream().filter(con -> getSyncer().ensureDepGroupHasCounterPart(getCounterPart(con))).count();
+		toProcess.addAll(underAddition);
+		underAddition.clear();
+		return added != 0;
 	}
 }
