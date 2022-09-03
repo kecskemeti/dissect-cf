@@ -4,6 +4,7 @@
 
 [![Build Status][travis-badge]][travis-link]
 [![CodeFactor][codefactor-badge]][codefactor-link]
+[![Maintainability][codeclimate-badge]][codeclimate-link]
 
 ## Overview
 
@@ -65,7 +66,7 @@ DISSECT-CF depends on the following libraries during its runtime:
 * [DSIutils 2.5.1](https://dsiutils.di.unimi.it/)
 
 ###### Hint:
-Although these dependencies can be collected individually. If one installed the simulator according to description above, then except for Java6, all dependencies are located in the local maven repository (e.g., `~/.m2/repository`).  
+Although these dependencies can be collected individually. If one installed the simulator according to description above, then except for Java 11, all dependencies are located in the local maven repository (e.g., `~/.m2/repository`).  
 
 ### Overview of the basic functionalities  
 
@@ -102,3 +103,5 @@ Also, the [wiki](https://github.com/kecskemeti/dissect-cf/wiki) provides further
 [travis-link]:        https://travis-ci.org/github/kecskemeti/dissect-cf
 [codefactor-badge]:   https://www.codefactor.io/repository/github/kecskemeti/dissect-cf/badge/master
 [codefactor-link]:    https://www.codefactor.io/repository/github/kecskemeti/dissect-cf/overview/master
+[codeclimate-badge]:  https://api.codeclimate.com/v1/badges/5202e9a551ac668b87f0/maintainability
+[codeclimate-link]:   https://codeclimate.com/github/kecskemeti/dissect-cf/maintainability
