@@ -40,34 +40,35 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 import java.util.HashSet;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SchedulerDependentTest extends IaaSRelatedFoundation {
 	IaaSService basic;
 	Repository repo;
 
-	@Before
+	@BeforeEach
 	public void resetSim() throws Exception {
 		basic = setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 2, 1);
 		repo = basic.repositories.get(0);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void withoutLoadTest() {
-		Assert.assertEquals("Should not have machines running at the beginning of the simulation", 0,
-				basic.runningMachines.size());
+		assertEquals(0,	basic.runningMachines.size(), "Should not have machines running at the beginning of the simulation");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not switch any machine on because there is no load", 0,
-				basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should not switch any machine on because there is no load");
 	}
 
-	@Test(timeout = 100)
-	public void simpleLoadTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void simpleLoadTest() throws VMManagementException {
 		final HashSet<PhysicalMachine> affectedpms = new HashSet<>();
 		for (final PhysicalMachine pm : basic.machines) {
 			pm.subscribeStateChangeEvents(
@@ -76,67 +77,70 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(),
 				basic.machines.get(0).getCapacities(), repo, 1)[0];
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should only affect a single PM", 1, affectedpms.size());
-		Assert.assertEquals("Should only switch on a single PM", 1, basic.runningMachines.size());
-		Assert.assertEquals("VM should be able to switch on", VirtualMachine.State.RUNNING, vm.getState());
+		assertEquals(1, affectedpms.size(), "Should only affect a single PM");
+		assertEquals(1, basic.runningMachines.size(), "Should only switch on a single PM");
+		assertEquals(VirtualMachine.State.RUNNING, vm.getState(), "VM should be able to switch on");
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should switch off all PMs if there is no load", 0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should switch off all PMs if there is no load");
 	}
 
-	@Test(timeout = 100)
-	public void overLoadTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void overLoadTest() throws VMManagementException {
 		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(),
 				basic.machines.get(0).getCapacities(), repo, basic.machines.size());
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should switch all PMs", basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "Should switch all PMs");
 		VirtualMachine extraVM = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(),
 				basic.machines.get(0).getCapacities(), repo, 1)[0];
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not allow the extra VM to run", VirtualMachine.State.DESTROYED, extraVM.getState());
+		assertEquals(VirtualMachine.State.DESTROYED, extraVM.getState(), "Should not allow the extra VM to run");
 		vms[0].destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Now the extra VM should run", VirtualMachine.State.RUNNING, extraVM.getState());
+		assertEquals(VirtualMachine.State.RUNNING, extraVM.getState(), "Now the extra VM should run");
 		for (VirtualMachine vm : vms) {
 			vm.destroy(false);
 		}
 		extraVM.destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should switch off all PMs if there is no load", 0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should switch off all PMs if there is no load");
 	}
 
-	@Test(timeout = 100)
-	public void smallVMLoadTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void smallVMLoadTest() throws VMManagementException {
 		AlterableResourceConstraints rc = new AlterableResourceConstraints(basic.machines.get(0).getCapacities());
 		rc.multiply(0.5);
 		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(), rc, repo, 2);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should only switch on a single PM", 1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size(), "Should only switch on a single PM");
 		vms[0].destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should keep the single PM running", 1, basic.runningMachines.size());
-		Assert.assertArrayEquals("VMs not in the expected states",
-				new VirtualMachine.State[] { VirtualMachine.State.DESTROYED, VirtualMachine.State.RUNNING },
-				new VirtualMachine.State[] { vms[0].getState(), vms[1].getState() });
+		assertEquals(1, basic.runningMachines.size(), "Should keep the single PM running");
+		assertArrayEquals(new VirtualMachine.State[] { VirtualMachine.State.DESTROYED, VirtualMachine.State.RUNNING },
+				new VirtualMachine.State[] { vms[0].getState(), vms[1].getState() }, "VMs not in the expected states");
 		vms[1].destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should switch off all PMs if there is no load", 0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should switch off all PMs if there is no load");
 	}
 
-	@Test(timeout = 100)
-	public void decreasingCapacityTest() throws IaaSHandlingException, VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void decreasingCapacityTest() throws IaaSHandlingException, VMManagementException {
 		basic.deregisterHost(basic.machines.get(0));
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(),
 				basic.machines.get(0).getCapacities(), repo, 1)[0];
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("VM should be able to switch on", VirtualMachine.State.RUNNING, vm.getState());
+		assertEquals(VirtualMachine.State.RUNNING, vm.getState(), "VM should be able to switch on");
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not have any running PMs", 0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should not have any running PMs");
 	}
 
-	@Test(timeout = 100)
-	public void deregistrationTest() throws VMManagementException, NetworkException, IaaSHandlingException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void deregistrationTest() throws VMManagementException, IaaSHandlingException {
 		PhysicalMachine pm = basic.machines.get(0);
 		VirtualMachine[] vms = basic.requestVM((VirtualAppliance) repo.contents().iterator().next(), pm.getCapacities(),
 				repo, basic.machines.size());
@@ -145,11 +149,10 @@ public class SchedulerDependentTest extends IaaSRelatedFoundation {
 			vm.destroy(false);
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should be switched off", PhysicalMachine.State.OFF, pm.getState());
+		assertEquals(PhysicalMachine.State.OFF, pm.getState(), "Should be switched off");
 		basic.deregisterHost(pm);
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should be running", PhysicalMachine.State.RUNNING, pm.getState());
-
+		assertEquals(PhysicalMachine.State.RUNNING, pm.getState(), "Should be running");
 	}
 }

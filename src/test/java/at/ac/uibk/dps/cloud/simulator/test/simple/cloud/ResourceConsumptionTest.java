@@ -25,11 +25,6 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
@@ -39,6 +34,16 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption.ConsumptionEvent;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 
 public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 	public static final double processingTasklen = 1;
@@ -52,71 +57,74 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 				ce == null ? new ConsumptionEventAssert() : ce);
 	}
 
-	@Before
+	@BeforeEach
 	public void setupConsumption() {
 		offer = new MaxMinProvider(permsProcessing);
 		utilize = new MaxMinConsumer(permsProcessing);
 		con = createAUnitConsumption(null);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testConsumption() {
 		con.setConsumer(utilize);
 		con.setProvider(offer);
-		Assert.assertEquals("Consumer mismatch", utilize, con.getConsumer());
-		Assert.assertEquals("Provider mismatch", offer, con.getProvider());
-		Assert.assertEquals("Processing limit mismatch", con.getHardLimit(), con.getProcessingLimit(), 0);
-		Assert.assertTrue("Real processing power should be always smaller than equal to the processing limit",
-				con.getRealLimit() <= con.getProcessingLimit());
+		assertEquals(utilize, con.getConsumer(), "Consumer mismatch");
+		assertEquals(offer, con.getProvider(), "Provider mismatch");
+		assertEquals(con.getHardLimit(), con.getProcessingLimit(), 0, "Processing limit mismatch");
+		assertTrue(con.getRealLimit() <= con.getProcessingLimit(), "Real processing power should be always smaller than equal to the processing limit");
 		con.registerConsumption();
 		try {
 			con.setConsumer(utilize);
-			Assert.fail("Consumer change is not allowed after registration");
+			fail("Consumer change is not allowed after registration");
 		} catch (IllegalStateException ex) {
 			// Expected after registration
 		}
 		try {
 			con.setProvider(offer);
-			Assert.fail("Provider change is not allowed after registration");
+			fail("Provider change is not allowed after registration");
 		} catch (IllegalStateException ex) {
 			// Expected after registration
 		}
-		Assert.assertFalse("Second registration should not succeed", con.registerConsumption());
-		Assert.assertTrue("Already consumed", con.getUnProcessed() == processingTasklen);
-		Assert.assertTrue("Unprocessed quantity is not in string output",
-				con.toString().contains("" + processingTasklen));
+		assertFalse(con.registerConsumption(), "Second registration should not succeed");
+		assertEquals(processingTasklen, con.getUnProcessed(), "Already consumed");
+		assertTrue(con.toString().contains("" + processingTasklen), "Unprocessed quantity is not in string output");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not consumed", 0, con.getUnProcessed(), 0);
+		assertEquals(0, con.getUnProcessed(), 0, "Not consumed");
 		con = new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, null, offer,
 				new ConsumptionEventAssert());
 		con.registerConsumption();
-		Assert.assertFalse("Should not be possible to register without consumer", con.isRegistered());
+		assertFalse(con.isRegistered(), "Should not be possible to register without consumer");
 		con = new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, null,
 				new ConsumptionEventAssert());
 		con.registerConsumption();
-		Assert.assertFalse("Should not be possible to register without provider", con.isRegistered());
+		assertFalse(con.isRegistered(), "Should not be possible to register without provider");
 	}
 
-	@Test(expected = IllegalStateException.class, timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testNullEvent() {
-		// Below we should not receive a null pointer
-		con = new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, offer, null);
-		Assert.fail("Should not reach tis point because we asked for a consumption with a null event");
+		assertThrows(IllegalStateException.class, () -> {
+			// Below we should not receive a null pointer
+			con = new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, offer, null);
+			fail("Should not reach tis point because we asked for a consumption with a null event");
+		});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void zeroLenConsumption() {
 		ConsumptionEventAdapter ce = new ConsumptionEventAssert();
 		con = new ResourceConsumption(0, ResourceConsumption.unlimitedProcessing, utilize, offer, ce);
-		Assert.assertFalse("Consumption should not be complete before registration", ce.isCompleted());
-		Assert.assertFalse("Consumption should not be cancelled before registration", ce.isCancelled());
+		assertFalse(ce.isCompleted(), "Consumption should not be complete before registration");
+		assertFalse(ce.isCancelled(), "Consumption should not be cancelled before registration");
 		con.registerConsumption();
-		Assert.assertTrue("Consumption should be complete immediately after registration", ce.isCompleted());
-		Assert.assertFalse("Consumption should not be cancelled before registration", ce.isCancelled());
+		assertTrue(ce.isCompleted(), "Consumption should be complete immediately after registration");
+		assertFalse(ce.isCancelled(), "Consumption should not be cancelled before registration");
 	}
 
 	protected double preSuspendPhase() {
-		Assert.assertTrue("Should be able to register an unprocessed consumption", con.registerConsumption());
+		assertTrue(con.registerConsumption(), "Should be able to register an unprocessed consumption");
 		double before = con.getUnProcessed();
 		Timed.simulateUntil(Timed.getFireCount() + 500);
 		return before;
@@ -124,11 +132,12 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 
 	protected void pastSuspendChecks(double before) {
 		double after = con.getUnProcessed();
-		Assert.assertTrue("Should already have some consumption recorded", after != before);
-		Assert.assertTrue("Consumption should be incomplete", after != 0);
+		assertTrue(after != before, "Should already have some consumption recorded");
+		assertTrue(after != 0, "Consumption should be incomplete");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void suspendConsumption() {
 		con.suspend();
 		double before = preSuspendPhase();
@@ -137,10 +146,11 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		pastSuspendChecks(before);
 		con.registerConsumption();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not consumed the necessary amount", 0, con.getUnProcessed(), 0);
+		assertEquals(0, con.getUnProcessed(), 0, "Not consumed the necessary amount");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cancelConsumption() {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		con = createAUnitConsumption(cae);
@@ -148,24 +158,25 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		con.cancel();
 		Timed.fire();
 		pastSuspendChecks(before);
-		Assert.assertFalse("Should not be possible to register after cancellation", con.registerConsumption());
+		assertFalse(con.registerConsumption(), "Should not be possible to register after cancellation");
 		long timeBefore = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Cancellation arrived at improper time", timeBefore - 1, cae.getArrivedAt());
-		Assert.assertTrue("There should be no events after cancellation",
-				cae.getArrivedAt() + 1 >= Timed.getFireCount());
+		assertEquals(timeBefore - 1, cae.getArrivedAt(), "Cancellation arrived at improper time");
+		assertTrue(cae.getArrivedAt() + 1 >= Timed.getFireCount(), "There should be no events after cancellation");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cancelUnregistered() {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		con = createAUnitConsumption(cae);
 		con.cancel();
-		Assert.assertTrue("Should receive cancellation even if not registered", cae.isCancelled());
+		assertTrue(cae.isCancelled(), "Should receive cancellation even if not registered");
 	}
 
-	@Ignore
-	@Test(timeout = 100)
+	@Disabled
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cancellationJustBeforeCompletion() {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert();
 		long before = Timed.getFireCount();
@@ -175,34 +186,34 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		long len = cae.getArrivedAt() - before;
 		con = createAUnitConsumption(null);
 		con.registerConsumption();
-		ConsumptionEventAssert.hits.clear();
+		ConsumptionEventAssert.resetHits();
 		Timed.simulateUntil(Timed.getFireCount() + len - 1);
-		Assert.assertTrue("It should not yet arrive", ConsumptionEventAssert.hits.isEmpty());
+		assertTrue(ConsumptionEventAssert.hits.isEmpty(), "It should not yet arrive");
 		Timed.fire();
 		con.cancel();
 		Timed.fire();
 		// Ambiguous behavior! This needs to be thinked through
-		Assert.assertFalse("It should arrive by now", ConsumptionEventAssert.hits.isEmpty());
+		assertFalse(ConsumptionEventAssert.hits.isEmpty(), "It should arrive by now");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void failedRegistrationTest() {
-		Assert.assertFalse("Provider should not accept this consumption",
-				new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinProvider(1) {
+		assertFalse(new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinProvider(1) {
 					protected boolean isAcceptableConsumption(ResourceConsumption con) {
 						return false;
 					}
-				}, utilize, new ConsumptionEventAssert()).registerConsumption());
-		Assert.assertFalse("Consumer should not accept this consumption",
-				new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinConsumer(1) {
+				}, utilize, new ConsumptionEventAssert()).registerConsumption(), "Provider should not accept this consumption");
+		assertFalse(new ResourceConsumption(100000, ResourceConsumption.unlimitedProcessing, new MaxMinConsumer(1) {
 					@Override
 					protected boolean isAcceptableConsumption(ResourceConsumption con) {
 						return false;
 					}
-				}, utilize, new ConsumptionEventAssert()).registerConsumption());
+				}, utilize, new ConsumptionEventAssert()).registerConsumption(), "Consumer should not accept this consumption");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testLessPerformantProvider() {
 		offer = new MaxMinProvider(permsProcessing / 2);
 		con = new ResourceConsumption(processingTasklen, ResourceConsumption.unlimitedProcessing, utilize, offer,
@@ -212,15 +223,19 @@ public class ResourceConsumptionTest extends ConsumptionEventFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100, expected = IllegalArgumentException.class)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testNegativeRC() {
-		con = new ResourceConsumption(-1, ResourceConsumption.unlimitedProcessing, utilize, offer,
+		assertThrows(IllegalArgumentException.class, () -> {
+			con = new ResourceConsumption(-1, ResourceConsumption.unlimitedProcessing, utilize, offer,
 				new ConsumptionEventAssert());
-		con.registerConsumption();
-		Timed.simulateUntilLastEvent();
+			con.registerConsumption();
+			Timed.simulateUntilLastEvent();
+		});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testSuspendRightBeforeCompletionNotification() {
 		long before = Timed.getFireCount();
 		// benchmark consumption

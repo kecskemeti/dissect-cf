@@ -23,8 +23,9 @@
  */
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -40,8 +41,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
+import java.util.concurrent.TimeUnit;
+
 public class ConsolidationTest extends IaaSRelatedFoundation {
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void simpleConsolidate() throws Exception {
 		IaaSService iaas = new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class);
 		Repository r = dummyRepoCreator(true);
@@ -60,8 +64,8 @@ public class ConsolidationTest extends IaaSRelatedFoundation {
 		VirtualMachine[] vms = iaas.requestVM(va, baseConstraints, r, 6);
 		Timed.simulateUntilLastEvent();
 		// Setup by now: big PM 4 VMs, small PM 2 VMs.
-		for (int i = 0; i < vms.length; i++) {
-			Assert.assertTrue(vms[i].getState().equals(VirtualMachine.State.RUNNING));
+		for (VirtualMachine virtualMachine : vms) {
+			assertEquals(virtualMachine.getState(), VirtualMachine.State.RUNNING);
 		}
 		// 1 VM from small is dropped:
 		for (VirtualMachine vm : vms) {
@@ -84,12 +88,12 @@ public class ConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		// Setup by now: big 1 VM, small 1 VM. (thus big has more free
 		// resources)
-		Assert.assertTrue(big.publicVms.size() == 1 && small.publicVms.size() == 1);
+		assertTrue(big.publicVms.size() == 1 && small.publicVms.size() == 1);
 		// Now we can ask the consolidator to move away the VM from big.
 		new SimpleConsolidator(iaas, 100);
 		Timed.simulateUntil(Timed.getFireCount() + 1000);
 		// Setup by now: big shut down, small 2 VMs.
-		Assert.assertTrue(big.isHostingVMs() == false && small.publicVms.size() == 2);
+		assertTrue(!big.isHostingVMs() && small.publicVms.size() == 2);
 		// Cleanup.
 		for (VirtualMachine vm : vms) {
 			if (vm.getResourceAllocation() != null) {

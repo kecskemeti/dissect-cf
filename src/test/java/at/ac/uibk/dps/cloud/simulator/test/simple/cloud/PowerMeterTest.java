@@ -53,16 +53,19 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class PowerMeterTest extends IaaSRelatedFoundation {
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void VMmeasurementTest() throws VMManagementException, NetworkException {
 		PhysicalMachine pm = dummyPMcreator();
 		Repository repo = dummyRepoCreator(true);
@@ -75,13 +78,12 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		final EnergyMeter meter = new SimpleVMEnergyMeter(vm);
 		meter.startMeter(aSecond / 10, true);
 		Timed.simulateUntil(Timed.getFireCount() + aSecond);
-		Assert.assertEquals("The idle machine is not consuming as much as expected", totalIdle * aSecond,
-				meter.getTotalConsumption(), 0.1);
+		assertEquals(totalIdle * aSecond, meter.getTotalConsumption(), 0.1, "The idle machine is not consuming as much as expected");
 		long before = Timed.getFireCount();
 		meter.stopMeter();
 		Timed.simulateUntilLastEvent();
 		long after = Timed.getFireCount();
-		Assert.assertEquals("Should not be any events if a meter is not executing", before, after);
+		assertEquals(before, after, "Should not be any events if a meter is not executing");
 		meter.startMeter(aSecond, true);
 		new DeferredEvent(aSecond) {
 			@Override
@@ -90,14 +92,12 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 			}
 		};
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(
-				"The idle machine's consumption should not depend on the measurement frequency of the meter",
-				totalIdle * aSecond, meter.getTotalConsumption(), 0.1);
-		Assert.assertFalse(meter.isSubscribed());
+		assertEquals(totalIdle * aSecond, meter.getTotalConsumption(), 0.1, "The idle machine's consumption should not depend on the measurement frequency of the meter");
+		assertFalse(meter.isSubscribed());
 		meter.startMeter(aSecond / 10, true);
 		ResourceConstraints rc = vm.getResourceAllocation().allocated;
 		final long taskleninms = 10 * aSecond;
-		Assert.assertEquals(0, ConsumptionEventAssert.hits.size());
+		assertEquals(0, ConsumptionEventAssert.hits.size());
 		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms, ResourceConsumption.unlimitedProcessing,
 				new ConsumptionEventAssert(Timed.getFireCount() + taskleninms, true) {
 					@Override
@@ -107,27 +107,26 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 					}
 				});
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(1, ConsumptionEventAssert.hits.size());
-		Assert.assertEquals("The consumption is not properly reported if there is a task processed",
-				taskleninms * (maxpower - idlepower + totalIdle), meter.getTotalConsumption(), 0.1);
+		assertEquals(1, ConsumptionEventAssert.hits.size());
+		assertEquals(taskleninms * (maxpower - idlepower + totalIdle), meter.getTotalConsumption(), 0.1, "The consumption is not properly reported if there is a task processed");
 		meter.startMeter(aSecond / 10, true);
 		vm.newComputeTask(rc.getTotalProcessingPower() * taskleninms, rc.getRequiredProcessingPower() * 0.5,
 				new ConsumptionEventAssert());
 		Timed.simulateUntil(Timed.getFireCount() + taskleninms);
-		Assert.assertEquals("The consumption is not properly reported if there is a task processed",
-				taskleninms * (0.5 * (maxpower - idlepower) + totalIdle), meter.getTotalConsumption(), 0.1);
+		assertEquals(taskleninms * (0.5 * (maxpower - idlepower) + totalIdle), meter.getTotalConsumption(), 0.1, "The consumption is not properly reported if there is a task processed");
 		meter.stopMeter();
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100)
-	public void PSTest() throws Exception {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void PSTest() {
 		PowerState psLinear = new PowerState(1, 1, LinearConsumptionModel::new);
 		PowerState psConstant = new PowerState(1, 1, ConstantConsumptionModel::new);
-		Assert.assertEquals("Linear consumption model is not behaving as expected", 1.5, psLinear.getCurrentPower(0.5),
-				0.001);
-		Assert.assertEquals("Constant consumption model is not behaving as expected", 1,
-				psConstant.getCurrentPower(0.5), 0.001);
+		assertEquals(1.5, psLinear.getCurrentPower(0.5),
+				0.001, "Linear consumption model is not behaving as expected");
+		assertEquals(1,
+				psConstant.getCurrentPower(0.5), 0.001, "Constant consumption model is not behaving as expected");
 	}
 
 	static class MeterManager extends Timed {
@@ -150,8 +149,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 
 		@Override
 		public void tick(long fires) {
-			Assert.assertTrue("Should have finished the execution of all VMs by this time, current time was:" + fires,
-					fires <= maxExpected);
+			assertTrue(fires <= maxExpected, "Should have finished the execution of all VMs by this time, current time was:" + fires);
 			if (iaas.runningMachines.size() == 0) {
 				int totVMcount = 0;
 				for (PhysicalMachine pm : iaas.machines) {
@@ -167,7 +165,8 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void checkforPMSchedulerConflict() throws Exception {
 		final IaaSService iaas = setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 2, 1);
 		final int vmNum = 3;
@@ -185,11 +184,12 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 300)
+	@Test
+	@Timeout(value = 300, unit = TimeUnit.MILLISECONDS)
 	public void prolongedMeterTestThroughIaaS() throws Exception {
-		final long[] fireAt = { 1135130133000l, 1135130401000l, 1135130415000l, 1135130438000l, 1135130471000l,
-				1135130835000l, 1138120593000l, 1138120603000l, 1138120664000l, 1138120938000l, 1138120952000l,
-				1138121042000l, 1138121107000l };
+		final long[] fireAt = {1135130133000L, 1135130401000L, 1135130415000L, 1135130438000L, 1135130471000L,
+				1135130835000L, 1138120593000L, 1138120603000L, 1138120664000L, 1138120938000L, 1138120952000L,
+				1138121042000L, 1138121107000L};
 		final double[] process = { 6, 13, 17, 17, 5, 16, 6, 5, 5, 6, 9, 964, 5 };
 		final int[] cores = { 1, 1, 20, 1, 4, 1, 1, 1, 1, 80, 80, 80, 1 };
 		final IaaSService iaas = new IaaSService(FirstFitScheduler.class, SchedulingDependentMachines.class);
@@ -211,11 +211,12 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 		// the timeout
 		new MeterManager(iaas, 1200, 3600, process.length + 3 /*
 																 * for the 80 core vms
-																 */, meters, 1138200000000l);
+																 */, meters, 1138200000000L);
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void aggregatedIaaStest() throws Exception {
 		final int machineCount = 2;
 		final int coreCount = 16;
@@ -307,18 +308,18 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 			Timed.resetTimed();
 		}
-		Assert.assertEquals("The energy consumption should be increasing with the two new machine's consumption",
-				meteredResults[1] - meteredResults[0], meteredResults[2], 0.01);
+		assertEquals(meteredResults[1] - meteredResults[0], meteredResults[2], 0.01, "The energy consumption should be increasing with the two new machine's consumption");
 	}
 
-	@Test(timeout = 400)
+	@Test
+	@Timeout(value = 400, unit = TimeUnit.MILLISECONDS)
 	public void simpleConsumptionMonitoring() {
 		PhysicalMachine pm = dummyPMcreator();
 		pm.turnon();
 		Timed.simulateUntilLastEvent();
 		final MonitorConsumption mon = new MonitorConsumption(pm, aSecond);
 		Timed.simulateUntil(Timed.getFireCount() + 1000);
-		Assert.assertEquals("Should not report consumption yet", 0, mon.getSubDayProcessing(), 0.0001);
+		assertEquals(0, mon.getSubDayProcessing(), 0.0001, "Should not report consumption yet");
 		// The size of the consumption results in an over the day simulation
 		ResourceConsumption rc = new ResourceConsumption(100000000, ResourceConsumption.unlimitedProcessing,
 				pm.directConsumer, pm, new ConsumptionEventAssert() {
@@ -330,8 +331,7 @@ public class PowerMeterTest extends IaaSRelatedFoundation {
 				});
 		rc.registerConsumption();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Should report consumption with day>hour>sec",
-				mon.getSubDayProcessing() >= mon.getSubHourProcessing()
-						&& mon.getSubHourProcessing() >= mon.getSubSecondProcessing());
+		assertTrue(mon.getSubDayProcessing() >= mon.getSubHourProcessing()
+						&& mon.getSubHourProcessing() >= mon.getSubSecondProcessing(), "Should report consumption with day>hour>sec");
 	}
 }

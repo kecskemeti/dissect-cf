@@ -28,11 +28,13 @@ package at.ac.uibk.dps.cloud.simulator.test.simple;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 
 import java.util.ArrayList;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TimedTest extends TestFoundation {
 	final static long setFrequency = 20;
@@ -66,7 +68,7 @@ public class TimedTest extends TestFoundation {
 
 		@Override
 		public void tick(final long fires) {
-			Assert.assertEquals("Timed event on the wrong time", expectedFire, fires);
+			assertEquals(expectedFire, fires,"Timed event on the wrong time");
 			myfires++;
 			doCancel();
 		}
@@ -94,27 +96,30 @@ public class TimedTest extends TestFoundation {
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void singleEventFire() {
 		SingleFire fire = new SingleFire();
-		Assert.assertTrue("ToString does not detail next event ", fire.toString().contains("" + fire.expectedFire));
-		Assert.assertEquals("Event distance is not correct", setFrequency, fire.nextEventDistance());
-		Assert.assertTrue("Should be subscribed", fire.isSubscribed());
+		assertTrue(fire.toString().contains("" + fire.expectedFire),"ToString does not detail next event ");
+		assertEquals(setFrequency, fire.nextEventDistance(),"Event distance is not correct");
+		assertTrue(fire.isSubscribed(),"Should be subscribed");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Timed event did not arrive", fire.myfires, 1);
-		Assert.assertEquals("Timed frequency is not the one expected", setFrequency, fire.getFrequency());
-		Assert.assertEquals("Event distance is not correct", Long.MAX_VALUE, fire.nextEventDistance());
-		Assert.assertTrue("Should not be subscribed", !fire.isSubscribed());
+		assertEquals(fire.myfires, 1,"Timed event did not arrive");
+		assertEquals(setFrequency, fire.getFrequency(),"Timed frequency is not the one expected");
+		assertEquals(Long.MAX_VALUE, fire.nextEventDistance(),"Event distance is not correct");
+		assertTrue(!fire.isSubscribed(),"Should not be subscribed");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void repeatedEventFire() {
 		RepeatedFire fire = new RepeatedFire();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not enough timed events", expectedFires, fire.myfires);
+		assertEquals(expectedFires, fire.myfires,"Not enough timed events");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void overLappingFires() {
 		final ArrayList<SingleFire> sf = new ArrayList<SingleFire>();
 		RepeatedFire fire = new RepeatedFire() {
@@ -127,11 +132,12 @@ public class TimedTest extends TestFoundation {
 			}
 		};
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not enough timed events", expectedFires, fire.myfires);
-		Assert.assertEquals("Overlapped timed event did not arrive", sf.get(0).myfires, 1);
+		assertEquals(expectedFires, fire.myfires,"Not enough timed events");
+		assertEquals(sf.get(0).myfires, 1,"Overlapped timed event did not arrive");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void overLappingRepeatedFires() {
 		RepeatedFire[] fireobjects = new RepeatedFire[10];
 		for (int i = 0; i < fireobjects.length; i++) {
@@ -140,66 +146,71 @@ public class TimedTest extends TestFoundation {
 		}
 		Timed.simulateUntilLastEvent();
 		for (int i = 0; i < fireobjects.length; i++) {
-			Assert.assertEquals("Not enough timed events", expectedFires, fireobjects[i].myfires);
+			assertEquals(expectedFires, fireobjects[i].myfires,"Not enough timed events");
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void eventSkipper() {
 		RepeatedFire fire = new RepeatedFire();
 		long reducedFires = expectedFires - 3;
 		Timed.skipEventsTill(fire.maxTime - reducedFires * setFrequency);
 		fire.expectedFire = fire.getNextEvent();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not the reduced amount of fires arrived", reducedFires, fire.myfires);
+		assertEquals(reducedFires, fire.myfires,"Not the reduced amount of fires arrived");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void eventJumper() {
 		SingleFire fire = new SingleFire();
 		long jump = Timed.jumpTime(setFrequency - 10);
-		Assert.assertEquals("Jump should have had success", 0, jump);
+		assertEquals(0, jump,"Jump should have had success");
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Timed event did not arrive", fire.myfires == 1);
+		assertTrue(fire.myfires == 1,"Timed event did not arrive");
 		long timebefore = Timed.getFireCount();
 		long expectedAfter = timebefore + setFrequency;
 		jump = Timed.jumpTime(setFrequency);
-		Assert.assertEquals("Jump should have had success", 0, jump);
-		Assert.assertEquals("Time after jump is not correct", expectedAfter, Timed.getFireCount());
+		assertEquals(0, jump,"Jump should have had success");
+		assertEquals(expectedAfter, Timed.getFireCount(),"Time after jump is not correct");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void prematureStopper() {
 		RepeatedFire fire = new RepeatedFire();
 		Timed.simulateUntil(Timed.getFireCount() + (expectedFires - 3) * setFrequency);
-		Assert.assertEquals("Not the reduced amount of fires arrived", 7, fire.myfires);
+		assertEquals(7, fire.myfires, "Not the reduced amount of fires arrived");
 		Timed.simulateUntil(Long.MAX_VALUE);
-		Assert.assertEquals("Not all events arrived", expectedFires, fire.myfires);
-		Assert.assertTrue("The simulation finshed way into the future", Timed.getFireCount() == fire.maxTime + 1);
+		assertEquals(expectedFires, fire.myfires,"Not all events arrived");
+		assertTrue(Timed.getFireCount() == fire.maxTime + 1,"The simulation finshed way into the future");
 		SingleFire sf = new SingleFire();
 		long expectedTime = Timed.getFireCount() + 2;
 		Timed.simulateUntil(expectedTime);
-		Assert.assertTrue("Fired events that should not arrive yet", sf.myfires == 0);
-		Assert.assertEquals("The simulation did not finish at the specified time", expectedTime, Timed.getFireCount());
+		assertTrue(sf.myfires == 0,"Fired events that should not arrive yet");
+		assertEquals(expectedTime, Timed.getFireCount(),"The simulation did not finish at the specified time");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void multiSubscribe() {
 		RepeatedFire fire = new RepeatedFire() {
 			@Override
 			public void tick(long fires) {
-				Assert.assertFalse("Unexpected success of subscription", subscribe(3));
+				assertFalse(subscribe(3),"Unexpected success of subscription");
 				super.tick(fires);
 				if (maxTime == fires) {
-					Assert.assertFalse("Unsubscribe should be unsuccessful", unsubscribe());
+					assertFalse(unsubscribe(),"Unsubscribe should be unsuccessful");
 				}
 			}
 		};
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not enough timed events", expectedFires, fire.myfires);
+		assertEquals(expectedFires, fire.myfires,"Not enough timed events");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void unSubscribeWhileQueued() {
 		RepeatedFire fire = new RepeatedFire();
 		long reduction = 3;
@@ -208,13 +219,14 @@ public class TimedTest extends TestFoundation {
 			Timed.jumpTime(Long.MAX_VALUE);
 			Timed.fire();
 		}
-		Assert.assertEquals("Incorrect number of timed events before cancel", reduction, fire.myfires);
+		assertEquals(reduction, fire.myfires,"Incorrect number of timed events before cancel");
 		fire.cancel();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Incorrect number of timed events after cancel", reduction, fire.myfires);
+		assertEquals(reduction, fire.myfires,"Incorrect number of timed events after cancel");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void freqUpdater() {
 		final long changedFreq = 15;
 
@@ -229,7 +241,7 @@ public class TimedTest extends TestFoundation {
 		};
 		long adjustedFires = 1 + ((fire.maxTime - setFrequency) - Timed.getFireCount()) / changedFreq;
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not enough timed events", adjustedFires, fire.myfires);
+		assertEquals(adjustedFires, fire.myfires,"Not enough timed events");
 
 		SingleFire f = new SingleFire();
 		Timed.fire();
@@ -237,85 +249,96 @@ public class TimedTest extends TestFoundation {
 		Timed.fire();
 		f.changeFreq(changedFreq - 1);
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Frequency change unsuccessful if not changed during the tick function", f.myfires == 1);
+		assertTrue(f.myfires == 1,"Frequency change unsuccessful if not changed during the tick function");
 	}
 
-	@Test(expected = IllegalStateException.class, timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void negativeFreqTester() {
-		class NFT extends Timed {
-			public NFT() {
-				subscribe(-1);
-			}
+		assertThrows(IllegalStateException.class, () -> {
+					class NFT extends Timed {
+						public NFT() {
+							subscribe(-1);
+						}
 
-			@Override
-			public void tick(long fires) {
-				Assert.fail("This event should never come!");
-			}
-		}
-		new NFT();
-		Timed.simulateUntilLastEvent();
-		Assert.fail("We should never reach the end of this test!");
+						@Override
+						public void tick(long fires) {
+							fail("This event should never come!");
+						}
+					}
+					new NFT();
+					Timed.simulateUntilLastEvent();
+					fail("We should never reach the end of this test!");
+				});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void zeroFreqTester() {
 		SingleFire f = new SingleFire();
 		f.changeFreq(0);
 		Timed.fire();
-		Assert.assertEquals("Even a zero length event should arrive", 1, f.myfires);
+		assertEquals(1, f.myfires, "Even a zero length event should arrive");
 	}
 
-	@Test(expected = IllegalStateException.class, timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void hugeFreqTester() {
-		SingleFire f = new SingleFire();
-		f.changeFreq(Long.MAX_VALUE);
+		assertThrows(IllegalStateException.class, () -> {
+			SingleFire f = new SingleFire();
+			f.changeFreq(Long.MAX_VALUE);
+		});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void updateFreqWhileUnsubscribed() {
 		SingleFire f = new SingleFire();
 		f.cancel();
-		Assert.assertFalse(f.isSubscribed());
+		assertFalse(f.isSubscribed());
 		f.changeFreq(setFrequency);
-		Assert.assertTrue("Should be subscribed just as if we did not cancel the fire", f.isSubscribed());
+		assertTrue(f.isSubscribed(),"Should be subscribed just as if we did not cancel the fire");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should receive the event even after cancel if an update is done afterwards", 1, f.myfires);
+		assertEquals(1, f.myfires, "Should receive the event even after cancel if an update is done afterwards");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void emptyTimedlistTests() {
-		Assert.assertEquals(Timed.getNextFire(), -1);
+		assertEquals(Timed.getNextFire(), -1);
 		Timed.fire();
-		Assert.assertEquals(1, Timed.getFireCount());
+		assertEquals(1, Timed.getFireCount());
 		Timed.jumpTime(50);
-		Assert.assertEquals(51, Timed.getFireCount());
+		assertEquals(51, Timed.getFireCount());
 		Timed.skipEventsTill(500);
-		Assert.assertEquals(500, Timed.getFireCount());
+		assertEquals(500, Timed.getFireCount());
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(500, Timed.getFireCount());
+		assertEquals(500, Timed.getFireCount());
 		Timed.simulateUntil(1000);
-		Assert.assertEquals(500, Timed.getFireCount());
+		assertEquals(500, Timed.getFireCount());
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void zeroFrequencySkipper() {
 		SingleFire sf = new SingleFire();
 		sf.changeFreq(0);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should fire the event only once", 1, sf.myfires);
+		assertEquals(1, sf.myfires, "Should fire the event only once");
 		sf.changeFreq(0); // resubscription
 		final long targetTime=1000;
 		Timed.skipEventsTill(targetTime); // skipping current events
 		sf.expectedFire=targetTime;
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should receive the second fire after the skip events complete", 2, sf.myfires);
+		assertEquals(2, sf.myfires, "Should receive the second fire after the skip events complete");
 	}
-	
-	@Test(timeout = 100)
+
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void negativeTimeIncrementStopper() {
 		Timed.skipEventsTill(100);
-		Assert.assertEquals("Should allow positive increments", 100, Timed.getFireCount());
+		assertEquals(100, Timed.getFireCount(), "Should allow positive increments");
 		Timed.skipEventsTill(10);
-		Assert.assertEquals("Should not allow negative time jumps", 100, Timed.getFireCount());
+		assertEquals(100, Timed.getFireCount(), "Should not allow negative time jumps");
 	}
 }

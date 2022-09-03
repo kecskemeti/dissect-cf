@@ -35,17 +35,20 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 	IaaSService basic;
 	Repository r;
 
-	@Before
+	@BeforeEach
 	public void resetSim() throws Exception {
 		basic = new IaaSService(NonQueueingScheduler.class,
 				AlwaysOnMachines.class);
@@ -55,60 +58,50 @@ public class AlwaysOnMachinesTest extends IaaSRelatedFoundation {
 		basic.registerRepository(r);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void turnonTest() {
-		Assert.assertEquals(
-				"Even alwayson should not have machines running at the beginning of the simulation",
-				0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Even alwayson should not have machines running at the beginning of the simulation");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Did not switch on all machines as expected",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "Did not switch on all machines as expected");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void additionTest() {
 		Timed.simulateUntilLastEvent();
 		basic.registerHost(dummyPMcreator());
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Did not switch on all machines as expected",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "Did not switch on all machines as expected");
 	}
 
-	@Test(timeout = 100)
-	public void vmCreationTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void vmCreationTest() throws VMManagementException {
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Did not switch on all machines as expected",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "Did not switch on all machines as expected");
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) r.contents()
 				.iterator().next(), basic.machines.get(0)
 				.getCapacities(), r, 1)[0];
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(VirtualMachine.State.RUNNING, vm.getState());
-		Assert.assertEquals(
-				"An arriving VM should not change the number of running PMs",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(VirtualMachine.State.RUNNING, vm.getState());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "An arriving VM should not change the number of running PMs");
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(
-				"A departing VM should not change the number of runnning PMs",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "A departing VM should not change the number of runnning PMs");
 	}
 
-	@Test(timeout = 100)
-	public void prematureVMCreationTest() throws VMManagementException,
-			NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void prematureVMCreationTest() throws VMManagementException {
 		VirtualMachine vm = basic.requestVM((VirtualAppliance) r.contents()
 				.iterator().next(), basic.machines.get(0)
 				.getCapacities(), r, 1)[0];
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(
-				"A premature VM arrival should not disturb the PM startup processes",
-				basic.machines.size(), basic.runningMachines.size());
-		Assert.assertEquals(VirtualMachine.State.RUNNING, vm.getState());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "A premature VM arrival should not disturb the PM startup processes");
+		assertEquals(VirtualMachine.State.RUNNING, vm.getState());
 		vm.destroy(false);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals(
-				"A departing VM should not change the number of runnning PMs",
-				basic.machines.size(), basic.runningMachines.size());
+		assertEquals(basic.machines.size(), basic.runningMachines.size(), "A departing VM should not change the number of runnning PMs");
 	}
 }

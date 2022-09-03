@@ -33,10 +33,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -57,6 +53,9 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.SmallestFirstSchedul
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	public final static int dummyPMCoreCount = 1;
@@ -66,12 +65,12 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 	private final static HashMap<String, Integer> globalLatencyMapInternal = new HashMap<String, Integer>(10000);
 	public final static Map<String, Integer> globalLatencyMap = Collections.unmodifiableMap(globalLatencyMapInternal);
 
-	@BeforeClass
+	@BeforeAll
 	public static void preloadIaaS() throws Exception {
 		new IaaSRelatedFoundation().getNewServiceArray();
 	}
 
-	@Before
+	@BeforeEach
 	public void resetLatencyMap() {
 		globalLatencyMapInternal.clear();
 	}
@@ -113,7 +112,7 @@ public class IaaSRelatedFoundation extends VMRelatedFoundation {
 				defaultStorageTransitions, defaultNetworkTransitions);
 		if (withVa) {
 			final VirtualAppliance va = new VirtualAppliance("VA", 2000, 0, false, vaSize / 5);
-			Assert.assertTrue("Registration should succeed", repo.registerObject(va));
+			Assertions.assertTrue(repo.registerObject(va), "Registration should succeed");
 		}
 		return repo;
 

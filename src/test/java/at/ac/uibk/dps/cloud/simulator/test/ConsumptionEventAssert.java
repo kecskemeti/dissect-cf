@@ -28,12 +28,11 @@ package at.ac.uibk.dps.cloud.simulator.test;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAdapter;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.junit.Assert;
 
 public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 	private final static ArrayList<Long> hitsInternal = new ArrayList<Long>();
@@ -72,12 +71,10 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 	@Override
 	public void conComplete() {
 		if (expectedTime > 0) {
-			Assert.assertEquals("Resource consumption completed at wrong time",
-					expectedTime, Timed.getFireCount());
+			Assertions.assertEquals(expectedTime, Timed.getFireCount(), "Resource consumption completed at wrong time");
 		}
-		Assert.assertFalse(
-				"Should not receive consumption events multiple times",
-				isCancelled() || isCompleted());
+		Assertions.assertFalse(
+				isCancelled() || isCompleted(), "Should not receive consumption events multiple times");
 		super.conComplete();
 		updateArrivedAt();
 		hitsInternal.add(arrivedAt);
@@ -86,16 +83,15 @@ public class ConsumptionEventAssert extends ConsumptionEventAdapter {
 	@Override
 	public void conCancelled(ResourceConsumption problematic) {
 		if (failOnCancel) {
-			Assert.fail("Consumption got cancelled before transfer completed");
+			Assertions.fail("Consumption got cancelled before transfer completed");
 		}
-		Assert.assertFalse(
-				"Should not receive consumption events multiple times",
-				isCancelled() || isCompleted());
+		Assertions.assertFalse(
+			isCancelled() || isCompleted(), "Should not receive consumption events multiple times");
 		super.conCancelled(problematic);
 		updateArrivedAt();
 	}
 
-	static void resetHits() {
+	public static void resetHits() {
 		hitsInternal.clear();
 	}
 }

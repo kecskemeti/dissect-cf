@@ -23,8 +23,9 @@
  */
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmscheduler;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -39,8 +40,11 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
+import java.util.concurrent.TimeUnit;
+
 public class FirstFitSchedulerTest extends IaaSRelatedFoundation {
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void toxicSequenceTest() throws Exception {
 		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 2, 2);
 		Repository vaStore = s.repositories.get(0);
@@ -68,9 +72,9 @@ public class FirstFitSchedulerTest extends IaaSRelatedFoundation {
 		s.runningMachines.get(s.runningMachines.size()-1).listVMs().iterator().next().destroy(false);
 		// Let the others get on the system
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("First VM should be running", VirtualMachine.State.RUNNING, vmJustFitsOne.getState());
+		assertEquals(VirtualMachine.State.RUNNING, vmJustFitsOne.getState(), "First VM should be running");
 		for (VirtualMachine vm : vmsNeedingTwoPMs) {
-			Assert.assertEquals("No other VMs should be running", VirtualMachine.State.DESTROYED, vm.getState());
+			assertEquals(VirtualMachine.State.DESTROYED, vm.getState(), "No other VMs should be running");
 		}
 		// Let the final set of machines on the system
 		vmJustFitsOne.destroy(false);
@@ -84,7 +88,7 @@ public class FirstFitSchedulerTest extends IaaSRelatedFoundation {
 		}
 		Timed.simulateUntilLastEvent();
 		for (VirtualMachine vm : vmsNeedingTwoPMs) {
-			Assert.assertEquals("Second set needs to be running by now", VirtualMachine.State.RUNNING, vm.getState());
+			assertEquals(VirtualMachine.State.RUNNING, vm.getState(), "Second set needs to be running by now");
 			vm.destroy(false);
 		}
 	}

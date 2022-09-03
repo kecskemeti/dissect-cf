@@ -25,12 +25,15 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
-import hu.mta.sztaki.lpds.cloud.simulator.util.ArrayHandler;
+import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Predicate;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import static java.util.function.Predicate.not;
 
 /**
  * This class is the core part of the unified resource consumption model of
@@ -54,6 +57,10 @@ import java.util.stream.Collectors;
  * Distributed Systems, MTA SZTAKI (c) 2015"
  */
 public class FreqSyncer extends Timed {
+    public enum DepKind {
+        CONSUMER, PROVIDER
+    }
+
     /**
      * The influence group managed by this freqsyncer object.
      * <p>
@@ -69,21 +76,12 @@ public class FreqSyncer extends Timed {
      * <li>[depgrouplen,myDepGroup.length[ padding with null items
      * </ul>
      */
-    ResourceSpreader[] myDepGroup;
-    /**
-     * The current length of the myDepGroup array. This is the actual length without
-     * counting the padding at the end of the java array.
-     */
-    private int depgrouplen;
-    /**
-     * The index of the first consumer in the myDepGroup array.
-     */
-    private int firstConsumerId;
+    final EnumMap<DepKind, Set<ResourceSpreader>> myDepGroup;
     /**
      * those resource spreaders that need to be added to the influence group at the
      * particular time instance
      */
-    private final ArrayList<ResourceSpreader> depGroupExtension = new ArrayList<>();
+    private final HashSet<ResourceSpreader> depGroupExtension = new HashSet<>();
     /**
      * if there are some external activities that could lead to influence group
      * changes this field will be turned to true
@@ -108,51 +106,46 @@ public class FreqSyncer extends Timed {
      * @param consumer the consumer to be added to the initial influence group
      */
     FreqSyncer(final ResourceSpreader provider, final ResourceSpreader consumer) {
-        myDepGroup = new ResourceSpreader[2];
-        myDepGroup[0] = provider;
-        myDepGroup[1] = consumer;
-        firstConsumerId = 1;
-        depgrouplen = 2;
+        myDepGroup=new EnumMap<>(DepKind.class);
+        initDGMap(myDepGroup);
+        myDepGroup.get(DepKind.PROVIDER).add(provider);
+        myDepGroup.get(DepKind.CONSUMER).add(consumer);
         provider.setSyncer(this);
         consumer.setSyncer(this);
         setBackPreference(true);
+    }
+
+    private static void initDGMap(EnumMap<DepKind, Set<ResourceSpreader>> toInit) {
+        toInit.put(DepKind.PROVIDER, new HashSet<>());
+        toInit.put(DepKind.CONSUMER, new HashSet<>());
+    }
+
+    Stream<ResourceSpreader> getProviderStream() {
+        return getDepGroupStream(DepKind.PROVIDER);
+    }
+
+    /**
+     * Returns a new stream of all the members of the influence group, it is guaranteed to offer all providers first in the sequential stream
+     * @return
+     */
+    Stream<ResourceSpreader> getCompleteDGStream() {
+        return Stream.concat(getProviderStream(),getDepGroupStream(DepKind.CONSUMER));
+    }
+
+    Stream<ResourceSpreader> getDepGroupStream(DepKind streamKind) {
+        return myDepGroup.get(streamKind).stream();
     }
 
     /**
      * The constructor to be used when a new influence group needs to be created
      * because the original group got fragmented.
      *
-     * @param myDepGroup the group members to take part in the new influence group
-     * @param provcount  the number of providers in the group
-     * @param dglen      the length of the influence group
+     * @param predefinedDepGroup the group members to take part in the new influence group
      */
-    private FreqSyncer(ResourceSpreader[] myDepGroup, final int provcount, final int dglen) {
-        this.myDepGroup = myDepGroup;
-        firstConsumerId = provcount;
-        depgrouplen = dglen;
-        Arrays.stream(myDepGroup).limit(dglen).forEach( rs -> rs.setSyncer(this));
+    private FreqSyncer(EnumMap<DepKind,Set<ResourceSpreader>> predefinedDepGroup) {
+        myDepGroup=predefinedDepGroup;
+        getCompleteDGStream().forEach(rs -> rs.setSyncer(this));
         setBackPreference(true);
-    }
-
-    /**
-     * Allows a single spreader object to be added to the influence group.
-     *
-     * <i>WARNING:</i> Should only be used from addToGroup, as there are some
-     * management operations that only occure there for performance reasons
-     *
-     * @param rs the spreader to be added to the influence group
-     */
-    private void addSingleToDG(final ResourceSpreader rs) {
-        try {
-            myDepGroup[depgrouplen] = rs;
-            depgrouplen++;
-            rs.setSyncer(this);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            ResourceSpreader[] newdg = new ResourceSpreader[myDepGroup.length * 7];
-            System.arraycopy(myDepGroup, 0, newdg, 0, depgrouplen);
-            myDepGroup = newdg;
-            addSingleToDG(rs);
-        }
     }
 
     /**
@@ -161,22 +154,10 @@ public class FreqSyncer extends Timed {
      * the influence group know their group membership.
      */
     private void addToGroup() {
-        for (final ResourceSpreader rs : depGroupExtension) {
-            if (isInDepGroup(rs))
-                continue;
-            if (rs.isConsumer()) {
-                addSingleToDG(rs);
-            } else {
-                if (firstConsumerId >= depgrouplen) {
-                    addSingleToDG(rs);
-                } else {
-                    addSingleToDG(myDepGroup[firstConsumerId]);
-                    myDepGroup[firstConsumerId] = rs;
-                }
-                firstConsumerId++;
-            }
+        depGroupExtension.forEach(rs -> {
+            myDepGroup.get(rs.spreaderType()).add(rs);
             rs.setSyncer(this);
-        }
+        });
     }
 
     /**
@@ -187,11 +168,7 @@ public class FreqSyncer extends Timed {
      * @return <i>true</i> if the group is part of the current influence group
      */
     private boolean isInDepGroup(final ResourceSpreader lookfor) {
-        final int start = lookfor.isConsumer() ? firstConsumerId : 0;
-        final int stop = start == 0 ? firstConsumerId : depgrouplen;
-        // We will just check the part of the depgroup where
-        // consumers or providers are located
-        return Arrays.stream(myDepGroup).skip(start).limit(stop-start).anyMatch( d -> d==lookfor);
+        return getDepGroupStream(lookfor.spreaderType()).anyMatch( d -> d==lookfor);
     }
 
     /**
@@ -201,47 +178,8 @@ public class FreqSyncer extends Timed {
      * consumption) and the rest of the group needs to be rescheduled.
      */
     void nudge() {
-        if (nudged)
-            return;
+        if (!nudged) updateFrequency(0);
         nudged = true;
-        updateFrequency(0);
-    }
-
-    /**
-     * Only those should get the depgroup with this function who are not planning to
-     * change it's contents. This function directly offers the array handled by the
-     * freqsyncer to allow external read operations on the array to perform faster.
-     *
-     * <i>WARNING:</i> If, for some reason, the contents of the returned array are
-     * changed then the proper operation of FreqSyncer cannot be guaranteed anymore.
-     *
-     * @return the reference to the influence group's internal array
-     */
-    ResourceSpreader[] getDepGroup() {
-        return myDepGroup;
-    }
-
-    /**
-     * queries the number of resource spreaders that are part of the influence group
-     * managed by this freqsyncer.
-     *
-     * @return the number of spreaders in the group
-     */
-    public int getDGLen() {
-        return depgrouplen;
-    }
-
-    /**
-     * This will always give a fresh copy of the depgroup which can be changed as
-     * the user desires. Because of the always copying behavior it will reduce the
-     * performance a little. Of course, it results in significant performance
-     * penalties for those who only would like to read from the array.
-     *
-     * @return a new copy of the influence group's internal array this array can be
-     * modified at the user's will
-     */
-    public ResourceSpreader[] getClonedDepGroup() {
-        return Arrays.copyOfRange(myDepGroup, 0, depgrouplen);
     }
 
     /**
@@ -250,17 +188,7 @@ public class FreqSyncer extends Timed {
      */
     @Override
     public String toString() {
-        return "FreqSyncer(" + super.toString() + " depGroup: " + Arrays.toString(myDepGroup) + ")";
-    }
-
-    /**
-     * query the index of the first consumer in the influence group's internal array
-     * representation
-     *
-     * @return the index of the first consumer
-     */
-    public int getFirstConsumerId() {
-        return firstConsumerId;
+        return "FreqSyncer(" + super.toString() + " depGroup: " + myDepGroup + ")";
     }
 
     /**
@@ -273,7 +201,7 @@ public class FreqSyncer extends Timed {
      * @param currentTime the time instance for which the processing should be done
      */
     protected final void outOfOrderProcessing(final long currentTime) {
-        Arrays.stream(myDepGroup).limit(depgrouplen).forEach(rs -> rs.doProcessing(currentTime));
+        getCompleteDGStream().forEach(rs -> rs.doProcessing(currentTime));
     }
 
     /**
@@ -310,19 +238,19 @@ public class FreqSyncer extends Timed {
      * @return if we need to do the group separation phase
      */
     private boolean identifyGroupMembers(long fires) {
-        boolean didRemovals = false;
+        var didRemovals = false;
         boolean didExtension;
         do {
             addToGroup();
             outOfOrderProcessing(fires);
             depGroupExtension.clear();
             nudged = false;
-            didExtension = false;
-            for (int rsi = 0; rsi < depgrouplen; rsi++) {
-                final ResourceSpreader rs = myDepGroup[rsi];
-                didRemovals|=rs.handleRemovals();
-                didExtension|=rs.handleAdditions(fires);
-            }
+            var res = getCompleteDGStream()
+                    .map(rs -> Pair.of(rs.handleRemovals(), rs.handleAdditions(fires)))
+                    .reduce((in1, in2) -> Pair.of(in1.getLeft() | in2.getLeft(), in1.getRight() | in2.getRight()))
+                    .orElse(Pair.of(false, false));
+            didRemovals |= res.getLeft();
+            didExtension = res.getRight();
         } while (didExtension || nudged);
         return didRemovals;
     }
@@ -331,87 +259,46 @@ public class FreqSyncer extends Timed {
      * Phase II. managing separation of influence groups
      */
     private void groupSeparation() {
-        // Marking all current members of the depgroup as non-members
-        Arrays.stream(myDepGroup).limit(depgrouplen).forEach( rs -> rs.stillInDepGroup = false);
-        var notClassified = myDepGroup;
-        var providerCount = firstConsumerId;
-        var notClassifiedLen = depgrouplen;
-        do {
-            var classifiableindex = 0;
-            // finding the first dependency group
-            for (; classifiableindex < notClassifiedLen; classifiableindex++) {
-                var rs = notClassified[classifiableindex];
-                buildDepGroup(rs);
-                if (rs.stillInDepGroup) {
-                    break;
-                }
-                rs.setSyncer(null);
-            }
-            if (classifiableindex < notClassifiedLen) {
-                notClassifiedLen -= classifiableindex;
-                providerCount -= classifiableindex;
-                // Remove the unused front
-                System.arraycopy(notClassified, classifiableindex, notClassified, 0, notClassifiedLen);
-                // Remove the not classified items
-                ResourceSpreader[] stillNotClassified = null;
-                int newpc = 0;
-                int newlen = 0;
-                for (int i = 0; i < notClassifiedLen; i++) {
-                    final ResourceSpreader rs = notClassified[i];
-                    if (!rs.stillInDepGroup) {
-                        notClassifiedLen--;
-                        // Management of the new group
-                        if (stillNotClassified == null) {
-                            stillNotClassified = new ResourceSpreader[notClassifiedLen];
-                        }
-                        stillNotClassified[newlen++] = rs;
-                        // Removals from the old group
-                        if (rs.isConsumer()) {
-                            notClassified[i] = notClassified[notClassifiedLen];
-                        } else {
-                            providerCount--;
-                            notClassified[i] = notClassified[providerCount];
-                            notClassified[providerCount] = notClassified[notClassifiedLen];
-                            newpc++;
-                        }
-                        notClassified[notClassifiedLen] = null;
-                        i--;
-                    }
-                }
-                // We now have the new groups, so we can start
-                // subscribing
-                FreqSyncer subscribeMe;
-                if (notClassified == myDepGroup) {
-                    depgrouplen = notClassifiedLen;
-                    firstConsumerId = providerCount;
-                    subscribeMe = this;
+        // Removing all past members which are no longer processing
+        Arrays.stream(DepKind.values()).forEach(
+                dgType -> myDepGroup.get(dgType).removeAll(
+                        getDepGroupStream(dgType).filter(not(ResourceSpreader::isProcessing))
+                                .peek(rs -> rs.setSyncer(null)) // Clearing out previous freq syncer references to members no longer needing one
+                                .collect(Collectors.toList())));
+        if(!isEmptyDG()) {
+            // Marking all current members of the depgroup as non-members
+            getCompleteDGStream().forEach(rs -> rs.stillInDepGroup = false);
+            boolean needsFurtherSplitChecks = true;
+            do {
+                buildDepGroup(getProviderStream().findFirst().orElseThrow());
+                if (getCompleteDGStream().anyMatch(not(rs -> rs.stillInDepGroup))) {
+                    // a split is needed, we have identified an influence group which does not belong to the group of the first member
+                    EnumMap<DepKind, Set<ResourceSpreader>> newInfluenceGroup = new EnumMap<>(DepKind.class);
+                    initDGMap(newInfluenceGroup);
+                    var notClassified = getCompleteDGStream();
+                    // Separate the newly identified subgroup into its own
+                    notClassified.filter(rs -> rs.stillInDepGroup).peek(rs -> newInfluenceGroup.get(rs.spreaderType()).add(rs)).collect(Collectors.toList()).forEach(rs ->
+                            myDepGroup.get(rs.spreaderType()).remove(rs) // remove the new sub group's members from the original
+                    );
+                    // by this time we have a smaller influence group in the current freq syncer as the new group has some of the old members
+                    var newFreqSyncer = new FreqSyncer(newInfluenceGroup);
+                    newFreqSyncer.updateMyFreqNow();
                 } else {
-                    subscribeMe = new FreqSyncer(notClassified, providerCount, notClassifiedLen);
+                    // no split is needed, we have got the final group, it is just a bit smaller than before
+                    needsFurtherSplitChecks = false;
                 }
-                // Ensuring freq updates for every newly created group
-                subscribeMe.updateMyFreqNow();
-                if (stillNotClassified == null) {
-                    // No further spreaders to process
-                    break;
-                } else {
-                    // let's work on the new spreaders
-                    notClassified = stillNotClassified;
-                    providerCount = newpc;
-                    notClassifiedLen = newlen;
-                }
-            } else {
-                // nothing left in notclassified that can be use in
-                // dependency groups
-                notClassifiedLen = 0;
-                if (notClassified == myDepGroup) {
-                    depgrouplen = 0;
-                }
-            }
-        } while (notClassifiedLen != 0);
-        if (notClassified == myDepGroup && depgrouplen == 0) {
-            // No group was created we have to unsubscribe
-            unsubscribe();
+            } while (needsFurtherSplitChecks);
         }
+        if(isEmptyDG()) {
+            // We have not been left to work with anything, no need to keep our subscription
+            unsubscribe();
+        } else {
+            updateMyFreqNow();
+        }
+    }
+
+    private boolean isEmptyDG() {
+        return getCompleteDGStream().findFirst().isEmpty();
     }
 
     /**
@@ -424,7 +311,7 @@ public class FreqSyncer extends Timed {
      * ResourceSpreader.doProcessing is called.
      */
     private void updateMyFreqNow() {
-        var newFreq = myDepGroup[0].singleGroupwiseFreqUpdater();
+        var newFreq = myDepGroup.get(DepKind.PROVIDER).stream().findFirst().orElseThrow().singleGroupwiseFreqUpdater();
         regularFreqMode = newFreq != 0;
         updateFrequency(newFreq);
     }
@@ -450,11 +337,10 @@ public class FreqSyncer extends Timed {
      *                     should be constructured.
      */
     private void buildDepGroup(final ResourceSpreader startingItem) {
-        if (startingItem.toProcess.isEmpty() || startingItem.stillInDepGroup) {
-            return;
+        if (!startingItem.toProcess.isEmpty() && !startingItem.stillInDepGroup) {
+            startingItem.stillInDepGroup = true;
+            startingItem.toProcess.stream().map(startingItem::getCounterPart).forEach(this::buildDepGroup);
         }
-        startingItem.stillInDepGroup = true;
-        startingItem.toProcess.stream().map(startingItem::getCounterPart).forEach(this::buildDepGroup);
     }
 
     boolean ensureDepGroupHasCounterPart(ResourceSpreader cp) {
@@ -464,13 +350,11 @@ public class FreqSyncer extends Timed {
             // No it is not, we need an extension
             if (cpSyncer == null || cpSyncer == this) {
                 // Just this single item is missing
-                if (!depGroupExtension.contains(cp)) {
-                    depGroupExtension.add(cp);
-                }
+                depGroupExtension.add(cp);
             } else {
                 // There are further items missing
                 cpSyncer.unsubscribe(); // we will remove its old syncer
-                depGroupExtension.addAll(Arrays.stream(cpSyncer.myDepGroup).filter(Predicate.not(depGroupExtension::contains)).collect(Collectors.toList()));
+                depGroupExtension.addAll(cpSyncer.getCompleteDGStream().collect(Collectors.toList()));
                 // Make sure, that if we encounter this cp
                 // next time we will not try to add all its
                 // dep group

@@ -24,11 +24,13 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple;
 
-import org.junit.Assert;
-import org.junit.Test;
-
+import static org.junit.jupiter.api.Assertions.*;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
 
 public class ResourceConstraintsTest {
 	public void threeWayCompareCheckContract(ResourceConstraints rc1, ResourceConstraints rc2,
@@ -43,15 +45,15 @@ public class ResourceConstraintsTest {
 		boolean transitiveCondition1 = res1 == -1 && res5 == -1 && res3 == -1;
 		boolean transitiveCondition2 = res1 == 1 && res5 == 1 && res3 == 1;
 		boolean otherSituation = (res1 == 1 && res5 == -1) || (res1 == -1 && res5 == 1);
-		Assert.assertTrue("The RC set [" + rc1 + " " + rc2 + " " + rc3 + "] violates the comparator's rules",
-				baseCondition && (otherSituation || (transitiveCondition1 ^ transitiveCondition2)));
+		assertTrue(baseCondition && (otherSituation || (transitiveCondition1 ^ transitiveCondition2)), "The RC set [" + rc1 + " " + rc2 + " " + rc3 + "] violates the comparator's rules");
 	}
 
 	public ResourceConstraints convertTripleToConstraints(double[] theTriple) {
 		return new ConstantConstraints(theTriple[0], theTriple[1], (long) theTriple[2]);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void testComparatorContract() {
 		double[][] exampleDataTriples = { { 1773, 16, 1121 }, { 1335, 1057, 159 }, { 185, 947, 21 }, // Contract
 																										// check
@@ -81,8 +83,8 @@ public class ResourceConstraintsTest {
 
 		ResourceConstraints rcEq1 = new ConstantConstraints(3, 4, 5);
 		ResourceConstraints rcEq2 = new ConstantConstraints(rcEq1);
-		Assert.assertEquals("When the two items are identical compareto must result in 0 return value", 0,
-				rcEq1.compareTo(rcEq2) + rcEq2.compareTo(rcEq1) + rcEq1.compareTo(rcEq1));
+		assertEquals(0,
+				rcEq1.compareTo(rcEq2) + rcEq2.compareTo(rcEq1) + rcEq1.compareTo(rcEq1), "When the two items are identical compareto must result in 0 return value");
 	}
 
 }

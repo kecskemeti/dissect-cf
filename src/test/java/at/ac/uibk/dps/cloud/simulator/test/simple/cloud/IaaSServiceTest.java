@@ -29,11 +29,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -56,25 +58,26 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 public class IaaSServiceTest extends IaaSRelatedFoundation {
 	ArrayList<IaaSService> services = new ArrayList<>();
 
-	@Before
+	@BeforeEach
 	public void resetSim() throws Exception {
 		services = getNewServiceArray();
 	}
 
-	@Test(timeout = 100)
-	public void repoRegistrationTest() throws IaaSHandlingException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void repoRegistrationTest() {
 		for (IaaSService iaas : services) {
 			// Repository management
-			Assert.assertTrue("Should not have any repositories before registering one", iaas.repositories.isEmpty());
+			assertTrue(iaas.repositories.isEmpty(),"Should not have any repositories before registering one");
 			iaas.registerRepository(dummyRepoCreator(true));
-			Assert.assertFalse("Should have got a repository registered", iaas.repositories.isEmpty());
+			assertFalse(iaas.repositories.isEmpty(), "Should have got a repository registered");
 			iaas.deregisterRepository(iaas.repositories.get(0));
-			Assert.assertTrue("Should not have any repositories after deregistering the last",
-					iaas.repositories.isEmpty());
+			assertTrue(iaas.repositories.isEmpty(), "Should not have any repositories after deregistering the last");
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void faultyRegistrationTest() {
 		ArrayList<Exception> exs = new ArrayList<>();
 		for (IaaSService iaas : services) {
@@ -84,11 +87,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				exs.add(e);
 			}
 		}
-		Assert.assertEquals("None of the faulty PM deregistrations should get through", services.size(), exs.size());
+		assertEquals(services.size(), exs.size(), "None of the faulty PM deregistrations should get through");
 
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void capacityMaintenanceTest() throws IaaSHandlingException {
 		for (IaaSService iaas : services) {
 			final PhysicalMachine pm = dummyPMcreator();
@@ -96,19 +100,16 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			beforeCapacities.singleAdd(pm.getCapacities());
 			iaas.registerHost(pm);
 			ResourceConstraints midCapacities = iaas.getCapacities();
-			Assert.assertTrue("After registration the iaas should have more capacities",
-					midCapacities.compareTo(beforeCapacities) == 0);
+			assertEquals(0, midCapacities.compareTo(beforeCapacities), "After registration the iaas should have more capacities");
 			beforeCapacities.subtract(pm.getCapacities());
 			iaas.deregisterHost(pm);
 			ResourceConstraints afterCapacities = iaas.getCapacities();
-			Assert.assertTrue(
-					"After deregistration the iaas should have the same capacities as before the registration took place",
-					afterCapacities.compareTo(beforeCapacities) == 0);
+			assertEquals(0, afterCapacities.compareTo(beforeCapacities), "After deregistration the iaas should have the same capacities as before the registration took place");
 		}
 		Timed.simulateUntilLastEvent();
 	}
 
-	abstract class Capchanger implements IaaSService.CapacityChangeEvent<PhysicalMachine> {
+	abstract static class Capchanger implements IaaSService.CapacityChangeEvent<PhysicalMachine> {
 		public int fired = 0;
 		public PhysicalMachine pm = dummyPMcreator();
 
@@ -116,20 +117,20 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		public void capacityChanged(ResourceConstraints newCapacity, List<PhysicalMachine> alteredPMs) {
 			doAssertion(newCapacity);
 			fired++;
-			Assert.assertTrue("Should not receive events for the same capacity more than once", fired < 2);
+			assertTrue(fired < 2, "Should not receive events for the same capacity more than once");
 		}
 
 		protected abstract void doAssertion(ResourceConstraints newCapacity);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void capacityIncreaseSubscriptionTest() throws IaaSHandlingException {
 		ArrayList<Capchanger> ccs = new ArrayList<>();
 		for (int i = 0; i < services.size(); i++) {
 			ccs.add(new Capchanger() {
 				protected void doAssertion(ResourceConstraints newCapacity) {
-					Assert.assertTrue("Should receive capacity update with the just registered PM's size",
-							pm.getCapacities().compareTo(newCapacity) == 0);
+					assertEquals(0, pm.getCapacities().compareTo(newCapacity), "Should receive capacity update with the just registered PM's size");
 				}
 			});
 		}
@@ -141,23 +142,22 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			Capchanger cs = ccs.get(i++);
 			iaas.subscribeToCapacityChanges(cs);
 			iaas.registerHost(cs.pm);
-			Assert.assertTrue("The registered PM should be listed in the IaaS description",
-					iaas.toString().contains(cs.pm.toString()));
+			assertTrue(iaas.toString().contains(cs.pm.toString()), "The registered PM should be listed in the IaaS description");
 			iaas.unsubscribeFromCapacityChanges(cs);
 			iaas.deregisterHost(cs.pm);
-			Assert.assertEquals("Capacity incresed event should have arrived once", 1, cs.fired);
+			assertEquals(1, cs.fired, "Capacity incresed event should have arrived once");
 		}
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void capacityDecreaseSubscriptionTest() throws IaaSHandlingException {
 		ArrayList<Capchanger> ccs = new ArrayList<>();
 		for (int i = 0; i < services.size(); i++) {
 			ccs.add(new Capchanger() {
 				protected void doAssertion(ResourceConstraints newCapacity) {
-					Assert.assertTrue("Should receive capacity update with no further capacities remaining",
-							newCapacity.getRequiredCPUs() == 0);
+					assertEquals(0, newCapacity.getRequiredCPUs(), "Should receive capacity update with no further capacities remaining");
 				}
 			});
 		}
@@ -171,19 +171,18 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			iaas.subscribeToCapacityChanges(cs);
 			iaas.deregisterHost(cs.pm);
 			iaas.unsubscribeFromCapacityChanges(cs);
-			Assert.assertFalse("The registered PM should not be listed in the IaaS description",
-					iaas.toString().contains(cs.pm.toString()));
-			Assert.assertEquals("Capacity incresed event should have arrived once", 1, cs.fired);
+			assertFalse(iaas.toString().contains(cs.pm.toString()), "The registered PM should not be listed in the IaaS description");
+			assertEquals(1, cs.fired, "Capacity incresed event should have arrived once");
 		}
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void runningCapacityMaintananceTest() {
 		for (IaaSService iaas : services) {
 			iaas.registerHost(dummyPMcreator());
-			Assert.assertTrue("A newly created IaaS should not have any running capacities",
-					iaas.getRunningCapacities().getRequiredCPUs() == 0);
+			assertEquals(0, iaas.getRunningCapacities().getRequiredCPUs(), "A newly created IaaS should not have any running capacities");
 		}
 		Timed.simulateUntilLastEvent();
 		int runningPMCount = 0;
@@ -192,16 +191,14 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			runningPMCount += iaas.runningMachines.size();
 			if (iaas.pmcontroller instanceof AlwaysOnMachines) {
 				alwaysRunningSchCount++;
-				Assert.assertEquals(
-						"This iaas should have running PMs already as it switches them on immediately after registration and keeps them running",
-						dummyPMCoreCount, (long) iaas.getRunningCapacities().getRequiredCPUs());
+				assertEquals(dummyPMCoreCount, (long) iaas.getRunningCapacities().getRequiredCPUs(), "This iaas should have running PMs already as it switches them on immediately after registration and keeps them running");
 			} else {
-				Assert.assertEquals("This iaas should not have running PMs yet as it did not receive VMs so far", 0,
-						(long) iaas.getRunningCapacities().getRequiredCPUs());
+				assertEquals(0,
+						(long) iaas.getRunningCapacities().getRequiredCPUs(), "This iaas should not have running PMs yet as it did not receive VMs so far");
 			}
 		}
-		Assert.assertEquals("Only IaaSs with alwaysrunning pms should have running capacities", alwaysRunningSchCount,
-				runningPMCount);
+		assertEquals(alwaysRunningSchCount,
+				runningPMCount, "Only IaaSs with alwaysrunning pms should have running capacities");
 	}
 
 	private void constructMinimalIaaS() {
@@ -211,7 +208,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 	}
 
-	private ArrayList<VirtualMachine> requestVMs() throws VMManagementException, NetworkException {
+	private ArrayList<VirtualMachine> requestVMs() throws VMManagementException {
 		ArrayList<VirtualMachine> vms = new ArrayList<>();
 		for (IaaSService iaas : services) {
 			vms.add(iaas.requestVM((VirtualAppliance) iaas.repositories.get(0).contents().iterator().next(),
@@ -220,8 +217,9 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		return vms;
 	}
 
-	@Test(timeout = 100)
-	public void vmRequestTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void vmRequestTest() throws VMManagementException {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
@@ -229,11 +227,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		for (VirtualMachine vm : vms) {
 			runningvms += vm.getState() == VirtualMachine.State.RUNNING ? 1 : 0;
 		}
-		Assert.assertEquals("All IaaSs should have a running VM", services.size(), runningvms);
+		assertEquals(services.size(), runningvms, "All IaaSs should have a running VM");
 	}
 
-	@Test(timeout = 100)
-	public void vmTerminateTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void vmTerminateTest() throws VMManagementException {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
@@ -248,16 +247,17 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			runningMachineCount += iaas.runningMachines.size();
 			aomCount += iaas.pmcontroller instanceof AlwaysOnMachines ? 1 : 0;
 		}
-		Assert.assertEquals("Only the iaas's that use alwaysOnMachines policy should have actual running PMs", aomCount,
-				runningMachineCount);
+		assertEquals(aomCount,
+				runningMachineCount, "Only the iaas's that use alwaysOnMachines policy should have actual running PMs");
 		int shutDownVMs = 0;
 		for (VirtualMachine vm : vms) {
 			shutDownVMs += vm.getState() == VirtualMachine.State.SHUTDOWN ? 1 : 0;
 		}
-		Assert.assertEquals("All VMs should be destroyed by now", vms.size(), shutDownVMs);
+		assertEquals(vms.size(), shutDownVMs, "All VMs should be destroyed by now");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void notRunVMTerminationTest() {
 		ArrayList<Exception> exs = new ArrayList<>();
 		constructMinimalIaaS();
@@ -268,11 +268,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				exs.add(e);
 			}
 		}
-		Assert.assertEquals("Not all IaaSs rejected the VM termination request", services.size(), exs.size());
+		assertEquals(services.size(), exs.size(), "Not all IaaSs rejected the VM termination request");
 	}
 
-	@Test(timeout = 100)
-	public void crossVMFaultyTerminationTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void crossVMFaultyTerminationTest() throws VMManagementException {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
@@ -285,29 +286,30 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				exs.add(e);
 			}
 		}
-		Assert.assertEquals("Not all IaaSs rejected the VM termination request",
-				(services.size() % 2 == 1) ? services.size() - 1 : services.size(), exs.size());
+		assertEquals((services.size() % 2 == 1) ? services.size() - 1 : services.size(), exs.size(), "Not all IaaSs rejected the VM termination request");
 	}
 
-	@Test(timeout = 100)
-	public void beforeRegistrationVMCreationTest() throws NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void beforeRegistrationVMCreationTest() {
 		final int slen = services.size();
 		final ResourceConstraints pmcap = dummyPMcreator().getCapacities();
 		final Repository repo = dummyRepoCreator(true);
 		final VirtualAppliance va = new VirtualAppliance("VERYFAULTY", 1, 0);
 		int excounter = 0;
-		for (int i = 0; i < slen; i++) {
+		for (IaaSService service : services) {
 			try {
-				services.get(i).requestVM(va, pmcap, repo, 1);
+				service.requestVM(va, pmcap, repo, 1);
 			} catch (VMManagementException e) {
 				excounter++;
 			}
 		}
-		Assert.assertEquals("Not all IaaSs rejected the VM creation request", slen, excounter);
+		assertEquals(slen, excounter, "Not all IaaSs rejected the VM creation request");
 	}
 
-	@Test(timeout = 100)
-	public void vmListingTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void vmListingTest() throws VMManagementException {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		Timed.simulateUntilLastEvent();
@@ -315,12 +317,12 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		for (IaaSService iaas : services) {
 			reportedvms.addAll(iaas.listVMs());
 		}
-		Assert.assertTrue("All running VMs should be reported by IaaSs",
-				vms.containsAll(reportedvms) && reportedvms.containsAll(vms));
+		assertTrue(vms.containsAll(reportedvms) && reportedvms.containsAll(vms), "All running VMs should be reported by IaaSs");
 	}
 
-	@Test(timeout = 100)
-	public void vmQueuedListingTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void vmQueuedListingTest() throws VMManagementException {
 		constructMinimalIaaS();
 		ArrayList<VirtualMachine> vms = requestVMs();
 		vms.addAll(requestVMs()); // second unfulfillable vm set
@@ -346,15 +348,14 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			default:
 			}
 		}
-		Assert.assertTrue("Even queued VMs should be reported by IaaSs",
-				vms.containsAll(reportedvms) && reportedvms.containsAll(vms));
-		Assert.assertEquals("The count of queued and running VMs should match the num of VMs under or over scheduling",
-				vms.size() - runningCounter, queuedCounter);
+		assertTrue(vms.containsAll(reportedvms) && reportedvms.containsAll(vms), "Even queued VMs should be reported by IaaSs");
+		assertEquals(vms.size() - runningCounter, queuedCounter, "The count of queued and running VMs should match the num of VMs under or over scheduling");
 	}
 
-	@Ignore
-	@Test(timeout = 100)
-	public void deregisterHostWithMigration() throws VMManagementException, NetworkException, IaaSHandlingException {
+	@Disabled
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void deregisterHostWithMigration() throws VMManagementException, IaaSHandlingException {
 		constructMinimalIaaS();
 		final ArrayList<Integer> markers = new ArrayList<>();
 		for (IaaSService iaas : services) {
@@ -371,16 +372,17 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 					});
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("By now all VMs should have been started", services.size(), markers.size());
+		assertEquals(services.size(), markers.size(), "By now all VMs should have been started");
 		for (IaaSService iaas : services) {
 			iaas.deregisterHost(iaas.runningMachines.get(0));
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("By now all VMs should have been resumed", services.size() * 2, markers.size());
+		assertEquals(services.size() * 2, markers.size(), "By now all VMs should have been resumed");
 	}
 
-	@Test(timeout = 100)
-	public void multiVMRequest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void multiVMRequest() throws VMManagementException {
 		constructMinimalIaaS();
 		final int maxVMs = 16;
 		final int servNum = services.size();
@@ -410,15 +412,16 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 	}
 
-	@Test(timeout = 100)
-	public void deQueueTest() throws VMManagementException, NetworkException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void deQueueTest() throws VMManagementException {
 		constructMinimalIaaS();
 		for (IaaSService s : services) {
 			Repository r = s.repositories.get(0);
 			VirtualMachine vm = s.requestVM((VirtualAppliance) r.contents().iterator().next(), s.getCapacities(), r,
 					1)[0];
 			Timed.simulateUntilLastEvent();
-			Assert.assertEquals("The first VM should be running", VirtualMachine.State.RUNNING, vm.getState());
+			assertEquals(VirtualMachine.State.RUNNING, vm.getState(), "The first VM should be running");
 			AlterableResourceConstraints caps = new AlterableResourceConstraints(s.getCapacities());
 			caps.multiply(0.4);
 			VirtualMachine[] vmsToQueue = s.requestVM((VirtualAppliance) r.contents().iterator().next(),
@@ -426,8 +429,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			VirtualMachine.State[] states = new VirtualMachine.State[] { vmsToQueue[0].getState(),
 					vmsToQueue[1].getState() };
 			for (VirtualMachine.State st : states) {
-				Assert.assertTrue("The VMs should be queueing or nonservable (in case of non queueing schedulers)",
-						VirtualMachine.preScheduleState.contains(st));
+				assertTrue(VirtualMachine.preScheduleState.contains(st), "The VMs should be queueing or nonservable (in case of non queueing schedulers)");
 			}
 			if (states[0].equals(VirtualMachine.State.DESTROYED)) {
 				// A queueing scheduler is used
@@ -435,8 +437,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				states = new VirtualMachine.State[] { vmsToQueue[0].getState(), vmsToQueue[1].getState() };
 			}
 			for (VirtualMachine.State st : states) {
-				Assert.assertEquals("The VMs should be marked as nonservable by all schedulers this time",
-						VirtualMachine.State.NONSERVABLE, st);
+				assertEquals(VirtualMachine.State.NONSERVABLE, st, "The VMs should be marked as nonservable by all schedulers this time");
 			}
 			s.terminateVM(vm, true);
 			Timed.simulateUntilLastEvent();
@@ -444,13 +445,13 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 			Timed.simulateUntilLastEvent();
 			states = new VirtualMachine.State[] { vm.getState(), vmsToQueue[0].getState(), vmsToQueue[1].getState() };
 			for (VirtualMachine.State st : states) {
-				Assert.assertTrue("None of the VMs should be running by this time",
-						VirtualMachine.preScheduleState.contains(st));
+				assertTrue(VirtualMachine.preScheduleState.contains(st), "None of the VMs should be running by this time");
 			}
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void subClassingTest() throws IllegalArgumentException, SecurityException, InstantiationException,
 			IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 		new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class) {
@@ -458,8 +459,9 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		};
 	}
 
-	@Test(timeout = 100)
-	public void registeringRunningTest() throws VMManagementException, NetworkException, IaaSHandlingException {
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void registeringRunningTest() throws VMManagementException {
 		for (IaaSService s : services) {
 			PhysicalMachine pm = dummyPMcreator();
 			pm.turnon();
@@ -471,14 +473,13 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		for (int i = 0; i < vms.size(); i++) {
 			IaaSService s = services.get(i);
-			Assert.assertEquals(
-					"All VMs should be running but they were not on PMC: " + s.pmcontroller.getClass().getName()
-							+ " VMS: " + s.sched.getClass().getName(),
-					VirtualMachine.State.RUNNING, vms.get(i).getState());
+			assertEquals(VirtualMachine.State.RUNNING, vms.get(i).getState(), "All VMs should be running but they were not on PMC: " + s.pmcontroller.getClass().getName()
+					+ " VMS: " + s.sched.getClass().getName());
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void maxRequest() throws Exception {
 		IaaSService iaas = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 3, 2);
 		Repository repo = iaas.repositories.get(0);
@@ -495,11 +496,11 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 				maxM = Math.max(pm.freeCapacities.getRequiredMemory(), maxM);
 				maxP = Math.max(pm.freeCapacities.getRequiredProcessingPower(), maxP);
 			}
-			Assert.assertTrue("MaxC", maxC <= maxCOrig);
+			assertTrue(maxC <= maxCOrig, "MaxC");
 			maxCOrig = maxC;
-			Assert.assertTrue("MaxP", maxP <= maxPOrig);
+			assertTrue(maxP <= maxPOrig, "MaxP");
 			maxPOrig = maxP;
-			Assert.assertTrue("MaxM", maxM <= maxMOrig);
+			assertTrue(maxM <= maxMOrig, "MaxM");
 			maxMOrig = maxM;
 
 			ResourceConstraints rc = new ConstantConstraints(maxC / 10, maxP / 10, maxM / 10);
@@ -508,36 +509,34 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void dropARunningPM() throws Exception {
 		int pmcount = 3;
 		IaaSService iaas = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, pmcount, 1);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should have all machines running", pmcount, iaas.runningMachines.size());
+		assertEquals(pmcount, iaas.runningMachines.size(), "Should have all machines running");
 		iaas.deregisterHost(iaas.machines.get(0));
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should have one less machine running", pmcount - 1, iaas.runningMachines.size());
+		assertEquals(pmcount - 1, iaas.runningMachines.size(), "Should have one less machine running");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void heterogenousPMCapacityReport() throws Exception {
 		IaaSService iaas = new IaaSService(FirstFitScheduler.class, AlwaysOnMachines.class);
-		Assert.assertEquals("Should not report any processing power if there are no PMs", 0,
-				iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		assertEquals(0,	iaas.getCapacities().getRequiredProcessingPower(), 0.00001, "Should not report any processing power if there are no PMs");
 		PhysicalMachine small = dummyPMcreator();
 		ResourceConstraints sRC = small.getCapacities();
 		iaas.registerHost(small);
-		Assert.assertEquals("Should report the small PM's processing power if it is the only one",
-				sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		assertEquals(sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001, "Should report the small PM's processing power if it is the only one");
 		PhysicalMachine big = dummyPMsCreator(1, (int) sRC.getRequiredCPUs(), sRC.getRequiredProcessingPower() * 2,
 				sRC.getRequiredMemory())[0];
 		iaas.registerHost(big);
-		Assert.assertEquals("Should report the big PM's processing power if the IaaS has more than one type of PM",
-				big.getCapacities().getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(),
-				0.00001);
+		assertEquals(big.getCapacities().getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(),
+				0.00001, "Should report the big PM's processing power if the IaaS has more than one type of PM");
 		iaas.deregisterHost(big);
-		Assert.assertEquals("Should report the small PM's processing power if it is the only one",
-				sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001);
+		assertEquals(sRC.getRequiredProcessingPower(), iaas.getCapacities().getRequiredProcessingPower(), 0.00001, "Should report the small PM's processing power if it is the only one");
 		iaas.deregisterHost(small);
 		Timed.simulateUntilLastEvent();
 	}

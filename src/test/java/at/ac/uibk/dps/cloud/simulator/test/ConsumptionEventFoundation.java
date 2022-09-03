@@ -25,10 +25,10 @@
 
 package at.ac.uibk.dps.cloud.simulator.test;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 public class ConsumptionEventFoundation extends TestFoundation {
-	@Before
+	@BeforeEach
 	public void resetConsumptions() {
 		ConsumptionEventAssert.resetHits();
 	}

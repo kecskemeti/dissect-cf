@@ -31,14 +31,14 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
 
 import hu.mta.sztaki.lpds.cloud.simulator.energy.powermodelling.PowerState;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 public class PMRelatedFoundation extends ConsumptionEventFoundation {
 	public final static PrintStream realStdOut = System.out;
@@ -65,7 +65,7 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 		}
 	}
 
-	@BeforeClass
+	@BeforeAll
 	public static void initStaticParts() {
 		// Ensure that the most important classes are loaded before we do
 		// anything (so the timeouts would not occur)
@@ -76,7 +76,7 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 		}
 	}
 
-	@Before
+	@BeforeEach
 	public void introduceRedirections() {
 		try {
 			System.setOut(new PrintStream(new OutputStream() {
@@ -99,7 +99,7 @@ public class PMRelatedFoundation extends ConsumptionEventFoundation {
 		}
 	}
 
-	@After
+	@AfterEach
 	public void revertRedirects() {
 		System.setOut(realStdOut);
 		System.setErr(realStdErr);

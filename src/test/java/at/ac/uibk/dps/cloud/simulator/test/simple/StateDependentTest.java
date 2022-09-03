@@ -26,14 +26,16 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.simple;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.notifications.StateDependentEventHandler;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.concurrent.TimeUnit;
 
 public class StateDependentTest extends TestFoundation {
 	interface MyHandler {
@@ -42,13 +44,14 @@ public class StateDependentTest extends TestFoundation {
 
 	StateDependentEventHandler<MyHandler, String> sdeh;
 
-	@Before
+	@BeforeEach
 	public void setupSDEH() {
 		sdeh = new StateDependentEventHandler<MyHandler, String>(
 				(MyHandler onObject, String data) -> onObject.handle(data));
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void basicOperation() {
 		final boolean[] handled = new boolean[1];
 		handled[0] = false;
@@ -59,16 +62,17 @@ public class StateDependentTest extends TestFoundation {
 			}
 		};
 		sdeh.subscribeToEvents(listener);
-		Assert.assertFalse("Should not have any handling events delivered.", handled[0]);
+		assertFalse(handled[0], "Should not have any handling events delivered.");
 		sdeh.notifyListeners(null);
-		Assert.assertTrue("We should receive our event by now.", handled[0]);
+		assertTrue( handled[0],"We should receive our event by now.");
 		handled[0] = false;
 		sdeh.unsubscribeFromEvents(listener);
 		sdeh.notifyListeners(null);
-		Assert.assertFalse("Should not have any further handling events delivered.", handled[0]);
+		assertFalse( handled[0],"Should not have any further handling events delivered.");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void removalDuringNestedNotification() {
 		final boolean[] handled = new boolean[2];
 		handled[0] = false;
@@ -89,7 +93,8 @@ public class StateDependentTest extends TestFoundation {
 		sdeh.notifyListeners(null);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void nestedAdditionWithRepeatedNotify() {
 		final int[] counters = new int[2];
 		final MyHandler easyListener = new MyHandler() {
@@ -110,7 +115,8 @@ public class StateDependentTest extends TestFoundation {
 		sdeh.notifyListeners(null);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void nestedCounterNotification() {
 		final int maxCount = 10;
 		final int[] count = new int[1];
@@ -126,10 +132,11 @@ public class StateDependentTest extends TestFoundation {
 		};
 		sdeh.subscribeToEvents(listener);
 		sdeh.notifyListeners(null);
-		Assert.assertEquals("Should receive multiple handling events", maxCount, count[0]);
+		assertEquals( maxCount, count[0],"Should receive multiple handling events");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void payloadTest() {
 		final int textBase = 10;
 		final boolean[] happened = new boolean[1];
@@ -138,15 +145,16 @@ public class StateDependentTest extends TestFoundation {
 			@Override
 			public void handle(String data) {
 				happened[0] = true;
-				Assert.assertEquals("Does not receive the correct payload", textBase, Integer.parseInt(data));
+				assertEquals( textBase, Integer.parseInt(data),"Does not receive the correct payload");
 			}
 		};
 		sdeh.subscribeToEvents(listener);
 		sdeh.notifyListeners(Integer.toString(textBase));
-		Assert.assertTrue(happened[0]);
+		assertTrue(happened[0]);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void noApparentChangeDuringNesting() {
 		final int[] handleCount = new int[1];
 		MyHandler listener = new MyHandler() {
@@ -170,6 +178,6 @@ public class StateDependentTest extends TestFoundation {
 		// First notification
 		sdeh.notifyListeners(null);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("There should be two notifications coming", 2, handleCount[0]);
+		assertEquals( 2, handleCount[0],"There should be two notifications coming");
 	}
 }

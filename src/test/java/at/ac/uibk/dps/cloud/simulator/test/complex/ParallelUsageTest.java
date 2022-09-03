@@ -27,10 +27,12 @@ package at.ac.uibk.dps.cloud.simulator.test.complex;
 
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation;
@@ -55,13 +57,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 public class ParallelUsageTest extends PMRelatedFoundation {
 	public final static int taskLen = 1000; // in seconds
 
-	@Before
+	@BeforeEach
 	public void resetSeed() {
 		SeedSyncer.resetCentral();
 	}
 
 	private ResourceConsumption addCons(VirtualMachine vm, long tL, boolean assertonFail)
-			throws StateChangeException, NetworkException {
+			throws NetworkException {
 		tL += taskLen / 2 - SeedSyncer.centralRnd.nextInt(taskLen);
 		return vm.newComputeTask(tL * aSecond, ResourceConsumption.unlimitedProcessing,
 				new ConsumptionEventAssert(assertonFail));
@@ -85,7 +87,8 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		return iaas;
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void taskParallelismTest() throws Exception {
 		int mxvms = 3;
 		VirtualAppliance va = new VirtualAppliance("a", 1000, 0);
@@ -103,8 +106,8 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 				public void stateChanged(VirtualMachine vm, VirtualMachine.State oldState,
 						VirtualMachine.State newState) {
 					if (newState.equals(VirtualMachine.State.RUNNING)) {
-						Assert.assertEquals("VM started at the wrong time", expectedRunningTimes[ireplica] + offset,
-								Timed.getFireCount());
+						assertEquals(expectedRunningTimes[ireplica] + offset,
+								Timed.getFireCount(), "VM started at the wrong time");
 						try {
 							if (ireplica == 0) {
 								cons.add(addCons(vms[ireplica], taskLen, true));
@@ -145,11 +148,11 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 		for (Long r : ConsumptionEventAssert.hits) {
 			result[index++] = r - offset;
 		}
-		Assert.assertArrayEquals("Incorrect computing task completion times",
-				new long[] { 3054090, 3055041, 3625610, 3933407, 4598522, 4667320, 4937077, 5054225 }, result);
+		assertArrayEquals(new long[] { 3054090, 3055041, 3625610, 3933407, 4598522, 4667320, 4937077, 5054225 }, result, "Incorrect computing task completion times");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cloudParallelismTest() throws Exception {
 		final VirtualAppliance[] vas = new VirtualAppliance[2];
 		vas[0] = new VirtualAppliance("testVA1", 3000, 0, false, 100000000);
@@ -172,22 +175,22 @@ public class ParallelUsageTest extends PMRelatedFoundation {
 			vm.subscribeStateChange((VirtualMachine vmInt, State oldState, State newState) -> {
 				switch (newState) {
 				case INITIAL_TR:
-					Assert.assertEquals("INITIAL_TR not on time", itr[isaved] + offset, Timed.getFireCount());
+					assertEquals(itr[isaved] + offset, Timed.getFireCount(), "INITIAL_TR not on time");
 					break;
 				case STARTUP:
-					Assert.assertEquals("STARTUP not on time", str[isaved] + offset, Timed.getFireCount());
+					assertEquals(str[isaved] + offset, Timed.getFireCount(), "STARTUP not on time");
 					break;
 				case RUNNING:
-					Assert.assertEquals("RUNNING not on time", run[isaved] + offset, Timed.getFireCount());
+					assertEquals(run[isaved] + offset, Timed.getFireCount(), "RUNNING not on time");
 					break;
 				case SHUTDOWN:
-					Assert.assertEquals("SHUTDOWN not on time", shd[isaved] + offset, Timed.getFireCount());
+					assertEquals(shd[isaved] + offset, Timed.getFireCount(), "SHUTDOWN not on time");
 					break;
 				case DESTROYED:
-					Assert.assertEquals("DESTROYED not on time", dst[isaved] + offset, Timed.getFireCount());
+					assertEquals(dst[isaved] + offset, Timed.getFireCount(), "DESTROYED not on time");
 					break;
 				default:
-					Assert.fail("Unexpected VM state");
+					fail("Unexpected VM state");
 				}
 				if (newState.equals(VirtualMachine.State.RUNNING)) {
 					try {

@@ -30,11 +30,14 @@ import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
 
 public class DeferredEventTest extends TestFoundation {
 	final static int limit = 5000;
@@ -54,7 +57,7 @@ public class DeferredEventTest extends TestFoundation {
 		}
 	}
 
-	@BeforeClass
+	@BeforeAll
 	public static void resetSimulation() {
 		new DeferredTester(0);
 		for (int i = 0; i < limit; i++) {
@@ -62,30 +65,33 @@ public class DeferredEventTest extends TestFoundation {
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void eventFireTest() {
 		DeferredTester dt = new DeferredTester(10);
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Deferred event was not received", dt.eventFired);
-		Assert.assertFalse("Deferred event was cancelled unexpectedly", dt.isCancelled());
+		assertTrue( dt.eventFired,"Deferred event was not received");
+		assertFalse( dt.isCancelled(),"Deferred event was cancelled unexpectedly");
 		dt.cancel();
-		Assert.assertFalse("Deferred event was cancelled unexpectedly", dt.isCancelled());
+		assertFalse( dt.isCancelled(),"Deferred event was cancelled unexpectedly");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void eventCancelTest() {
 		DeferredTester dt = new DeferredTester(10);
 		dt.cancel();
-		Assert.assertTrue("Deferred event was not cancelled", dt.isCancelled());
+		assertTrue( dt.isCancelled(),"Deferred event was not cancelled");
 		long beforeTime = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Deferred event cancellation have not succeeded", beforeTime, Timed.getFireCount());
-		Assert.assertFalse("Deferred event was received unexpectedly", dt.eventFired);
+		assertEquals( beforeTime, Timed.getFireCount(),"Deferred event cancellation have not succeeded");
+		assertFalse( dt.eventFired,"Deferred event was received unexpectedly");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void immediateFireTest() {
-		Assert.assertTrue("Deferred event was not received", new DeferredTester(0).eventFired);
+		assertTrue( new DeferredTester(0).eventFired,"Deferred event was not received");
 	}
 
 	/**
@@ -93,7 +99,8 @@ public class DeferredEventTest extends TestFoundation {
 	 * this test is not the failure of the system but the failure of its
 	 * performance!
 	 */
-	@Test(timeout = 200)
+	@Test
+	@Timeout(value = 200, unit = TimeUnit.MILLISECONDS)
 	public void performanceTest() {
 		final DeferredTester[] performer = new DeferredTester[limit];
 		for (int i = 0; i < limit; i++) {
@@ -104,16 +111,17 @@ public class DeferredEventTest extends TestFoundation {
 		for (int i = 0; i < limit; i++) {
 			fired &= performer[i].eventFired;
 		}
-		Assert.assertTrue("Not all events arrived", fired);
+		assertTrue( fired,"Not all events arrived");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void skipEventsEffects() {
 		int baseTime = 15;
 		new DeferredEvent(baseTime) {
 			@Override
 			protected void eventAction() {
-				Assert.fail("We skipped through this event, thus we don't want to see it arrive!");
+				fail("We skipped through this event, thus we don't want to see it arrive!");
 			}
 		};
 		Timed.skipEventsTill(baseTime + 5);
@@ -127,6 +135,6 @@ public class DeferredEventTest extends TestFoundation {
 		};
 		Timed.skipEventsTill(baseTime * 2 - 1);
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("The second event should arrive", arr[0]);
+		assertTrue( arr[0],"The second event should arrive");
 	}
 }

@@ -27,11 +27,10 @@ package at.ac.uibk.dps.cloud.simulator.test;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
-
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
 
 public class VMRelatedFoundation extends PMRelatedFoundation {
-	@BeforeClass
+	@BeforeAll
 	public static void initStaticParts() {
 		new VirtualMachine(new VirtualAppliance("", 1, 1));
 	}

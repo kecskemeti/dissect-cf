@@ -25,9 +25,11 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmscheduler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.TimeUnit;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -40,16 +42,16 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.pmscheduling.AlwaysOnMachines;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.FirstFitScheduler;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling.Scheduler;
-import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
 public class BasicSchedulingTest extends IaaSRelatedFoundation {
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void keepFreeUpdated()
 			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
-			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+			InvocationTargetException, NoSuchMethodException, VMManagementException {
 		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 1, 1);
 		Repository r = s.repositories.get(0);
 		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
@@ -60,16 +62,16 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		vmFirst.destroy(true);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("The first VM should have finished by now", VirtualMachine.State.DESTROYED,
-				vmFirst.getState());
-		Assert.assertEquals("The second VM should have a chance to run after the first one",
-				VirtualMachine.State.RUNNING, vmSecond.getState());
+		assertEquals(VirtualMachine.State.DESTROYED,
+				vmFirst.getState(), "The first VM should have finished by now");
+		assertEquals(VirtualMachine.State.RUNNING, vmSecond.getState(), "The second VM should have a chance to run after the first one");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void multipleVMAndFreeResourceMaintenance()
 			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
-			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+			InvocationTargetException, NoSuchMethodException, VMManagementException {
 		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 5, 1);
 		Repository r = s.repositories.get(0);
 		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
@@ -79,16 +81,16 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 		Timed.simulateUntilLastEvent();
 		vmFirst.destroy(true);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("The first VM should have finished by now", VirtualMachine.State.DESTROYED,
-				vmFirst.getState());
-		Assert.assertEquals("The second VM should have a chance to run after the first one",
-				VirtualMachine.State.RUNNING, vmSecond.getState());
+		assertEquals(VirtualMachine.State.DESTROYED,
+				vmFirst.getState(), "The first VM should have finished by now");
+		assertEquals(VirtualMachine.State.RUNNING, vmSecond.getState(), "The second VM should have a chance to run after the first one");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void preFailingAllocation()
 			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
-			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
+			InvocationTargetException, NoSuchMethodException, VMManagementException {
 		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 5, 1);
 		Repository r = s.repositories.get(0);
 		VirtualAppliance va = (VirtualAppliance) r.contents().iterator().next();
@@ -102,10 +104,9 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 			vm.destroy(true);
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("The first VM should have finished by now", VirtualMachine.State.DESTROYED,
-				vmsFirst[0].getState());
-		Assert.assertEquals("The second VM should have a chance to run after the first one",
-				VirtualMachine.State.RUNNING, vmSecond.getState());
+		assertEquals(VirtualMachine.State.DESTROYED,
+				vmsFirst[0].getState(), "The first VM should have finished by now");
+		assertEquals(VirtualMachine.State.RUNNING, vmSecond.getState(), "The second VM should have a chance to run after the first one");
 	}
 
 	public static class AssertFulScheduler extends Scheduler {
@@ -115,24 +116,26 @@ public class BasicSchedulingTest extends IaaSRelatedFoundation {
 
 		@Override
 		protected ConstantConstraints scheduleQueued() {
-			Assert.fail("This scheduler should never be called");
+			fail("This scheduler should never be called");
 			return ConstantConstraints.noResources;
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void dontFireSchedulerOnEmptyQueue() throws IllegalArgumentException, SecurityException,
 			InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 		setupIaaS(AssertFulScheduler.class, AlwaysOnMachines.class, 10, 1);
 		Timed.simulateUntilLastEvent();
 	}
 
-	@Test(timeout = 100, expected = VMManagementException.class)
-	public void disallowVMRequestsWithoutVAonSource()
-			throws IllegalArgumentException, SecurityException, InstantiationException, IllegalAccessException,
-			InvocationTargetException, NoSuchMethodException, VMManagementException, NetworkException {
-		IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 1, 1);
-		VirtualAppliance va = new VirtualAppliance("nonregistered", 1, 0);
-		s.requestVM(va, s.getCapacities(), s.repositories.get(0), 1);
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+	public void disallowVMRequestsWithoutVAonSource() {
+		assertThrows(VMManagementException.class, () -> {
+			IaaSService s = setupIaaS(FirstFitScheduler.class, AlwaysOnMachines.class, 1, 1);
+			VirtualAppliance va = new VirtualAppliance("nonregistered", 1, 0);
+			s.requestVM(va, s.getCapacities(), s.repositories.get(0), 1);
+		});
 	}
 }

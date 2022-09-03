@@ -26,10 +26,7 @@
 package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 
 import java.util.HashMap;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.PMRelatedFoundation;
@@ -41,6 +38,10 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.StorageObject;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class RepositoryTest extends PMRelatedFoundation {
 	public final static long storageCapacity = 5000000000000L;
@@ -48,7 +49,7 @@ public class RepositoryTest extends PMRelatedFoundation {
 	Repository source, target;
 	StorageObject so = new StorageObject(storageObjectID);
 
-	@Before
+	@BeforeEach
 	public void repoSetup() throws NetworkException {
 		HashMap<String, Integer> lm = NetworkNodeTest.setupALatencyMap();
 		source = new Repository(storageCapacity, NetworkNodeTest.sourceName, NetworkNodeTest.inBW,
@@ -61,35 +62,33 @@ public class RepositoryTest extends PMRelatedFoundation {
 		target.setState(NetworkNode.State.RUNNING);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void checkConstruction() {
-		Assert.assertTrue("The toString of Repository should contain the node name",
-				source.toString().contains(NetworkNodeTest.sourceName));
-		Assert.assertEquals("Repositry size mismatch", storageCapacity, source.getMaxStorageCapacity());
+		assertTrue(source.toString().contains(NetworkNodeTest.sourceName), "The toString of Repository should contain the node name");
+		assertEquals(storageCapacity, source.getMaxStorageCapacity(), "Repositry size mismatch");
 	}
 
 	private void registerWithCheck(StorageObject toRegister) {
 		source.registerObject(toRegister);
-		Assert.assertTrue("Storage object is not amongst contents", source.contents().contains(toRegister));
-		Assert.assertEquals("Returned with different storage object than expected", toRegister,
-				source.lookup(toRegister.id));
+		assertTrue(source.contents().contains(toRegister), "Storage object is not amongst contents");
+		assertEquals(toRegister, source.lookup(toRegister.id), "Returned with different storage object than expected");
 	}
 
 	private void emptyCheck() {
-		Assert.assertFalse("Storage object is still amongst contents", source.contents().contains(so));
-		Assert.assertTrue("After deletion the storage object can still be reclaimed",
-				source.lookup(storageObjectID) == null);
-		Assert.assertEquals("The repository should be empty by now!", 0, source.contents().size());
+		assertFalse(source.contents().contains(so), "Storage object is still amongst contents");
+		assertNull(source.lookup(storageObjectID), "After deletion the storage object can still be reclaimed");
+		assertEquals(0, source.contents().size(), "The repository should be empty by now!");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void registrationTest() {
 		registerWithCheck(so);
 		source.registerObject(so);
-		Assert.assertEquals("Multiple registrations result in multiple storage objects in the repository!", 1,
-				source.contents().size());
-		Assert.assertEquals("The source repository is not reporting accurate size",
-				source.getMaxStorageCapacity() - so.size, source.getFreeStorageCapacity());
+		assertEquals(1,
+				source.contents().size(), "Multiple registrations result in multiple storage objects in the repository!");
+		assertEquals(source.getMaxStorageCapacity() - so.size, source.getFreeStorageCapacity(), "The source repository is not reporting accurate size");
 		// Removal by object
 		source.deregisterObject(so);
 		emptyCheck();
@@ -100,10 +99,11 @@ public class RepositoryTest extends PMRelatedFoundation {
 		// Removal by ID
 		source.deregisterObject(storageObjectID);
 		emptyCheck();
-		Assert.assertFalse("It was possible to remove a non stored object!", source.deregisterObject(so));
+		assertFalse(source.deregisterObject(so), "It was possible to remove a non stored object!");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void simpleTransferTest() throws NetworkException {
 		final String extendedID = storageObjectID + ".ext";
 		registerWithCheck(so);
@@ -112,8 +112,7 @@ public class RepositoryTest extends PMRelatedFoundation {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.assertTrue("Transferred storage object has not got the same name",
-						target.lookup(storageObjectID) != null);
+				assertNotNull(target.lookup(storageObjectID), "Transferred storage object has not got the same name");
 			}
 
 		});
@@ -122,8 +121,7 @@ public class RepositoryTest extends PMRelatedFoundation {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.assertTrue("Transferred storage object has not got the new name",
-						target.lookup(extendedID) != null);
+				assertNotNull(target.lookup(extendedID), "Transferred storage object has not got the new name");
 			}
 		});
 		// 3rd transfer
@@ -131,8 +129,7 @@ public class RepositoryTest extends PMRelatedFoundation {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.assertTrue("Duplicated storage object has not got the new name",
-						source.lookup(extendedID) != null);
+				assertNotNull(source.lookup(extendedID), "Duplicated storage object has not got the new name");
 			}
 		});
 		source.requestContentDelivery(null, null, null, null);
@@ -163,33 +160,31 @@ public class RepositoryTest extends PMRelatedFoundation {
 		// 6th transfer
 		source.requestContentDelivery(storageObjectID, extendedID, source, new ConsumptionEventAssert());
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not all events finished", 6, ConsumptionEventAssert.hits.size());
+		assertEquals(6, ConsumptionEventAssert.hits.size(), "Not all events finished");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void obeseTransferTest() throws NetworkException {
 		final String obeseID = "Obese";
 		final StorageObject obeseObject = new StorageObject(obeseID, storageCapacity, false);
 		registerWithCheck(obeseObject);
-		Assert.assertEquals("Source repository should be full", 0, source.getFreeStorageCapacity());
-		Assert.assertFalse("It was possible to register a storage object to a full repository!",
-				source.registerObject(so));
+		assertEquals(0, source.getFreeStorageCapacity(), "Source repository should be full");
+		assertFalse(source.registerObject(so), "It was possible to register a storage object to a full repository!");
 		source.requestContentDelivery(obeseID, target, new ConsumptionEventAssert());
-		Assert.assertFalse("It was possible to deregister an under transfer storage object",
-				source.deregisterObject(obeseObject));
-		Assert.assertNull("It was possible to initiate a new transfer to an already promised full repository",
-				source.requestContentDelivery(obeseID, target, new ConsumptionEventAssert()));
-		Assert.assertFalse("It was possible to register a storage object to a promised full repository!",
-				target.registerObject(so));
+		assertFalse(source.deregisterObject(obeseObject), "It was possible to deregister an under transfer storage object");
+		assertNull(source.requestContentDelivery(obeseID, target, new ConsumptionEventAssert()), "It was possible to initiate a new transfer to an already promised full repository");
+		assertFalse(target.registerObject(so), "It was possible to register a storage object to a promised full repository!");
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Target repository should be full", 0, target.getFreeStorageCapacity());
+		assertEquals(0, target.getFreeStorageCapacity(), "Target repository should be full");
 	}
 
 	/**
 	 * Since this is a performance test one might expect this to easily overcome the
 	 * timeout in case some performance degradations!
 	 */
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void registrationPerformance() {
 		final int vmNum = 9000;
 		final StorageObject[] vaBase = new StorageObject[vmNum];
@@ -225,10 +220,11 @@ public class RepositoryTest extends PMRelatedFoundation {
 					new ConsumptionEventAssert(expectedTimings[i] + startTiming));
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not enough transfers arrived", fromIndex.length, ConsumptionEventAssert.hits.size());
+		assertEquals(fromIndex.length, ConsumptionEventAssert.hits.size(), "Not enough transfers arrived");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void circularTransferTest() throws NetworkException {
 		int trNum = 9;
 		int repoCount = 3;
@@ -241,7 +237,8 @@ public class RepositoryTest extends PMRelatedFoundation {
 		genericCircularTest(repoCount, 1000000L, fromindex, toindex, new long[] { 16, 18, 36, 23, 8, 39, 8, 9, 9 });
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void secondCircularTransferTest() throws NetworkException {
 		genericCircularTest(3, 10000000L, new int[] { 0, 1, 2, 2 }, new int[] { 1, 0, 1, 0 },
 				new long[] { 103, 218, 269, 246 });
@@ -258,32 +255,34 @@ public class RepositoryTest extends PMRelatedFoundation {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.fail("Should not receive a consumption complete event!");
+				fail("Should not receive a consumption complete event!");
 			}
 		});
 		ca.doCancel(con);
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not have any storage occupied after a cancelled transfer", targetStorage,
-				target.getFreeStorageCapacity());
+		assertEquals(targetStorage,
+				target.getFreeStorageCapacity(), "Should not have any storage occupied after a cancelled transfer");
 
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void immediateCancelTransferTest() throws NetworkException {
 		genericCancelTransferTest((ResourceConsumption con) -> {
-			Assert.assertFalse("Should not have registered yet", con.isRegistered());
+			assertFalse(con.isRegistered(), "Should not have registered yet");
 			con.cancel();
 		});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void delayedCancelTransferTest() throws NetworkException {
 		genericCancelTransferTest((final ResourceConsumption con) -> {
 			try {
-				new DeferredEvent(NetworkNode.checkConnectivity(target, source) + 1l) {
+				new DeferredEvent(NetworkNode.checkConnectivity(target, source) + 1L) {
 					@Override
 					protected void eventAction() {
-						Assert.assertTrue("By this time the registration should have happened", con.isRegistered());
+						assertTrue(con.isRegistered(), "By this time the registration should have happened");
 						con.cancel();
 					}
 				};
@@ -293,36 +292,38 @@ public class RepositoryTest extends PMRelatedFoundation {
 		});
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cancelMemoryWriteOut() throws NetworkException {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert() {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.fail("Should not receive a consumption complete event!");
+				fail("Should not receive a consumption complete event!");
 			}
 		};
 		ResourceConsumption con = source.storeInMemoryObject(so, cae);
 		con.cancel();
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Should not have any occupied storage", source.getMaxStorageCapacity(),
-				source.getFreeStorageCapacity());
-		Assert.assertTrue("Should receive cancel event", cae.isCancelled());
+		assertEquals(source.getMaxStorageCapacity(),
+				source.getFreeStorageCapacity(), "Should not have any occupied storage");
+		assertTrue(cae.isCancelled(), "Should receive cancel event");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void cancelReadToMemory() throws NetworkException {
 		ConsumptionEventAssert cae = new ConsumptionEventAssert() {
 			@Override
 			public void conComplete() {
 				super.conComplete();
-				Assert.fail("Should not receive a consumption complete event!");
+				fail("Should not receive a consumption complete event!");
 			}
 		};
 		registerWithCheck(so);
 		ResourceConsumption con = source.fetchObjectToMemory(so, cae);
 		con.cancel();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("Should receive cancel event", cae.isCancelled());
+		assertTrue(cae.isCancelled(), "Should receive cancel event");
 	}
 }

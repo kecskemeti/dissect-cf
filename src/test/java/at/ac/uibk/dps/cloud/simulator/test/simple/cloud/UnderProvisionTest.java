@@ -31,11 +31,13 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.VMManager.VMManagementException;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.concurrent.TimeUnit;
 
 public class UnderProvisionTest extends IaaSRelatedFoundation {
 	public static final int smallDivider = 10;
@@ -44,7 +46,7 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 	private PhysicalMachine pm;
 	private ResourceConstraints small, bigger, biggerFittingCPU;
 
-	@Before
+	@BeforeEach
 	public void prepareClass() {
 		pm = dummyPMcreator();
 		pm.turnon();
@@ -64,61 +66,57 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 				total.getRequiredMemory() / smallestDivider);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void basicAllocationTest() throws VMManagementException {
 		ResourceAllocation smallAll = pm.allocateResources(small, true,
 				PhysicalMachine.defaultAllocLen);
-		Assert.assertNull("Should not be able to allocate these resources", pm
-				.allocateResources(bigger, true,
-						PhysicalMachine.defaultAllocLen));
-		Assert.assertTrue("Should be unallocable!",
-				pm.cancelAllocation(smallAll));
+		assertNull(pm.allocateResources(bigger, true,
+						PhysicalMachine.defaultAllocLen), "Should not be able to allocate these resources");
+		assertTrue(pm.cancelAllocation(smallAll),"Should be unallocable!");
 		ResourceAllocation biggerAll;
-		Assert.assertNotNull(
-				"Should be allocable now",
-				biggerAll = pm.allocateResources(bigger, true,
-						PhysicalMachine.defaultAllocLen));
-		Assert.assertNull("Should not be able to allocate these resources",
-				pm.allocateResources(small, true,
-						PhysicalMachine.defaultAllocLen));
-		Assert.assertTrue("Should be unallocable!",
-				pm.cancelAllocation(biggerAll));
+		assertNotNull(biggerAll = pm.allocateResources(bigger, true,
+						PhysicalMachine.defaultAllocLen), "Should be allocable now");
+		assertNull(pm.allocateResources(small, true,
+						PhysicalMachine.defaultAllocLen), "Should not be able to allocate these resources");
+		assertTrue(pm.cancelAllocation(biggerAll), "Should be unallocable!");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void multiAllocationTest() throws VMManagementException {
 		ResourceAllocation[] ras = new ResourceAllocation[smallestDivider];
 		for (int i = 0; i < smallDivider; i++) {
 			ras[i] = pm.allocateResources(small, true,
 					PhysicalMachine.defaultAllocLen);
-			Assert.assertNotNull("Should be allocable", ras[i]);
+			assertNotNull(ras[i], "Should be allocable");
 		}
 		for (int i = 0; i < smallDivider; i++) {
-			Assert.assertTrue("Should be cancellable",
-					pm.cancelAllocation(ras[i]));
+			assertTrue(pm.cancelAllocation(ras[i]), "Should be cancellable");
 		}
 		for (int i = 0; i < smallestDivider; i++) {
 			ras[i] = pm.allocateResources(bigger, true,
 					PhysicalMachine.defaultAllocLen);
-			Assert.assertNotNull("Should be allocable " + i, ras[i]);
+			assertNotNull(ras[i], "Should be allocable " + i);
 		}
 		for (int i = 0; i < smallestDivider; i++) {
-			Assert.assertTrue("Should be cancellable",
-					pm.cancelAllocation(ras[i]));
+			assertTrue(pm.cancelAllocation(ras[i]), "Should be cancellable");
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void fittingAllocationTest() throws VMManagementException {
 		ResourceAllocation[] ras = new ResourceAllocation[smallestDivider];
 		for (int i = 0; i < smallestDivider; i++) {
 			ras[i] = pm.allocateResources(biggerFittingCPU, true,
 					PhysicalMachine.defaultAllocLen);
-			Assert.assertNotNull("Should be allocable", ras[i]);
+			assertNotNull(ras[i], "Should be allocable");
 		}
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void perfectFitAllocation() throws VMManagementException {
 		ResourceConstraints pmc = pm.getCapacities();
 		ResourceConstraints smaller = new ConstantConstraints(pmc.getRequiredCPUs(),
@@ -133,8 +131,8 @@ public class UnderProvisionTest extends IaaSRelatedFoundation {
 				PhysicalMachine.defaultAllocLen);
 		ResourceAllocation ba = pm.allocateResources(bigger, true,
 				PhysicalMachine.defaultAllocLen);
-		Assert.assertNotNull("Should be both allocable", sa);
-		Assert.assertNotNull("Should be both allocable", ba);
+		assertNotNull(sa, "Should be both allocable");
+		assertNotNull(ba, "Should be both allocable");
 		Timed.simulateUntilLastEvent();
 	}
 }

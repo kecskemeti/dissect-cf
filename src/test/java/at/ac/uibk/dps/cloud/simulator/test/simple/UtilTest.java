@@ -31,11 +31,12 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.CloudLoader;
 
 import java.io.File;
 import java.io.RandomAccessFile;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 public class UtilTest extends TestFoundation {
 	public String cloudDef = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -69,21 +70,20 @@ public class UtilTest extends TestFoundation {
 			+ "</powerstates>\n" + "<latency towards=\"disk\" value=\"5\" />\n"
 			+ "</repository>\n" + "</cloud>\n";
 
-	@Test(timeout = 600)
+	@Test
+	@Timeout(value = 600, unit = TimeUnit.MILLISECONDS)
 	public void cloudLoaderTest() throws Exception {
 		File temp = File.createTempFile("dissect-test", "cloudLoader");
 		RandomAccessFile raf = new RandomAccessFile(temp, "rw");
 		raf.writeBytes(cloudDef);
 		raf.close();
 		IaaSService cloud = CloudLoader.loadNodes(temp.toString());
-		Assert.assertTrue("FirstFitScheduler should be the VM scheduler",
-				cloud.sched instanceof FirstFitScheduler);
-		Assert.assertTrue("AlwaysonMachines should be the PM scheduler",
-				cloud.pmcontroller instanceof AlwaysOnMachines);
-		Assert.assertEquals("Only one PM should be loaded", 1,
-				cloud.machines.size());
-		Assert.assertEquals("Only one repository should be loaded", 1,
-				cloud.repositories.size());
+		Assertions.assertTrue(cloud.sched instanceof FirstFitScheduler,"FirstFitScheduler should be the VM scheduler");
+		Assertions.assertTrue(cloud.pmcontroller instanceof AlwaysOnMachines, "AlwaysonMachines should be the PM scheduler");
+		Assertions.assertEquals(1,
+				cloud.machines.size(),"Only one PM should be loaded");
+		Assertions.assertEquals(1,
+				cloud.repositories.size(),"Only one repository should be loaded");
 		temp.delete();
 	}
 

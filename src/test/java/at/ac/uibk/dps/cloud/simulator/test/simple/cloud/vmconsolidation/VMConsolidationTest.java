@@ -5,17 +5,18 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.Ignore;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
@@ -36,7 +37,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.NetworkNode.NetworkException;
 import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 
-@Ignore
+@Disabled
 public class VMConsolidationTest extends IaaSRelatedFoundation {
 
 	/**
@@ -74,7 +75,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	VirtualAppliance VA7;
 	VirtualAppliance VA8;
 
-	HashMap<String, Integer> latmap = new HashMap<String, Integer>();	
+	HashMap<String, Integer> latmap = new HashMap<>();
 	Repository centralRepo;
 
 	final static int reqcores = 8, reqProcessing = 1, reqmem = 16,
@@ -106,7 +107,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	 * Now three PMs and four VMs are going to be instantiated.
 	 * At first the PMs are created, after that the VMs are created and each of them deployed to one PM. 
 	 */	
-	@Before
+	@BeforeEach
 	public void testSim() throws Exception {
 		Handler logFileHandler;
 		try {
@@ -169,8 +170,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 	}
 	
 	// VM consolidator using a first fit algorithm
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void ffcOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -187,12 +189,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
 		if(ffc.getUpperThreshold() != 1.0) {
-			Assert.assertEquals(1, testPM1.publicVms.size());
-			Assert.assertEquals(1, testPM2.publicVms.size());
+			assertEquals(1, testPM1.publicVms.size());
+			assertEquals(1, testPM2.publicVms.size());
 		}		
 	}
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void ffcOverAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -217,17 +220,18 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
 		if(ffc.getUpperThreshold() != 1.0) {
-			Assert.assertEquals(2, basic.runningMachines.size());
-			Assert.assertNotEquals(6, testPM1.publicVms.size());
+			assertEquals(2, basic.runningMachines.size());
+			assertNotEquals(6, testPM1.publicVms.size());
 		}		
 		else {
-			Assert.assertEquals(2, basic.runningMachines.size());
-			Assert.assertEquals(6, testPM1.listVMs().size());
-			Assert.assertEquals(1, testPM2.listVMs().size());
+			assertEquals(2, basic.runningMachines.size());
+			assertEquals(6, testPM1.listVMs().size());
+			assertEquals(1, testPM2.listVMs().size());
 		}
 	}
 
-	@Test(timeout = 1000)
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void ffcUnderAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM2.turnon();
 		testPM3.turnon();
@@ -242,10 +246,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void ffcUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -265,11 +270,12 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 		
 	}
-	
-	@Test(timeout = 100)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void ffcShutDownTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -289,11 +295,12 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new FirstFitConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 		
-		Assert.assertEquals(1, basic.runningMachines.size());
-		Assert.assertEquals(PhysicalMachine.State.RUNNING, testPM1.getState());
+		assertEquals(1, basic.runningMachines.size());
+		assertEquals(PhysicalMachine.State.RUNNING, testPM1.getState());
 	}
-	
-	@Test(timeout = 100)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void mutualPlacementTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -314,14 +321,15 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		
 		Timed.simulateUntilLastEvent();
 		
-		Assert.assertEquals(2, basic.runningMachines.size());
-		Assert.assertTrue(testPM2.publicVms.contains(VM1));
-		Assert.assertTrue(testPM1.publicVms.contains(VM2));
+		assertEquals(2, basic.runningMachines.size());
+		assertTrue(testPM2.publicVms.contains(VM1));
+		assertTrue(testPM1.publicVms.contains(VM2));
 	}
 	
 	// VM consolidator using a genetic algorithm
 
-	@Test(timeout = 1000)
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void gaUnderAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM2.turnon();
 		testPM3.turnon();
@@ -336,10 +344,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void gaUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -358,10 +367,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new GaConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void gaOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		Timed.simulateUntilLastEvent();
@@ -376,14 +386,15 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		if(ga.getUpperThreshold() != 1.0) {
-			Assert.assertEquals(1, testPM1.listVMs().size());
-			Assert.assertEquals(2, basic.runningMachines.size());
+			assertEquals(1, testPM1.listVMs().size());
+			assertEquals(2, basic.runningMachines.size());
 		}		
 	}
 	
 	// VM consolidator using artificial bee colony algorithm
 
-	@Test(timeout = 10000)
+	@Test
+	@Timeout(value = 10)
 	public void abcUnderAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM2.turnon();
 		testPM3.turnon();
@@ -398,10 +409,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new AbcConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
 
-	@Test(timeout = 1000)
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void abcUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -420,10 +432,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new AbcConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 1000)
+
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void abcOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		Timed.simulateUntilLastEvent();
@@ -438,13 +451,14 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		if(abc.getUpperThreshold() != 1.0) {
-			Assert.assertEquals(2, basic.runningMachines.size());
+			assertEquals(2, basic.runningMachines.size());
 		}		
 	}
 	
 	// VM consolidator using a particle swarm optimization algorithm
-	
-	@Test(timeout = 2000)
+
+	@Test
+	@Timeout(value = 2)
 	public void psoUnderAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM2.turnon();
 		testPM3.turnon();
@@ -459,10 +473,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new PsoConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 2000)
+
+	@Test
+	@Timeout(value = 2)
 	public void psoUnderAllocComplexTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		testPM2.turnon();
@@ -481,10 +496,11 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		new PsoConsolidator(basic, 600);
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
-		Assert.assertEquals(1, basic.runningMachines.size());
+		assertEquals(1, basic.runningMachines.size());
 	}
-	
-	@Test(timeout = 2000)
+
+	@Test
+	@Timeout(value = 2)
 	public void psoOverAllocSimpleTest() throws VMManagementException, NetworkException {
 		testPM1.turnon();
 		Timed.simulateUntilLastEvent();
@@ -499,13 +515,13 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		Timed.simulateUntil(Timed.getFireCount()+1000);
 
 		if(pso.getUpperThreshold() != 1.0) {
-			Assert.assertEquals(2, basic.runningMachines.size());
+			assertEquals(2, basic.runningMachines.size());
 		}		
 	}
-	
-	@Test(timeout = 1000)
-	public void localSearchTest() throws VMManagementException, NetworkException, InterruptedException,
-			IOException {
+
+	@Test
+	@Timeout(value = 1)
+	public void localSearchTest() throws IOException {
 		
 		boolean finished = false;	// used to check if the test was succesful
 		
@@ -544,10 +560,9 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			
 			VM1.destroy(true);
 			VM2.destroy(true);
-			Assert.assertEquals(0, testPM1.numofCurrentVMs());
-			Assert.assertEquals(0, testPM2.numofCurrentVMs());
-			sc = null;
-			
+			assertEquals(0, testPM1.numofCurrentVMs());
+			assertEquals(0, testPM2.numofCurrentVMs());
+
 			// switch on another two vms
 			switchOnVM(VM1, smallConstraints, testPM1, false);
 			switchOnVM(VM2, smallConstraints, testPM2, false);
@@ -561,8 +576,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			PhysicalMachine vm1host2 = VM1.getResourceAllocation().getHost();
 			PhysicalMachine vm2host2 = VM2.getResourceAllocation().getHost();
 			
-			ga = null;
-			
+
 			// if the assertions fail, we have to reset the properties at this point
 			Properties props2 = new Properties();
 			File file2 = new File("consolidationProperties.xml");
@@ -580,12 +594,12 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 			finished = true;
 			
 			// compare the results
-			Assert.assertEquals(vm1host1, vm1host2);
-			Assert.assertEquals(vm2host1, vm2host2);
+			assertEquals(vm1host1, vm1host2);
+			assertEquals(vm2host1, vm2host2);
 			
 			
 			
-		} catch(Exception e) {
+		} catch(Exception ignore) {
 			
 		}
 		
@@ -603,7 +617,7 @@ public class VMConsolidationTest extends IaaSRelatedFoundation {
 		props2.storeToXML(fileOutput2, null);
 		fileOutput2.close();
 		
-		Assert.assertTrue("Test has not been finished correctly.", finished);
+		assertTrue(finished, "Test has not been finished correctly.");
 		
 	}
 	

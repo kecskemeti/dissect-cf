@@ -120,4 +120,9 @@ public class MaxMinConsumer extends MaxMinFairSpreader {
 	public String toString() {
 		return "MaxMinConsumer(Hash-" + hashCode() + " " + super.toString() + ")";
 	}
+
+	@Override
+	public FreqSyncer.DepKind spreaderType() {
+		return FreqSyncer.DepKind.CONSUMER;
+	}
 }

@@ -116,4 +116,9 @@ public class MaxMinProvider extends MaxMinFairSpreader {
 	public String toString() {
 		return "MaxMinProvider(Hash-" + hashCode() + " " + super.toString() + ")";
 	}
+
+	@Override
+	public FreqSyncer.DepKind spreaderType() {
+		return FreqSyncer.DepKind.PROVIDER;
+	}
 }

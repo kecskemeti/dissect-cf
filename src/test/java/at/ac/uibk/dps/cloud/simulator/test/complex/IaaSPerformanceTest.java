@@ -25,10 +25,6 @@
 
 package at.ac.uibk.dps.cloud.simulator.test.complex;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import at.ac.uibk.dps.cloud.simulator.test.IaaSRelatedFoundation;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
@@ -49,6 +45,15 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.Repository;
 import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 	public IaaSService basic;
 	public Repository repo;
@@ -61,8 +66,8 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 	public int runningCounter = 0;
 	public int destroyCounter = 0;
 
-	@Before
-	public void resetSim() throws Exception {
+	@BeforeEach
+	public void resetSim() {
 		SeedSyncer.resetCentral();
 	}
 
@@ -126,26 +131,29 @@ public class IaaSPerformanceTest extends IaaSRelatedFoundation {
 			new VMHandler();
 		}
 		Timed.simulateUntilLastEvent();
-		Assert.assertEquals("Not all VMs ran", vmCount, runningCounter);
-		Assert.assertEquals("Not all VMs terminated", vmCount, destroyCounter);
+		assertEquals(vmCount, runningCounter, "Not all VMs ran");
+		assertEquals(vmCount, destroyCounter, "Not all VMs terminated");
 		for (PhysicalMachine pm : basic.runningMachines) {
-			Assert.assertFalse("Should not have any running VMs registered", pm.isHostingVMs());
+			assertFalse(pm.isHostingVMs(), "Should not have any running VMs registered");
 		}
 	}
 
-	@Test(timeout = 1000)
+	@Test
+	@Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
 	public void performanceTest() throws Exception {
 		genericPerformanceCheck(FirstFitScheduler.class, SchedulingDependentMachines.class);
-		Assert.assertEquals("Should not have any running PMs", 0, basic.runningMachines.size());
+		assertEquals(0, basic.runningMachines.size(), "Should not have any running PMs");
 	}
 
-	@Test(timeout = 1500)
+	@Test
+	@Timeout(value = 1500, unit = TimeUnit.MILLISECONDS)
 	public void roundRobinPerformance() throws Exception {
 		genericPerformanceCheck(RoundRobinScheduler.class, AlwaysOnMachines.class);
 	}
 
 	// FIXME: this should be below 100ms!
-	@Test(timeout = 700)
+	@Test
+	@Timeout(value = 700, unit = TimeUnit.MILLISECONDS)
 	public void pmRegistrationPerformance() throws Exception {
 		setupIaaS(FirstFitScheduler.class, SchedulingDependentMachines.class, 10000, 1);
 	}

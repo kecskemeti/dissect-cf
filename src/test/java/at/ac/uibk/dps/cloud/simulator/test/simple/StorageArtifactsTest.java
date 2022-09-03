@@ -30,17 +30,20 @@ import hu.mta.sztaki.lpds.cloud.simulator.io.VirtualAppliance;
 import hu.mta.sztaki.lpds.cloud.simulator.util.SeedSyncer;
 
 import java.util.Random;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.TestFoundation;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class StorageArtifactsTest extends TestFoundation {
 	public final static long baseVASize = 100000000;
 	private final static String initialID = "ID1";
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void vaConstructionTest() {
 		Random rnd = SeedSyncer.centralRnd;
 		final long bgLoad = rnd.nextLong();
@@ -49,28 +52,29 @@ public class StorageArtifactsTest extends TestFoundation {
 		VirtualAppliance va2 = new VirtualAppliance("ID2", startproc, bgLoad, false, baseVASize);
 		VirtualAppliance va3 = new VirtualAppliance("ID3", startproc, bgLoad, true, baseVASize);
 		VirtualAppliance va4 = va3.newCopy("ID3Copy");
-		Assert.assertEquals("Background load mismatch", bgLoad, va1.getBgNetworkLoad());
-		Assert.assertEquals("Startup delay mismatch", startproc, va2.getStartupProcessing(), 0);
-		Assert.assertEquals("Size mismatch", va3.size, va4.size);
-		Assert.assertTrue("Size variance failure", va2.size != va3.size);
-		Assert.assertTrue("Virtual appliance should contain its name in its toString",
-				va1.toString().contains(initialID));
+		assertEquals(bgLoad, va1.getBgNetworkLoad(),"Background load mismatch");
+		assertEquals(startproc, va2.getStartupProcessing(), 0,"Startup delay mismatch");
+		assertEquals(va3.size, va4.size, "Size mismatch");
+		assertTrue(va2.size != va3.size,"Size variance failure");
+		assertTrue(va1.toString().contains(initialID), "Virtual appliance should contain its name in its toString");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void saConstructionTest() {
 		StorageObject so1 = new StorageObject(initialID);
 		StorageObject so2 = new StorageObject("ID2", baseVASize, false);
 		StorageObject so3 = new StorageObject("ID3", baseVASize, true);
 		StorageObject so4 = so3.newCopy("ID3Copy");
-		Assert.assertEquals("Size mismatch", so3.size, so4.size);
-		Assert.assertTrue("Size variance failure", so2.size != so3.size);
-		Assert.assertTrue("Size variance failure", so1.size != so2.size);
-		Assert.assertTrue("Storage object should contain its name in its toString", so1.toString().contains(initialID));
+		assertEquals(so3.size, so4.size, "Size mismatch");
+		assertTrue(so2.size != so3.size, "Size variance failure");
+		assertTrue(so1.size != so2.size, "Size variance failure");
+		assertTrue(so1.toString().contains(initialID), "Storage object should contain its name in its toString");
 	}
 
-	@Test(timeout = 100, expected = IllegalArgumentException.class)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void negLenRegistration() {
-		new StorageObject("NEGATIVE!!", -1, false);
+		assertThrows(IllegalArgumentException.class, () -> new StorageObject("NEGATIVE!!", -1, false));
 	}
 }

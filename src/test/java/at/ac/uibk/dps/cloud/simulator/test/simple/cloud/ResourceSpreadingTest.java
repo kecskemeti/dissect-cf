@@ -28,10 +28,7 @@ package at.ac.uibk.dps.cloud.simulator.test.simple.cloud;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
 
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventAssert;
 import at.ac.uibk.dps.cloud.simulator.test.ConsumptionEventFoundation;
@@ -40,28 +37,35 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ConsumptionEventAda
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinConsumer;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.MaxMinProvider;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel.ResourceConsumption;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 	MaxMinProvider offer;
 	MaxMinConsumer utilize;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		offer = new MaxMinProvider(ResourceConsumptionTest.permsProcessing);
 		utilize = new MaxMinConsumer(ResourceConsumptionTest.permsProcessing);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void constructionTest() {
-		Assert.assertTrue("Provider resource tostring failure", offer.toString().contains("Provider"));
-		Assert.assertTrue("Consumer resource tostring failure", utilize.toString().contains("Consumer"));
-		Assert.assertEquals("Persecond processing power is not correct", ResourceConsumptionTest.permsProcessing,
-				offer.getPerTickProcessingPower(), 0);
-		Assert.assertEquals("Total processed should be zero in just initialized resource spreaders", 0,
-				offer.getTotalProcessed(), 0);
+		assertTrue(offer.toString().contains("Provider"), "Provider resource tostring failure");
+		assertTrue(utilize.toString().contains("Consumer"), "Consumer resource tostring failure");
+		assertEquals(ResourceConsumptionTest.permsProcessing,
+				offer.getPerTickProcessingPower(), 0, "Persecond processing power is not correct");
+		assertEquals(0,	offer.getTotalProcessed(), 0, "Total processed should be zero in just initialized resource spreaders");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void registrationTest() {
 		ResourceConsumption con1 = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
 				ResourceConsumption.unlimitedProcessing, utilize, offer, new ConsumptionEventAssert());
@@ -72,12 +76,12 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		conFaulty.suspend();
 		con1.registerConsumption();
 		con2.registerConsumption();
-		Assert.assertEquals("The next event should come for offer", offer.getSyncer().getNextEvent(),
-				Timed.getNextFire());
+		assertEquals(offer.getSyncer().getNextEvent(),
+				Timed.getNextFire(), "The next event should come for offer");
 		Timed.fire();
 		Timed.simulateUntil(Timed.getFireCount() - 1 + offer.getSyncer().getFrequency() / 2);
-		Assert.assertEquals("The next event should come for offer", offer.getSyncer().getNextEvent(),
-				Timed.getNextFire());
+		assertEquals(offer.getSyncer().getNextEvent(),
+				Timed.getNextFire(), "The next event should come for offer");
 		conFaulty.suspend();
 		con1.suspend();
 		conFaulty.suspend();
@@ -85,20 +89,17 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		double offerProcessed = offer.getTotalProcessed();
 		double utilizeProcessed = utilize.getTotalProcessed();
 		Timed.fire();
-		Assert.assertEquals("The consumption did not reach the necessary level on the offer side",
-				ResourceConsumptionTest.processingTasklen, offerProcessed, 0);
-		Assert.assertEquals("The consumption did not reach the necessary level on the utilize side",
-				ResourceConsumptionTest.processingTasklen, utilizeProcessed, 0);
-		Assert.assertEquals("The next event should come for no one", -1, Timed.getNextFire());
+		assertEquals(ResourceConsumptionTest.processingTasklen, offerProcessed, 0, "The consumption did not reach the necessary level on the offer side");
+		assertEquals(ResourceConsumptionTest.processingTasklen, utilizeProcessed, 0, "The consumption did not reach the necessary level on the utilize side");
+		assertEquals(-1, Timed.getNextFire(), "The next event should come for no one");
 		conFaulty.suspend();
-		Assert.assertEquals("The next event should come for no one", -1, Timed.getNextFire());
-		Assert.assertEquals("A faulty deregistration should not change consumption on the offer side", offerProcessed,
-				offer.getTotalProcessed(), 0);
-		Assert.assertEquals("A faulty deregistration should not change consumption on the utilize side",
-				utilizeProcessed, utilize.getTotalProcessed(), 0);
+		assertEquals(-1, Timed.getNextFire(), "The next event should come for no one");
+		assertEquals(offerProcessed, offer.getTotalProcessed(), 0, "A faulty deregistration should not change consumption on the offer side");
+		assertEquals(utilizeProcessed, utilize.getTotalProcessed(), 0, "A faulty deregistration should not change consumption on the utilize side");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void basicConsumptionTest() {
 		ResourceConsumption con1 = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
 				ResourceConsumption.unlimitedProcessing, utilize, offer, new ConsumptionEventAssert());
@@ -107,11 +108,11 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		con1.registerConsumption();
 		con2.registerConsumption();
 		Timed.simulateUntil(Timed.getFireCount() + 2000);
-		Assert.assertEquals("Consumptions should have been finished", 0, con1.getUnProcessed() + con2.getUnProcessed(),
-				0);
+		assertEquals(0, con1.getUnProcessed() + con2.getUnProcessed(),0, "Consumptions should have been finished");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void eventRelationTest() {
 		ConsumptionEventAdapter cea1 = new ConsumptionEventAssert();
 		ConsumptionEventAdapter cea2 = new ConsumptionEventAssert();
@@ -124,17 +125,16 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		long timeBefore = Timed.getFireCount();
 		Timed.simulateUntil(timeBefore + 2000);
 		long timeMiddle = Timed.getFireCount();
-		Assert.assertTrue("The smaller consumption should finish faster", cea1.isCompleted());
-		Assert.assertFalse("The larger consumption should not finish faster", cea2.isCompleted());
+		assertTrue(cea1.isCompleted(), "The smaller consumption should finish faster");
+		assertFalse(cea2.isCompleted(), "The larger consumption should not finish faster");
 		Timed.simulateUntil(offer.getSyncer().getNextEvent());
 		long timeAfter = Timed.getFireCount();
-		Assert.assertTrue("The larger consumption should finish later", cea2.isCompleted());
-		Assert.assertEquals(
-				"The execution time of the second part of the larger consumption should take half the time of the smaller consumption's execution time",
-				(timeAfter - timeMiddle) * 2, timeMiddle - timeBefore - 1);
+		assertTrue(cea2.isCompleted(), "The larger consumption should finish later");
+		assertEquals((timeAfter - timeMiddle) * 2, timeMiddle - timeBefore - 1, "The execution time of the second part of the larger consumption should take half the time of the smaller consumption's execution time");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void simpleAssimetricProcessing() {
 		utilize = new MaxMinConsumer(ResourceConsumptionTest.permsProcessing / 2);
 		ResourceConsumption con = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
@@ -142,12 +142,12 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		con.registerConsumption();
 		long before = Timed.getFireCount();
 		Timed.simulateUntil(before + 2000);
-		Assert.assertEquals("Processing should take twice as long as usually",
-				(long) (ResourceConsumptionTest.processingTasklen / utilize.getPerTickProcessingPower()),
-				Timed.getFireCount() - before - 1);
+		assertEquals((long) (ResourceConsumptionTest.processingTasklen / utilize.getPerTickProcessingPower()),
+				Timed.getFireCount() - before - 1, "Processing should take twice as long as usually");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void multiPartyProcessing() {
 		ConsumptionEventAssert c1Ev = new ConsumptionEventAssert();
 		ConsumptionEventAssert c2Ev = new ConsumptionEventAssert();
@@ -173,24 +173,22 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		Timed.simulateUntil(Timed.getFireCount() + 10);
 		c4.registerConsumption();
 		Timed.fire();
-		Assert.assertFalse("We should already have some processing done by this time",
-				c1.getUnProcessed() == ResourceConsumptionTest.processingTasklen);
-		Assert.assertFalse("We should already have some processing done by this time",
-				c2.getUnProcessed() == ResourceConsumptionTest.processingTasklen);
-		Assert.assertFalse("We should already have some processing done by this time",
-				c3.getUnProcessed() == ResourceConsumptionTest.processingTasklen);
+		assertNotEquals(ResourceConsumptionTest.processingTasklen, c1.getUnProcessed(), 0.0, "We should already have some processing done by this time");
+		assertNotEquals(ResourceConsumptionTest.processingTasklen, c2.getUnProcessed(), 0.0, "We should already have some processing done by this time");
+		assertNotEquals(ResourceConsumptionTest.processingTasklen, c3.getUnProcessed(), 0.0, "We should already have some processing done by this time");
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("c1 did not complete", c1Ev.isCompleted());
-		Assert.assertTrue("c2 did not complete", c2Ev.isCompleted());
-		Assert.assertTrue("c3 did not complete", c3Ev.isCompleted());
-		Assert.assertTrue("c4 did not complete", c4Ev.isCompleted());
-		Assert.assertEquals("c1 finished at improper time", 1485, c1Ev.getArrivedAt() - startTime);
-		Assert.assertEquals("c2 finished at improper time", 6000, c2Ev.getArrivedAt() - startTime);
-		Assert.assertEquals("c3 finished at improper time", 6010, c3Ev.getArrivedAt() - startTime);
-		Assert.assertEquals("c4 finished at improper time", 3030, c4Ev.getArrivedAt() - startTime);
+		assertTrue(c1Ev.isCompleted(), "c1 did not complete");
+		assertTrue(c2Ev.isCompleted(), "c2 did not complete");
+		assertTrue(c3Ev.isCompleted(), "c3 did not complete");
+		assertTrue(c4Ev.isCompleted(), "c4 did not complete");
+		assertEquals(1485, c1Ev.getArrivedAt() - startTime, "c1 finished at improper time");
+		assertEquals(6000, c2Ev.getArrivedAt() - startTime, "c2 finished at improper time");
+		assertEquals(6010, c3Ev.getArrivedAt() - startTime, "c3 finished at improper time");
+		assertEquals(3030, c4Ev.getArrivedAt() - startTime, "c4 finished at improper time");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void basicLimitedProcessing() {
 		ResourceConsumption c = new ResourceConsumption(ResourceConsumptionTest.processingTasklen,
 				ResourceConsumptionTest.permsProcessing / 2, utilize, offer, new ConsumptionEventAssert());
@@ -198,12 +196,12 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		long before = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
 		long after = Timed.getFireCount();
-		Assert.assertEquals("Resource consumption should be limited",
-				(long) (ResourceConsumptionTest.processingTasklen / (offer.getPerTickProcessingPower() / 2)),
-				after - before - 1);
+		assertEquals((long) (ResourceConsumptionTest.processingTasklen / (offer.getPerTickProcessingPower() / 2)),
+				after - before - 1, "Resource consumption should be limited");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void mixedProcessingLimits() {
 		ConsumptionEventAssert evLimited = new ConsumptionEventAssert();
 		ConsumptionEventAssert evUnlimited = new ConsumptionEventAssert();
@@ -214,11 +212,8 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		cLimited.registerConsumption();
 		cUnlimited.registerConsumption();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("All consumptions should complete successfully",
-				evLimited.isCompleted() && evUnlimited.isCompleted());
-		Assert.assertEquals(
-				"Consumption limits should not influnece arrival time, both consumptions should finish at the same time",
-				evLimited.getArrivedAt(), evUnlimited.getArrivedAt());
+		assertTrue(evLimited.isCompleted() && evUnlimited.isCompleted(), "All consumptions should complete successfully");
+		assertEquals(evLimited.getArrivedAt(), evUnlimited.getArrivedAt(), "Consumption limits should not influnece arrival time, both consumptions should finish at the same time");
 
 		evLimited = new ConsumptionEventAssert();
 		evUnlimited = new ConsumptionEventAssert();
@@ -230,14 +225,11 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		cUnlimited.registerConsumption();
 		long before = Timed.getFireCount();
 		Timed.simulateUntilLastEvent();
-		Assert.assertTrue("All consumptions should complete successfully",
-				evLimited.isCompleted() && evUnlimited.isCompleted());
-		Assert.assertEquals("Limits should cause runtime increase for limited consumption",
-				(long) (ResourceConsumptionTest.processingTasklen / (offer.getPerTickProcessingPower() / 3)),
-				evLimited.getArrivedAt() - before);
-		Assert.assertEquals("Limits should cause runtime reduction for unlimited consumption",
-				(long) (ResourceConsumptionTest.processingTasklen / (2 * offer.getPerTickProcessingPower() / 3)),
-				evUnlimited.getArrivedAt() - before);
+		assertTrue(evLimited.isCompleted() && evUnlimited.isCompleted(), "All consumptions should complete successfully");
+		assertEquals((long) (ResourceConsumptionTest.processingTasklen / (offer.getPerTickProcessingPower() / 3)),
+				evLimited.getArrivedAt() - before, "Limits should cause runtime increase for limited consumption");
+		assertEquals((long) (ResourceConsumptionTest.processingTasklen / (2 * offer.getPerTickProcessingPower() / 3)),
+				evUnlimited.getArrivedAt() - before, "Limits should cause runtime reduction for unlimited consumption");
 	}
 
 	private ResourceConsumption crCons(ResourceConsumption.ConsumptionEvent ev) {
@@ -245,7 +237,8 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 				ev == null ? new ConsumptionEventAssert() : ev);
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void immediateConsumptionFollowup() {
 		// Immediate
 		long startTime = Timed.getFireCount();
@@ -262,18 +255,17 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		first = crCons(null);
 		first.registerConsumption();
 		Timed.simulateUntilLastEvent();
-		List<Long> l = new ArrayList<Long>(ConsumptionEventAssert.hits);
+		List<Long> l = new ArrayList<>(ConsumptionEventAssert.hits);
 		Collections.sort(l);
 		long beforeImmediate = l.get(0);
 		long afterImmediate = l.get(1);
 		long afterSingleCons = l.get(2) - 1;
-		Assert.assertEquals("Consumption before its immediate followup is not with the right timing",
-				afterSingleCons - afterImmediate, beforeImmediate - startTime);
-		Assert.assertEquals("Immediate consumption followup not arriving with the right timing",
-				afterSingleCons - afterImmediate, afterImmediate - beforeImmediate);
+		assertEquals(afterSingleCons - afterImmediate, beforeImmediate - startTime, "Consumption before its immediate followup is not with the right timing");
+		assertEquals(afterSingleCons - afterImmediate, afterImmediate - beforeImmediate, "Immediate consumption followup not arriving with the right timing");
 	}
 
-	@Test(timeout = 100)
+	@Test
+	@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
 	public void groupManagement() {
 		MaxMinProvider prov1 = new MaxMinProvider(1);
 		MaxMinProvider prov2 = new MaxMinProvider(1);
@@ -286,6 +278,5 @@ public class ResourceSpreadingTest extends ConsumptionEventFoundation {
 		new ResourceConsumption(1000, 1, new MaxMinConsumer(1), prov2, new ConsumptionEventAssert())
 				.registerConsumption();
 		Timed.simulateUntilLastEvent();
-
 	}
 }

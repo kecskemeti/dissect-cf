@@ -25,9 +25,6 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
-import java.util.Arrays;
-import java.util.stream.Stream;
-
 /**
  * This class is part of the unified resource consumption model of DISSECT-CF.
  * 
@@ -144,22 +141,20 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 	protected long singleGroupwiseFreqUpdater() {
 		// Phase 1: preparation
 		final FreqSyncer syncer = getSyncer();
-		final int dglen = syncer.getDGLen();
-		final int providerCount = syncer.getFirstConsumerId();
-		getDepGroupStream(dglen).forEach(rs -> ((MaxMinFairSpreader)rs).initializeFreqUpdate());
+		syncer.getCompleteDGStream().forEach(rs -> ((MaxMinFairSpreader)rs).initializeFreqUpdate());
 		boolean someConsumptionIsStillUnderUtilized;
 		// Phase 2: Progressive filling iteration
 		do {
 			// Phase 2a: determining maximum possible processing
 			// Determining wishes for providers and consumers
-			getDepGroupStream(dglen).forEach(rs -> ((MaxMinFairSpreader)rs).assignProcessingPower());
+			syncer.getCompleteDGStream().forEach(rs -> ((MaxMinFairSpreader)rs).assignProcessingPower());
 			// Phase 2b: Finding minimum between providers and consumers
-			final double minProcessing = getDepGroupStream(providerCount).flatMapToDouble(
+			final double minProcessing = syncer.getProviderStream().flatMapToDouble(
 					rs -> rs.underProcessing.stream().filter(c -> c.unassigned).mapToDouble(c -> c.updateRealLimit(false))).min().orElse(Double.MAX_VALUE);
 
 			final double mpLowLimit=minProcessing * 0.000000001;
 			// Phase 2c: single filling
-			someConsumptionIsStillUnderUtilized = getDepGroupStream(providerCount).filter(
+			someConsumptionIsStillUnderUtilized = syncer.getProviderStream().filter(
 					rs -> {
 						final MaxMinFairSpreader mmfs = (MaxMinFairSpreader) rs;
 						mmfs.underProcessing.stream().filter(c -> c.unassigned).forEach( con -> {
@@ -179,16 +174,12 @@ public abstract class MaxMinFairSpreader extends ResourceSpreader {
 			).count()!=0;
 		} while (someConsumptionIsStillUnderUtilized);
 		// Phase 3: Determining the earliest completion time
-		return getDepGroupStream(providerCount).flatMapToLong(
+		return syncer.getProviderStream().flatMapToLong(
 				rs ->  rs.underProcessing.stream().mapToLong(con -> {
 					con.consumerLimit = con.providerLimit = con.limithelper;
 					con.updateRealLimit(true);
 					return con.getCompletionDistance();
 				})).min().orElse(Long.MAX_VALUE);
-	}
-
-	private Stream<ResourceSpreader> getDepGroupStream(int limit) {
-		return Arrays.stream(getSyncer().getDepGroup()).limit(limit);
 	}
 
 	/**

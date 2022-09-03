@@ -368,7 +368,7 @@ public abstract class ResourceSpreader {
 			if (isConsumer()) {
 				// We first have to make sure the providers provide the
 				// stuff that this consumer might need
-				Arrays.stream(mySyncer.myDepGroup).forEach( c -> c.doProcessing(currTime));
+				mySyncer.getCompleteDGStream().forEach(c -> c.doProcessing(currTime));
 			}
 			doProcessing(currTime);
 		}
@@ -540,4 +540,10 @@ public abstract class ResourceSpreader {
 		underAddition.clear();
 		return added != 0;
 	}
+
+	public boolean isProcessing() {
+		return !toProcess.isEmpty();
+	}
+
+	public abstract FreqSyncer.DepKind spreaderType();
 }
