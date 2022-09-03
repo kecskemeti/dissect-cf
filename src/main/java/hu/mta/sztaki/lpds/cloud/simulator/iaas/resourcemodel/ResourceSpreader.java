@@ -26,7 +26,6 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;

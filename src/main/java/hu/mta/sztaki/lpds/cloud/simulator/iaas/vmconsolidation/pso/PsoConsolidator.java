@@ -48,9 +48,9 @@ public class PsoConsolidator extends PopulationBasedConsolidator<Particle> {
 	/** learning factor two */
 	private double c2;
 
-	public static final FitCompare bestComp = (a, b) -> ((Particle) a).isBetterBest((Particle) b);
+	private static final FitCompare bestComp = (a, b) -> ((Particle) a).isBetterBest((Particle) b);
 
-	public static final FitCompare worstCurrentComp = (a, b) -> b.isBetterThan(a);
+	private static final FitCompare worstCurrentComp = (a, b) -> b.isBetterThan(a);
 
 	/**
 	 * The constructor uses its superclass-constructor to create an abstract model

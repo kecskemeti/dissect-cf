@@ -24,6 +24,7 @@ module hu.mta.sztaki.lpds.cloud.simulator.dissectcf {
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmscheduling;
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
+	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 	requires trove4j;
 	requires java.xml;
