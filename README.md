@@ -61,9 +61,9 @@ The documentation for the simulator's java API will be generated in the followin
 ### Minimum runtime dependencies
 DISSECT-CF depends on the following libraries during its runtime: 
 * Java 11
-* [GNU trove4j 3.0.3](http://trove.starlight-systems.com)
+* [Eclipse collections framework 11.1.0](http://www.eclipse.org/collections/)
 * [Apache Commons Lang3 3.12](https://commons.apache.org/proper/commons-lang/)
-* [DSIutils 2.5.1](https://dsiutils.di.unimi.it/)
+* [DSIutils 2.7.2](https://dsiutils.di.unimi.it/)
 
 ###### Hint:
 Although these dependencies can be collected individually. If one installed the simulator according to description above, then except for Java 11, all dependencies are located in the local maven repository (e.g., `~/.m2/repository`).  

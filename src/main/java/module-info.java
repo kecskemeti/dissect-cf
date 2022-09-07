@@ -26,10 +26,11 @@ module hu.mta.sztaki.lpds.cloud.simulator.dissectcf {
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.simple;
 	exports hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
-	requires trove4j;
 	requires java.xml;
 	requires org.apache.commons.lang3;
 	requires java.desktop;
 	requires java.logging;
 	requires it.unimi.dsi.dsiutils;
+	requires org.eclipse.collections.api;
+	requires org.eclipse.collections.impl;
 }

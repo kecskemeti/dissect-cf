@@ -27,7 +27,6 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.resourcemodel;
 import hu.mta.sztaki.lpds.cloud.simulator.Timed;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -125,8 +124,7 @@ public class FreqSyncer extends Timed {
     }
 
     /**
-     * Returns a new stream of all the members of the influence group, it is guaranteed to offer all providers first in the sequential stream
-     * @return
+     * @return Returns a new stream of all the members of the influence group, it is guaranteed to offer all providers first in the sequential stream
      */
     Stream<ResourceSpreader> getCompleteDGStream() {
         return Stream.concat(getProviderStream(),getDepGroupStream(DepKind.CONSUMER));
@@ -259,18 +257,13 @@ public class FreqSyncer extends Timed {
      * Phase II. managing separation of influence groups
      */
     private void groupSeparation() {
-        // Removing all past members which are no longer processing
-        Arrays.stream(DepKind.values()).forEach(
-                dgType -> myDepGroup.get(dgType).removeAll(
-                        getDepGroupStream(dgType).filter(not(ResourceSpreader::isProcessing))
-                                .peek(rs -> rs.setSyncer(null)) // Clearing out previous freq syncer references to members no longer needing one
-                                .collect(Collectors.toList())));
+        cleanDepGroupFromUnusedSpreaders();
         if(!isEmptyDG()) {
             // Marking all current members of the depgroup as non-members
             getCompleteDGStream().forEach(rs -> rs.stillInDepGroup = false);
             boolean needsFurtherSplitChecks = true;
             do {
-                buildDepGroup(getProviderStream().findFirst().orElseThrow());
+                buildDepGroup(getFirstProvider());
                 if (getCompleteDGStream().anyMatch(not(rs -> rs.stillInDepGroup))) {
                     // a split is needed, we have identified an influence group which does not belong to the group of the first member
                     EnumMap<DepKind, Set<ResourceSpreader>> newInfluenceGroup = new EnumMap<>(DepKind.class);
@@ -297,6 +290,16 @@ public class FreqSyncer extends Timed {
         }
     }
 
+    private void cleanDepGroupFromUnusedSpreaders() {
+        for(DepKind dgType:DepKind.values()) cleanDepGroupFromUnusedSpreaders(dgType);
+    }
+
+    private void cleanDepGroupFromUnusedSpreaders(DepKind dgType) {
+        // Removing all past members which are no longer processing
+        // Clearing out previous freq syncer references to members no longer needing one
+        myDepGroup.get(dgType).removeIf(ResourceSpreader::cleanSyncerWhenNotProcessing);
+    }
+
     private boolean isEmptyDG() {
         return getCompleteDGStream().findFirst().isEmpty();
     }
@@ -311,9 +314,13 @@ public class FreqSyncer extends Timed {
      * ResourceSpreader.doProcessing is called.
      */
     private void updateMyFreqNow() {
-        var newFreq = myDepGroup.get(DepKind.PROVIDER).stream().findFirst().orElseThrow().singleGroupwiseFreqUpdater();
+        var newFreq = getFirstProvider().singleGroupwiseFreqUpdater();
         regularFreqMode = newFreq != 0;
         updateFrequency(newFreq);
+    }
+
+    private ResourceSpreader getFirstProvider() {
+        return getProviderStream().findFirst().orElseThrow();
     }
 
     /**
@@ -354,7 +361,7 @@ public class FreqSyncer extends Timed {
             } else {
                 // There are further items missing
                 cpSyncer.unsubscribe(); // we will remove its old syncer
-                depGroupExtension.addAll(cpSyncer.getCompleteDGStream().collect(Collectors.toList()));
+                cpSyncer.getCompleteDGStream().forEach(depGroupExtension::add);
                 // Make sure, that if we encounter this cp
                 // next time we will not try to add all its
                 // dep group

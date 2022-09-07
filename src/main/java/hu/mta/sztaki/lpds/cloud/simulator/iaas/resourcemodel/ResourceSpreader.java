@@ -544,5 +544,14 @@ public abstract class ResourceSpreader {
 		return !toProcess.isEmpty();
 	}
 
+	public boolean cleanSyncerWhenNotProcessing() {
+		if(toProcess.isEmpty()) {
+			setSyncer(null);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	public abstract FreqSyncer.DepKind spreaderType();
 }

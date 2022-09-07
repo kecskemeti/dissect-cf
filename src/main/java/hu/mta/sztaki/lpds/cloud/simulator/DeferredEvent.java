@@ -26,9 +26,9 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator;
 
-import java.util.ArrayList;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 
-import gnu.trove.map.hash.TLongObjectHashMap;
+import java.util.ArrayList;
 
 /**
  * Offers the event handling mechanism for non-recurring but time dependent
@@ -56,7 +56,7 @@ public abstract class DeferredEvent {
 	 * item (which is actually the list of events that should be delivered at the
 	 * particular time instance identified by the key of the map).
 	 */
-	private static final TLongObjectHashMap<AggregatedEventDispatcher> dispatchers = new TLongObjectHashMap<>();
+	private static final LongObjectHashMap<AggregatedEventDispatcher> dispatchers = new LongObjectHashMap<>();
 
 	/**
 	 * handles the event aggregations, actual subscriptions to timed events and
