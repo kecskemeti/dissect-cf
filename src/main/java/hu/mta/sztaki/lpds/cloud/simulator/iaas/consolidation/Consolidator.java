@@ -153,25 +153,32 @@ public abstract class Consolidator extends Timed {
 	@Override
 	public void tick(long fires) {
 		if (resourceAllocationChange || omitAllocationCheck) {
-			if(toConsolidate.runningMachines.isEmpty()&&toConsolidate.sched.getQueueLength()==0) {
-				unsubscribe();
-				return;
-			}
-			// Make a copy as machines could be sold/removed if they are not used because of
-			// consolidation...
-			var pmList = toConsolidate.machines
-					.toArray(new PhysicalMachine[0]);
-			// Should we consolidate next time?
-			var thereAreVMs = toConsolidate.machines.stream().anyMatch(PhysicalMachine::isHostingVMs);
-			consolidationRuns++;
-			doConsolidation(pmList);
-			if (!thereAreVMs) {
-				// No we should not
-				unsubscribe();
-			}
+            if (toConsolidate.runningMachines.isEmpty() && toConsolidate.sched.getQueueLength() == 0) {
+                unsubscribe();
+                return;
+            }
+            prepConsolidation();
 			resourceAllocationChange = false;
 		}
 	}
+
+	/**
+	 * This method makes sure the doConsolidation method is called with the appropriate set of pms while it also ensures
+	 * that the consolidator no longer receives timing events if there is no need for it anymore
+	 */
+    private void prepConsolidation() {
+        // Should we consolidate next time?
+        var thereWereVMs = toConsolidate.machines.stream().anyMatch(PhysicalMachine::isHostingVMs);
+        consolidationRuns++;
+        // Make a copy as machines as they could be sold/removed if they are not used because of
+        // consolidation...
+        doConsolidation(toConsolidate.machines
+                .toArray(new PhysicalMachine[0]));
+        if (!thereWereVMs) {
+            // No we should not
+            unsubscribe();
+        }
+    }
 
 	/**
 	 * Allows querying if allocation checks could limit consolidator calls
