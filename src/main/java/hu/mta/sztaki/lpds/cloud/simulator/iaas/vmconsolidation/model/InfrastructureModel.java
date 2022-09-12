@@ -24,10 +24,13 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.VirtualMachine;
+import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ConstantConstraints;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.constraints.ResourceConstraints;
 
 /**
@@ -123,24 +126,19 @@ public class InfrastructureModel {
 	 * fitness.nrActivePms and fitness.totalOverAllocated are correct
 	 */
 	public void calculateFitness() {
-		nrActivePms = 0;
 		totalOverAllocated = 0;
-		nrMigrations = 0;
-		for (final ModelPM pm : bins) {
-			if (pm.isHostingVMs()) {
-				nrActivePms++;
-				final ResourceConstraints ut = pm.getUpperThreshold();
-				if (pm.consumed.getTotalProcessingPower() > ut.getTotalProcessingPower())
-					totalOverAllocated += pm.consumed.getTotalProcessingPower() / ut.getTotalProcessingPower();
-				if (pm.consumed.getRequiredMemory() > ut.getRequiredMemory())
-					totalOverAllocated += (double)pm.consumed.getRequiredMemory() / ut.getRequiredMemory();
-			}
-		}
-		for (final ModelVM vm : items) {
-			if (vm.basedetails.initialHost.hashCode() != vm.getHostID()) {
-				nrMigrations++;
-			}
-		}
+		nrActivePms = (int) Arrays.stream(bins).filter(ModelPM::isHostingVMs).peek(pm -> {
+			var ut = pm.getUpperThreshold();
+			totalOverAllocated+=calculateOverAllocationForProp(pm, ut, ResourceConstraints::getTotalProcessingPower);
+			totalOverAllocated+=calculateOverAllocationForProp(pm, ut, constraints -> (double)constraints.getRequiredMemory());
+		}).count();
+		nrMigrations = (int) Arrays.stream(items).filter(vm -> vm.basedetails.initialHost.hashCode() != vm.getHostID()).count();
+	}
+
+	private double calculateOverAllocationForProp(ModelPM pm, ConstantConstraints threshold, Function<ResourceConstraints, Double> propAccessor) {
+		var pmProp = propAccessor.apply(pm.consumed);
+		var thrProp = propAccessor.apply(threshold);
+		return pmProp > thrProp ? pmProp / thrProp : 0;
 	}
 
 	/**
