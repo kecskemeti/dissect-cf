@@ -96,8 +96,7 @@ public class IaaSServiceTest extends IaaSRelatedFoundation {
 	public void capacityMaintenanceTest() throws IaaSHandlingException {
 		for (IaaSService iaas : services) {
 			final PhysicalMachine pm = dummyPMcreator();
-			AlterableResourceConstraints beforeCapacities = new AlterableResourceConstraints(iaas.getCapacities());
-			beforeCapacities.singleAdd(pm.getCapacities());
+			AlterableResourceConstraints beforeCapacities = new AlterableResourceConstraints(iaas.getCapacities()).singleAddCont(pm.getCapacities());
 			iaas.registerHost(pm);
 			ResourceConstraints midCapacities = iaas.getCapacities();
 			assertEquals(0, midCapacities.compareTo(beforeCapacities), "After registration the iaas should have more capacities");

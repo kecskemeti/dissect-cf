@@ -171,6 +171,16 @@ public class AlterableResourceConstraints extends ResourceConstraints {
 	}
 
 	/**
+	 * Allows chaining single add ops
+	 * @param toAdd
+	 * @return self
+	 */
+	public AlterableResourceConstraints singleAddCont(final ResourceConstraints toAdd) {
+		singleAdd(toAdd);
+		return this;
+	}
+
+	/**
 	 * Allows multiple RC objects to be added to this one with variable
 	 * parameter length
 	 * 

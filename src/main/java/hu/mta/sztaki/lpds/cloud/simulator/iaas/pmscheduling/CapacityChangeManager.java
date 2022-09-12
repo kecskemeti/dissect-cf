@@ -23,7 +23,7 @@ import java.util.List;
 class CapacityChangeManager
         implements VMManager.CapacityChangeEvent<ResourceConstraints>, PhysicalMachine.StateChangeListener {
 
-    private final PhysicalMachineController controller;
+    private final SchedulingDependentMachines controller;
     /**
      * the physical machine that this capacity manager will target with its
      * operations
@@ -38,7 +38,7 @@ class CapacityChangeManager
      * @param pm the PM to be managed to follow the demand patterns of the VM
      *           requests to the IaaSService.
      */
-    public CapacityChangeManager(PhysicalMachineController controller, final PhysicalMachine pm) {
+    public CapacityChangeManager(SchedulingDependentMachines controller, final PhysicalMachine pm) {
         this.controller = controller;
         observed = pm;
         observed.subscribeToIncreasingFreeapacityChanges(this);
@@ -111,15 +111,14 @@ class CapacityChangeManager
     @Override
     public void stateChanged(PhysicalMachine pm, PhysicalMachine.State oldState, PhysicalMachine.State newState) {
         if (PhysicalMachine.State.RUNNING.equals(newState)) {
-            ((SchedulingDependentMachines)controller).currentlyStartingPM = null;
+            controller.currentlyStartingPM = null;
             if (controller.parent.sched.getQueueLength() == 0) {
                 new MachineSwitchoffDelayer();
             } else {
-                ResourceConstraints runningCapacities = controller.parent.getRunningCapacities();
+                var runningCapacities = controller.parent.getRunningCapacities();
                 if (!controller.parent.runningMachines.contains(observed)) {
                     // parent have not recognized this PM's startup yet
-                    runningCapacities = new AlterableResourceConstraints(runningCapacities);
-                    ((AlterableResourceConstraints) runningCapacities).singleAdd(observed.getCapacities());
+                    runningCapacities = new AlterableResourceConstraints(runningCapacities).singleAddCont(observed.getCapacities());
                 }
                 if (runningCapacities.compareTo(controller.parent.sched.getTotalQueued()) < 0) {
                     // no capacities to handle the currently queued jobs, so
