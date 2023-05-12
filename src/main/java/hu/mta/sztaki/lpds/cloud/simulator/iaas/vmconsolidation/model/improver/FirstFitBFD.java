@@ -55,14 +55,14 @@ public class FirstFitBFD extends InfrastructureModel implements InfrastructureMo
     public void improve(final InfrastructureModel toImprove) {
         Stream.Builder<ModelVM> potentialVMstoMove= Stream.builder();
         // relieve overloaded PMs + empty underloaded PMs
-        for (var pm : toImprove.bins) {
+        Arrays.stream(toImprove.bins).forEach(pm -> {
             var vmsOfPm = pm.getVMs();
             while (!vmsOfPm.isEmpty() && (pm.isOverAllocated() || pm.isUnderAllocated())) {
                 var vm = vmsOfPm.get(vmsOfPm.size() - 1);
                 potentialVMstoMove.accept(vm);
                 pm.removeVM(vm);
             }
-        }
+        });
         // find new host for the VMs to migrate using BFD
         potentialVMstoMove.build().sorted(mvmComp).forEach(vm ->
                 Arrays.stream(toImprove.bins).sorted(mpmComp)

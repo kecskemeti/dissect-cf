@@ -24,6 +24,8 @@
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 
 import java.lang.reflect.Field;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
@@ -212,14 +214,9 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 	 * String representation of the whole population (for debugging purposes).
 	 */
 	public String populationToString() {
-		final StringBuilder result = new StringBuilder();
-		for (int i = 0; i < population.length; i++) {
-			if (i != 0) {
-				result.append(' ');
-			}
-			result.append(population[i].toString());
-		}
-		return result.toString();
+		return popIdxStream().mapToObj(i ->
+				(i != 0 ? " " : "") + population[i]
+		).collect(Collectors.joining());
 	}
 
 	protected abstract void singleIteration();
@@ -239,5 +236,9 @@ public abstract class PopulationBasedConsolidator<T extends InfrastructureModel>
 			singleIteration();
 		}
 		return getBestResult();
+	}
+
+	protected IntStream popIdxStream() {
+		return IntStream.range(0,population.length);
 	}
 }

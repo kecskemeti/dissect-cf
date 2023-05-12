@@ -29,6 +29,8 @@ import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.IM_PB_Consolidato
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.InfrastructureModel;
 
+import java.util.stream.IntStream;
+
 /**
  * VM consolidator using a genetic algorithm.
  * 
@@ -100,13 +102,9 @@ public class GaConsolidator extends IM_PB_Consolidator {
 		// From each individual in the population, create an offspring using
 		// mutation. If the child is better than its parent, it replaces it
 		// in the population, otherwise it is discarded.
-		for (int i = 0; i < population.length; i++) {
-			checkAndReplace(new InfrastructureModel(population[i], mutator, localSearch), i);
-		}
+		popIdxStream().forEach(i -> checkAndReplace(new InfrastructureModel(population[i], mutator, localSearch), i));
 		// Perform the given number of crossovers.
-		for (int i = 0; i < nrCrossovers; i++) {
-			crossover();
-		}
+		IntStream.range(0, nrCrossovers).forEach(i -> crossover());
 	}
 
 }

@@ -80,31 +80,33 @@ public class AbcConsolidator extends IM_PB_Consolidator {
 	private void determineProbabilities() {
 		Arrays.fill(wincounts, 0);
 		Arrays.fill(testcounts, 0);
-		for (int i = 0; i < population.length; i++) {
-			final InfrastructureModel s = population[i];
-			final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]) + 1;
-			// Don't test against the same item.
-			probTestIndexes[0] = i;
-			for (int j = 1; j < maxj; j++) {
-				int popidx;
-				int k;
-				do {
-					popidx = random.nextInt(population.length);
-					// Don't test against something we already tested with before.
-					for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
-						;
-				} while (k != j);
-				probTestIndexes[j] = popidx;
-				final InfrastructureModel s2 = population[popidx];
-				if (s.isBetterThan(s2)) {
-					wincounts[i]++;
-					testcounts[popidx]++;
-				} else {
-					wincounts[popidx]++;
-				}
+		popIdxStream().forEach(this::determineSingleProb);
+	}
+
+	private void determineSingleProb(int i) {
+		final InfrastructureModel s = population[i];
+		final int maxj = Math.min(population.length - 1, probTestCount - testcounts[i] - wincounts[i]) + 1;
+		// Don't test against the same item.
+		probTestIndexes[0] = i;
+		for (int j = 1; j < maxj; j++) {
+			int popidx;
+			int k;
+			do {
+				popidx = random.nextInt(population.length);
+				// Don't test against something we already tested with before.
+				for (k = 0; k < j && probTestIndexes[k] != popidx; k++)
+					;
+			} while (k != j);
+			probTestIndexes[j] = popidx;
+			final InfrastructureModel s2 = population[popidx];
+			if (s.isBetterThan(s2)) {
+				wincounts[i]++;
+				testcounts[popidx]++;
+			} else {
+				wincounts[popidx]++;
 			}
-			probabilities[i] = (probBase + wincounts[i]) / (probBase + probTestCount);
 		}
+		probabilities[i] = (probBase + wincounts[i]) / (probBase + probTestCount);
 	}
 
 	/**
@@ -139,24 +141,12 @@ public class AbcConsolidator extends IM_PB_Consolidator {
 	@Override
 	protected void singleIteration() {
 		// employed bees phase
-		for (int j = 0; j < population.length; j++) {
-			mutateAndCheck(j);
-		}
+		popIdxStream().forEach(this::mutateAndCheck);
 		// onlooker bees phase
 		determineProbabilities();
 		final double rnd = random.nextDoubleFast();
-		for (int j = 0; j < population.length; j++) {
-			if (rnd <= probabilities[j]) {
-				mutateAndCheck(j);
-			}
-		}
+		popIdxStream().filter(j -> rnd < probabilities[j]).forEach(this::mutateAndCheck);
 		// scout bee phase
-		for (int j = 0; j < population.length; j++) {
-			if (numTrials[j] >= limitTrials) {
-				population[j] = new InfrastructureModel(input, RandomVMassigner.globalRandomAssigner, localSearch);
-				numTrials[j] = 0;
-				break;
-			}
-		}
+		popIdxStream().filter(j -> numTrials[j] >= limitTrials).findFirst().ifPresent(j -> population[j] = new InfrastructureModel(input, RandomVMassigner.globalRandomAssigner, localSearch));
 	}
 }
