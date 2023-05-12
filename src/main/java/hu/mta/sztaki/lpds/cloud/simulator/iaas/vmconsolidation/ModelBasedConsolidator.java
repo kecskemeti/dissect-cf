@@ -26,10 +26,16 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.Predicate;
 
+import hu.mta.sztaki.lpds.cloud.simulator.DeferredEvent;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.IaaSService;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.consolidation.Consolidator;
@@ -101,24 +107,31 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 	 * @param pmList All PMs which are currently registered in the IaaS service.
 	 */
 	protected void doConsolidation(final PhysicalMachine[] pmList) {
+		var startTime = Instant.now();
 		// Cancel this round if there are unfinished actions.
-		for (final Action a : previousActions) {
-			if (!a.isFinished()) {
-				return;
-			}
+		if (Arrays.stream(previousActions).anyMatch(Predicate.not(Action::isFinished))) {
+			return;
 		}
-		final InfrastructureModel input = new InfrastructureModel(pmList, lowerThreshold,
+		var input = new InfrastructureModel(pmList, lowerThreshold,
 				!(toConsolidate.pmcontroller instanceof IControllablePmScheduler), upperThreshold);
 		// the input is duplicated before sending it for optimisation to allow
 		// consolidators directly change the input model
-		final InfrastructureModel solution = optimize(
+		var solution = optimize(
 				new InfrastructureModel(input, PreserveAllocations.singleton, NonImprover.singleton));
 		if (solution.isBetterThan(input) || alwaysEnact) {
 			previousActions = modelDiff(solution);
 			// Logger.getGlobal().info("Number of actions: "+actions.size());
 			createGraph();
 			// printGraph(actions);
-			performActions();
+			var spentDuration = Duration.between(Instant.now(), startTime);
+			//FIXME: assumes that a single tick is a millisecond. Should use a more comprehensive time & unit conversion
+			var millisSpent = spentDuration.get(ChronoUnit.MILLIS);
+			new DeferredEvent(millisSpent) {
+				@Override
+				protected void eventAction() {
+					performActions();
+				}
+			};
 		}
 	}
 
