@@ -2,7 +2,8 @@
 <img src="http://users.iit.uni-miskolc.hu/~kecskemeti/DISSECT-CF/logo.jpg"/>
 </p>
 
-[![Build Status][travis-badge]][travis-link]
+![GitHub top language](https://img.shields.io/github/languages/top/kecskemeti/dissect-cf)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/kecskemeti/dissect-cf/maven.yml)
 [![CodeFactor][codefactor-badge]][codefactor-link]
 [![Maintainability][codeclimate-badge]][codeclimate-link]
 
