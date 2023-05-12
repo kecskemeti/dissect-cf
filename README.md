@@ -4,7 +4,7 @@
 
 ![GitHub top language](https://img.shields.io/github/languages/top/kecskemeti/dissect-cf)
 ![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/kecskemeti/dissect-cf/maven.yml)
-![GitHub Test Status](https://img.shields.io/github/actions/workflow/status/kecskemeti/dissect-cf/test.yml)
+![GitHub Test Status](https://img.shields.io/github/actions/workflow/status/kecskemeti/dissect-cf/test.yml?label=tests)
 [![CodeFactor][codefactor-badge]][codefactor-link]
 [![Maintainability][codeclimate-badge]][codeclimate-link]
 
