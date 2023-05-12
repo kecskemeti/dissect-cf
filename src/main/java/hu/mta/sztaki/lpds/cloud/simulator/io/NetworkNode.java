@@ -25,6 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.io;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -49,6 +50,7 @@ import hu.mta.sztaki.lpds.cloud.simulator.util.PowerTransitionGenerator;
 public class NetworkNode {
 
 	public static class NetworkException extends Exception {
+		@Serial
 		private static final long serialVersionUID = 5173643896341066497L;
 
 		public NetworkException(String msg) {

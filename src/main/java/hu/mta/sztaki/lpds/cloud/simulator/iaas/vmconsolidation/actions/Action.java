@@ -96,9 +96,7 @@ public abstract class Action {
 	 */
 	public void finished() {
 		finished = true;
-		for (final Action a : successors) {
-			a.finishedPredecessor();
-		}
+		successors.forEach(Action::finishedPredecessor);
 	}
 
 	public boolean isFinished() {

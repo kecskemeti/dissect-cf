@@ -25,6 +25,7 @@
 
 package hu.mta.sztaki.lpds.cloud.simulator.iaas;
 
+import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,6 +68,7 @@ public class IaaSService implements VMManager<IaaSService, PhysicalMachine>, Phy
 	 */
 	public static class IaaSHandlingException extends Exception {
 
+		@Serial
 		private static final long serialVersionUID = 2580735547805541590L;
 
 		/**

@@ -195,7 +195,7 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			}
 		}
 		for (final ModelVM item : solution.items) {
-			if (item.getHostID() != item.basedetails.initialHost.hashCode()) {
+			if (item.getHostID() != item.basedetails.initialHost().hashCode()) {
 				actions.add(new MigrationAction(item));
 			}
 		}

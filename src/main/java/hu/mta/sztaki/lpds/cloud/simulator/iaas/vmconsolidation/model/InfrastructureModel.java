@@ -132,7 +132,7 @@ public class InfrastructureModel {
 			totalOverAllocated+=calculateOverAllocationForProp(pm, ut, ResourceConstraints::getTotalProcessingPower);
 			totalOverAllocated+=calculateOverAllocationForProp(pm, ut, constraints -> (double)constraints.getRequiredMemory());
 		}).count();
-		nrMigrations = (int) Arrays.stream(items).filter(vm -> vm.basedetails.initialHost.hashCode() != vm.getHostID()).count();
+		nrMigrations = (int) Arrays.stream(items).filter(vm -> vm.basedetails.initialHost().hashCode() != vm.getHostID()).count();
 	}
 
 	private double calculateOverAllocationForProp(ModelPM pm, ConstantConstraints threshold, Function<ResourceConstraints, Double> propAccessor) {

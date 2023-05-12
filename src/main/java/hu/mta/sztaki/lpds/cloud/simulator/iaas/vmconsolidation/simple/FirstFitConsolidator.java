@@ -78,7 +78,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
         unchangeableBins.clear();
         if (isOverAllocated(sol) || isUnderAllocated(sol)) {
             Arrays.stream(sol.bins).forEach( pm -> {
-                if (!isNothingToChange(pm)) {
+                if (isChangeable(pm)) {
                     if (pm.isUnderAllocated()) {
                         migrateUnderAllocatedPM(pm, sol);
                     }
@@ -102,7 +102,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
 
     private static final Predicate<ModelPM> uaChecker = ModelPM::isUnderAllocated;
 
-    private boolean checkifStateExists(final Predicate<ModelPM> chk, final InfrastructureModel sol) {
+    private boolean checkStateExists(final Predicate<ModelPM> chk, final InfrastructureModel sol) {
         return Arrays.stream(sol.bins).anyMatch(chk);
     }
 
@@ -112,7 +112,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
      * @return true, if there is an overAllocated PM.
      */
     private boolean isOverAllocated(final InfrastructureModel sol) {
-        return checkifStateExists(oaChecker, sol);
+        return checkStateExists(oaChecker, sol);
     }
 
     /**
@@ -121,7 +121,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
      * @return true, if there is an underAllocated PM.
      */
     private boolean isUnderAllocated(final InfrastructureModel sol) {
-        return checkifStateExists(uaChecker, sol);
+        return checkStateExists(uaChecker, sol);
     }
 
     /**
@@ -162,8 +162,8 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
         return Arrays.stream(sol.bins).filter(pm -> !pm.isHostingVMs() && vmConstraints.compareTo(pm.getTotalResources()) <= 0).findAny();
     }
 
-    private boolean isNothingToChange(final ModelPM pm) {
-        return unchangeableBins.contains(pm);
+    private boolean isChangeable(final ModelPM pm) {
+        return !unchangeableBins.contains(pm);
     }
 
     /**
@@ -177,7 +177,7 @@ public class FirstFitConsolidator extends ModelBasedConsolidator {
      */
     private void migrateOverAllocatedPM(final ModelPM source, final InfrastructureModel sol) {
         // Logger.getGlobal().info("source="+source.toString());
-        while (!isNothingToChange(source) && source.isOverAllocated()) {
+        while (isChangeable(source) && source.isOverAllocated()) {
             var actual = source.getVMs().get(0); // now taking the first VM on this PM and try to migrate it
             // to a
             // target

@@ -64,7 +64,7 @@ public class ShutDownAction extends Action {
     public void determinePredecessors(final Action[] actions) {
         // looking for migrations with this PM as source
         Arrays.stream(actions).filter(action ->
-                action.type.equals(Type.MIGRATION) && (((MigrationAction) action).mvm.basedetails.initialHost.hashCode() == pmToShutDown.hashCode())
+                action.type.equals(Type.MIGRATION) && (((MigrationAction) action).mvm.basedetails.initialHost().hashCode() == pmToShutDown.hashCode())
         ).forEach(this::addPredecessor);
     }
 

@@ -70,7 +70,7 @@ public class ModelVM {
 	 * perCoreProcessingPower and memory of this VM.
 	 */
 	public String toString() {
-		return basedetails.id + ", " + "Cores: " + getResources().getRequiredCPUs() + ", " + "ProcessingPower: "
+		return basedetails.id() + ", " + "Cores: " + getResources().getRequiredCPUs() + ", " + "ProcessingPower: "
 				+ getResources().getRequiredProcessingPower() + ", " + "Memory: " + getResources().getRequiredMemory();
 	}
 
@@ -80,7 +80,7 @@ public class ModelVM {
 	 * @return The id of this vm.
 	 */
 	public String toShortString() {
-		return "VM " + basedetails.id;
+		return "VM " + basedetails.id();
 	}
 
 	/**
@@ -89,7 +89,7 @@ public class ModelVM {
 	 * @return the ResourceVector
 	 */
 	public ResourceConstraints getResources() {
-		return basedetails.vm.getResourceAllocation().allocated;
+		return basedetails.vm().getResourceAllocation().allocated;
 	}
 
 	/**
@@ -125,6 +125,6 @@ public class ModelVM {
 	 */
 	@Override
 	public int hashCode() {
-		return basedetails.id;
+		return basedetails.id();
 	}
 }

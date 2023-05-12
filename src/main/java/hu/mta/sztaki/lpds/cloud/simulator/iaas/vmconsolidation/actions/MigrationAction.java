@@ -23,6 +23,7 @@
  */
 package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.actions;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.PhysicalMachine;
@@ -56,25 +57,29 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	 * This method determines the predecessors of this action. A predecessor of a
 	 * migration action is a starting action, which starts the target PM of this
 	 * action. Furthermore, migrations from our target PM are also considered
-	 * predecessors, in order to prohibit temporary overloads of the PM. TODO: this
-	 * needs improvement, as it can currently lead to deadlocks.
+	 * predecessors, in order to prohibit temporary overloads of the PM.
+	 *
+	 * TODO: this needs improvement, as it can currently lead to deadlocks.
 	 */
 	@Override
 	public void determinePredecessors(final Action[] actions) {
 		// looking for actions where a PM gets started, that is the target of this
 		// migration
-		for (final Action action : actions) {
-			if (action.type.equals(Type.START)) {
+		Arrays.stream(actions).forEach(this::singleActionPredecessorCheck);
+	}
+
+	private void singleActionPredecessorCheck(Action action) {
+		switch (action.type) {
+			case START:
 				if ((((StartAction) action).pmToStart.hashCode() == mvm.getHostID())) {
 					this.addPredecessor(action);
 				}
-			}
-
-			if (action.type.equals(Type.MIGRATION)) {
+				break;
+			case MIGRATION:
 				final ModelVM otherVM = ((MigrationAction) action).mvm;
 				boolean cancelMigration = false;
-				if (otherVM.basedetails.initialHost.hashCode() == mvm.getHostID()) {
-					if (otherVM.getHostID() == mvm.basedetails.initialHost.hashCode()) {
+				if (otherVM.basedetails.initialHost().hashCode() == mvm.getHostID()) {
+					if (otherVM.getHostID() == mvm.basedetails.initialHost().hashCode()) {
 						// Cancels circular migrations
 						cancelMigration = true;
 					} else {
@@ -88,13 +93,13 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 					goForMigration = false;
 					((MigrationAction) action).goForMigration = false;
 				}
-			}
+			default:
 		}
 	}
 
 	@Override
 	public String toString() {
-		return super.toString() + " Source:  " + mvm.basedetails.initialHost.toShortString() + " Target: "
+		return super.toString() + " Source:  " + mvm.basedetails.initialHost().toShortString() + " Target: "
 				+ mvm.gethostPM().toShortString() + " VM: " + mvm.toShortString();
 	}
 
@@ -107,9 +112,9 @@ public class MigrationAction extends Action implements VirtualMachine.StateChang
 	@Override
 	public void execute() {
 		if (goForMigration) {
-			final PhysicalMachine simSourcePM = mvm.basedetails.initialHost.getPM();
+			final PhysicalMachine simSourcePM = mvm.basedetails.initialHost().getPM();
 			final PhysicalMachine simTargetPM = mvm.gethostPM().getPM();
-			final VirtualMachine simVM = mvm.basedetails.vm;
+			final VirtualMachine simVM = mvm.basedetails.vm();
 			if (simTargetPM.isRunning() && acceptableStatesForMigr.contains(simVM.getState())
 					&& simVM.getMemSize() <= simTargetPM.freeCapacities.getRequiredMemory()
 					&& simVM.getPerTickProcessingPower() <= simTargetPM.freeCapacities.getTotalProcessingPower()

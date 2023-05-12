@@ -92,11 +92,11 @@ public class Particle extends InfrastructureModel {
 				arg1.getResources().getTotalProcessingPower()));
 		vmFromHashToLocalIdx = new int[sorted.length];
 		for (int i = 0; i < sorted.length; i++) {
-			vmFromHashToLocalIdx[sorted[i].basedetails.id] = i;
+			vmFromHashToLocalIdx[sorted[i].basedetails.id()] = i;
 		}
 		vmFromLocalIdxToHash = new int[sorted.length];
 		for (int i = 0; i < sorted.length; i++) {
-			vmFromLocalIdxToHash[i] = sorted[i].basedetails.id;
+			vmFromLocalIdxToHash[i] = sorted[i].basedetails.id();
 		}
 		double[] velBase = new double[base.items.length];
 		double[] locBase = new double[base.items.length];
