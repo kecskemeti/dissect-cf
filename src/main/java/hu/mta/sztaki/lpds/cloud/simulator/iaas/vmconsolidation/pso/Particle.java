@@ -25,6 +25,10 @@ package hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.pso;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.CachingPRNG;
 import hu.mta.sztaki.lpds.cloud.simulator.iaas.vmconsolidation.model.GenHelper;
@@ -82,22 +86,17 @@ public class Particle extends InfrastructureModel {
 		for (int i = 0; i < srtPMs.length; i++) {
 			pmFromHashToLocalIdx[srtPMs[i].hashCode()] = i;
 		}
-		pmFromLocalIdxToHash = new int[srtPMs.length];
-		for (int i = 0; i < srtPMs.length; i++) {
-			pmFromLocalIdxToHash[i] = srtPMs[i].hashCode();
-		}
+		pmFromLocalIdxToHash = Arrays.stream(srtPMs).mapToInt(ModelPM::hashCode).toArray();
 
 		final ModelVM[] sorted = items.clone();
 		Arrays.sort(sorted, (arg0, arg1) -> -Double.compare(arg0.getResources().getTotalProcessingPower(),
 				arg1.getResources().getTotalProcessingPower()));
 		vmFromHashToLocalIdx = new int[sorted.length];
+
 		for (int i = 0; i < sorted.length; i++) {
 			vmFromHashToLocalIdx[sorted[i].basedetails.id()] = i;
 		}
-		vmFromLocalIdxToHash = new int[sorted.length];
-		for (int i = 0; i < sorted.length; i++) {
-			vmFromLocalIdxToHash[i] = sorted[i].basedetails.id();
-		}
+		vmFromLocalIdxToHash = Arrays.stream(sorted).mapToInt(s -> s.basedetails.id()).toArray();
 		double[] velBase = new double[base.items.length];
 		double[] locBase = new double[base.items.length];
 		/*
@@ -117,6 +116,14 @@ public class Particle extends InfrastructureModel {
 		updateMappings(localsearch);
 	}
 
+	private static double[] avgOverSwarm(Particle[] baseSwarm, BiFunction<Particle, Integer, Double> accessor) {
+		return IntStream.range(0, baseSwarm[0].items.length).mapToDouble(
+				i -> Arrays.stream(baseSwarm).mapToDouble(
+								particle -> accessor.apply(particle, i))
+						.average().orElse(0)
+		).toArray();
+	}
+
 	/**
 	 * Allows the creation of a particle as an average of the swarm specified in the
 	 * parameter
@@ -128,15 +135,7 @@ public class Particle extends InfrastructureModel {
 			final double[] locBase = genLocBase();
 
 			private double[] genLocBase() {
-				double[] returner = new double[baseSwarm[0].items.length];
-				Arrays.fill(returner, 0);
-				for (int i = 0; i < returner.length; i++) {
-					for (Particle particle : baseSwarm) {
-						returner[i] += particle.currentLocation.data[i];
-					}
-					returner[i] /= baseSwarm.length;
-				}
-				return returner;
+				return avgOverSwarm(baseSwarm, (particle,i) -> particle.currentLocation.data[i]);
 			}
 
 			@Override
@@ -153,14 +152,7 @@ public class Particle extends InfrastructureModel {
 		vmFromLocalIdxToHash = baseSwarm[0].vmFromLocalIdxToHash.clone();
 		pmFromHashToLocalIdx = baseSwarm[0].pmFromHashToLocalIdx.clone();
 		pmFromLocalIdxToHash = baseSwarm[0].pmFromLocalIdxToHash.clone();
-		double[] velBase = new double[baseSwarm[0].items.length];
-		Arrays.fill(velBase, 0);
-		for (int i = 0; i < velBase.length; i++) {
-			for (Particle particle : baseSwarm) {
-				velBase[i] += particle.currentVelocity.data[i];
-			}
-			velBase[i] /= baseSwarm.length;
-		}
+		var velBase = avgOverSwarm(baseSwarm, (particle,i) -> particle.currentVelocity.data[i]);
 		currentLocation = new ArithmeticVector(new double[baseSwarm[0].items.length]);
 		currentVelocity = new ArithmeticVector(new double[baseSwarm[0].items.length]);
 		updateLocationFromMapping();
