@@ -881,17 +881,14 @@ public class VirtualMachine extends MaxMinConsumer {
 			}
 			if (wasRegistered) {
 				// Wait until the cancel takes effect - registration cleanup
-				new DeferredEvent(1) {
-					@Override
-					protected void eventAction() {
-						try {
-							destroy(killTasks);
-						} catch (VMManagementException e) {
-							// TODO: allow more graceful exception handling
-							throw new RuntimeException(e);
-						}
+				DeferredEvent.deferAction(1, () -> {
+					try {
+						destroy(killTasks);
+					} catch (VMManagementException e) {
+						// TODO: allow more graceful exception handling
+						throw new RuntimeException(e);
 					}
-				};
+				});
 				return;
 			}
 		}

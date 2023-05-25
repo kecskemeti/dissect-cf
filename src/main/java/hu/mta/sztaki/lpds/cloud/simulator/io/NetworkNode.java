@@ -88,12 +88,7 @@ public class NetworkNode {
 		private SingleTransfer(final int latency, final long tottr, final double limit, final MaxMinConsumer in,
 				final MaxMinProvider out, final ResourceConsumption.ConsumptionEvent e) {
 			super(tottr, limit, in, out, e);
-			new DeferredEvent(latency) {
-				@Override
-				protected void eventAction() {
-					regAndCancelOnFailure();
-				}
-			};
+			DeferredEvent.deferAction(latency, this::regAndCancelOnFailure);
 		}
 
 		private void regAndCancelOnFailure() {

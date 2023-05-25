@@ -125,13 +125,8 @@ public abstract class ModelBasedConsolidator extends Consolidator {
 			// printGraph(actions);
 			var spentDuration = Duration.between(Instant.now(), startTime);
 			//FIXME: assumes that a single tick is a millisecond. Should use a more comprehensive time & unit conversion
-			var millisSpent = spentDuration.get(ChronoUnit.MILLIS);
-			new DeferredEvent(millisSpent) {
-				@Override
-				protected void eventAction() {
-					performActions();
-				}
-			};
+			var millisSpent = spentDuration.toMillis();
+			DeferredEvent.deferAction(millisSpent, this::performActions);
 		}
 	}
 

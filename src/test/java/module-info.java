@@ -5,8 +5,11 @@ module hu.mta.sztaki.lpds.cloud.simulator.dissectcf.test {
     exports at.ac.uibk.dps.cloud.simulator.test.simple;
     exports at.ac.uibk.dps.cloud.simulator.test.simple.cloud.pmscheduler;
     exports at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmscheduler;
+    opens at.ac.uibk.dps.cloud.simulator.test.simple;
+    opens at.ac.uibk.dps.cloud.simulator.test.simple.cloud.vmscheduler;
 
     requires hu.mta.sztaki.lpds.cloud.simulator.dissectcf;
     requires org.junit.jupiter.api;
     requires java.logging;
+    requires org.apache.commons.lang3;
 }
